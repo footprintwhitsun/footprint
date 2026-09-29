@@ -196,7 +196,7 @@ function resolveBranchStockFromLevels(levels, candidates) {
         let key = keys.find(k => k === candTrim);
         // 2. Case-insensitive exact match
         if (!key) key = keys.find(k => k.trim().toLowerCase() === candLower);
-        // 3. Substring/fuzzy fallback (e.g. 'Legacy Insights Ent Dzorwulu' <-> 'Dzorwulu')
+        // 3. Substring/fuzzy fallback (e.g. 'Footprint Ent Dzorwulu' <-> 'Dzorwulu')
         if (!key) key = keys.find(k => {
             const kl = k.trim().toLowerCase();
             return kl.includes(candLower) || candLower.includes(kl);
@@ -393,14 +393,8 @@ async function initDb() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             
-            -- Seed default branches if empty
-            INSERT INTO branches (id, name, location) VALUES (1, '${process.env.MAIN_BRANCH_LOCATION || 'Amasaman'}', '${process.env.MAIN_BRANCH_LOCATION || 'Amasaman'}') ON CONFLICT (id) DO NOTHING;
-            
-            -- Force update legacy initializations
-            UPDATE branches SET name = '${process.env.MAIN_BRANCH_LOCATION || 'Amasaman'}', location = '${process.env.MAIN_BRANCH_LOCATION || 'Amasaman'}' WHERE id = 1 AND (name = 'Main Warehouse' OR name = 'Dzorwulu');
-            -- No additional dummy branches will be forced into the database.
-            -- FIX: Sync branches_id_seq with the actual max id to prevent duplicate key errors
-            SELECT setval(pg_get_serial_sequence('branches', 'id'), COALESCE((SELECT MAX(id) FROM branches), 1));
+            -- Sync branches_id_seq with the actual max id to prevent duplicate key errors
+            SELECT setval(pg_get_serial_sequence('branches', 'id'), COALESCE((SELECT MAX(id) FROM branches), 1), false);
 
             -- Create Products Table if not exists
             CREATE TABLE IF NOT EXISTS products (
@@ -1195,6 +1189,7 @@ const authenticateToken = (req, res, next) => {
         if (!userPayload) return res.status(401).json({ message: 'Not authenticated' });
 
         if (userPayload.role) userPayload.role = userPayload.role.toLowerCase();
+        userPayload.tenant_id = userPayload.tenant_id ? parseInt(userPayload.tenant_id, 10) : 1;
         req.user = userPayload;
 
         const isSuperAdmin = (userPayload.role === 'ceo' || userPayload.role === 'admin');
@@ -2727,6 +2722,9 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
 app.post('/api/products', authenticateToken, async (req, res) => {
     const { barcode, name, category, price, stock, cost_price, selling_unit, packaging_unit, conversion_rate, reorder_level, track_batch, track_expiry, batch_number, expiry_date } = req.body;
     try {
+        const tenantId = req.user.tenant_id || 1;
+        const finalBarcode = (barcode && barcode.trim()) ? barcode.trim() : ('FP-' + Date.now());
+
         // Refresh store info from DB to ensure accuracy
         const userRes = await pool.query('SELECT store_id, store_location FROM users WHERE id = $1', [req.user.id]);
         const dbUser = userRes.rows[0];
@@ -2740,7 +2738,7 @@ app.post('/api/products', authenticateToken, async (req, res) => {
         // Check if a soft-deleted product with the same barcode+name already exists
         const deletedRes = await pool.query(
             `SELECT id FROM products WHERE barcode = $1 AND name = $2 AND tenant_id = $3 AND deleted_at IS NOT NULL LIMIT 1`,
-            [barcode, name, req.user.tenant_id]
+            [finalBarcode, name, tenantId]
         );
 
         if (deletedRes.rows.length > 0) {
@@ -2757,43 +2755,43 @@ app.post('/api/products', authenticateToken, async (req, res) => {
                 [name, category, price, stockValue, stockLevels,
                     cost_price || 0, selling_unit || 'Unit', packaging_unit || 'Box',
                     conversion_rate || 1, reorder_level || 10,
-                    track_batch, track_expiry, existingId, req.user.tenant_id]
+                    track_batch ?? true, track_expiry ?? false, existingId, tenantId]
             );
-            await logActivity(req, 'RESTORE_PRODUCT', { barcode, name, stock });
+            await logActivity(req, 'RESTORE_PRODUCT', { barcode: finalBarcode, name, stock });
             return res.json({ success: true, restored: true });
         }
 
         // Fresh INSERT — no deleted record found for this barcode
         await pool.query(
-            `INSERT INTO products (barcode, name, category, price, stock, stock_levels, cost_price, selling_unit, packaging_unit, conversion_rate, reorder_level, track_batch, track_expiry, tenant_id) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`,
-            [barcode, name, category, price, stockValue, stockLevels, cost_price || 0, selling_unit || 'Unit', packaging_unit || 'Box', conversion_rate || 1, reorder_level || 10, track_batch ?? true, track_expiry ?? false, req.user.tenant_id]
+            `INSERT INTO products (barcode, name, category, price, stock, stock_levels, cost_price, selling_unit, packaging_unit, conversion_rate, reorder_level, track_batch, track_expiry, branch_id, tenant_id) 
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
+            [finalBarcode, name, category, price, stockValue, stockLevels, cost_price || 0, selling_unit || 'Unit', packaging_unit || 'Box', conversion_rate || 1, reorder_level || 10, track_batch ?? true, track_expiry ?? false, branchId, tenantId]
         );
 
         // Insert Batch if provided and stock > 0
         if (stockValue > 0 && (batch_number || expiry_date)) {
             const finalBatchNum = batch_number || `BATCH-${Date.now()}`;
             await pool.query(
-                `INSERT INTO product_batches (product_barcode, batch_number, expiry_date, quantity, quantity_available, quantity_received, branch_id, status)
-                 VALUES ($1, $2, $3, $4, $4, $4, $5, 'Active')
+                `INSERT INTO product_batches (product_barcode, batch_number, expiry_date, quantity, quantity_available, quantity_received, branch_id, status, tenant_id)
+                 VALUES ($1, $2, $3, $4, $4, $4, $5, 'Active', $6)
                  ON CONFLICT (product_barcode, batch_number, branch_id) 
                  DO UPDATE SET 
                      expiry_date = EXCLUDED.expiry_date,
                      quantity = EXCLUDED.quantity,
                      quantity_available = EXCLUDED.quantity_available,
                      quantity_received = EXCLUDED.quantity_received`,
-                [barcode, finalBatchNum, expiry_date || null, stockValue, branchId]
+                [finalBarcode, finalBatchNum, expiry_date || null, stockValue, branchId, tenantId]
             );
         }
 
-        await logActivity(req, 'CREATE_PRODUCT', { barcode, name, stock });
+        await logActivity(req, 'CREATE_PRODUCT', { barcode: finalBarcode, name, stock });
         res.json({ success: true });
     } catch (err) {
         if (err.code === '23505' && err.constraint === 'products_barcode_active_idx') {
             return res.status(409).json({ message: `A product named "${name}" with barcode "${barcode}" already exists. Use a different barcode/name combination or edit the existing product.` });
         }
-        console.error(err);
-        res.status(500).json({ message: 'Error adding product' });
+        console.error('Error adding product:', err);
+        res.status(500).json({ message: 'Error adding product: ' + (err.message || '') });
     }
 });
 
@@ -3375,8 +3373,9 @@ app.get('/transactions/all', authenticateToken, async (req, res) => {
 // --- CATEGORIES MANAGEMENT ---
 app.get('/api/categories', authenticateToken, async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id || 1;
         let query = 'SELECT * FROM categories WHERE tenant_id = $1 AND deleted_at IS NULL';
-        let params = [req.user.tenant_id];
+        let params = [tenantId];
 
         // Filter by branch for non-CEO/Admin users
         if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
@@ -3385,15 +3384,6 @@ app.get('/api/categories', authenticateToken, async (req, res) => {
         }
         query += ' ORDER BY name';
 
-        // Auto-create table if not exists (for ease of setup)
-        await pool.query(`CREATE TABLE IF NOT EXISTS categories (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(100) NOT NULL,
-            description TEXT,
-            branch_id INT,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        )`);
-
         const result = await pool.query(query, params);
         res.json(result.rows);
     } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
@@ -3401,27 +3391,29 @@ app.get('/api/categories', authenticateToken, async (req, res) => {
 
 app.post('/api/categories', authenticateToken, async (req, res) => {
     const { name, description } = req.body;
-    const branchId = req.user.store_id;
+    const branchId = req.user.store_id || 1;
+    const tenantId = req.user.tenant_id || 1;
     try {
         // Restore if soft-deleted category with same name exists in this branch
         const deletedRes = await pool.query(
             'SELECT id FROM categories WHERE name = $1 AND branch_id = $2 AND tenant_id = $3 AND deleted_at IS NOT NULL LIMIT 1',
-            [name, branchId, req.user.tenant_id]
+            [name, branchId, tenantId]
         );
         if (deletedRes.rows.length > 0) {
             await pool.query(
                 'UPDATE categories SET description = $1, deleted_at = NULL WHERE id = $2 AND tenant_id = $3',
-                [description, deletedRes.rows[0].id, req.user.tenant_id]
+                [description, deletedRes.rows[0].id, tenantId]
             );
             await logActivity(req, 'RESTORE_CATEGORY', { name, branchId });
             return res.json({ success: true, restored: true });
         }
-        await pool.query('INSERT INTO categories (name, description, branch_id, tenant_id) VALUES ($1, $2, $3, $4)', [name, description, branchId, req.user.tenant_id]);
+        await pool.query('INSERT INTO categories (name, description, branch_id, tenant_id) VALUES ($1, $2, $3, $4)', [name, description, branchId, tenantId]);
         await logActivity(req, 'CREATE_CATEGORY', { name, branchId });
         res.json({ success: true });
     } catch (err) {
         if (err.code === '23505') return res.status(409).json({ message: `Category "${name}" already exists.` });
-        console.error(err); res.status(500).json({ message: 'Error creating category' });
+        console.error('Error creating category:', err); 
+        res.status(500).json({ message: 'Error creating category: ' + (err.message || '') });
     }
 });
 
@@ -3467,28 +3459,32 @@ app.get('/api/suppliers', authenticateToken, async (req, res) => {
 
 app.post('/api/suppliers', authenticateToken, async (req, res) => {
     const { name, contact, phone, email, address } = req.body;
-    const branchId = req.user.store_id;
+    const branchId = req.user.store_id || 1;
+    const tenantId = req.user.tenant_id || 1;
     try {
         // Restore if soft-deleted supplier with same name exists in this branch
         const deletedRes = await pool.query(
             'SELECT id FROM suppliers WHERE name = $1 AND branch_id = $2 AND tenant_id = $3 AND deleted_at IS NOT NULL LIMIT 1',
-            [name, branchId, req.user.tenant_id]
+            [name, branchId, tenantId]
         );
         if (deletedRes.rows.length > 0) {
             await pool.query(
                 'UPDATE suppliers SET contact_person=$1, phone=$2, email=$3, address=$4, deleted_at=NULL WHERE id=$5 AND tenant_id=$6',
-                [contact, phone, email, address, deletedRes.rows[0].id, req.user.tenant_id]
+                [contact, phone, email, address, deletedRes.rows[0].id, tenantId]
             );
             await logActivity(req, 'RESTORE_SUPPLIER', { name, branchId });
             return res.json({ success: true, restored: true });
         }
         await pool.query(
             'INSERT INTO suppliers (name, contact_person, phone, email, address, branch_id, tenant_id) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-            [name, contact, phone, email, address, branchId, req.user.tenant_id]
+            [name, contact, phone, email, address, branchId, tenantId]
         );
         await logActivity(req, 'CREATE_SUPPLIER', { name, branchId });
         res.json({ success: true });
-    } catch (err) { res.status(500).json({ message: 'Error adding supplier' }); }
+    } catch (err) { 
+        console.error('Error adding supplier:', err);
+        res.status(500).json({ message: 'Error adding supplier: ' + (err.message || '') }); 
+    }
 });
 
 app.put('/api/suppliers/:id', authenticateToken, async (req, res) => {
@@ -4976,7 +4972,7 @@ app.post('/api/ceo/target', authenticateToken, async (req, res) => {
     try {
         await pool.query(`
             INSERT INTO system_settings (id, branch_id, store_name, currency_symbol, vat_rate, receipt_footer, monthly_target)
-            VALUES (1, 1, 'Legacy Insights', '₵ (GHS)', 0.00, 'Thank you!', $1)
+            VALUES (1, 1, 'Footprint', '₵ (GHS)', 0.00, 'Thank you!', $1)
             ON CONFLICT (id) DO UPDATE SET monthly_target = $1
         `, [target]);
         await logActivity(req, 'UPDATE_REVENUE_TARGET', { target });
@@ -6241,21 +6237,26 @@ app.get('/api/branches', authenticateToken, async (req, res) => {
 
 app.post('/api/branches', authenticateToken, async (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
-    const { name, location, vat_rate } = req.body;
+    const { name, location, vat_rate, is_main } = req.body;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        const tenantId = req.user.tenant_id || 1;
         const resBranch = await client.query(
-            'INSERT INTO branches (name, location) VALUES ($1, $2) RETURNING id',
-            [name, location]
+            'INSERT INTO branches (name, location, is_main, tenant_id) VALUES ($1, $2, $3, $4) RETURNING id',
+            [name, location, is_main || false, tenantId]
         );
         const branchId = resBranch.rows[0].id;
 
-        // Create settings for this branch
+        // Create settings for this branch with ON CONFLICT (branch_id)
         await client.query(
-            `INSERT INTO system_settings (id, branch_id, store_name, currency_symbol, vat_rate, receipt_footer)
-             VALUES ($1, $1, $2, '₵ (GHS)', $3, 'Thank you for shopping with us!')`,
-            [branchId, name, vat_rate || 0.0]
+            `INSERT INTO system_settings (branch_id, store_name, currency_symbol, vat_rate, receipt_footer, tenant_id)
+             VALUES ($1, $2, 'GH₵', $3, 'Thank you for shopping with us!', $4)
+             ON CONFLICT (branch_id) DO UPDATE SET 
+                 store_name = EXCLUDED.store_name, 
+                 vat_rate = EXCLUDED.vat_rate, 
+                 tenant_id = EXCLUDED.tenant_id`,
+            [branchId, name, vat_rate || 0.0, tenantId]
         );
 
         await client.query('COMMIT');
@@ -6263,8 +6264,8 @@ app.post('/api/branches', authenticateToken, async (req, res) => {
         res.json({ success: true, id: branchId });
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error(err);
-        res.status(500).json({ message: 'Error creating branch' });
+        console.error('Error creating branch:', err);
+        res.status(500).json({ message: 'Error creating branch: ' + (err.message || '') });
     } finally { client.release(); }
 });
 
@@ -6275,22 +6276,26 @@ app.put('/api/branches/:id', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        await client.query('UPDATE branches SET name = $1, location = $2 WHERE id = $3', [name, location, id]);
+        const tenantId = req.user.tenant_id || 1;
+        await client.query('UPDATE branches SET name = $1, location = $2 WHERE id = $3 AND (tenant_id = $4 OR tenant_id IS NULL)', [name, location, id, tenantId]);
 
         // Update VAT in settings
         await client.query(`
-            INSERT INTO system_settings (id, branch_id, store_name, currency_symbol, vat_rate, receipt_footer)
-            VALUES ($1, $1, $2, '₵ (GHS)', $3, 'Thank you for shopping with us!')
-            ON CONFLICT (id) DO UPDATE SET vat_rate = $3, store_name = $2
-        `, [id, name, vat_rate]);
+            INSERT INTO system_settings (branch_id, store_name, currency_symbol, vat_rate, receipt_footer, tenant_id)
+            VALUES ($1, $2, 'GH₵', $3, 'Thank you for shopping with us!', $4)
+            ON CONFLICT (branch_id) DO UPDATE SET 
+                vat_rate = EXCLUDED.vat_rate, 
+                store_name = EXCLUDED.store_name,
+                tenant_id = EXCLUDED.tenant_id
+        `, [id, name, vat_rate || 0.0, tenantId]);
 
         await client.query('COMMIT');
         await logActivity(req, 'UPDATE_BRANCH', { id, vat_rate });
         res.json({ success: true });
     } catch (err) {
         await client.query('ROLLBACK');
-        console.error(err);
-        res.status(500).json({ message: 'Error updating branch' });
+        console.error('Error updating branch:', err);
+        res.status(500).json({ message: 'Error updating branch: ' + (err.message || '') });
     } finally { client.release(); }
 });
 
@@ -6302,10 +6307,6 @@ app.delete('/api/branches/:id', authenticateToken, async (req, res) => {
 
     const branchId = parseInt(req.params.id, 10);
 
-    if (branchId === 1) {
-        return res.status(403).json({ success: false, message: 'Cannot delete the Main Warehouse (ID 1) as it is a core system requirement.' });
-    }
-
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -6313,19 +6314,22 @@ app.delete('/api/branches/:id', authenticateToken, async (req, res) => {
         const tenantId = req.user.tenant_id || 1;
 
         // Ensure this branch belongs to the user's tenant (or tenant_id is null)
-        const checkBranch = await client.query('SELECT name FROM branches WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL)', [branchId, tenantId]);
+        const checkBranch = await client.query('SELECT name, is_main FROM branches WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL)', [branchId, tenantId]);
         if (checkBranch.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ success: false, message: 'Branch not found.' });
         }
 
-        await client.query('UPDATE branches SET deleted_at = NOW() WHERE id = $1', [branchId]);
+        const wasMain = checkBranch.rows[0].is_main;
+        await client.query('DELETE FROM branches WHERE id = $1', [branchId]);
 
-        // If deleted branch was main, promote branch id=1 as fallback
-        await client.query(`
-            UPDATE branches SET is_main = TRUE
-            WHERE id = 1 AND NOT EXISTS (SELECT 1 FROM branches WHERE is_main = TRUE AND deleted_at IS NULL)
-        `);
+        // If deleted branch was main, promote the first remaining active branch (if any) as main
+        if (wasMain) {
+            await client.query(`
+                UPDATE branches SET is_main = TRUE
+                WHERE id = (SELECT id FROM branches WHERE deleted_at IS NULL ORDER BY id ASC LIMIT 1)
+            `);
+        }
 
         await client.query('COMMIT');
 
@@ -6497,7 +6501,7 @@ app.post('/api/settings/auth-code', authenticateToken, async (req, res) => {
 
             await pool.query(`
                 INSERT INTO system_settings (id, branch_id, credit_auth_code, credit_auth_code_expiry, store_name, currency_symbol, vat_rate)
-                VALUES ($1, $2, $3, $4, 'Legacy Insights', '₵ (GHS)', 0.00)
+                VALUES ($1, $2, $3, $4, 'Footprint', '₵ (GHS)', 0.00)
             `, [nextId, branchId, code, expiry]);
         }
 

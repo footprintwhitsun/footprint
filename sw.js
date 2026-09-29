@@ -1,6 +1,6 @@
 /**
  * Service Worker: Offline Cache & Performance Accelerator
- * Legacy Insights / Footprint Enterprise POS & ERP
+ * Footprint Enterprise POS & ERP
  */
 
 const CACHE_NAME = 'footprint-pos-v2';

@@ -1,6 +1,6 @@
 /**
  * TelemetryGuard - Enterprise Error Boundary & Toast Notification Engine
- * Legacy Insights / Footprint Enterprise POS
+ * Footprint Enterprise POS
  * 
  * Features:
  * - Centralized unhandled error and promise rejection telemetry

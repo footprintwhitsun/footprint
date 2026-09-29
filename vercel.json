@@ -10,13 +10,8 @@
           "*.css",
           "*.png",
           "*.ico",
-          "auth-guard.js",
-          "currency.js",
-          "instant-nav.js",
-          "telemetry-guard.js",
-          "offline-queue.js",
-          "user-session.js",
-          "sw.js"
+          "*.js",
+          "migrations/**"
         ]
       }
     }

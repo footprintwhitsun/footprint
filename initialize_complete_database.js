@@ -3,6 +3,11 @@ const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 const connStr = process.env.DATABASE_URL;
+if (!connStr) {
+    console.error('ERROR: DATABASE_URL not set in .env');
+    process.exit(1);
+}
+
 let cleanConnStr = connStr.replace(/sslmode=[^&]*/g, '')
                         .replace(/\?&/, '?')
                         .replace(/&&/g, '&')
@@ -20,13 +25,13 @@ const pool = new Pool({
     ssl: { rejectUnauthorized: false }
 });
 
-async function setupDatabase() {
-    console.log('Connecting to database:', cleanConnStr.split('@')[1] || 'Supabase');
+async function runInitialization() {
+    console.log('🚀 Connecting to Database...');
     const client = await pool.connect();
 
     try {
-        console.log('--- Step 1: Creating Core Tables for Hardware Store (No Expiry) ---');
-
+        console.log('📦 Step 1: Creating all required Schemas & Tables...');
+        
         await client.query(`
             -- SaaS Multitenancy Table
             CREATE TABLE IF NOT EXISTS tenants (
@@ -49,14 +54,14 @@ async function setupDatabase() {
             );
             INSERT INTO branches (id, name, location, is_main) VALUES (1, 'Amasaman', 'Amasaman', TRUE) ON CONFLICT (id) DO NOTHING;
 
-            -- System Settings
+            -- System Settings Table
             CREATE TABLE IF NOT EXISTS system_settings (
                 id INT PRIMARY KEY,
                 branch_id INT UNIQUE DEFAULT 1,
                 store_name VARCHAR(255) DEFAULT 'FOOTPRINT',
                 currency_symbol VARCHAR(50) DEFAULT 'GH₵',
                 vat_rate DECIMAL(5,2) DEFAULT 0.00,
-                receipt_footer TEXT DEFAULT 'Thank you for your business!',
+                receipt_footer TEXT DEFAULT 'Thank you for your business with FOOTPRINT!',
                 tax_id VARCHAR(50),
                 phone VARCHAR(50),
                 bank_name VARCHAR(255),
@@ -73,7 +78,7 @@ async function setupDatabase() {
             );
             INSERT INTO system_settings (id, branch_id, store_name, currency_symbol, vat_rate, monthly_target)
             VALUES (1, 1, 'FOOTPRINT', 'GH₵', 0.00, 50000.00)
-            ON CONFLICT (id) DO NOTHING;
+            ON CONFLICT (id) DO UPDATE SET store_name = 'FOOTPRINT';
 
             -- Users Table
             CREATE TABLE IF NOT EXISTS users (
@@ -82,7 +87,7 @@ async function setupDatabase() {
                 name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
                 password VARCHAR(255) NOT NULL,
-                role VARCHAR(50) DEFAULT 'staff',
+                role VARCHAR(50) DEFAULT 'cashier',
                 phone VARCHAR(50),
                 employee_id VARCHAR(50) UNIQUE,
                 status VARCHAR(20) DEFAULT 'Active',
@@ -133,7 +138,7 @@ async function setupDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
-            -- Products Table (HARDWARE: track_expiry defaults to FALSE, no required expiry)
+            -- Products Table
             CREATE TABLE IF NOT EXISTS products (
                 id SERIAL PRIMARY KEY,
                 barcode VARCHAR(50) NOT NULL,
@@ -157,7 +162,7 @@ async function setupDatabase() {
             CREATE UNIQUE INDEX IF NOT EXISTS products_barcode_active_idx
                 ON products(tenant_id, barcode, name) WHERE deleted_at IS NULL AND barcode IS NOT NULL AND barcode != '';
 
-            -- Product Batches Table (HARDWARE: expiry_date is NULLABLE)
+            -- Product Batches Table
             CREATE TABLE IF NOT EXISTS product_batches (
                 id SERIAL PRIMARY KEY,
                 product_barcode VARCHAR(255),
@@ -327,7 +332,7 @@ async function setupDatabase() {
                 tenant_id INT REFERENCES tenants(id) DEFAULT 1
             );
 
-            -- Goods Received (expiry_date is NULLABLE)
+            -- Goods Received
             CREATE TABLE IF NOT EXISTS goods_received (
                 id SERIAL PRIMARY KEY,
                 po_id INTEGER,
@@ -397,504 +402,313 @@ async function setupDatabase() {
                 status VARCHAR(50) DEFAULT 'In Progress',
                 variance_total DECIMAL(10,2),
                 tenant_id INT REFERENCES tenants(id) DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                completed_at TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
             CREATE TABLE IF NOT EXISTS stock_take_items (
                 id SERIAL PRIMARY KEY,
                 stock_take_id INTEGER REFERENCES stock_takes(id) ON DELETE CASCADE,
                 product_barcode VARCHAR(50),
-                physical_count INTEGER,
-                system_count INTEGER,
+                expected_quantity INTEGER,
+                actual_quantity INTEGER,
                 variance INTEGER,
-                variance_reason VARCHAR(255),
-                counted_by VARCHAR(100),
-                counted_at TIMESTAMP,
+                variance_value DECIMAL(10,2),
                 tenant_id INT REFERENCES tenants(id) DEFAULT 1
             );
 
-            -- Reorder Alerts
-            CREATE TABLE IF NOT EXISTS reorder_alerts (
+            -- Stock Movements Table
+            CREATE TABLE IF NOT EXISTS stock_movements (
                 id SERIAL PRIMARY KEY,
+                product_id INTEGER,
                 product_barcode VARCHAR(50),
-                current_stock INTEGER,
-                reorder_level INTEGER,
-                suggested_quantity INTEGER,
-                priority VARCHAR(20),
-                status VARCHAR(50) DEFAULT 'Active',
-                branch_id INTEGER DEFAULT 1,
-                tenant_id INT REFERENCES tenants(id) DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                acknowledged_at TIMESTAMP,
-                UNIQUE(product_barcode)
-            );
-
-            -- Shelf Management
-            CREATE TABLE IF NOT EXISTS shelf_inventory (
-                id SERIAL PRIMARY KEY,
-                product_barcode VARCHAR(50),
-                quantity_on_shelf INTEGER DEFAULT 0,
-                store_quantity INTEGER DEFAULT 0,
-                branch_id INTEGER DEFAULT 1,
-                last_verified TIMESTAMP,
-                staff_id INTEGER,
-                notes TEXT,
-                tenant_id INT REFERENCES tenants(id) DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                UNIQUE(product_barcode, branch_id)
-            );
-
-            CREATE TABLE IF NOT EXISTS shelf_movements (
-                id SERIAL PRIMARY KEY,
-                product_barcode VARCHAR(50),
-                movement_type VARCHAR(50),
-                quantity INTEGER,
-                staff_id INTEGER,
-                from_location VARCHAR(100),
-                to_location VARCHAR(100),
-                branch_id INTEGER DEFAULT 1,
-                notes TEXT,
-                tenant_id INT REFERENCES tenants(id) DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-
-            -- Expenses Table
-            CREATE TABLE IF NOT EXISTS expenses (
-                id SERIAL PRIMARY KEY,
-                category VARCHAR(100) NOT NULL,
-                amount DECIMAL(10,2) NOT NULL,
-                description TEXT,
-                expense_date DATE DEFAULT CURRENT_DATE,
-                branch_id INT DEFAULT 1,
-                created_by INT,
-                tenant_id INT REFERENCES tenants(id) DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            );
-
-            -- Inventory Audit Log
-            CREATE TABLE IF NOT EXISTS inventory_audit_log (
-                id SERIAL PRIMARY KEY,
-                action_type VARCHAR(100),
-                product_barcode VARCHAR(50),
-                quantity_before INTEGER,
-                quantity_after INTEGER,
-                reference_id INTEGER,
+                type VARCHAR(50) NOT NULL,
+                quantity INTEGER NOT NULL,
+                unit_cost DECIMAL(10,2),
+                total_cost DECIMAL(10,2),
                 reference_type VARCHAR(50),
-                user_id INTEGER,
-                branch_id INTEGER DEFAULT 1,
+                reference_id VARCHAR(100),
+                from_branch_id INTEGER,
+                to_branch_id INTEGER,
                 notes TEXT,
-                tenant_id INT REFERENCES tenants(id) DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_by INTEGER,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                tenant_id INTEGER DEFAULT 1
             );
 
-            -- Tax Rules
-            CREATE TABLE IF NOT EXISTS tax_rules (
+            -- Negative Stock Logs
+            CREATE TABLE IF NOT EXISTS negative_stock_logs (
                 id SERIAL PRIMARY KEY,
-                name VARCHAR(100) NOT NULL,
-                rate DECIMAL(5,2) NOT NULL,
+                product_barcode VARCHAR(50),
+                attempted_quantity INTEGER,
+                available_quantity INTEGER,
                 branch_id INTEGER DEFAULT 1,
-                status VARCHAR(20) DEFAULT 'Active',
-                deleted_at TIMESTAMPTZ,
+                cashier_id INTEGER,
+                cashier_name VARCHAR(100),
+                authorized_by VARCHAR(100),
+                reason TEXT,
+                tenant_id INT REFERENCES tenants(id) DEFAULT 1,
+                logged_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            -- Credit Authorizations
+            CREATE TABLE IF NOT EXISTS credit_authorizations (
+                id SERIAL PRIMARY KEY,
+                customer_id INTEGER REFERENCES customers(id),
+                amount DECIMAL(10, 2),
+                auth_code VARCHAR(50),
+                generated_by INTEGER,
+                used BOOLEAN DEFAULT FALSE,
+                expires_at TIMESTAMP,
                 tenant_id INT REFERENCES tenants(id) DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
-            -- Companies & Invoices (B2B Portal)
+            -- Branch Targets
+            CREATE TABLE IF NOT EXISTS branch_targets (
+                id SERIAL PRIMARY KEY,
+                branch_id INT REFERENCES branches(id) ON DELETE CASCADE,
+                period_month VARCHAR(7) NOT NULL,
+                target_amount DECIMAL(12,2) NOT NULL DEFAULT 0.00,
+                tenant_id INT REFERENCES tenants(id) DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (branch_id, period_month, tenant_id)
+            );
+
+            -- ==========================================
+            -- B2B & CORPORATE PORTAL TABLES
+            -- ==========================================
+
+            -- Companies Table
             CREATE TABLE IF NOT EXISTS companies (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(255) NOT NULL,
-                tax_id VARCHAR(50),
-                phone VARCHAR(50),
+                contact_person VARCHAR(255),
                 email VARCHAR(255),
+                phone VARCHAR(50),
                 address TEXT,
+                tax_id VARCHAR(100),
                 registration_number VARCHAR(100),
+                payment_terms VARCHAR(100) DEFAULT 'Net 30',
+                credit_limit DECIMAL(12, 2) DEFAULT 50000.00,
+                status VARCHAR(50) DEFAULT 'Active',
                 tenant_id INT REFERENCES tenants(id) DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            -- Company Users Table
             CREATE TABLE IF NOT EXISTS company_users (
                 id SERIAL PRIMARY KEY,
-                company_id INTEGER REFERENCES companies(id),
-                company_name VARCHAR(255),
-                contact_person VARCHAR(100),
+                company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+                company_name VARCHAR(255) NOT NULL,
                 email VARCHAR(255) UNIQUE NOT NULL,
                 password VARCHAR(255) NOT NULL,
+                role VARCHAR(50) DEFAULT 'business_client',
+                contact_person VARCHAR(255),
                 phone VARCHAR(50),
                 address TEXT,
-                status VARCHAR(20) DEFAULT 'Active',
-                role VARCHAR(50) DEFAULT 'business_client',
+                status VARCHAR(50) DEFAULT 'Active',
                 tenant_id INT REFERENCES tenants(id) DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            -- Proforma Invoices
             CREATE TABLE IF NOT EXISTS proforma_invoices (
                 id SERIAL PRIMARY KEY,
-                company_id INTEGER REFERENCES companies(id),
+                company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
                 invoice_number VARCHAR(100) UNIQUE NOT NULL,
                 issue_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 expiry_date TIMESTAMP,
-                subtotal DECIMAL(12,2),
-                markup_type VARCHAR(20),
-                markup_value DECIMAL(12,2),
-                markup_amount DECIMAL(12,2),
-                discount_type VARCHAR(20),
-                discount_value DECIMAL(12,2),
-                discount_amount DECIMAL(12,2),
-                tax_amount DECIMAL(12,2) DEFAULT 0,
-                tax_details JSONB,
-                total_amount DECIMAL(12,2),
+                subtotal DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                tax_rate DECIMAL(5, 2) DEFAULT 0.00,
+                tax_amount DECIMAL(12, 2) DEFAULT 0.00,
+                discount_type VARCHAR(20) DEFAULT 'percentage',
+                discount_value DECIMAL(12, 2) DEFAULT 0.00,
+                discount_amount DECIMAL(12, 2) DEFAULT 0.00,
+                markup_type VARCHAR(20) DEFAULT 'percentage',
+                markup_value DECIMAL(12, 2) DEFAULT 0.00,
+                markup_amount DECIMAL(12, 2) DEFAULT 0.00,
+                total_amount DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                status VARCHAR(50) DEFAULT 'Draft',
                 notes TEXT,
-                status VARCHAR(20) DEFAULT 'Sent',
-                payment_method VARCHAR(50),
-                client_name VARCHAR(255),
-                customer_id INT,
-                created_by INTEGER REFERENCES users(id),
+                created_by INTEGER REFERENCES company_users(id) ON DELETE SET NULL,
                 tenant_id INT REFERENCES tenants(id) DEFAULT 1,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            -- Proforma Invoice Items Table
             CREATE TABLE IF NOT EXISTS proforma_invoice_items (
                 id SERIAL PRIMARY KEY,
                 proforma_id INTEGER REFERENCES proforma_invoices(id) ON DELETE CASCADE,
                 product_id INTEGER,
-                barcode VARCHAR(50),
                 product_name VARCHAR(255) NOT NULL,
-                quantity DECIMAL(12,2) NOT NULL,
-                unit_price DECIMAL(12,2) NOT NULL,
-                line_total DECIMAL(12,2) NOT NULL,
-                tenant_id INT REFERENCES tenants(id) DEFAULT 1
-            );
-
-            CREATE TABLE IF NOT EXISTS sales_invoices (
-                id SERIAL PRIMARY KEY,
-                company_id INTEGER REFERENCES companies(id),
-                proforma_id INTEGER REFERENCES proforma_invoices(id),
-                invoice_number VARCHAR(100) UNIQUE NOT NULL,
-                issue_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                due_date TIMESTAMP,
-                subtotal DECIMAL(12,2),
-                markup_type VARCHAR(20),
-                markup_value DECIMAL(12,2),
-                markup_amount DECIMAL(12,2),
-                discount_type VARCHAR(20),
-                discount_value DECIMAL(12,2),
-                discount_amount DECIMAL(12,2),
-                tax_amount DECIMAL(12,2) DEFAULT 0,
-                paid_amount DECIMAL(12,2) DEFAULT 0,
-                total_amount DECIMAL(12,2),
-                notes TEXT,
-                payment_method VARCHAR(50),
-                status VARCHAR(20) DEFAULT 'Unpaid',
-                client_name VARCHAR(255),
-                customer_id INT,
-                created_by INTEGER REFERENCES users(id),
-                tenant_id INT REFERENCES tenants(id) DEFAULT 1,
+                description TEXT,
+                quantity DECIMAL(10, 2) NOT NULL,
+                unit_price DECIMAL(12, 2) NOT NULL,
+                line_total DECIMAL(12, 2) NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            -- Sales Invoices Table
+            CREATE TABLE IF NOT EXISTS sales_invoices (
+                id SERIAL PRIMARY KEY,
+                company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+                invoice_number VARCHAR(100) UNIQUE NOT NULL,
+                proforma_id INTEGER REFERENCES proforma_invoices(id) ON DELETE SET NULL,
+                issue_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                due_date TIMESTAMP,
+                subtotal DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                tax_rate DECIMAL(5, 2) DEFAULT 0.00,
+                tax_amount DECIMAL(12, 2) DEFAULT 0.00,
+                discount_type VARCHAR(20) DEFAULT 'percentage',
+                discount_value DECIMAL(12, 2) DEFAULT 0.00,
+                discount_amount DECIMAL(12, 2) DEFAULT 0.00,
+                markup_type VARCHAR(20) DEFAULT 'percentage',
+                markup_value DECIMAL(12, 2) DEFAULT 0.00,
+                markup_amount DECIMAL(12, 2) DEFAULT 0.00,
+                total_amount DECIMAL(12, 2) NOT NULL DEFAULT 0.00,
+                paid_amount DECIMAL(12, 2) DEFAULT 0.00,
+                status VARCHAR(50) DEFAULT 'Unpaid',
+                payment_status VARCHAR(50) DEFAULT 'Pending',
+                notes TEXT,
+                created_by INTEGER REFERENCES company_users(id) ON DELETE SET NULL,
+                tenant_id INT REFERENCES tenants(id) DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
+            -- Sales Invoice Items Table
             CREATE TABLE IF NOT EXISTS sales_invoice_items (
                 id SERIAL PRIMARY KEY,
                 invoice_id INTEGER REFERENCES sales_invoices(id) ON DELETE CASCADE,
                 product_id INTEGER,
-                barcode VARCHAR(50),
                 product_name VARCHAR(255) NOT NULL,
-                quantity DECIMAL(12,2) NOT NULL,
-                unit_price DECIMAL(12,2) NOT NULL,
-                line_total DECIMAL(12,2) NOT NULL,
-                tenant_id INT REFERENCES tenants(id) DEFAULT 1
+                description TEXT,
+                quantity DECIMAL(10, 2) NOT NULL,
+                unit_price DECIMAL(12, 2) NOT NULL,
+                line_total DECIMAL(12, 2) NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
+            -- Company Transactions Table
             CREATE TABLE IF NOT EXISTS company_transactions (
                 id SERIAL PRIMARY KEY,
-                company_id INTEGER REFERENCES companies(id),
-                invoice_id INTEGER,
-                transaction_type VARCHAR(50),
-                amount DECIMAL(12,2),
-                created_by INTEGER REFERENCES users(id),
+                company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+                invoice_id INTEGER REFERENCES sales_invoices(id) ON DELETE SET NULL,
+                transaction_type VARCHAR(50) NOT NULL,
+                amount DECIMAL(12, 2) NOT NULL,
+                payment_method VARCHAR(50),
+                reference_number VARCHAR(255),
+                description TEXT,
+                created_by INTEGER REFERENCES company_users(id) ON DELETE SET NULL,
                 tenant_id INT REFERENCES tenants(id) DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
-            -- Session store table for connect-pg-simple
-            CREATE TABLE IF NOT EXISTS user_sessions (
-                sid VARCHAR NOT NULL COLLATE "default" PRIMARY KEY,
-                sess JSON NOT NULL,
-                expire TIMESTAMP(6) NOT NULL
+            -- Company Taxes Table
+            CREATE TABLE IF NOT EXISTS company_taxes (
+                id SERIAL PRIMARY KEY,
+                company_id INTEGER REFERENCES companies(id) ON DELETE CASCADE,
+                name VARCHAR(100) NOT NULL,
+                rate DECIMAL(5,2) NOT NULL,
+                status VARCHAR(20) DEFAULT 'Active',
+                tenant_id INT REFERENCES tenants(id) DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
-            CREATE INDEX IF NOT EXISTS "IDX_session_expire" ON user_sessions ("expire");
         `);
+        console.log('✅ All Core & Corporate Schema tables verified successfully.');
 
-        console.log('✅ All core tables successfully created with hardware specifications!');
+        console.log('👤 Step 2: Creating the 4 User Profiles...');
 
-        console.log('--- Step 2: Seeding Hardware Categories ---');
-        const hardwareCategories = [
-            'Building Materials',
-            'Tools & Hardware',
-            'Plumbing Supplies',
-            'Electrical Supplies',
-            'Paints & Finishes',
-            'Fasteners & Fixings',
-            'Roofing & Timber',
-            'Safety & PPE'
-        ];
+        // 1. CEO
+        const salt = await bcrypt.genSalt(10);
+        const ceoHash = await bcrypt.hash('Ceo2026!', salt);
+        await client.query(`
+            INSERT INTO users (username, name, email, password, role, store_location, status)
+            VALUES ('ceo_footprint', 'Executive CEO', 'ceo@footprint.com', $1, 'ceo', 'Headquarters', 'Active')
+            ON CONFLICT (email) DO UPDATE SET
+                password = $1,
+                role = 'ceo',
+                name = 'Executive CEO',
+                store_location = 'Headquarters',
+                status = 'Active';
+        `, [ceoHash]);
+        console.log('✅ Profile 1 (CEO): ceo@footprint.com / Ceo2026!');
 
-        for (const cat of hardwareCategories) {
-            await client.query(`
-                INSERT INTO categories (name, description, branch_id)
-                VALUES ($1, $2, 1)
-                ON CONFLICT (name, branch_id) DO NOTHING
-            `, [cat, `${cat} category`]);
-        }
-        console.log('✅ Hardware categories seeded.');
+        // 2. STORE MANAGER
+        const managerHash = await bcrypt.hash('Manager2026!', salt);
+        await client.query(`
+            INSERT INTO users (username, name, email, password, role, store_location, status)
+            VALUES ('manager_footprint', 'Store Manager', 'manager@footprint.com', $1, 'manager', 'Amasaman', 'Active')
+            ON CONFLICT (email) DO UPDATE SET
+                password = $1,
+                role = 'manager',
+                name = 'Store Manager',
+                store_location = 'Amasaman',
+                status = 'Active';
+        `, [managerHash]);
+        console.log('✅ Profile 2 (STORE MANAGER): manager@footprint.com / Manager2026!');
 
-        console.log('--- Step 3: Seeding Default Users ---');
-        const defaultUsers = [
-            {
-                name: 'Footprint Admin',
-                email: 'admin@footprintpos.com',
-                password: process.env.DEFAULT_ADMIN_PASS || 'Admin2026',
-                role: 'admin',
-                location: 'Amasaman'
-            },
-            {
-                name: 'Footprint Cashier',
-                email: 'cashier@footprintpos.com',
-                password: process.env.DEFAULT_CASHIER_PASS || 'Cashier2026',
-                role: 'cashier',
-                location: 'Amasaman'
-            },
-            {
-                name: 'Footprint Manager',
-                email: 'manager@footprintpos.com',
-                password: 'Manager2026',
-                role: 'manager',
-                location: 'Amasaman'
-            },
-            {
-                name: 'CEO',
-                email: 'ceo@faithway.com',
-                password: 'Faith2026',
-                role: 'ceo',
-                location: 'Amasaman'
-            },
-            {
-                name: 'Store Cashier',
-                email: 'cashier@footprint.com',
-                password: 'cashier123',
-                role: 'cashier',
-                location: 'Amasaman'
-            },
-            {
-                name: 'Footprint Admin',
-                email: 'admin@footprint.com',
-                password: 'password123',
-                role: 'admin',
-                location: 'Amasaman'
-            }
-        ];
+        // 3. TELLER (CASHIER)
+        const tellerHash = await bcrypt.hash('Teller2026!', salt);
+        await client.query(`
+            INSERT INTO users (username, name, email, password, role, store_location, status)
+            VALUES ('teller_footprint', 'Frontline Teller', 'teller@footprint.com', $1, 'cashier', 'Amasaman', 'Active')
+            ON CONFLICT (email) DO UPDATE SET
+                password = $1,
+                role = 'cashier',
+                name = 'Frontline Teller',
+                store_location = 'Amasaman',
+                status = 'Active';
+        `, [tellerHash]);
+        console.log('✅ Profile 3 (TELLER): teller@footprint.com / Teller2026!');
 
-        for (const u of defaultUsers) {
-            const hash = await bcrypt.hash(u.password, 10);
-            const userCheck = await client.query('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [u.email]);
-            if (userCheck.rows.length === 0) {
-                await client.query(`
-                    INSERT INTO users (name, email, password, role, store_location, store_id)
-                    VALUES ($1, $2, $3, $4, $5, 1)
-                `, [u.name, u.email.toLowerCase(), hash, u.role.toLowerCase(), u.location]);
-                console.log(`Created user: ${u.email} (${u.role})`);
-            } else {
-                await client.query(`
-                    UPDATE users SET password = $1, role = $2, store_location = $3 WHERE LOWER(email) = LOWER($4)
-                `, [hash, u.role.toLowerCase(), u.location, u.email]);
-                console.log(`Updated user: ${u.email}`);
-            }
+        // 4. COMPANY PORTAL (B2B CLIENT)
+        // Ensure Company Record exists
+        let companyId = 1;
+        const compRes = await client.query("SELECT id FROM companies WHERE name ILIKE '%Footprint%' LIMIT 1");
+        if (compRes.rows.length > 0) {
+            companyId = compRes.rows[0].id;
+        } else {
+            const insComp = await client.query(`
+                INSERT INTO companies (name, email, contact_person, phone, status, credit_limit)
+                VALUES ('Footprint B2B Enterprise', 'company@footprint.com', 'Corporate Client Admin', '+233 20 000 0000', 'Active', 50000.00)
+                RETURNING id;
+            `);
+            companyId = insComp.rows[0].id;
         }
 
-        console.log('--- Step 4: Seeding Initial Hardware Catalog (NO Expiry Dates) ---');
-        const hardwareProducts = [
-            {
-                barcode: 'HW-CEM-001',
-                name: 'Portland Cement (50kg Bag)',
-                category: 'Building Materials',
-                cost_price: 85.00,
-                price: 110.00,
-                stock: 250,
-                selling_unit: 'Bag',
-                packaging_unit: 'Pallet',
-                conversion_rate: 40,
-                reorder_level: 50,
-                batch_number: 'LOT-CEM-2026'
-            },
-            {
-                barcode: 'HW-ROD-012',
-                name: 'High Tensile Steel Iron Rod 12mm',
-                category: 'Building Materials',
-                cost_price: 60.00,
-                price: 78.00,
-                stock: 180,
-                selling_unit: 'Piece',
-                packaging_unit: 'Bundle',
-                conversion_rate: 10,
-                reorder_level: 30,
-                batch_number: 'LOT-ROD-12'
-            },
-            {
-                barcode: 'HW-PVC-004',
-                name: 'PVC Pressure Pipe 4" (6m)',
-                category: 'Plumbing Supplies',
-                cost_price: 45.00,
-                price: 65.00,
-                stock: 90,
-                selling_unit: 'Length',
-                packaging_unit: 'Bundle',
-                conversion_rate: 5,
-                reorder_level: 20,
-                batch_number: 'LOT-PVC-04'
-            },
-            {
-                barcode: 'HW-PNT-020',
-                name: 'Premium Acrylic Emulsion Paint White (20L)',
-                category: 'Paints & Finishes',
-                cost_price: 280.00,
-                price: 360.00,
-                stock: 45,
-                selling_unit: 'Bucket',
-                packaging_unit: 'Carton',
-                conversion_rate: 1,
-                reorder_level: 10,
-                batch_number: 'LOT-PNT-W20'
-            },
-            {
-                barcode: 'HW-HAM-016',
-                name: 'Claw Hammer 16oz Fiberglass Handle',
-                category: 'Tools & Hardware',
-                cost_price: 35.00,
-                price: 52.00,
-                stock: 65,
-                selling_unit: 'Piece',
-                packaging_unit: 'Box',
-                conversion_rate: 12,
-                reorder_level: 15,
-                batch_number: 'LOT-HAM-16'
-            },
-            {
-                barcode: 'HW-GRN-115',
-                name: 'Heavy Duty Angle Grinder 115mm 850W',
-                category: 'Tools & Hardware',
-                cost_price: 220.00,
-                price: 310.00,
-                stock: 25,
-                selling_unit: 'Unit',
-                packaging_unit: 'Box',
-                conversion_rate: 1,
-                reorder_level: 5,
-                batch_number: 'LOT-GRN-850'
-            },
-            {
-                barcode: 'HW-CAB-250',
-                name: '2.5mm Twin & Earth Copper Electrical Cable (100m)',
-                category: 'Electrical Supplies',
-                cost_price: 320.00,
-                price: 430.00,
-                stock: 35,
-                selling_unit: 'Roll',
-                packaging_unit: 'Box',
-                conversion_rate: 5,
-                reorder_level: 8,
-                batch_number: 'LOT-CAB-25'
-            },
-            {
-                barcode: 'HW-LED-050',
-                name: 'Outdoor LED Flood Light 50W IP66 Waterproof',
-                category: 'Electrical Supplies',
-                cost_price: 65.00,
-                price: 98.00,
-                stock: 80,
-                selling_unit: 'Piece',
-                packaging_unit: 'Carton',
-                conversion_rate: 10,
-                reorder_level: 20,
-                batch_number: 'LOT-LED-50'
-            },
-            {
-                barcode: 'HW-SCR-003',
-                name: 'Black Drywall Wood Screws 3.5x25mm (Box 1000)',
-                category: 'Fasteners & Fixings',
-                cost_price: 28.00,
-                price: 42.00,
-                stock: 120,
-                selling_unit: 'Box',
-                packaging_unit: 'Carton',
-                conversion_rate: 20,
-                reorder_level: 25,
-                batch_number: 'LOT-SCR-25'
-            },
-            {
-                barcode: 'HW-TAP-001',
-                name: 'Chrome Plated Basin Mixer Tap Brass Body',
-                category: 'Plumbing Supplies',
-                cost_price: 80.00,
-                price: 125.00,
-                stock: 50,
-                selling_unit: 'Set',
-                packaging_unit: 'Box',
-                conversion_rate: 6,
-                reorder_level: 10,
-                batch_number: 'LOT-TAP-01'
-            }
-        ];
+        const companyUserHash = await bcrypt.hash('Company2026!', salt);
+        await client.query(`
+            INSERT INTO company_users (company_id, company_name, contact_person, email, password, role, status)
+            VALUES ($1, 'Footprint B2B Enterprise', 'Corporate Client Admin', 'company@footprint.com', $2, 'business_client', 'Active')
+            ON CONFLICT (email) DO UPDATE SET
+                company_id = $1,
+                password = $2,
+                role = 'business_client',
+                company_name = 'Footprint B2B Enterprise',
+                contact_person = 'Corporate Client Admin',
+                status = 'Active';
+        `, [companyId, companyUserHash]);
+        console.log('✅ Profile 4 (COMPANY PORTAL): company@footprint.com / Company2026!');
 
-        for (const p of hardwareProducts) {
-            const stockLevels = JSON.stringify({ 'Amasaman': p.stock });
-            const prodRes = await client.query(`
-                INSERT INTO products (
-                    barcode, name, category, price, cost_price, stock, stock_levels,
-                    selling_unit, packaging_unit, conversion_rate, reorder_level,
-                    track_batch, track_expiry, branch_id, tenant_id
-                )
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, true, false, 1, 1)
-                ON CONFLICT (tenant_id, barcode, name) WHERE deleted_at IS NULL AND barcode IS NOT NULL AND barcode != ''
-                DO UPDATE SET
-                    price = EXCLUDED.price,
-                    cost_price = EXCLUDED.cost_price,
-                    stock = EXCLUDED.stock,
-                    stock_levels = EXCLUDED.stock_levels,
-                    track_expiry = false
-                RETURNING id
-            `, [
-                p.barcode, p.name, p.category, p.price, p.cost_price, p.stock,
-                stockLevels, p.selling_unit, p.packaging_unit, p.conversion_rate,
-                p.reorder_level
-            ]);
-
-            // Add batch with NO expiry date
-            await client.query(`
-                INSERT INTO product_batches (
-                    product_barcode, batch_number, expiry_date, quantity,
-                    quantity_available, quantity_received, branch_id, status, tenant_id
-                )
-                VALUES ($1, $2, NULL, $3, $3, $3, 1, 'Active', 1)
-                ON CONFLICT (product_barcode, batch_number, branch_id)
-                DO UPDATE SET
-                    quantity = EXCLUDED.quantity,
-                    quantity_available = EXCLUDED.quantity_available,
-                    expiry_date = NULL
-            `, [p.barcode, p.batch_number, p.stock]);
-        }
-
-        console.log('✅ Hardware products catalog seeded with 0 expiry dates!');
-
-        console.log('====================================================');
-        console.log('🎉 DATABASE SETUP FOR HARDWARE STORE COMPLETE!');
-        console.log('====================================================');
+        // Verify count of tables in database
+        const tablesRes = await client.query(`
+            SELECT count(*) as count 
+            FROM information_schema.tables 
+            WHERE table_schema = 'public';
+        `);
+        console.log(`\n🎉 Initialization Complete! Total public tables in database: ${tablesRes.rows[0].count}`);
 
     } catch (err) {
-        console.error('❌ Error setting up database:', err);
+        console.error('❌ Error during database setup:', err);
     } finally {
         client.release();
         await pool.end();
+        process.exit(0);
     }
 }
 
-setupDatabase();
+runInitialization();

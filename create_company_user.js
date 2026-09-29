@@ -10,23 +10,23 @@ const pool = new Pool({
 async function run() {
   try {
     const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash('Faith2026', salt);
-    
+    const hash = await bcrypt.hash('Company123', salt);
+
     // Check if company exists
     let companyId = 1;
-    const compRes = await pool.query("SELECT id FROM companies WHERE name ILIKE '%Legacy Insights%' LIMIT 1");
+    const compRes = await pool.query("SELECT id FROM companies WHERE name ILIKE '%Footprint%' OR name ILIKE '%Legacy Insights%' LIMIT 1");
     if (compRes.rows.length > 0) {
       companyId = compRes.rows[0].id;
     } else {
-      const insertComp = await pool.query("INSERT INTO companies (name, email) VALUES ('Legacy Insights', 'sales@faithpharmacy.com') RETURNING id");
+      const insertComp = await pool.query("INSERT INTO companies (name, email) VALUES ('Footprint', 'sales@faithpharmacy.com') RETURNING id");
       companyId = insertComp.rows[0].id;
     }
-    
+
     await pool.query(
       "INSERT INTO company_users (company_id, company_name, contact_person, email, password, role, status) VALUES ($1, $2, $3, $4, $5, 'business_client', 'Active') ON CONFLICT (email) DO UPDATE SET password = $5",
-      [companyId, 'Legacy Insights', 'Company Sales', 'sales@faithpharmacy.com', hash]
+      [companyId, 'Footprint', 'Company Sales', 'sales@footprint.com', hash]
     );
-    console.log('Successfully created company user sales@faithpharmacy.com');
+    console.log('Successfully created company user sales@footprint.com');
   } catch (err) {
     console.error(err);
   } finally {

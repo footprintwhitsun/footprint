@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Insights | Privacy Policy & Data Governance</title>
+    <title>Footprint | Privacy Policy & Data Governance</title>
     <link rel="icon" type="image/png" href="logo.png">
 
     <!-- Google Fonts: Inter -->
@@ -14,8 +14,8 @@
 
     <style>
         :root {
-            --p-color-primary: #f59e0b;
-            --p-color-primary-hover: #d97706;
+            --p-color-primary: #273990; --p-color-accent: #f9a51a;
+            --p-color-primary-hover: #1e2c73;
             --p-color-bg: #f6f6f7;
             --p-color-surface: #ffffff;
             --p-color-border: #e1e3e5;
@@ -62,12 +62,15 @@
         }
 
         .header-brand img {
-            width: 36px;
+            width: auto;
+            max-width: 140px;
             height: 36px;
-            aspect-ratio: 1 / 1;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1.5px solid #e5a824;
+            border-radius: 6px;
+            object-fit: contain;
+            background: #ffffff;
+            padding: 3px 10px;
+            border: 1.5px solid rgba(249, 165, 26, 0.7);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
         }
 
         .header-badge {
@@ -232,11 +235,70 @@
             text-decoration: underline;
         }
 
-        @media (max-width: 600px) {
+        
+        }
+    
+        /* Responsive Mobile Styles */
+        @media (max-width: 768px) {
+            .site-header {
+                padding: 10px 14px;
+                gap: 10px;
+            }
+            .header-brand {
+                gap: 10px;
+            }
+            .header-brand img {
+                max-width: 120px;
+                height: 32px;
+                padding: 2px 8px;
+            }
+            .header-brand span:nth-of-type(1) {
+                font-size: 14px !important;
+            }
+            .header-badge {
+                display: none;
+            }
+            .btn-header {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            .policy-container {
+                margin: 16px auto;
+                padding: 0 12px;
+            }
             .policy-card {
-                padding: 28px 20px;
+                padding: 24px 16px;
+                border-radius: 12px;
+            }
+            .policy-header h1 {
+                font-size: 22px;
+                line-height: 1.3;
+            }
+            .policy-meta {
+                font-size: 12px;
+                flex-wrap: wrap;
+                gap: 6px;
+                margin-bottom: 24px;
+            }
+            .policy-section h2 {
+                font-size: 17px;
+                margin-bottom: 8px;
+            }
+            .policy-section p, .policy-section li {
+                font-size: 13.5px;
+                line-height: 1.6;
+            }
+            .security-callout {
+                padding: 14px 16px;
+                flex-direction: column;
+                gap: 8px;
+            }
+            .footer-links {
+                flex-wrap: wrap;
+                gap: 12px;
             }
         }
+
     </style>
 </head>
 <body>
@@ -244,11 +306,10 @@
     <!-- Header -->
     <header class="site-header">
         <a href="login" class="header-brand">
-            <img src="logo.png" alt="LEGACY INSIGHTS">
-            <span style="font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 0.05em; text-transform: uppercase;">LEGACY INSIGHTS</span>
-            <span class="header-badge">Privacy & Governance</span>
+            <img src="logo.png" alt="FOOTPRINT">
+            <span style="font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 0.05em; text-transform: uppercase;">FOOTPRINT</span>
         </a>
-        <a href="login" class="btn-header"><i class="fas fa-arrow-left"></i> Return to Log In</a>
+        <a href="login" class="btn-header primary"><i class="fas fa-sign-in-alt"></i> Log In</a>
     </header>
 
     <!-- Policy Content -->
@@ -259,13 +320,13 @@
                 <div class="policy-meta">
                     <span>Effective Date: September 2026</span> &bull; 
                     <span>Version: 3.2 Enterprise Standard</span> &bull; 
-                    <span>Legacy Insights Retail Ltd.</span>
+                    <span>Footprint Retail Ltd.</span>
                 </div>
             </header>
 
             <section class="policy-section">
                 <h2>1. Commitment to Enterprise Privacy</h2>
-                <p>Legacy Insights ("we", "our", "the Enterprise") operates point-of-sale systems, multi-branch inventory databases, customer credit ledgers, and executive business intelligence portals. We are strictly committed to safeguarding business data, staff records, and customer personal information in full compliance with the <strong>Ghana Data Protection Act, 2012 (Act 843)</strong> and international enterprise information security standards.</p>
+                <p>Footprint ("we", "our", "the Enterprise") operates point-of-sale systems, multi-branch inventory databases, customer credit ledgers, and executive business intelligence portals. We are strictly committed to safeguarding business data, staff records, and customer personal information in full compliance with the <strong>Ghana Data Protection Act, 2012 (Act 843)</strong> and international enterprise information security standards.</p>
             </section>
 
             <div class="security-callout">

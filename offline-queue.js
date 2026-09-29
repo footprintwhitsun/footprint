@@ -1,6 +1,6 @@
 /**
  * OfflineQueue - IndexedDB Transaction & Catalog Resilience Engine
- * Legacy Insights / Footprint Enterprise POS
+ * Footprint Enterprise POS
  * 
  * Features:
  * - Persistent IndexedDB store for offline checkouts

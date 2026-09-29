@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Legacy Insights | Terms of Service & Enterprise Agreement</title>
+    <title>Footprint | Terms of Service & Enterprise Agreement</title>
     <link rel="icon" type="image/png" href="logo.png">
 
     <!-- Google Fonts: Inter -->
@@ -14,8 +14,8 @@
 
     <style>
         :root {
-            --p-color-primary: #f59e0b;
-            --p-color-primary-hover: #d97706;
+            --p-color-primary: #273990; --p-color-accent: #f9a51a;
+            --p-color-primary-hover: #1e2c73;
             --p-color-bg: #f6f6f7;
             --p-color-surface: #ffffff;
             --p-color-border: #e1e3e5;
@@ -62,12 +62,15 @@
         }
 
         .header-brand img {
-            width: 36px;
+            width: auto;
+            max-width: 140px;
             height: 36px;
-            aspect-ratio: 1 / 1;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 1.5px solid #e5a824;
+            border-radius: 6px;
+            object-fit: contain;
+            background: #ffffff;
+            padding: 3px 10px;
+            border: 1.5px solid rgba(249, 165, 26, 0.7);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
         }
 
         .header-badge {
@@ -232,11 +235,65 @@
             text-decoration: underline;
         }
 
-        @media (max-width: 600px) {
-            .terms-card {
-                padding: 28px 20px;
+        
+        }
+    
+        /* Responsive Mobile Styles */
+        @media (max-width: 768px) {
+            .site-header {
+                padding: 10px 14px;
+                gap: 10px;
+            }
+            .header-brand {
+                gap: 10px;
+            }
+            .header-brand img {
+                max-width: 120px;
+                height: 32px;
+                padding: 2px 8px;
+            }
+            .header-brand span:nth-of-type(1) {
+                font-size: 14px !important;
+            }
+            .header-badge {
+                display: none;
+            }
+            .btn-header {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            .terms-container, .policy-container {
+                margin: 16px auto;
+                padding: 0 12px;
+            }
+            .terms-card, .policy-card {
+                padding: 24px 16px;
+                border-radius: 12px;
+            }
+            .terms-header h1, .policy-header h1 {
+                font-size: 22px;
+                line-height: 1.3;
+            }
+            .terms-meta, .policy-meta {
+                font-size: 12px;
+                flex-wrap: wrap;
+                gap: 6px;
+                margin-bottom: 24px;
+            }
+            .terms-section h2, .policy-section h2 {
+                font-size: 17px;
+                margin-bottom: 8px;
+            }
+            .terms-section p, .terms-section li, .policy-section p, .policy-section li {
+                font-size: 13.5px;
+                line-height: 1.6;
+            }
+            .footer-links {
+                flex-wrap: wrap;
+                gap: 12px;
             }
         }
+
     </style>
 </head>
 <body>
@@ -244,11 +301,10 @@
     <!-- Header -->
     <header class="site-header">
         <a href="login" class="header-brand">
-            <img src="logo.png" alt="LEGACY INSIGHTS">
-            <span style="font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 0.05em; text-transform: uppercase;">LEGACY INSIGHTS</span>
-            <span class="header-badge">Terms of Service</span>
+            <img src="logo.png" alt="FOOTPRINT">
+            <span style="font-size: 15px; font-weight: 700; color: #fff; letter-spacing: 0.05em; text-transform: uppercase;">FOOTPRINT</span>
         </a>
-        <a href="login" class="btn-header"><i class="fas fa-arrow-left"></i> Return to Log In</a>
+        <a href="login" class="btn-header primary"><i class="fas fa-sign-in-alt"></i> Log In</a>
     </header>
 
     <!-- Main Content -->
@@ -259,13 +315,13 @@
                 <div class="terms-meta">
                     <span>Last Revised: September 2026</span> &bull; 
                     <span>Version 2.8</span> &bull; 
-                    <span>Legacy Insights Commerce</span>
+                    <span>Footprint Commerce</span>
                 </div>
             </header>
 
             <section class="terms-section">
                 <h2>1. Acceptance of Terms</h2>
-                <p>By signing in to the Legacy Insights workspace, accessing point-of-sale registers, managing inventory, or viewing executive business reports, you agree to be bound by this Enterprise Terms of Service Agreement. If you are accessing this system on behalf of an authorized branch location or corporate partner, you represent that you hold legitimate operational authority.</p>
+                <p>By signing in to the Footprint workspace, accessing point-of-sale registers, managing inventory, or viewing executive business reports, you agree to be bound by this Enterprise Terms of Service Agreement. If you are accessing this system on behalf of an authorized branch location or corporate partner, you represent that you hold legitimate operational authority.</p>
             </section>
 
             <div class="terms-notice">
@@ -289,7 +345,7 @@
 
             <section class="terms-section">
                 <h2>3. System Availability & Service Level Commitment</h2>
-                <p>The Legacy Insights platform is engineered for <strong>99.9% uptime</strong>. To guarantee continuous branch operations during local telecommunication or internet disruptions, POS terminals utilize local IndexedDB offline storage queues. All offline transactions must be synced to the central database immediately upon network restoration.</p>
+                <p>The Footprint platform is engineered for <strong>99.9% uptime</strong>. To guarantee continuous branch operations during local telecommunication or internet disruptions, POS terminals utilize local IndexedDB offline storage queues. All offline transactions must be synced to the central database immediately upon network restoration.</p>
             </section>
 
             <section class="terms-section">
@@ -299,7 +355,7 @@
 
             <section class="terms-section">
                 <h2>5. Modifications to Terms</h2>
-                <p>Legacy Insights reserves the right to amend or update operational policies in line with regulatory changes, tax law updates (GRA compliance), or enterprise system upgrades. Continued use of the platform after updates indicates acceptance of amended terms.</p>
+                <p>Footprint reserves the right to amend or update operational policies in line with regulatory changes, tax law updates (GRA compliance), or enterprise system upgrades. Continued use of the platform after updates indicates acceptance of amended terms.</p>
             </section>
 
             <section class="terms-section">

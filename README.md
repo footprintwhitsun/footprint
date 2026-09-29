@@ -1,4 +1,4 @@
-# Legacy Insights Enterprise POS & Commerce OS
+# Footprint Enterprise POS & Commerce OS
 
 A modern, high-velocity Point of Sale (POS) and Enterprise Resource Planning (ERP) platform built with Node.js, Express, PostgreSQL, and Shopify Polaris design aesthetics.
 
@@ -20,8 +20,8 @@ A modern, high-velocity Point of Sale (POS) and Enterprise Resource Planning (ER
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/legacyinsightss/legacyinsights.git
-   cd legacyinsights
+   git clone https://github.com/whitsun/footprint-pos.git
+   cd whitsun-footprint
    ```
 
 2. Install dependencies:
@@ -52,4 +52,4 @@ A modern, high-velocity Point of Sale (POS) and Enterprise Resource Planning (ER
 
 ## License
 
-Private & Confidential - © 2026 Legacy Insights. All rights reserved.
+Private & Confidential - © 2026 Footprint. All rights reserved.

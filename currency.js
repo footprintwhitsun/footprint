@@ -1,6 +1,6 @@
 /**
  * International Currency & Financial Precision Monetary Engine
- * Legacy Insights / Footprint Enterprise POS & ERP
+ * Footprint Enterprise POS & ERP
  * 
  * Features:
  * - Dynamic international ISO-4217 currencies (USD, EUR, GBP, GHS, CAD, AUD, NGN, KES, JPY, KWD, etc.)

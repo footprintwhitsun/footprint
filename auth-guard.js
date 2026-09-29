@@ -1,5 +1,5 @@
 /**
- * Legacy Insights - Enterprise Role-Based Access Control (RBAC) Auth Guard
+ * Footprint - Enterprise Role-Based Access Control (RBAC) Auth Guard
  * Enforces strict client-side route protection before DOM rendering.
  * Provides cryptographic JWT role verification, instant redirect on breach attempt,
  * security alerts, and live server session heartbeat.
