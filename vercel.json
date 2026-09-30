@@ -2,14 +2,7 @@
   "version": 2,
   "functions": {
     "api/index.js": {
-      "includeFiles": [
-        "*.html",
-        "*.css",
-        "*.png",
-        "*.ico",
-        "*.js",
-        "migrations/**"
-      ],
+      "includeFiles": "{*.html,*.css,*.png,*.ico,*.js,migrations/**}",
       "maxDuration": 30
     }
   },
