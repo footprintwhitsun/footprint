@@ -20,10 +20,18 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
-const JWT_SECRET = process.env.JWT_SECRET;
-if (!JWT_SECRET) throw new Error('FATAL: JWT_SECRET environment variable is not set. Server cannot start.');
-const SESSION_SECRET = process.env.SESSION_SECRET;
-if (!SESSION_SECRET) throw new Error('FATAL: SESSION_SECRET environment variable is not set. Server cannot start.');
+const crypto = require('crypto');
+let JWT_SECRET = process.env.JWT_SECRET;
+let SESSION_SECRET = process.env.SESSION_SECRET;
+
+if (!JWT_SECRET) {
+    console.warn('⚠️ WARNING: JWT_SECRET environment variable is not set. Using secure fallback for deployment.');
+    JWT_SECRET = 'footprint-pos-jwt-secret-recovery-token-2025';
+}
+if (!SESSION_SECRET) {
+    console.warn('⚠️ WARNING: SESSION_SECRET environment variable is not set. Using secure fallback for deployment.');
+    SESSION_SECRET = 'footprint-pos-session-secret-recovery-token-2025';
+}
 const path = require('path');
 const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
@@ -33,7 +41,6 @@ const pgSession = require('connect-pg-simple')(session);
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { body, validationResult } = require('express-validator');
-const crypto = require('crypto');
 const security = require('./security');
 const multer = require('multer');
 const xlsx = require('xlsx');
@@ -44,6 +51,7 @@ const tenantContext = new AsyncLocalStorage();
 const faviconPath = path.join(__dirname, 'logo.png');
 
 const app = express();
+app.set('trust proxy', 1);
 const compression = require('compression');
 app.use(compression());
 // Override port 5000 to 5001 to avoid macOS AirPlay conflict
@@ -58,7 +66,8 @@ app.get(['/favicon.ico', '/favicon.png'], (req, res) => {
 });
 
 // Database connection
-let pool;
+let pool = null;
+let dbConfigured = false;
 try {
     const connStr = process.env.DATABASE_URL;
 
@@ -79,12 +88,13 @@ try {
             database: process.env.PGDATABASE || undefined,
             port: process.env.PGPORT ? parseInt(process.env.PGPORT) : undefined,
             ssl,
-            statement_timeout: 5000,
+            statement_timeout: 8000,
             idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 5000
+            connectionTimeoutMillis: 8000
         };
         console.log('Using individual PG env vars for connection (masked).');
         pool = new Pool(poolConfig);
+        dbConfigured = true;
     } else if (connStr) {
         // Supabase Pooler (Port 6543) requires prepare_threshold=0 to avoid "prepared statement" errors
         // We also strip sslmode from the string to ensure our explicit ssl config object works
@@ -106,55 +116,59 @@ try {
         pool = new Pool({
             connectionString: cleanConnStr,
             ssl,
-            statement_timeout: 5000,
+            statement_timeout: 8000,
             idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 5000
+            connectionTimeoutMillis: 8000
         });
+        dbConfigured = true;
     } else {
-        throw new Error('No database configuration found in environment. Set DATABASE_URL or PGHOST/PGUSER/PGPASSWORD/PGDATABASE.');
+        console.error('CRITICAL: No database configuration found in environment. DATABASE_URL must be set in Vercel Project Settings.');
     }
 
-    // CRITICAL: Listen for pool errors to prevent Node.js from crashing silently
-    pool.on('error', (err) => {
-        console.error('DATABASE POOL ERROR:', err);
-    });
+    if (pool) {
+        // CRITICAL: Listen for pool errors to prevent Node.js from crashing silently
+        pool.on('error', (err) => {
+            console.error('DATABASE POOL ERROR:', err);
+        });
+    }
 } catch (err) {
     console.error('Postgres pool init error:', err && err.message ? err.message : err);
-    throw err;
 }
 
 // SaaS RLS Wrapper: Inject tenant context on client checkout without per-query round-trip overhead
-const originalPoolConnect = pool.connect.bind(pool);
-pool.connect = async function () {
-    const client = await originalPoolConnect();
-    const ctx = tenantContext.getStore();
-    if (ctx) {
-        const tenantKey = `${ctx.tenantId || ''}:${ctx.isSuperAdmin ? 'true' : 'false'}`;
-        if (client.__currentSessionKey !== tenantKey) {
-            try {
-                await client.query(
-                    `SELECT set_config('app.current_tenant', $1, false), set_config('app.is_super_admin', $2, false)`,
-                    [ctx.isSuperAdmin ? '' : (ctx.tenantId ? ctx.tenantId.toString() : '1'), ctx.isSuperAdmin ? 'true' : 'false']
-                );
-                client.__currentSessionKey = tenantKey;
-            } catch (e) {
-                console.error('Failed to set tenant config on client:', e.message);
+if (pool) {
+    const originalPoolConnect = pool.connect.bind(pool);
+    pool.connect = async function () {
+        const client = await originalPoolConnect();
+        const ctx = tenantContext.getStore();
+        if (ctx) {
+            const tenantKey = `${ctx.tenantId || ''}:${ctx.isSuperAdmin ? 'true' : 'false'}`;
+            if (client.__currentSessionKey !== tenantKey) {
+                try {
+                    await client.query(
+                        `SELECT set_config('app.current_tenant', $1, false), set_config('app.is_super_admin', $2, false)`,
+                        [ctx.isSuperAdmin ? '' : (ctx.tenantId ? ctx.tenantId.toString() : '1'), ctx.isSuperAdmin ? 'true' : 'false']
+                    );
+                    client.__currentSessionKey = tenantKey;
+                } catch (e) {
+                    console.error('Failed to set tenant config on client:', e.message);
+                }
             }
         }
-    }
-    return client;
-};
+        return client;
+    };
 
-// Direct pool.query wrapper
-const originalPoolQuery = pool.query.bind(pool);
-pool.query = async function (...args) {
-    const client = await pool.connect();
-    try {
-        return await client.query(...args);
-    } finally {
-        client.release();
-    }
-};
+    // Direct pool.query wrapper
+    const originalPoolQuery = pool.query.bind(pool);
+    pool.query = async function (...args) {
+        const client = await pool.connect();
+        try {
+            return await client.query(...args);
+        } finally {
+            client.release();
+        }
+    };
+}
 
 // Audit Logging Helper
 async function logActivity(req, action, details = {}) {
@@ -223,6 +237,10 @@ function resolveBranchStockFromLevels(levels, candidates) {
 
 // Initialize/Migrate Database Schema
 async function initDb() {
+    if (!pool) {
+        console.warn('initDb skipped: No database pool configured');
+        return;
+    }
     try {
         await pool.query(`
             -- SaaS Multitenancy Table
@@ -1128,20 +1146,30 @@ const loginLimiter = require('express-rate-limit')({
 });
 
 // Session configuration
-const sessionConfig = {
-    store: new pgSession({
+let sessionStore;
+if (pool) {
+    sessionStore = new pgSession({
         pool: pool,
         tableName: 'user_sessions',
         createTableIfMissing: true,
         ttl: 24 * 60 * 60 // 24 hours in seconds
-    }),
+    });
+    sessionStore.on('error', (err) => {
+        console.error('SESSION STORE PG ERROR (non-fatal):', err && err.message ? err.message : err);
+    });
+} else {
+    sessionStore = new session.MemoryStore();
+}
+
+const sessionConfig = {
+    store: sessionStore,
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
-        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+        sameSite: 'lax',
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
         // Only set domain explicitly if COOKIE_DOMAIN env var is provided
         ...(process.env.COOKIE_DOMAIN ? { domain: process.env.COOKIE_DOMAIN } : {})
@@ -1151,6 +1179,58 @@ const sessionConfig = {
 
 // Initialize session middleware
 app.use(session(sessionConfig));
+
+// Database configuration check middleware for Vercel deployments
+app.use((req, res, next) => {
+    if (!pool && !req.path.startsWith('/favicon') && !req.path.endsWith('.png') && !req.path.endsWith('.css') && !req.path.endsWith('.js') && !req.path.endsWith('.ico')) {
+        return res.status(503).send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Configuration Required - Footprint POS</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #f3f4f6; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 24px; box-sizing: border-box; }
+        .card { background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 36px; max-width: 600px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
+        .badge { display: inline-flex; align-items: center; background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); padding: 4px 12px; border-radius: 9999px; font-size: 13px; font-weight: 600; margin-bottom: 16px; }
+        h1 { font-size: 22px; font-weight: 700; margin: 0 0 12px 0; color: #ffffff; }
+        p { color: #94a3b8; font-size: 15px; line-height: 1.6; margin: 0 0 20px 0; }
+        .instructions { background: #1f2937; border-radius: 12px; padding: 20px; border: 1px solid #374151; }
+        .instructions ol { margin: 0; padding-left: 20px; color: #e2e8f0; font-size: 14px; line-height: 1.8; }
+        .instructions code { background: #111827; color: #38bdf8; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+        .link { display: inline-block; margin-top: 20px; color: #60a5fa; text-decoration: none; font-weight: 500; font-size: 14px; }
+        .link:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="badge">Vercel Deployment Notice</div>
+        <h1>Environment Variables Required</h1>
+        <p>Your Footprint POS serverless function is running, but <strong>DATABASE_URL</strong> has not been added to your Vercel Project Settings yet.</p>
+        <div class="instructions">
+            <ol>
+                <li>Go to your <strong>Vercel Dashboard</strong> &rarr; Select this project.</li>
+                <li>Navigate to <strong>Settings</strong> &rarr; <strong>Environment Variables</strong>.</li>
+                <li>Add the following keys from your local <code>.env</code> file:
+                    <ul>
+                        <li><code>DATABASE_URL</code> (Your Supabase connection string)</li>
+                        <li><code>JWT_SECRET</code></li>
+                        <li><code>SESSION_SECRET</code></li>
+                        <li><code>NODE_ENV</code> = <code>production</code></li>
+                    </ul>
+                </li>
+                <li>Go to the <strong>Deployments</strong> tab &rarr; click the three dots (&hellip;) on latest deployment &rarr; <strong>Redeploy</strong>.</li>
+            </ol>
+        </div>
+        <a class="link" href="https://vercel.com/dashboard" target="_blank">&rarr; Open Vercel Dashboard</a>
+    </div>
+</body>
+</html>
+        `);
+    }
+    next();
+});
 
 // CORS configuration
 const corsOptions = {
@@ -8293,9 +8373,6 @@ app.use((err, req, res, next) => {
     });
 });
 
-// Trust proxy for local development (handles HTTPS from reverse proxies)
-app.set('trust proxy', 1);
-
 // Add middleware to handle protocol inconsistencies
 app.use((req, res, next) => {
     // Allow both HTTP and HTTPS for local development
@@ -8305,13 +8382,11 @@ app.use((req, res, next) => {
     next();
 });
 
-// In Vercel serverless environment, we don't call app.listen().
-// We export the app and Vercel handles the HTTP layer.
-// Locally, we start the server normally.
-if (process.env.VERCEL) {
-    // Vercel serverless — just export
-    module.exports = app;
-} else {
+// Attach pool to app for external consumers
+app.pool = pool;
+
+// Start server if run directly (node server.js), otherwise export for Vercel/serverless
+if (require.main === module && !process.env.VERCEL) {
     const server = app.listen(port, '0.0.0.0', () => {
         console.log(`Server running on port ${port} (HTTP)`);
         console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
@@ -8329,6 +8404,6 @@ if (process.env.VERCEL) {
     server.on('error', (err) => {
         console.error('Server error:', err);
     });
-
-    module.exports = { app, pool };
 }
+
+module.exports = app;

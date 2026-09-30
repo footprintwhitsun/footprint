@@ -1,22 +1,22 @@
 {
   "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node",
-      "config": {
-        "includeFiles": [
-          "*.html",
-          "*.css",
-          "*.png",
-          "*.ico",
-          "*.js",
-          "migrations/**"
-        ]
-      }
+  "functions": {
+    "api/index.js": {
+      "includeFiles": [
+        "*.html",
+        "*.css",
+        "*.png",
+        "*.ico",
+        "*.js",
+        "migrations/**"
+      ],
+      "maxDuration": 30
     }
-  ],
+  },
   "rewrites": [
-    { "source": "/(.*)", "destination": "/server.js" }
+    {
+      "source": "/(.*)",
+      "destination": "/api/index.js"
+    }
   ]
 }
