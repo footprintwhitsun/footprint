@@ -3187,10 +3187,20 @@
             });
 
             const idempotencyKey = getSaleIdempotencyKey();
+            const returnItemsList = isReturn ? cart.filter(item => item.returnMode).map(item => ({
+                productId: item.id,
+                barcode: item.barcode,
+                name: item.name,
+                originalQty: item.originalQty,
+                returnedQty: item.originalQty - item.qty,
+                price: item.originalPrice
+            })) : [];
+
             const txPayload = {
                 userId: currentUser.id,
                 storeLocation: currentUser.store_location,
                 total: isReturn ? -grandTotal : grandTotal,
+                refundAmount: isReturn ? grandTotal : 0,
                 subtotal: subtotal,
                 discount: discountVal,
                 tax: totalTax,
@@ -3201,6 +3211,7 @@
                 promoCode: currentPromoCode,
                 isReturn: isReturn,
                 originalTransactionId: originalTransactionId,
+                returnItems: returnItemsList,
                 idempotencyKey: idempotencyKey
             };
 

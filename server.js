@@ -4731,7 +4731,7 @@ app.put('/transactions/:id/finalize', authenticateToken, async (req, res) => {
             let customerName = null;
             // If paying by credit, update customer balance and get customer name
             if (paymentMethod === 'credit' && parsedCustomerId && !alreadyCompleted) {
-                const total = parseFloat(txnRes.rows[0].total_amount);
+                const total = Math.abs(parseFloat(txnRes.rows[0].total_amount));
                 const isReturn = txnRes.rows[0].is_return || false;
                 const receiptNum = receiptNumber || txnRes.rows[0].receipt_number || ('RCP' + Date.now());
 
@@ -5697,8 +5697,8 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ message: 'Invalid request: items must be a non-empty array' });
     }
-    if (typeof total !== 'number' || !Number.isFinite(total) || total < 0) {
-        return res.status(400).json({ message: 'Invalid request: total must be a non-negative number' });
+    if (typeof total !== 'number' || !Number.isFinite(total) || (!isReturn && total < 0)) {
+        return res.status(400).json({ message: 'Invalid request: total must be a valid number' });
     }
 
     try {
@@ -5758,23 +5758,27 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
 
             // Handle Stock Management (Deduction for sales, Restoration for returns)
             if (isReturn) {
+                const refAmt = (typeof refundAmount === 'number' && Number.isFinite(refundAmount)) ? Math.abs(refundAmount) : Math.abs(total);
+
                 if (originalTransactionId) {
                     // Update original transaction totals
                     const origTxn = await client.query('SELECT total_amount, receipt_number FROM transactions WHERE id = $1', [originalTransactionId]);
-                    const originalTotal = parseFloat(origTxn.rows[0].total_amount);
-                    const newTotal = originalTotal - refundAmount;
+                    if (origTxn.rows.length > 0) {
+                        const originalTotal = parseFloat(origTxn.rows[0].total_amount);
+                        const newTotal = originalTotal - refAmt;
 
-                    await client.query(
-                        'UPDATE transactions SET has_returns = TRUE, original_total = $1, current_total = $2 WHERE id = $3',
-                        [originalTotal, newTotal, originalTransactionId]
-                    );
+                        await client.query(
+                            'UPDATE transactions SET has_returns = TRUE, original_total = $1, current_total = $2 WHERE id = $3',
+                            [originalTotal, newTotal, originalTransactionId]
+                        );
 
-                    // Record entry in refunds table
-                    await client.query(
-                        `INSERT INTO refunds (transaction_id, original_receipt_number, refund_receipt_number, refund_amount, payment_method, processed_by)
-                         VALUES ($1, $2, $3, $4, $5, $6)`,
-                        [originalTransactionId, origTxn.rows[0].receipt_number, receiptNumber, refundAmount, paymentMethod, req.user.id]
-                    );
+                        // Record entry in refunds table
+                        await client.query(
+                            `INSERT INTO refunds (transaction_id, original_receipt_number, refund_receipt_number, refund_amount, payment_method, processed_by)
+                             VALUES ($1, $2, $3, $4, $5, $6)`,
+                            [originalTransactionId, origTxn.rows[0].receipt_number, receiptNumber, refAmt, paymentMethod, req.user.id]
+                        );
+                    }
                 }
 
                 // For returns, we need to ADD back stock (reverse the original sale)
