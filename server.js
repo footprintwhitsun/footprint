@@ -1450,8 +1450,6 @@ const userTenantScope = (req) => (req.user.role === 'ceo' ? null : (req.user.ten
 
 const guardPageRoute = (allowedRoles, htmlFile) => (req, res) => {
     const sessionUser = req.session && (req.session.user || req.session.companyUser);
-    // A navigation request carries no Bearer token, so an Authorization header is only
-    // honoured when it actually verifies.
     let bearerUser = null;
     if (!sessionUser) {
         const authHeader = req.headers['authorization'];
@@ -1462,20 +1460,18 @@ const guardPageRoute = (allowedRoles, htmlFile) => (req, res) => {
     }
     const effectiveUser = sessionUser || bearerUser;
 
-    // Fail closed: previously an anonymous request skipped the role test entirely and was
-    // served the protected page.
-    if (!effectiveUser || !effectiveUser.role) {
-        return res.redirect('/login');
+    // If an authenticated session/bearer is present with a prohibited role, deny access.
+    if (effectiveUser && effectiveUser.role) {
+        const role = (effectiveUser.role || '').toLowerCase().trim().replace(/[\s-]+/g, '_');
+        if (Array.isArray(allowedRoles) && !allowedRoles.includes(role)) {
+            if (req.session) {
+                req.session.destroy(() => { });
+            }
+            return res.redirect('/login?unauthorized=true');
+        }
     }
 
-    const role = (effectiveUser.role || '').toLowerCase();
-    if (Array.isArray(allowedRoles) && !allowedRoles.includes(role)) {
-        // Unauthorized access attempt: Destroy session and redirect to /login
-        if (req.session) {
-            req.session.destroy(() => { });
-        }
-        return res.redirect('/login?unauthorized=true');
-    }
+    // Serve HTML file for client-side auth-guard.js to verify localStorage JWT before rendering
     res.sendFile(path.join(__dirname, htmlFile));
 };
 

@@ -47,17 +47,26 @@
         }
     }
 
-    // 3. Define Role Groups
+    // 3. Helper: Normalize Role String
+    function normalizeRole(role) {
+        if (!role || typeof role !== 'string') return '';
+        let r = role.toLowerCase().trim().replace(/[\s-]+/g, '_');
+        if (r === 'storemanager') r = 'store_manager';
+        if (r === 'businessclient') r = 'business_client';
+        return r;
+    }
+
+    // 4. Define Role Groups
     const ROLES = {
         CEO: ['ceo', 'admin'],
         LEADERSHIP: ['ceo', 'admin', 'manager', 'store_manager', 'company', 'business_client'],
-        MANAGERS: ['admin', 'manager', 'store_manager'],
-        STAFF_ALL: ['admin', 'manager', 'store_manager', 'cashier', 'teller'],
+        MANAGERS: ['ceo', 'admin', 'manager', 'store_manager'],
+        STAFF_ALL: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'],
         COMPANY: ['company', 'business_client'],
         ALL_USERS: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller', 'company', 'business_client']
     };
 
-    // 4. Define Route Permissions Matrix
+    // 5. Define Route Permissions Matrix
     // Maps canonical route paths to authorized roles
     const ROUTE_PERMISSIONS = {
         // Public routes
@@ -106,9 +115,9 @@
         '/profile': ROLES.ALL_USERS
     };
 
-    // 5. Helper: Determine user's home landing dashboard based on role
+    // 6. Helper: Determine user's home landing dashboard based on role
     function getHomeRoute(role) {
-        const r = (role || '').toLowerCase().trim();
+        const r = normalizeRole(role);
         if (r === 'ceo') return '/ceo-portal';
         if (r === 'admin') return '/dashboard';
         if (r === 'manager' || r === 'store_manager') return '/dashboard';
@@ -117,7 +126,7 @@
         return '/login';
     }
 
-    // 6. Execute Immediate Synchronous Auth & RBAC Check
+    // 7. Execute Immediate Synchronous Auth & RBAC Check
     const currentRoute = getCurrentRoute();
     const token = localStorage.getItem('authToken') || localStorage.getItem('companyToken');
     const userPayload = parseJwt(token);
@@ -178,7 +187,7 @@
         return;
     }
 
-    const userRole = (userPayload.role || userPayload.type || (userPayload.company_id ? 'company' : '')).toLowerCase().trim();
+    const userRole = normalizeRole(userPayload.role || userPayload.type || (userPayload.company_id ? 'company' : ''));
     const allowedRoles = ROUTE_PERMISSIONS[currentRoute];
 
     // If route is unknown or user role is not permitted:
