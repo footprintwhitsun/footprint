@@ -844,17 +844,65 @@
             background: #6d7175;
         }
 
-        /* FOOTER - SHOPIFY POLARIS */
+        /* FOOTER - CENTERED LIVE TICKER */
+        footer.pos-live-footer,
         footer {
             height: 38px;
-            background: #ffffff;
-            border-top: 1px solid var(--p-color-border);
-            color: #6d7175;
+            background: #111216;
+            border-top: 2px solid #f9a51a;
+            color: #d1d5db;
             display: flex;
             align-items: center;
             justify-content: center;
+            overflow: hidden;
+            position: relative;
+            z-index: 100;
+            width: 100%;
+        }
+
+        .pos-ticker-wrap {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .pos-ticker-content {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
             font-size: 12px;
-            font-weight: 400;
+            font-weight: 500;
+            color: #e5e7eb;
+            white-space: nowrap;
+            letter-spacing: 0.2px;
+        }
+
+        .pos-ticker-dot {
+            color: #f9a51a;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        .pos-ticker-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            border: 1px solid rgba(52, 211, 153, 0.3);
+        }
+
+        .pos-ticker-branch {
+            color: #fdbb2d;
+            font-weight: 600;
         }
 
         /* NOTIFICATION */
@@ -1771,8 +1819,18 @@
 
     </div>
 
-    <footer>
-        © 2026 Footprint
+    <footer class="pos-live-footer">
+        <div class="pos-ticker-wrap">
+            <div class="pos-ticker-content">
+                <span>&copy; 2026 Footprint</span>
+                <span class="pos-ticker-dot">&bull;</span>
+                <span id="footerBranchDisplay" class="pos-ticker-branch">Branch: Store</span>
+                <span class="pos-ticker-dot">&bull;</span>
+                <span class="pos-ticker-badge"><i class="fas fa-circle" style="font-size: 7px;"></i> Live POS</span>
+                <span class="pos-ticker-dot">&bull;</span>
+                <span id="posLiveClock">--:--:--</span>
+            </div>
+        </div>
     </footer>
 
     <!-- Include barcode scanning library -->
@@ -4001,8 +4059,29 @@
         window.addEventListener('online', updateConnectionBadge);
         window.addEventListener('offline', updateConnectionBadge);
 
+        function initPosFooter() {
+            function updateClock() {
+                const clockEl = document.getElementById('posLiveClock');
+                if (clockEl) {
+                    const now = new Date();
+                    clockEl.textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                }
+            }
+            updateClock();
+            setInterval(updateClock, 1000);
+
+            try {
+                const cachedUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+                const footerBranch = document.getElementById('footerBranchDisplay');
+                if (footerBranch && (cachedUser.store_location || cachedUser.branch_name)) {
+                    footerBranch.textContent = `Branch: ${(cachedUser.store_location || cachedUser.branch_name).toUpperCase()}`;
+                }
+            } catch(e) {}
+        }
+
         // Initialize on page load
         document.addEventListener('DOMContentLoaded', async function () {
+            initPosFooter();
             updateConnectionBadge();
             // Check session and shift status first
             const isAuthenticated = await checkSessionAndShift();
@@ -4030,6 +4109,10 @@
                 if (dropdownHeader) {
                     dropdownHeader.querySelector('strong').textContent = user.name;
                     dropdownHeader.querySelector('span').textContent = user.role;
+                }
+                const footerBranch = document.getElementById('footerBranchDisplay');
+                if (footerBranch && (user.store_location || user.branch_name)) {
+                    footerBranch.textContent = `Branch: ${(user.store_location || user.branch_name).toUpperCase()}`;
                 }
             }
 
