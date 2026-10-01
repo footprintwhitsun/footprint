@@ -144,8 +144,12 @@
         if (isSyncing || !navigator.onLine) return;
         isSyncing = true;
 
-        const token = authToken || localStorage.getItem('token');
+        // Pages store the session under different keys, so look for all of them.
+        const token = authToken || localStorage.getItem('authToken')
+            || localStorage.getItem('token')
+            || localStorage.getItem('companyToken');
         if (!token) {
+            console.warn('[OfflineQueue] No session token found; queued sales stay pending.');
             isSyncing = false;
             return;
         }
@@ -181,13 +185,22 @@
                         // 200 OK or 409 Conflict (already recorded)
                         await removeTransaction(record.idempotencyKey);
                         console.log('✅ [OfflineQueue] Synced & cleared transaction:', record.idempotencyKey);
-                    } else if (res.status >= 400 && res.status < 500 && res.status !== 429) {
-                        // Client error (e.g. invalid payload), discard to avoid clogging queue
-                        await removeTransaction(record.idempotencyKey);
+                    } else if (res.status === 401 || res.status === 403) {
+                        // Expired session is not a bad sale. Keep it and retry after login,
+                        // otherwise the record would be destroyed without ever reaching the
+                        // server.
+                        await markAttempt(record, 'authentication required');
+                    } else if (res.status >= 400 && res.status < 500) {
+                        // Rejected payload — retrying cannot help, but keep it visible so the
+                        // cashier can re-enter the sale rather than losing it silently.
+                        await markAttempt(record, `server rejected payload (${res.status})`);
+                    } else {
+                        await markAttempt(record, `server error (${res.status})`);
                     }
                 } catch (netErr) {
                     console.warn('⚠️ [OfflineQueue] Network error during replay for', record.idempotencyKey, netErr.message);
-                    break; // stop replay loop until next online event
+                    if (!navigator.onLine) break; // rest of the replay would fail too
+                    await markAttempt(record, 'network error');
                 }
             }
 
@@ -200,6 +213,28 @@
         } finally {
             isSyncing = false;
         }
+    }
+
+    /**
+     * Count an unsuccessful replay. Records that keep failing are parked as 'failed' so they
+     * drop out of getPendingTransactions instead of being retried on every online event, and
+     * so the cashier can still see them rather than losing the sale silently.
+     */
+    async function markAttempt(record, reason) {
+        const db = await openDb();
+        const attempts = (record.retries || 0) + 1;
+        return new Promise((resolve, reject) => {
+            const tx = db.transaction(TX_STORE, 'readwrite');
+            const store = tx.objectStore(TX_STORE);
+            store.put({
+                ...record,
+                retries: attempts,
+                lastError: reason,
+                status: attempts >= 8 ? 'failed' : 'pending'
+            });
+            tx.oncomplete = () => resolve(attempts);
+            tx.onerror = (e) => reject(e.target.error);
+        });
     }
 
     /**
@@ -242,6 +277,12 @@
     window.addEventListener('online', () => {
         setTimeout(() => syncOfflineQueue(), 1200);
     });
+
+    // 'online' only fires when connectivity *changes*. A cashier who reloads the page while
+    // already online would otherwise leave queued sales stranded in IndexedDB forever.
+    if (navigator.onLine) {
+        window.addEventListener('load', () => setTimeout(() => syncOfflineQueue(), 1500));
+    }
 
     // Expose API
     window.OfflineQueue = {

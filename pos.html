@@ -2177,8 +2177,8 @@
 
                 optionDiv.innerHTML = `
             <div class="product-info">
-                <div class="product-name">${product.name}</div>
-                <div class="product-details">${categoryInfo} | ${stockInfo}</div>
+                <div class="product-name">${window.escapeHtml(product.name)}</div>
+                <div class="product-details">${window.escapeHtml(categoryInfo)} | ${stockInfo}</div>
             </div>
             <div class="product-price">${formatCurrency(product.price)}</div>
         `;
@@ -2206,7 +2206,7 @@
 
             // Show success message
             const scanResult = document.getElementById('scanResult');
-            scanResult.innerHTML = `✅ Added: <strong>${product.name}</strong>`;
+            scanResult.innerHTML = `✅ Added: <strong>${window.escapeHtml(product.name)}</strong>`;
             setTimeout(() => {
                 scanResult.innerHTML = '';
             }, 2000);
@@ -2939,7 +2939,7 @@
                 return;
             }
 
-            const idempotencyKey = window.OfflineQueue ? window.OfflineQueue.generateUUID() : ('tx_' + Date.now());
+            const idempotencyKey = getSaleIdempotencyKey();
 
             fetch('/api/transactions', {
                 method: 'POST',
@@ -2989,8 +2989,25 @@
                 });
         }
 
+        // One idempotency key per cart, reused across retries so a double click or a
+        // "Try Again" after a failed finalize cannot create a second sale. It resets when the
+        // cart empties, so the next customer gets a fresh key.
+        let saleIdempotencyKey = null;
+        function getSaleIdempotencyKey() {
+            if (!cart.length) { saleIdempotencyKey = null; return null; }
+            if (!saleIdempotencyKey) {
+                saleIdempotencyKey = (window.OfflineQueue && window.OfflineQueue.generateUUID)
+                    ? window.OfflineQueue.generateUUID()
+                    : ('tx_' + Date.now() + '_' + Math.random().toString(36).slice(2, 10));
+            }
+            return saleIdempotencyKey;
+        }
+
+        let saleInFlight = false;
+
         async function processQuickPayment(method) {
             if (!cart.length) return notify("Cart is empty", "error");
+            if (saleInFlight) return notify("Payment already in progress", "error");
 
             const isReturn = cart.some(item => item.returnMode);
             const originalTransactionId = isReturn ? cart[0].originalTransactionId : null;
@@ -3008,6 +3025,8 @@
                 openCreditPortal();
                 return;
             }
+
+            saleInFlight = true;
 
             // Subtotal: account for per-item promos (fixed or %) PLUS cart-wide discount
             const subtotal = cart.reduce((sum, item) => {
@@ -3060,7 +3079,7 @@
                 };
             });
 
-            const idempotencyKey = window.OfflineQueue ? window.OfflineQueue.generateUUID() : ('tx_' + Date.now());
+            const idempotencyKey = getSaleIdempotencyKey();
             const txPayload = {
                 userId: currentUser.id,
                 storeLocation: currentUser.store_location,
@@ -3084,6 +3103,7 @@
                     notify(`Offline sale completed! Receipt: ${offlineRes.receiptNumber}. Auto-syncing when online.`, 'warning', 5000);
                     cart = [];
                     renderCart();
+                    saleInFlight = false;
                     const actionButtons = document.querySelectorAll('.actions .btn');
                     actionButtons.forEach(btn => { btn.disabled = false; btn.style.opacity = '1'; });
                     return;
@@ -3138,6 +3158,8 @@
                 }
                 notify("Connection error", "error");
                 actionButtons.forEach(btn => { btn.disabled = false; btn.style.opacity = '1'; });
+            } finally {
+                saleInFlight = false;
             }
         }
 
@@ -3235,11 +3257,11 @@
                 itemsHtml += `
             <div class="cart-item ${returnClass}">
                 ${item.returnMode ? `<div style="text-align: center;">${returnCheckbox}</div>` : ''}
-                <div class="cart-item-name" title="${item.name}">
-                    ${item.name}
+                <div class="cart-item-name" title="${window.escapeHtml(item.name)}">
+                    ${window.escapeHtml(item.name)}
                     ${returnLabel}
                 </div>
-                <div class="cart-item-details">${item.barcode}</div>
+                <div class="cart-item-details">${window.escapeHtml(item.barcode)}</div>
                 <div class="cart-item-price">
                     ${formatCurrency(itemTotal)}
                     ${itemDiscount > 0 ? `<div class="item-discount-badge">-${formatCurrency(itemDiscount)}</div>` : ''}
@@ -3683,8 +3705,8 @@
 
             list.innerHTML = matches.map(c => `
         <div class="customer-item" onclick="selectCreditCustomer(${c.id})">
-            <strong>${c.name}</strong>
-            <span>${c.phone || ''}</span>
+            <strong>${window.escapeHtml(c.name)}</strong>
+            <span>${window.escapeHtml(c.phone || '')}</span>
         </div>
     `).join('');
 
@@ -3757,13 +3779,20 @@
                 return;
             }
             const token = localStorage.getItem('authToken');
+            // Reused across a "Try Again" so a failed finalize cannot create a second sale.
+            const creditIdempotencyKey = getSaleIdempotencyKey();
 
             try {
                 // 1. Create Transaction (Pending)
                 const txnRes = await fetch('/api/transactions', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                        'X-Idempotency-Key': creditIdempotencyKey
+                    },
                     body: JSON.stringify({
+                        idempotencyKey: creditIdempotencyKey,
                         userId: user.id,
                         storeLocation: user.store_location || 'Main',
                         total: grandTotal,

@@ -25,11 +25,17 @@ let JWT_SECRET = process.env.JWT_SECRET;
 let SESSION_SECRET = process.env.SESSION_SECRET;
 
 if (!JWT_SECRET) {
-    console.warn('⚠️ WARNING: JWT_SECRET environment variable is not set. Using secure fallback for deployment.');
+    if (process.env.NODE_ENV === 'production') {
+        throw new Error('JWT_SECRET must be set in production; a fallback secret allows anyone to forge admin tokens.');
+    }
+    console.warn('⚠️ WARNING: JWT_SECRET environment variable is not set. Using development-only fallback.');
     JWT_SECRET = 'footprint-pos-jwt-secret-recovery-token-2025';
 }
 if (!SESSION_SECRET) {
-    console.warn('⚠️ WARNING: SESSION_SECRET environment variable is not set. Using secure fallback for deployment.');
+    if (process.env.NODE_ENV === 'production') {
+        throw new Error('SESSION_SECRET must be set in production; a fallback secret allows session forgery.');
+    }
+    console.warn('⚠️ WARNING: SESSION_SECRET environment variable is not set. Using development-only fallback.');
     SESSION_SECRET = 'footprint-pos-session-secret-recovery-token-2025';
 }
 const path = require('path');
@@ -136,6 +142,10 @@ try {
 }
 
 // SaaS RLS Wrapper: Inject tenant context on client checkout without per-query round-trip overhead
+// During bootstrap, schema/maintenance queries legitimately run outside any tenant context.
+// Once bootstrapping finishes, a client with no context must not keep a previous caller's
+// tenant or super-admin setting, because the pool hands that session state to the next borrower.
+let rlsBootstrapComplete = false;
 if (pool) {
     const originalPoolConnect = pool.connect.bind(pool);
     pool.connect = async function () {
@@ -153,6 +163,16 @@ if (pool) {
                 } catch (e) {
                     console.error('Failed to set tenant config on client:', e.message);
                 }
+            }
+        } else if (rlsBootstrapComplete && client.__currentSessionKey) {
+            try {
+                await client.query(
+                    `SELECT set_config('app.current_tenant', $1, false), set_config('app.is_super_admin', $2, false)`,
+                    ['1', 'false']
+                );
+                client.__currentSessionKey = '1:false';
+            } catch (e) {
+                console.error('Failed to reset tenant config on client:', e.message);
             }
         }
         return client;
@@ -681,7 +701,43 @@ async function initDb() {
                 payment_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 recorded_by INTEGER
             );
+
+            -- Durable idempotency claims. An in-process Map cannot protect replays: on
+            -- serverless each invocation has its own memory, and concurrent same-key requests
+            -- both pass an in-memory check before either writes.
+            CREATE TABLE IF NOT EXISTS idempotency_claims (
+                key TEXT PRIMARY KEY,
+                user_id INTEGER,
+                receipt_number TEXT,
+                transaction_id INTEGER,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
         `);
+
+        // Only one open shift per user at a time. Existing overlapping rows (created before
+        // this guard) would violate the index, so this is best-effort and reported loudly.
+        try {
+            await pool.query(`
+                CREATE UNIQUE INDEX IF NOT EXISTS uq_shifts_one_open_per_user
+                ON shifts (user_id) WHERE end_time IS NULL
+            `);
+        } catch (idxErr) {
+            console.error('WARNING: could not create the one-open-shift-per-user unique index (likely duplicate open shifts already exist):', idxErr.message);
+        }
+
+        // Best-effort: reject duplicate receipt numbers if none already exist.
+        try {
+            await pool.query(`CREATE UNIQUE INDEX IF NOT EXISTS uq_transactions_receipt ON transactions (receipt_number)`);
+        } catch (idxErr) {
+            console.error('WARNING: could not unique-index transactions.receipt_number (duplicate receipts already exist):', idxErr.message);
+        }
+
+        // Replays older than this are not meaningful; keep the claim table bounded.
+        try {
+            await pool.query(`DELETE FROM idempotency_claims WHERE created_at < NOW() - INTERVAL '30 days'`);
+        } catch (cleanErr) {
+            console.error('WARNING: could not prune idempotency_claims:', cleanErr.message);
+        }
 
         // Fix legacy schema constraints (first_name/last_name) to allow NULLs
         try {
@@ -1062,6 +1118,11 @@ async function initDb() {
             UPDATE refunds SET tenant_id = 1 WHERE tenant_id IS NULL;
             UPDATE customers SET tenant_id = 1 WHERE tenant_id IS NULL;
             UPDATE promotions SET tenant_id = 1 WHERE tenant_id IS NULL;
+
+            -- users is not covered by RLS (it is absent from the saasTables loop), so every
+            -- user-management statement filters on tenant_id; index it here, after the column
+            -- and backfill above exist, so a fresh database does not fail on a missing column.
+            CREATE INDEX IF NOT EXISTS idx_users_tenant ON users (tenant_id);
         `);
 
 
@@ -1141,6 +1202,16 @@ const loginLimiter = require('express-rate-limit')({
     windowMs: 15 * 60 * 1000,
     max: 10,
     message: { success: false, message: 'Too many login attempts. Please wait 15 minutes and try again.' },
+    standardHeaders: true,
+    legacyHeaders: false
+});
+
+// Same protection for the other credential-guessing surfaces: company login, password reset
+// request, and token redemption.
+const authLimiter = require('express-rate-limit')({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    message: { success: false, message: 'Too many attempts. Please wait 15 minutes and try again.' },
     standardHeaders: true,
     legacyHeaders: false
 });
@@ -1233,15 +1304,29 @@ app.use((req, res, next) => {
 });
 
 // CORS configuration
+// Reflecting "any origin" with credentials:true lets an attacker's page read authenticated
+// responses, so cross-origin access is only granted to an explicit allow-list.
+const allowedOrigins = (process.env.CORS_ORIGIN || '')
+    .split(',')
+    .map(s => s.trim().replace(/\/$/, ''))
+    .filter(Boolean);
+if (process.env.NODE_ENV !== 'production') {
+    ['http://localhost:3000', 'http://localhost:8080', 'http://127.0.0.1:3000']
+        .forEach(o => { if (!allowedOrigins.includes(o)) allowedOrigins.push(o); });
+}
+
 const corsOptions = {
-    // In production without CORS_ORIGIN set, allow all origins (Vercel handles routing)
-    origin: process.env.CORS_ORIGIN
-        ? process.env.CORS_ORIGIN.split(',')
-        : (process.env.NODE_ENV === 'production' ? true : 'http://localhost:3000'),
+    origin: (origin, cb) => {
+        // No Origin header: same-origin navigation, mobile apps, or server-to-server
+        // callbacks such as the MoMo notification endpoint.
+        if (!origin) return cb(null, true);
+        if (allowedOrigins.includes(origin.replace(/\/$/, ''))) return cb(null, true);
+        return cb(null, false);
+    },
     credentials: true,
     optionsSuccessStatus: 200,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Idempotency-Key']
 };
 
 app.use(cors(corsOptions));
@@ -1331,23 +1416,49 @@ app.use((req, res, next) => {
 // Server-side Route Guard Middleware for HTML page endpoints (Defense-in-depth)
 const PAGE_ROLES = {
     CEO_ONLY: ['ceo', 'admin'],
-    MANAGERS: ['admin', 'manager', 'store_manager'],
-    STAFF_ALL: ['admin', 'manager', 'store_manager', 'cashier', 'teller'],
+    // 'ceo' was missing from these two lists, so the account owner was bounced off every
+    // staff and management page (and the rejection destroyed their session).
+    MANAGERS: ['ceo', 'admin', 'manager', 'store_manager'],
+    STAFF_ALL: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'],
     COMPANY: ['company', 'business_client'],
     ALL_USERS: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller', 'company', 'business_client']
 };
 
+// Roles allowed to administer other accounts. CEO/Admin/Manager only — cashiers and
+// company (B2B) accounts must never reach the user-management writes below.
+const MANAGER_ROLES = ['ceo', 'admin', 'manager', 'store_manager'];
+
+// Tenant boundary for users-table statements (that table carries no RLS policy).
+// Returns null for the platform owner, meaning "do not filter by tenant".
+const userTenantScope = (req) => (req.user.role === 'ceo' ? null : (req.user.tenant_id || 1));
+
 const guardPageRoute = (allowedRoles, htmlFile) => (req, res) => {
     const sessionUser = req.session && (req.session.user || req.session.companyUser);
-    if (sessionUser && sessionUser.role) {
-        const role = (sessionUser.role || '').toLowerCase();
-        if (Array.isArray(allowedRoles) && !allowedRoles.includes(role)) {
-            // Unauthorized access attempt: Destroy session and redirect to /login
-            if (req.session) {
-                req.session.destroy(() => { });
-            }
-            return res.redirect('/login?unauthorized=true');
+    // A navigation request carries no Bearer token, so an Authorization header is only
+    // honoured when it actually verifies.
+    let bearerUser = null;
+    if (!sessionUser) {
+        const authHeader = req.headers['authorization'];
+        const token = authHeader && authHeader.split(' ')[1];
+        if (token && token !== 'null' && token !== 'undefined') {
+            try { bearerUser = jwt.verify(token, JWT_SECRET); } catch (e) { bearerUser = null; }
         }
+    }
+    const effectiveUser = sessionUser || bearerUser;
+
+    // Fail closed: previously an anonymous request skipped the role test entirely and was
+    // served the protected page.
+    if (!effectiveUser || !effectiveUser.role) {
+        return res.redirect('/login');
+    }
+
+    const role = (effectiveUser.role || '').toLowerCase();
+    if (Array.isArray(allowedRoles) && !allowedRoles.includes(role)) {
+        // Unauthorized access attempt: Destroy session and redirect to /login
+        if (req.session) {
+            req.session.destroy(() => { });
+        }
+        return res.redirect('/login?unauthorized=true');
     }
     res.sendFile(path.join(__dirname, htmlFile));
 };
@@ -1410,7 +1521,7 @@ app.get('/company-portal', guardPageRoute(PAGE_ROLES.COMPANY, 'company-portal.ht
 app.get('/profile', guardPageRoute(PAGE_ROLES.ALL_USERS, 'profile.html'));
 
 // Forgot Password Endpoint
-app.post('/forgot-password', async (req, res) => {
+app.post('/forgot-password', authLimiter, async (req, res) => {
     const { email } = req.body;
     try {
         const userResult = await pool.query('SELECT id, email, name FROM users WHERE LOWER(email) = LOWER($1)', [email]);
@@ -1616,6 +1727,10 @@ app.get('/api/session', authenticateToken, (req, res) => {
 
 // Logout Endpoint
 app.post('/api/logout', async (req, res) => {
+    // Destroying the session alone left an issued bearer token valid for its full 8h life.
+    const authHeader = req.headers['authorization'];
+    const bearer = authHeader && authHeader.split(' ')[1];
+    if (bearer && bearer !== 'null' && bearer !== 'undefined') tokenBlacklist.add(bearer);
     await logActivity(req, 'LOGOUT');
     req.session.destroy((err) => {
         if (err) {
@@ -1627,7 +1742,7 @@ app.post('/api/logout', async (req, res) => {
 });
 
 // Company Login Endpoint
-app.post('/api/company/login', [
+app.post('/api/company/login', authLimiter, [
     body('email').isEmail(),
     body('password').isLength({ min: 6 })
 ], security.validateInput, async (req, res) => {
@@ -1822,6 +1937,12 @@ app.post('/api/company/change-password', authenticateToken, async (req, res) => 
 // Get all users
 app.get('/api/users', authenticateToken, async (req, res) => {
     try {
+        // users has no RLS policy, so tenant scoping must be applied here.
+        // CEO is the platform owner and keeps cross-tenant visibility.
+        if (!MANAGER_ROLES.includes(req.user.role)) {
+            return res.status(403).json({ message: 'Unauthorized' });
+        }
+
         let query = `
             SELECT id, username, name as "fullName", employee_id as "employeeId", 
                    phone, email, role, store_location as store, status, created_at 
@@ -1829,12 +1950,19 @@ app.get('/api/users', authenticateToken, async (req, res) => {
             WHERE deleted_at IS NULL
         `;
         const params = [];
+        let paramIndex = 1;
+
+        if (req.user.role !== 'ceo') {
+            query += ` AND tenant_id = $${paramIndex}`;
+            params.push(req.user.tenant_id || 1);
+            paramIndex++;
+        }
 
         // If the requester is a manager, never show CEO or Admin accounts in user management
         if (req.user.role === 'manager' || req.user.role === 'store_manager') {
             query += ` AND LOWER(role) NOT IN ('ceo', 'admin')`;
         } else if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_location) {
-            query += ` AND store_location = $1`;
+            query += ` AND store_location = $${paramIndex}`;
             params.push(req.user.store_location);
         }
 
@@ -1874,9 +2002,9 @@ app.post('/api/users', authenticateToken, async (req, res) => {
         const hashedPassword = await bcrypt.hash(rawPassword, salt);
 
         await pool.query(`
-            INSERT INTO users (username, name, employee_id, phone, email, role, store_location, store_id, password, status)
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Active')
-        `, [username, fullName, employeeId, phone, email.toLowerCase(), role.toLowerCase(), store, storeId, hashedPassword]);
+            INSERT INTO users (username, name, employee_id, phone, email, role, store_location, store_id, password, status, tenant_id)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'Active', $10)
+        `, [username, fullName, employeeId, phone, email.toLowerCase(), role.toLowerCase(), store, storeId, hashedPassword, req.user.tenant_id || 1]);
 
         await logActivity(req, 'CREATE_USER', { username, role, store });
 
@@ -1898,14 +2026,20 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
     if (userRole !== 'admin' && userRole !== 'manager' && userRole !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     const { fullName, username, email, phone, role, store, status } = req.body;
 
+    const tenantId = userTenantScope(req);
+
     try {
         // Prevent managers from modifying CEO or Admin accounts
-        const targetRes = await pool.query('SELECT role FROM users WHERE id = $1', [id]);
-        if (targetRes.rows.length > 0) {
-            const targetRole = (targetRes.rows[0].role || '').toLowerCase();
-            if ((userRole === 'manager' || userRole === 'store_manager') && (targetRole === 'ceo' || targetRole === 'admin')) {
-                return res.status(403).json({ message: 'Managers cannot modify executive accounts' });
-            }
+        const targetRes = await pool.query(
+            `SELECT role FROM users WHERE id = $1${tenantId ? ' AND tenant_id = $2' : ''}`,
+            tenantId ? [id, tenantId] : [id]
+        );
+        if (targetRes.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const targetRole = (targetRes.rows[0].role || '').toLowerCase();
+        if ((userRole === 'manager' || userRole === 'store_manager') && (targetRole === 'ceo' || targetRole === 'admin')) {
+            return res.status(403).json({ message: 'Managers cannot modify executive accounts' });
         }
 
         // Resolve store_id
@@ -1924,11 +2058,18 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
         const dbPhone = phone && phone.trim() !== '' ? phone.trim() : null;
 
         const finalRole = (role || targetRes.rows[0]?.role || 'staff').toLowerCase();
+        // Only the platform owner may hand out executive roles; otherwise any manager could
+        // promote themselves or an accomplice to admin.
+        if ((finalRole === 'ceo' || finalRole === 'admin') && userRole !== 'ceo') {
+            return res.status(403).json({ message: 'Only the CEO can assign CEO or Admin roles' });
+        }
         await pool.query(`
             UPDATE users 
             SET name = $1, username = $2, email = $3, phone = $4, role = $5, store_location = $6, store_id = $7, status = $8
-            WHERE id = $9
-        `, [fullName, dbUsername, email, dbPhone, finalRole, store, storeId, status, id]);
+            WHERE id = $9${tenantId ? ' AND tenant_id = $10' : ''}
+        `, tenantId
+            ? [fullName, dbUsername, email, dbPhone, finalRole, store, storeId, status, id, tenantId]
+            : [fullName, dbUsername, email, dbPhone, finalRole, store, storeId, status, id]);
 
         let action = 'UPDATE_USER';
         if (status && currentStatus !== status) {
@@ -1952,19 +2093,28 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
 app.delete('/api/users/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const userRole = req.user.role;
+    if (!MANAGER_ROLES.includes(userRole)) return res.status(403).json({ message: 'Unauthorized' });
+    const tenantId = userTenantScope(req);
     try {
-        // Prevent managers from deleting CEO or Admin accounts
-        const targetRes = await pool.query('SELECT role FROM users WHERE id = $1', [id]);
-        if (targetRes.rows.length > 0) {
-            const targetRole = (targetRes.rows[0].role || '').toLowerCase();
-            if ((userRole === 'manager' || userRole === 'store_manager') && (targetRole === 'ceo' || targetRole === 'admin')) {
-                return res.status(403).json({ message: 'Managers cannot delete executive accounts' });
-            }
+        // Scope the target to the caller's tenant and require it to exist
+        const targetRes = await pool.query(
+            `SELECT role FROM users WHERE id = $1${tenantId ? ' AND tenant_id = $2' : ''}`,
+            tenantId ? [id, tenantId] : [id]
+        );
+        if (targetRes.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const targetRole = (targetRes.rows[0].role || '').toLowerCase();
+        if ((userRole === 'manager' || userRole === 'store_manager') && (targetRole === 'ceo' || targetRole === 'admin')) {
+            return res.status(403).json({ message: 'Managers cannot delete executive accounts' });
+        }
+        if (parseInt(id, 10) === parseInt(req.user.id, 10)) {
+            return res.status(400).json({ message: 'You cannot delete your own account' });
         }
         // Soft delete: mark as deleted, revoke access — record kept for data retention
         await pool.query(
-            "UPDATE users SET deleted_at = NOW(), status = 'Deleted' WHERE id = $1",
-            [id]
+            `UPDATE users SET deleted_at = NOW(), status = 'Deleted' WHERE id = $1${tenantId ? ' AND tenant_id = $2' : ''}`,
+            tenantId ? [id, tenantId] : [id]
         );
         await logActivity(req, 'SOFT_DELETE_USER', { id });
         res.json({ success: true, message: 'User deactivated (data retained for compliance)' });
@@ -1979,20 +2129,32 @@ app.post('/api/users/:id/reset-password', authenticateToken, async (req, res) =>
     const { id } = req.params;
     const { password } = req.body;
     const userRole = req.user.role;
+    if (!MANAGER_ROLES.includes(userRole)) return res.status(403).json({ message: 'Unauthorized' });
+    if (!password || String(password).length < 8) {
+        return res.status(400).json({ message: 'Password must be at least 8 characters' });
+    }
+    const tenantId = userTenantScope(req);
 
     try {
-        // Prevent managers from resetting CEO or Admin passwords
-        const targetRes = await pool.query('SELECT role FROM users WHERE id = $1', [id]);
-        if (targetRes.rows.length > 0) {
-            const targetRole = (targetRes.rows[0].role || '').toLowerCase();
-            if ((userRole === 'manager' || userRole === 'store_manager') && (targetRole === 'ceo' || targetRole === 'admin')) {
-                return res.status(403).json({ message: 'Managers cannot reset executive passwords' });
-            }
+        // Scope the target to the caller's tenant and require it to exist
+        const targetRes = await pool.query(
+            `SELECT role FROM users WHERE id = $1${tenantId ? ' AND tenant_id = $2' : ''}`,
+            tenantId ? [id, tenantId] : [id]
+        );
+        if (targetRes.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const targetRole = (targetRes.rows[0].role || '').toLowerCase();
+        if ((userRole === 'manager' || userRole === 'store_manager') && (targetRole === 'ceo' || targetRole === 'admin')) {
+            return res.status(403).json({ message: 'Managers cannot reset executive passwords' });
         }
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(password, salt);
 
-        await pool.query("UPDATE users SET password = $1 WHERE id = $2", [hashedPassword, id]);
+        await pool.query(
+            `UPDATE users SET password = $1 WHERE id = $2${tenantId ? ' AND tenant_id = $3' : ''}`,
+            tenantId ? [hashedPassword, id, tenantId] : [hashedPassword, id]
+        );
         await logActivity(req, 'RESET_PASSWORD', { userId: id });
         res.json({ success: true, message: 'Password reset successfully' });
     } catch (err) {
@@ -2079,7 +2241,7 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
             const candidates = [storeLocation, branchRow?.name, branchRow?.location].filter(Boolean);
 
             const productsRes = await pool.query(
-                'SELECT stock_levels, reorder_level FROM products WHERE tenant_id = $1',
+                'SELECT stock_levels, reorder_level FROM products WHERE tenant_id = $1 AND deleted_at IS NULL',
                 [req.user.tenant_id]
             );
 
@@ -2100,7 +2262,7 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
                         ), COALESCE(stock, 0)) as total_stock,
                         COALESCE(reorder_level, 10) as target_reorder
                     FROM products 
-                    WHERE tenant_id = $1
+                    WHERE tenant_id = $1 AND deleted_at IS NULL
                  )
                  SELECT 
                     SUM(CASE WHEN total_stock <= 0 THEN 1 ELSE 0 END) as out_of_stock,
@@ -2188,15 +2350,32 @@ app.post('/api/shifts/open', authenticateToken, async (req, res) => {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
 
     const { startCash, notes } = req.body;
+    const openingCash = parseFloat(startCash);
+    if (startCash !== undefined && startCash !== '' && !Number.isFinite(openingCash)) {
+        return res.status(400).json({ message: 'startCash must be a number' });
+    }
 
     try {
+        const existing = await pool.query(
+            'SELECT id FROM shifts WHERE user_id = $1 AND end_time IS NULL',
+            [req.user.id]
+        );
+        if (existing.rows.length > 0) {
+            return res.status(409).json({ message: 'A shift is already open', shiftId: existing.rows[0].id });
+        }
+
+        // The partial unique index on shifts(user_id) WHERE end_time IS NULL makes a
+        // simultaneous double-open fail loudly instead of creating two overlapping shifts.
         await pool.query(
             "INSERT INTO shifts (user_id, start_cash, notes) VALUES ($1, $2, $3)",
-            [req.user.id, startCash || 0, notes]
+            [req.user.id, Number.isFinite(openingCash) ? openingCash : 0, notes]
         );
         await logActivity(req, 'OPEN_SHIFT', { startCash });
         res.json({ success: true });
     } catch (err) {
+        if (err.code === '23505') {
+            return res.status(409).json({ message: 'A shift is already open' });
+        }
         console.error('Shift open error:', err);
         res.status(500).json({ message: 'Server error' });
     }
@@ -2432,8 +2611,8 @@ app.get('/products', authenticateToken, async (req, res) => {
         await pool.query(`
             UPDATE products 
             SET stock_levels = jsonb_build_object('Main Warehouse', COALESCE(stock, 0))
-            WHERE stock_levels IS NULL OR stock_levels = '{}'::jsonb
-        `);
+            WHERE (stock_levels IS NULL OR stock_levels = '{}'::jsonb) AND tenant_id = $1
+        `, [req.user.tenant_id || 1]);
 
         // Support Pagination & Search parameters
         const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -2525,8 +2704,8 @@ app.get('/api/products', authenticateToken, async (req, res) => {
         await pool.query(`
             UPDATE products 
             SET stock_levels = jsonb_build_object('Main Warehouse', COALESCE(stock, 0))
-            WHERE stock_levels IS NULL OR stock_levels = '{}'::jsonb
-        `);
+            WHERE (stock_levels IS NULL OR stock_levels = '{}'::jsonb) AND tenant_id = $1
+        `, [req.user.tenant_id || 1]);
 
         // Support Pagination & Search parameters
         const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -2667,8 +2846,8 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
         await pool.query(`
             UPDATE products 
             SET stock_levels = jsonb_build_object('Main Warehouse', COALESCE(stock, 0))
-            WHERE stock_levels IS NULL OR stock_levels = '{}'::jsonb
-        `);
+            WHERE (stock_levels IS NULL OR stock_levels = '{}'::jsonb) AND tenant_id = $1
+        `, [req.user.tenant_id || 1]);
 
         // Support Pagination & Search parameters
         const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -3777,16 +3956,23 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, async (req, res)
     try {
         await client.query('BEGIN');
 
-        // Get PO details including supplier name for batch generation
+        // Get PO details including supplier name for batch generation.
+        // FOR UPDATE + a status gate stops a double-click or concurrent receive from
+        // crediting the same stock twice.
         const poRes = await client.query(`
             SELECT po.*, s.name as supplier_name 
             FROM purchase_orders po
             LEFT JOIN suppliers s ON po.supplier_id = s.id
             WHERE po.id = $1
+            FOR UPDATE
         `, [id]);
 
         if (poRes.rows.length === 0) throw new Error('PO not found');
         const po = poRes.rows[0];
+        if ((po.status || '').toLowerCase() === 'received') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ message: 'Purchase order has already been received' });
+        }
 
         // Get PO items
         const itemsRes = await client.query('SELECT * FROM purchase_order_items WHERE po_id = $1', [id]);
@@ -4028,12 +4214,16 @@ app.post('/api/transfers/:id/receive', authenticateToken, async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // Get Transfer
-        const resTr = await client.query('SELECT * FROM stock_transfers WHERE id = $1', [id]);
+        // Get Transfer. The row lock is what makes the status check below reliable: without it
+        // two concurrent receives both read 'In Transit' and both credit stock twice.
+        const resTr = await client.query('SELECT * FROM stock_transfers WHERE id = $1 FOR UPDATE', [id]);
         if (resTr.rows.length === 0) throw new Error('Transfer not found');
         const transfer = resTr.rows[0];
 
-        if (transfer.status !== 'In Transit') throw new Error('Transfer already processed');
+        if (transfer.status !== 'In Transit') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ message: 'Transfer already processed' });
+        }
 
         // FIX: Authorization - Allow Admin/CEO or the specific destination branch
         const userBranchName = await getBranchNameFromLocation(req.user.store_location, pool);
@@ -4057,6 +4247,7 @@ app.post('/api/transfers/:id/receive', authenticateToken, async (req, res) => {
             // Get current stock before update
             const currentStockRes = await client.query('SELECT stock, stock_levels FROM products WHERE id = $1 AND tenant_id = $2 FOR UPDATE', [item.product_id, req.user.tenant_id]);
             const currentStock = currentStockRes.rows[0];
+            if (!currentStock) throw new Error(`Product ${item.product_id} not found for this tenant`);
 
             let currentBranchStock = 0;
             if (currentStock.stock_levels) {
@@ -4229,7 +4420,10 @@ app.get('/api/inventory/negative-analysis', authenticateToken, async (req, res) 
         const branchStockKey = branchRes.rows[0]?.name || userBranch;
 
         // Fetch all products to safely parse JSON levels in Node.js
-        const result = await pool.query(`SELECT id, barcode, name, stock, stock_levels, reorder_level, category FROM products`);
+        const result = await pool.query(
+            `SELECT id, barcode, name, stock, stock_levels, reorder_level, category FROM products WHERE deleted_at IS NULL AND tenant_id = $1`,
+            [req.user.tenant_id]
+        );
 
         let items = [];
 
@@ -4510,10 +4704,21 @@ app.put('/transactions/:id/finalize', authenticateToken, async (req, res) => {
         try {
             await client.query('BEGIN');
 
+            // Lock and read the transaction first. A retry of an already-completed sale must
+            // not charge the customer's credit balance a second time.
+            const txnRes = await client.query(
+                'SELECT id, total_amount, receipt_number, is_return, status FROM transactions WHERE id = $1 FOR UPDATE',
+                [id]
+            );
+            if (txnRes.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ message: 'Transaction not found' });
+            }
+            const alreadyCompleted = (txnRes.rows[0].status || '').toLowerCase() === 'completed';
+
             let customerName = null;
             // If paying by credit, update customer balance and get customer name
-            if (paymentMethod === 'credit' && parsedCustomerId) {
-                const txnRes = await client.query('SELECT total_amount, receipt_number, is_return FROM transactions WHERE id = $1', [id]);
+            if (paymentMethod === 'credit' && parsedCustomerId && !alreadyCompleted) {
                 const total = parseFloat(txnRes.rows[0].total_amount);
                 const isReturn = txnRes.rows[0].is_return || false;
                 const receiptNum = receiptNumber || txnRes.rows[0].receipt_number || ('RCP' + Date.now());
@@ -4832,19 +5037,34 @@ app.get('/api/branch-mapping', authenticateToken, async (req, res) => {
     }
 });
 
-// --- DEBUG: Role Emulator / Switcher ---
+// --- Role Emulator / Switcher (executive preview tool) ---
 app.post('/api/debug/switch-role', authenticateToken, async (req, res) => {
     const { role } = req.body;
     try {
-        let targetRole = role.toLowerCase();
-        if (targetRole === 'teller') targetRole = 'cashier';
+        // Handing out a signed token for an arbitrary role is a privilege-escalation path,
+        // so it is restricted to executives and scoped to their own tenant.
+        if (req.user.role !== 'ceo' && req.user.role !== 'admin') {
+            return res.status(403).json({ message: 'Only CEO or Admin can switch roles' });
+        }
 
-        // Find a user with this role
-        let result = await pool.query("SELECT * FROM users WHERE role = $1 LIMIT 1", [targetRole]);
+        let targetRole = String(role || '').toLowerCase();
+        if (targetRole === 'teller') targetRole = 'cashier';
+        if (!PAGE_ROLES.ALL_USERS.includes(targetRole)) {
+            return res.status(400).json({ message: 'Unknown role' });
+        }
+
+        const tenantId = req.user.tenant_id || 1;
+        let result = await pool.query(
+            "SELECT * FROM users WHERE role = $1 AND tenant_id = $2 AND deleted_at IS NULL LIMIT 1",
+            [targetRole, tenantId]
+        );
 
         // Fallback for Manager -> Admin if no manager exists
         if (result.rows.length === 0 && targetRole === 'manager') {
-            result = await pool.query("SELECT * FROM users WHERE role = 'admin' LIMIT 1");
+            result = await pool.query(
+                "SELECT * FROM users WHERE role = 'admin' AND tenant_id = $1 AND deleted_at IS NULL LIMIT 1",
+                [tenantId]
+            );
         }
 
         if (result.rows.length === 0) {
@@ -4943,12 +5163,12 @@ app.get('/api/ceo/financials', authenticateToken, async (req, res) => {
         if (branch && branch !== 'All Branches') {
             // Calculate assets for specific branch using stock_levels JSON
             const assetsRes = await pool.query(`
-                SELECT SUM(COALESCE((stock_levels->>$1)::int, 0) * cost_price) as asset_value FROM products
+                SELECT SUM(COALESCE((stock_levels->>$1)::int, 0) * cost_price) as asset_value FROM products WHERE deleted_at IS NULL
             `, [branch]);
             assetValue = parseFloat(assetsRes.rows[0].asset_value) || 0;
         } else {
             // Global assets
-            const assetsRes = await pool.query(`SELECT SUM(stock * cost_price) as asset_value FROM products`);
+            const assetsRes = await pool.query(`SELECT SUM(stock * cost_price) as asset_value FROM products WHERE deleted_at IS NULL`);
             assetValue = parseFloat(assetsRes.rows[0].asset_value) || 0;
         }
 
@@ -5302,10 +5522,10 @@ app.get('/api/ceo/inventory/low-stock', authenticateToken, async (req, res) => {
         const result = await pool.query(`
             SELECT name, stock, reorder_level 
             FROM products 
-            WHERE stock <= reorder_level 
+            WHERE deleted_at IS NULL AND tenant_id = $1 AND stock <= reorder_level 
             ORDER BY stock ASC 
             LIMIT 10
-        `);
+        `, [req.user.tenant_id]);
         await logActivity(req, 'VIEW_CEO_LOW_STOCK');
         res.json(result.rows);
     } catch (err) {
@@ -5453,37 +5673,50 @@ app.get('/api/ceo/branch-performance', authenticateToken, async (req, res) => {
     } catch (e) { console.error(e); res.status(500).json({ message: 'Server error' }); }
 });
 
-// Enterprise Idempotency Store for Offline Replays
-const processedIdempotencyKeys = new Map();
-setInterval(() => {
-    const now = Date.now();
-    for (const [k, v] of processedIdempotencyKeys.entries()) {
-        if (now - v.timestamp > 24 * 60 * 60 * 1000) processedIdempotencyKeys.delete(k);
-    }
-}, 60 * 60 * 1000);
-
 // Create Transaction Endpoint
 app.post('/api/transactions', authenticateToken, async (req, res) => {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
     if (!req.body) return res.status(400).json({ message: 'Invalid request: No body provided' });
 
     const idempotencyKey = req.headers['x-idempotency-key'] || req.body?.idempotencyKey;
-    if (idempotencyKey && processedIdempotencyKeys.has(idempotencyKey)) {
-        const cached = processedIdempotencyKeys.get(idempotencyKey);
-        return res.json({
-            success: true,
-            receiptNumber: cached.receiptNumber,
-            transactionId: cached.transactionId,
-            isReplay: true
-        });
-    }
 
     const { items, total, refundAmount, paymentMethod, promoCode, discount, customerId, taxBreakdown, status, isReturn, originalTransactionId, returnItems } = req.body;
+
+    if (!Array.isArray(items) || items.length === 0) {
+        return res.status(400).json({ message: 'Invalid request: items must be a non-empty array' });
+    }
+    if (typeof total !== 'number' || !Number.isFinite(total) || total < 0) {
+        return res.status(400).json({ message: 'Invalid request: total must be a non-negative number' });
+    }
 
     try {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
+
+            // Claim the idempotency key inside the transaction. A concurrent replay of the
+            // same key gets no RETURNING row and is answered from the original. Because the
+            // claim shares this transaction's fate, a failed sale never blocks a retry.
+            if (idempotencyKey) {
+                const claim = await client.query(
+                    `INSERT INTO idempotency_claims (key, user_id) VALUES ($1, $2)
+                     ON CONFLICT (key) DO NOTHING RETURNING key`,
+                    [idempotencyKey, req.user.id]
+                );
+                if (claim.rows.length === 0) {
+                    const prior = await client.query(
+                        'SELECT receipt_number, transaction_id FROM idempotency_claims WHERE key = $1',
+                        [idempotencyKey]
+                    );
+                    await client.query('ROLLBACK');
+                    return res.json({
+                        success: true,
+                        receiptNumber: prior.rows[0]?.receipt_number || null,
+                        transactionId: prior.rows[0]?.transaction_id || null,
+                        isReplay: true
+                    });
+                }
+            }
 
             // Convert customerId to integer if provided
             const parsedCustomerId = customerId ? parseInt(customerId) : null;
@@ -5502,7 +5735,8 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
             }
 
             // Create transaction
-            const receiptNumber = (isReturn ? 'REF' : 'RCP') + Date.now();
+            // Date.now() alone collides for same-millisecond sales
+            const receiptNumber = (isReturn ? 'REF' : 'RCP') + Date.now() + crypto.randomInt(100, 1000);
             const txnRes = await client.query(
                 `INSERT INTO transactions
                 (user_id, store_location, total_amount, original_total, current_total, payment_method, receipt_number, items, created_at, customer_id, customer_name, status, tax_breakdown, is_return, original_transaction_id, return_items)
@@ -5601,8 +5835,12 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                     branchId = branchRes.rows[0].id;
                 }
 
-                // Update stock and batches
-                for (const item of items) {
+                // Update stock and batches.
+                // Process in a fixed product order: two carts touching the same products in
+                // opposite orders would otherwise take the batch row locks in conflicting
+                // sequence and deadlock (40P01).
+                const saleItems = [...items].sort((a, b) => String(a.id || a.barcode).localeCompare(String(b.id || b.barcode)));
+                for (const item of saleItems) {
                     // Deduct from total stock and specific location using product ID (not barcode)
                     // This prevents affecting other products sharing the same barcode
 
@@ -5663,6 +5901,13 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                 `, [promoCode, branchId, discountChange]);
             }
 
+            if (idempotencyKey) {
+                await client.query(
+                    'UPDATE idempotency_claims SET receipt_number = $1, transaction_id = $2 WHERE key = $3',
+                    [receiptNumber, txnRes.rows[0].id, idempotencyKey]
+                );
+            }
+
             await client.query('COMMIT');
 
             // Log appropriate activity
@@ -5670,14 +5915,6 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                 await logActivity(req, 'RETURN_SALE', { total: -total, receiptNumber, itemCount: items.length, originalTransactionId });
             } else {
                 await logActivity(req, 'POS_SALE', { total, receiptNumber, itemCount: items.length });
-            }
-
-            if (idempotencyKey) {
-                processedIdempotencyKeys.set(idempotencyKey, {
-                    receiptNumber,
-                    transactionId: txnRes.rows[0].id,
-                    timestamp: Date.now()
-                });
             }
 
             res.json({ success: true, receiptNumber, transactionId: txnRes.rows[0].id });
@@ -5965,16 +6202,28 @@ app.post('/api/stock-takes/:id/items', authenticateToken, async (req, res) => {
 // 13. Approve stock take
 app.post('/api/stock-takes/:id/approve', authenticateToken, async (req, res) => {
     const { id } = req.params;
-    const { approved_by } = req.body;
+    const client = await pool.connect();
     try {
-        const branchRes = await pool.query('SELECT branch_id FROM stock_takes WHERE id = $1', [id]);
-        const bId = branchRes.rows[0]?.branch_id || 1;
+        await client.query('BEGIN');
+
+        // Lock the count itself: without FOR UPDATE two concurrent approvals both read a
+        // pending row and apply the same variance twice.
+        const lockRes = await client.query('SELECT id, status, branch_id FROM stock_takes WHERE id = $1 FOR UPDATE', [id]);
+        if (lockRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Stock take not found' });
+        }
+        if ((lockRes.rows[0].status || '').toLowerCase() === 'approved') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ message: 'Stock take has already been approved' });
+        }
+        const bId = lockRes.rows[0].branch_id || 1;
         const branchName = bId == 2 ? 'Accra Branch' : (bId == 3 ? 'Kumasi Branch' : 'Main Warehouse');
 
-        const items = await pool.query('SELECT * FROM stock_take_items WHERE stock_take_id = $1', [id]);
+        const items = await client.query('SELECT * FROM stock_take_items WHERE stock_take_id = $1', [id]);
         for (const item of items.rows) {
             if (item.variance !== 0) {
-                await pool.query(`
+                await client.query(`
                     UPDATE products 
                     SET stock = COALESCE(stock, 0) + $1,
                         stock_levels = jsonb_set(
@@ -5982,25 +6231,28 @@ app.post('/api/stock-takes/:id/approve', authenticateToken, async (req, res) => 
                             ARRAY[$3::text], 
                             to_jsonb(COALESCE((stock_levels->>$3::text)::int, 0) + $1)
                         )
-                    WHERE barcode = $2
-                `, [item.variance, item.product_barcode, branchName]);
+                    WHERE barcode = $2 AND tenant_id = $4
+                `, [item.variance, item.product_barcode, branchName, req.user.tenant_id || 1]);
 
-                await pool.query(`
+                await client.query(`
                     INSERT INTO inventory_audit_log (action_type, product_barcode, quantity_before, quantity_after, reference_id, reference_type, user_id)
                     VALUES ('Stock Take Variance', $1, $2, $3, $4, 'Stock Take', $5)
-                `, [item.product_barcode, item.system_count, item.physical_count, id, approved_by]);
+                `, [item.product_barcode, item.system_count, item.physical_count, id, req.user.id]);
             }
         }
-        const varianceResult = await pool.query('SELECT COALESCE(SUM(variance), 0) as total_variance FROM stock_take_items WHERE stock_take_id = $1', [id]);
-        await pool.query(`
+        const varianceResult = await client.query('SELECT COALESCE(SUM(variance), 0) as total_variance FROM stock_take_items WHERE stock_take_id = $1', [id]);
+        await client.query(`
             UPDATE stock_takes SET status = 'Approved', approved_by = $1, completed_at = CURRENT_TIMESTAMP, variance_total = $2 WHERE id = $3
-        `, [approved_by, varianceResult.rows[0].total_variance, id]);
+        `, [req.user.id, varianceResult.rows[0].total_variance, id]);
+
+        await client.query('COMMIT');
         await logActivity(req, 'APPROVE_STOCK_TAKE', { id, total_variance: varianceResult.rows[0].total_variance });
         res.json({ success: true, message: 'Stock take approved' });
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error(err);
         res.status(500).json({ message: 'Error approving stock take' });
-    }
+    } finally { client.release(); }
 });
 
 // 14. Check reorder alerts
@@ -6173,22 +6425,46 @@ app.get('/api/pos/product/:barcode', authenticateToken, async (req, res) => {
 // 22. Process POS sale with batch tracking
 app.post('/api/pos/sale/:barcode', authenticateToken, async (req, res) => {
     const { barcode } = req.params;
-    const { quantity, batch_id, user_id, branch_id } = req.body;
+    const { quantity, batch_id, branch_id } = req.body;
+    const qty = parseInt(quantity, 10);
+    if (!Number.isInteger(qty) || qty <= 0) {
+        return res.status(400).json({ message: 'quantity must be a positive integer' });
+    }
     const branchName = branch_id == 2 ? 'Accra Branch' : (branch_id == 3 ? 'Kumasi Branch' : 'Main Warehouse');
+    const tenantId = req.user.tenant_id || 1;
 
+    const client = await pool.connect();
     try {
-        const product = await pool.query('SELECT * FROM products WHERE barcode = $1', [barcode]);
-        if (product.rows.length === 0 || product.rows[0].stock < quantity) {
-            return res.status(400).json({ message: 'Insufficient stock' });
+        await client.query('BEGIN');
+
+        // Locking the product row makes the stock comparison reliable; previously two
+        // concurrent scans could both pass the check and oversell.
+        const product = await client.query(
+            'SELECT id, stock FROM products WHERE barcode = $1 AND tenant_id = $2 FOR UPDATE',
+            [barcode, tenantId]
+        );
+        if (product.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Product not found' });
         }
-        if (batch_id) {
-            await pool.query(
-                'UPDATE product_batches SET quantity_sold = quantity_sold + $1, quantity_available = quantity_available - $1 WHERE id = $2',
-                [quantity, batch_id]
-            );
+        const stockBefore = parseInt(product.rows[0].stock, 10) || 0;
+        if (stockBefore < qty) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'Insufficient stock', available: stockBefore });
         }
 
-        await pool.query(`
+        if (batch_id) {
+            const batchRes = await client.query(
+                'UPDATE product_batches SET quantity_sold = quantity_sold + $1, quantity_available = quantity_available - $1 WHERE id = $2 AND quantity_available >= $1',
+                [qty, batch_id]
+            );
+            if (batchRes.rowCount === 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ message: 'Insufficient stock in the selected batch' });
+            }
+        }
+
+        await client.query(`
             UPDATE products 
             SET stock = COALESCE(stock, 0) - $1,
                 stock_levels = jsonb_set(
@@ -6196,19 +6472,22 @@ app.post('/api/pos/sale/:barcode', authenticateToken, async (req, res) => {
                     ARRAY[$3::text], 
                     to_jsonb(COALESCE((stock_levels->>$3::text)::int, 0) - $1)
                 )
-            WHERE barcode = $2
-        `, [quantity, barcode, branchName]);
+            WHERE barcode = $2 AND tenant_id = $4
+        `, [qty, barcode, branchName, tenantId]);
 
-        await pool.query(`
+        await client.query(`
             INSERT INTO inventory_audit_log (action_type, product_barcode, quantity_before, quantity_after, reference_id, reference_type, user_id, branch_id)
             SELECT 'Sale', $1::varchar, $2, stock, NULL, 'POS Sale', $4, $5 FROM products WHERE barcode = $1
-        `, [barcode, product.rows[0].stock, quantity, user_id, branch_id]); // $2 is old stock (quantity_before)
-        await logActivity(req, 'POS_SALE_ITEM', { barcode, quantity, batch_id });
-        res.json({ success: true, remaining_stock: product.rows[0].stock - quantity });
+        `, [barcode, stockBefore, qty, req.user.id, branch_id]);
+        await client.query('COMMIT');
+
+        await logActivity(req, 'POS_SALE_ITEM', { barcode, quantity: qty, batch_id });
+        res.json({ success: true, remaining_stock: stockBefore - qty });
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error(err);
         res.status(500).json({ message: 'Error processing sale' });
-    }
+    } finally { client.release(); }
 });
 
 // ============ SYSTEM SETTINGS ENDPOINTS ============
@@ -6648,7 +6927,10 @@ app.post('/api/customers', authenticateToken, async (req, res) => {
 
 app.post('/api/customers/:id/payment', authenticateToken, async (req, res) => {
     const { id } = req.params;
-    const { amount } = req.body;
+    const paid = parseFloat(req.body.amount);
+    if (!Number.isFinite(paid) || paid <= 0) {
+        return res.status(400).json({ message: 'amount must be a positive number' });
+    }
     const userId = req.user.id;
 
     const client = await pool.connect();
@@ -6658,25 +6940,29 @@ app.post('/api/customers/:id/payment', authenticateToken, async (req, res) => {
         // Update Balance and get new balance
         const custRes = await client.query(
             'UPDATE customers SET current_balance = current_balance - $1 WHERE id = $2 RETURNING current_balance',
-            [amount, id]
+            [paid, id]
         );
+        if (custRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Customer not found' });
+        }
         const newBalance = custRes.rows[0].current_balance;
 
         // Record Payment for Statement
         await client.query(
             'INSERT INTO customer_payments (customer_id, amount, recorded_by) VALUES ($1, $2, $3)',
-            [id, amount, userId]
+            [id, paid, userId]
         );
 
         // Add to Ledger (Part 2)
         await client.query(
             `INSERT INTO customer_ledger (customer_id, date, description, type, credit, balance) 
              VALUES ($1, NOW(), 'Payment Received', 'PAYMENT', $2, $3)`,
-            [id, amount, newBalance]
+            [id, paid, newBalance]
         );
 
         await client.query('COMMIT');
-        await logActivity(req, 'CUSTOMER_DEBT_PAYMENT', { customerId: id, amount });
+        await logActivity(req, 'CUSTOMER_DEBT_PAYMENT', { customerId: id, amount: paid });
         res.json({ success: true });
     } catch (err) {
         await client.query('ROLLBACK');
@@ -7322,7 +7608,7 @@ app.post('/api/customers/:id/email-statement', authenticateToken, async (req, re
 });
 
 // Reset Password Route (after email confirmation)
-app.post('/api/reset-password', async (req, res) => {
+app.post('/api/reset-password', authLimiter, async (req, res) => {
     const { token, newPassword } = req.body;
 
     try {
@@ -8112,28 +8398,46 @@ app.post('/api/company/proforma-invoices/:id/send', authenticateToken, async (re
 // Record Payment for Sales Invoice
 app.post('/api/company/sales-invoices/:id/payment', authenticateToken, async (req, res) => {
     const { id } = req.params;
-    const { amount } = req.body;
+    const paid = parseFloat(req.body.amount);
+    if (!Number.isFinite(paid) || paid <= 0) {
+        return res.status(400).json({ message: 'amount must be a positive number' });
+    }
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        const invRes = await client.query('SELECT total_amount, paid_amount FROM sales_invoices WHERE id = $1', [id]);
-        if (invRes.rows.length === 0) throw new Error('Invoice not found');
+        // Locking the invoice makes concurrent payments additive rather than last-write-wins.
+        const invRes = await client.query(
+            'SELECT total_amount, paid_amount FROM sales_invoices WHERE id = $1 FOR UPDATE',
+            [id]
+        );
+        if (invRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Invoice not found' });
+        }
         const inv = invRes.rows[0];
+        const outstanding = parseFloat(inv.total_amount || 0) - parseFloat(inv.paid_amount || 0);
+        if (paid > outstanding) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: `Payment exceeds the outstanding balance of ${outstanding}` });
+        }
 
-        const newPaid = parseFloat(inv.paid_amount || 0) + parseFloat(amount);
-        const status = newPaid >= parseFloat(inv.total_amount) ? 'Paid' : 'Partially Paid';
+        const updateRes = await client.query(`
+            UPDATE sales_invoices
+            SET paid_amount = COALESCE(paid_amount, 0) + $1,
+                status = CASE WHEN COALESCE(paid_amount, 0) + $1 >= total_amount THEN 'Paid' ELSE 'Partially Paid' END
+            WHERE id = $2
+            RETURNING paid_amount, status
+        `, [paid, id]);
 
-        await client.query(`
-            UPDATE sales_invoices SET paid_amount = $1, status = $2 WHERE id = $3
-        `, [newPaid, status, id]);
-
-        await logActivity(req, 'COMPANY_PAYMENT_RECORDED', { invoice_id: id, amount: amount, new_paid_total: newPaid, status: status });
+        const newPaid = parseFloat(updateRes.rows[0].paid_amount);
+        await logActivity(req, 'COMPANY_PAYMENT_RECORDED', { invoice_id: id, amount: paid, new_paid_total: newPaid, status: updateRes.rows[0].status });
 
         await client.query('COMMIT');
-        res.json({ success: true });
+        res.json({ success: true, paid_amount: newPaid, status: updateRes.rows[0].status });
     } catch (error) {
         await client.query('ROLLBACK');
-        res.status(500).json({ message: error.message });
+        console.error('Company payment error:', error);
+        res.status(500).json({ message: 'Error recording payment' });
     } finally { client.release(); }
 });
 
@@ -8371,15 +8675,6 @@ app.use((err, req, res, next) => {
         success: false,
         message: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong!'
     });
-});
-
-// Add middleware to handle protocol inconsistencies
-app.use((req, res, next) => {
-    // Allow both HTTP and HTTPS for local development
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', '*');
-    res.setHeader('Access-Control-Allow-Headers', '*');
-    next();
 });
 
 // Attach pool to app for external consumers

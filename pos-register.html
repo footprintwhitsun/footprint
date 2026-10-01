@@ -848,6 +848,43 @@
             setTimeout(() => { notif.className = 'notification'; }, 3000);
         }
 
+        // Cross-tab Real-time Synchronization Bus
+        const SYNC_BUS_NAME = 'whitsun_realtime_sync';
+        let realtimeSyncChannel = null;
+        try {
+            if (typeof BroadcastChannel !== 'undefined') {
+                realtimeSyncChannel = new BroadcastChannel(SYNC_BUS_NAME);
+                realtimeSyncChannel.onmessage = (event) => {
+                    if (event.data && event.data.entity === 'users') {
+                        loadUsers();
+                    }
+                };
+            }
+        } catch(e) {}
+
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'whitsun_sync_event' && e.newValue) {
+                try {
+                    const data = JSON.parse(e.newValue);
+                    if (data.entity === 'users') loadUsers();
+                } catch(err) {}
+            }
+        });
+
+        window.addEventListener('focus', () => {
+            loadUsers();
+        });
+
+        function broadcastCrossTabSync(entity, action, data = {}) {
+            const payload = { entity, action, data, sender: 'pos-register', timestamp: Date.now() };
+            if (realtimeSyncChannel) {
+                try { realtimeSyncChannel.postMessage(payload); } catch(e) {}
+            }
+            try {
+                localStorage.setItem('whitsun_sync_event', JSON.stringify(payload));
+            } catch(e) {}
+        }
+
         // Load users from database
         async function loadUsers() {
             try {
@@ -922,6 +959,7 @@
                     document.getElementById('registrationForm').reset();
                     switchTab('users');
                     loadUsers();
+                    broadcastCrossTabSync('users', 'create', newUser);
                 } else {
                     const data = await response.json();
                     showNotification(data.message || "Registration failed", "error");
@@ -1106,6 +1144,7 @@
                     showNotification("User updated successfully!", "success");
                     closeEditModal();
                     loadUsers();
+                    broadcastCrossTabSync('users', 'update');
                 } else {
                     showNotification("Failed to update user", "error");
                 }
@@ -1193,6 +1232,7 @@
                     const data = await response.json();
                     showNotification(data.message || "User permanently deleted", "success");
                     loadUsers();
+                    broadcastCrossTabSync('users', 'delete');
                 } else {
                     const data = await response.json();
                     showNotification(data.message || "Failed to delete user", "error");

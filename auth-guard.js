@@ -327,6 +327,8 @@
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#039;');
     }
+    // Exposed for page templates that interpolate server data into innerHTML.
+    window.escapeHtml = escapeHtml;
 
     // Universal Global Logout Function
     window.logout = async function() {

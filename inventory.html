@@ -4119,11 +4119,25 @@
 
             if (adjustments.length === 0) return showNotification("No changes detected.", "error");
 
-            await fetch('/api/stock-take', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ adjustments })
-            });
+            // This call previously sent no Authorization header, so the server answered 401
+            // while the UI still reported success — the counted stock was never applied.
+            const stockTakeToken = localStorage.getItem('authToken');
+            try {
+                const res = await fetch('/api/stock-take', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${stockTakeToken}`
+                    },
+                    body: JSON.stringify({ adjustments })
+                });
+                if (!res.ok) {
+                    const detail = await res.json().catch(() => ({}));
+                    return showNotification(detail.message || `Stock take failed (${res.status})`, "error");
+                }
+            } catch (e) {
+                return showNotification("Stock take failed: could not reach the server.", "error");
+            }
             
             document.getElementById('stockTakeModal').classList.remove('active');
             loadInventory();

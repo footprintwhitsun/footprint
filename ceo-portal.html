@@ -46,6 +46,54 @@
         .btn-primary { background: var(--primary-color); color: white; }
         .btn-primary:hover { background: var(--secondary-color); }
 
+        /* Real-Time Live Sync Indicator */
+        .live-sync-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            padding: 6px 13px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #15803d;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+            transition: all 0.2s ease;
+            user-select: none;
+            white-space: nowrap;
+        }
+        .live-sync-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: #22c55e;
+            box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7);
+            animation: pulse-green 2s infinite;
+        }
+        .live-sync-dot.syncing {
+            background-color: #2563eb;
+            animation: pulse-blue 0.8s infinite;
+        }
+        @keyframes pulse-green {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(34, 197, 94, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+        @keyframes pulse-blue {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7); }
+            70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(37, 99, 235, 0); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(37, 99, 235, 0); }
+        }
+        .row-highlight-new {
+            animation: highlightRow 2.5s ease-out;
+        }
+        @keyframes highlightRow {
+            0% { background-color: #dcfce7; }
+            50% { background-color: #f0fdf4; }
+            100% { background-color: transparent; }
+        }
+
         /* Tabs */
         .tab-content { display: none; animation: fadeIn 0.3s; }
         .tab-content.active { display: block; }
@@ -593,7 +641,12 @@
                 <select id="globalBranchFilter" class="control-select" onchange="refreshActiveTab()">
                     <option value="All Branches">All Branches</option>
                 </select>
-                <button class="btn-control btn-white" onclick="refreshActiveTab()"><i class="fas fa-sync"></i> Refresh</button>
+                <div id="liveSyncPill" class="live-sync-pill" title="Real-time background sync active">
+                    <span class="live-sync-dot" id="liveSyncDot"></span>
+                    <span id="liveSyncStatus">Live Sync</span>
+                    <span style="opacity: 0.65; font-weight: normal; font-size: 11px; margin-left: 2px;" id="liveSyncTime">Just now</span>
+                </div>
+                <button id="manualSyncBtn" class="btn-control btn-white" onclick="manualSyncTrigger()"><i class="fas fa-sync" id="manualSyncIcon"></i> Sync</button>
             </div>
         </div>
 
@@ -1143,7 +1196,7 @@
             <div class="table-card">
                 <div class="card-header">
                     <div class="card-title">User Management & Access Control</div>
-                    <button style="background:var(--primary-color); color:white; border:none; padding:8px 15px; border-radius:6px; cursor:pointer;" onclick="openManagerModal()">+ Invite Executive</button>
+                    <button style="background:var(--primary-color); color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:6px;" onclick="openManagerModal()"><i class="fas fa-user-plus"></i> Add New User</button>
                 </div>
                 <div class="table-scroll-wrapper">
                     <table class="card-table">
@@ -1349,45 +1402,66 @@
             </div>
         </div>
 
-        <!-- Manager Creation Modal -->
+        <!-- User Creation Modal -->
         <div id="managerModal" class="modal-overlay">
-            <div class="modal-container">
+            <div class="modal-container" style="max-width: 540px;">
                 <div class="modal-header">
-                    <div class="modal-title">Create New Manager</div>
+                    <div class="modal-title" id="userModalHeaderTitle"><i class="fas fa-user-plus" style="margin-right: 8px; color: var(--primary-color);"></i> Create System User</div>
                     <button class="close-modal" onclick="closeManagerModal()"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
-                        <label class="form-label">Full Name</label>
-                        <input type="text" id="mgrName" class="form-input" placeholder="e.g. Sarah Osei">
+                        <label class="form-label">Full Name <span style="color:#ef4444;">*</span></label>
+                        <input type="text" id="mgrName" class="form-input" placeholder="e.g. Sarah Osei" required>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Email Address</label>
-                        <input type="email" id="mgrEmail" class="form-input" placeholder="sarah@footprint.com">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label class="form-label">Email Address <span style="color:#ef4444;">*</span></label>
+                            <input type="email" id="mgrEmail" class="form-input" placeholder="sarah@whitsun.com" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Phone Number</label>
+                            <input type="text" id="mgrPhone" class="form-input" placeholder="e.g. 0244123456">
+                        </div>
                     </div>
-                    <div class="form-group">
-                        <label class="form-label">Assigned Branch</label>
-                        <select id="mgrBranch" class="form-input">
-                            <option value="">Loading branches...</option>
-                        </select>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label class="form-label">Role <span style="color:#ef4444;">*</span></label>
+                            <select id="mgrRole" class="form-input">
+                                <option value="manager" selected>Store Manager</option>
+                                <option value="cashier">POS Cashier / Sales Staff</option>
+                                <option value="supervisor">Supervisor</option>
+                                <option value="admin">Administrator</option>
+                                <option value="accountant">Accountant / Finance</option>
+                                <option value="ceo">Executive (CEO)</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Assigned Branch <span style="color:#ef4444;">*</span></label>
+                            <select id="mgrBranch" class="form-input">
+                                <option value="">Loading branches...</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="form-group">
+                            <label class="form-label">Username (Optional)</label>
+                            <input type="text" id="mgrUsername" class="form-input" placeholder="Auto-generated if empty">
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Employee ID (Optional)</label>
+                            <input type="text" id="mgrEmployeeId" class="form-input" placeholder="Auto-generated if empty">
+                        </div>
                     </div>
                     <div class="form-group">
                         <label class="form-label">Initial Password</label>
-                        <input type="text" id="mgrPassword" class="form-input" value="Password123" readonly style="background-color: #f9f9f9; cursor: not-allowed;">
-                        <small style="color: #666; font-size: 12px; margin-top: 5px;">Default password for new managers.</small>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Permissions</label>
-                        <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                            <label><input type="checkbox" checked> Hiring</label>
-                            <label><input type="checkbox" checked> Discounts</label>
-                            <label><input type="checkbox"> Inventory Audit</label>
-                        </div>
+                        <input type="text" id="mgrPassword" class="form-input" value="Password123">
+                        <small style="color: #64748b; font-size: 11px; margin-top: 4px; display: block;">Default password. User can change it upon logging in.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button class="btn-control btn-white" onclick="closeManagerModal()">Cancel</button>
-                    <button class="btn-control btn-primary" onclick="createManager()">Create Manager</button>
+                    <button class="btn-control btn-primary" id="btnCreateManagerSubmit" onclick="createManager()"><i class="fas fa-check"></i> Create User</button>
                 </div>
             </div>
         </div>
@@ -1758,24 +1832,149 @@
             if (e.ctrlKey && e.key === 'm') { e.preventDefault(); openManagerModal(); }
         });
 
-        // Auto Refresh active tab (every 60s)
-        setInterval(() => { refreshActiveTab(); }, 60000);
+        // ================= REAL-TIME DATA SYNCHRONIZATION ENGINE =================
+        let lastSuccessfulSyncTimestamp = Date.now();
+        const SYNC_BUS_NAME = 'whitsun_realtime_sync';
+        let realtimeSyncChannel = null;
 
-        function refreshActiveTab() {
-            const activeTab = document.querySelector('.tab-content.active');
-            if (activeTab) {
-                const tabId = activeTab.id.replace('tab-', '');
-                if (tabId === 'overview') initPortal();
-                else if (tabId === 'branches') loadBranches();
-                else if (tabId === 'operations') loadOpsKPIs();
-                else if (tabId === 'ops-bottlenecks') loadOpsBottlenecks();
-                else if (tabId === 'ops-suppliers') loadOpsSuppliers();
-                else if (tabId === 'ops-pos') loadOpsPOs();
-                else if (tabId === 'ops-performance') loadOpsPerformance();
-                else if (tabId === 'ops-users') loadUsers();
-                else if (tabId === 'tax-management') { loadTaxes(); generateReport(); }
+        try {
+            if (typeof BroadcastChannel !== 'undefined') {
+                realtimeSyncChannel = new BroadcastChannel(SYNC_BUS_NAME);
+                realtimeSyncChannel.onmessage = (event) => {
+                    handleSyncEvent(event.data);
+                };
+            }
+        } catch(e) {
+            console.warn("BroadcastChannel not supported, fallback to storage listener:", e);
+        }
+
+        // Cross-tab storage listener fallback
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'whitsun_sync_event' && e.newValue) {
+                try {
+                    const data = JSON.parse(e.newValue);
+                    handleSyncEvent(data);
+                } catch(err) {}
+            }
+        });
+
+        function broadcastSync(entity, action, data = {}) {
+            const payload = { entity, action, data, sender: 'ceo-portal', timestamp: Date.now() };
+            if (realtimeSyncChannel) {
+                try { realtimeSyncChannel.postMessage(payload); } catch(e) {}
+            }
+            try {
+                localStorage.setItem('whitsun_sync_event', JSON.stringify(payload));
+            } catch(e) {}
+        }
+
+        function handleSyncEvent(eventData) {
+            if (!eventData || !eventData.entity) return;
+            console.log("Realtime sync event received:", eventData);
+            
+            if (eventData.entity === 'users') {
+                loadUsers(true);
+                loadPeople();
+                showToast("Real-time update: User list synchronized");
+            } else if (eventData.entity === 'approvals') {
+                loadPendingCreditApprovals();
+                showToast("Real-time update: Credit approvals updated");
+            } else if (eventData.entity === 'branches') {
+                loadBranches();
+            } else {
+                refreshActiveTab(true);
             }
         }
+
+        function setSyncingVisual(isSyncing) {
+            const dot = document.getElementById('liveSyncDot');
+            const icon = document.getElementById('manualSyncIcon');
+            const status = document.getElementById('liveSyncStatus');
+            if (dot) {
+                if (isSyncing) dot.classList.add('syncing');
+                else dot.classList.remove('syncing');
+            }
+            if (icon) {
+                if (isSyncing) icon.classList.add('fa-spin');
+                else icon.classList.remove('fa-spin');
+            }
+            if (status) {
+                status.textContent = isSyncing ? 'Syncing...' : 'Live Sync';
+            }
+        }
+
+        function updateSyncBadge() {
+            const timeEl = document.getElementById('liveSyncTime');
+            if (!timeEl) return;
+            const elapsedSec = Math.floor((Date.now() - lastSuccessfulSyncTimestamp) / 1000);
+            if (elapsedSec < 5) {
+                timeEl.textContent = 'Just now';
+            } else if (elapsedSec < 60) {
+                timeEl.textContent = `${elapsedSec}s ago`;
+            } else {
+                const mins = Math.floor(elapsedSec / 60);
+                timeEl.textContent = `${mins}m ago`;
+            }
+        }
+        setInterval(updateSyncBadge, 3000);
+
+        function manualSyncTrigger() {
+            showToast("Syncing latest data...");
+            refreshActiveTab(false);
+        }
+
+        async function refreshActiveTab(silent = false) {
+            const activeTab = document.querySelector('.tab-content.active');
+            setSyncingVisual(true);
+            try {
+                if (activeTab) {
+                    const tabId = activeTab.id.replace('tab-', '');
+                    if (tabId === 'overview') await initPortal();
+                    else if (tabId === 'branches') await loadBranches();
+                    else if (tabId === 'operations') await loadOpsKPIs();
+                    else if (tabId === 'ops-bottlenecks') await loadOpsBottlenecks();
+                    else if (tabId === 'ops-suppliers') await loadOpsSuppliers();
+                    else if (tabId === 'ops-pos') await loadOpsPOs();
+                    else if (tabId === 'ops-performance') await loadOpsPerformance();
+                    else if (tabId === 'ops-users') await loadUsers(silent);
+                    else if (tabId === 'approvals-pending') await loadPendingCreditApprovals();
+                    else if (tabId === 'approvals-history') await loadApprovalHistory();
+                    else if (tabId === 'audit') await loadAuditLogs();
+                    else if (tabId === 'tax-management') { await loadTaxes(); generateReport(); }
+                }
+            } finally {
+                setSyncingVisual(false);
+                lastSuccessfulSyncTimestamp = Date.now();
+                updateSyncBadge();
+            }
+        }
+
+        // Active Adaptive Background Polling (Every 10 seconds while tab is open)
+        let backgroundPollingTimer = setInterval(() => {
+            if (document.visibilityState === 'visible') {
+                refreshActiveTab(true);
+            }
+        }, 10000);
+
+        // Immediate background refresh when returning to tab or focusing window
+        let lastFocusSyncTime = Date.now();
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                const now = Date.now();
+                if (now - lastFocusSyncTime > 3000) {
+                    lastFocusSyncTime = now;
+                    refreshActiveTab(true);
+                }
+            }
+        });
+
+        window.addEventListener('focus', () => {
+            const now = Date.now();
+            if (now - lastFocusSyncTime > 3000) {
+                lastFocusSyncTime = now;
+                refreshActiveTab(true);
+            }
+        });
 
         async function initPortal() {
             try {
@@ -2357,10 +2556,12 @@
 
         // --- NEW REAL-TIME DATA FUNCTIONS ---
 
-        async function loadUsers() {
+        async function loadUsers(silent = false) {
             const token = localStorage.getItem('authToken');
             const tbody = document.getElementById('usersTableBody');
-            if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">Loading users...</td></tr>';
+            if (!silent && tbody && (!allPortalUsers || allPortalUsers.length === 0)) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 25px;"><i class="fas fa-spinner fa-spin" style="margin-right:8px;"></i> Loading users directory...</td></tr>';
+            }
             try {
                 if (allBranches.length === 0) {
                     await loadBranches();
@@ -2379,12 +2580,21 @@
 
                 const res = await fetch('/api/users', { headers: { 'Authorization': `Bearer ${token}` }});
                 if(res.ok) {
-                    allPortalUsers = await res.json();
+                    const freshUsers = await res.json();
+                    const prevCount = allPortalUsers ? allPortalUsers.length : 0;
+                    allPortalUsers = freshUsers;
                     filterUsers();
+                    updateSyncBadge();
+
+                    if (silent && prevCount > 0 && freshUsers.length > prevCount) {
+                        showToast(`New user detected! Total users: ${freshUsers.length}`);
+                    }
                 }
             } catch(e) { 
-                console.error(e); 
-                if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red;">Failed to load users.</td></tr>';
+                console.error("loadUsers error:", e); 
+                if (!silent && tbody && (!allPortalUsers || allPortalUsers.length === 0)) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:red; padding:20px;">Failed to load users.</td></tr>';
+                }
             }
         }
 
@@ -2527,7 +2737,8 @@
 
                         if (res.ok) {
                             showToast(`User ${newStatus === 'Active' ? 'activated' : 'deactivated'} successfully`);
-                            loadUsers();
+                            await loadUsers(false);
+                            broadcastSync('users', 'status_change', { id, status: newStatus });
                         } else {
                             const err = await res.json();
                             alert("Error: " + (err.message || "Failed to update status"));
@@ -2590,7 +2801,8 @@
                 if (res.ok) {
                     showToast("User updated successfully");
                     closeEditUserModal();
-                    loadUsers();
+                    await loadUsers(false);
+                    broadcastSync('users', 'update', { id, fullName });
                 } else {
                     const err = await res.json();
                     alert("Error: " + (err.message || "Failed to update user"));
@@ -3708,7 +3920,7 @@
             // Placeholder for future customer insights logic
         }
 
-        // Manager Modal Logic
+        // User Creation Modal Logic
         function openManagerModal() { 
             document.getElementById('managerModal').classList.add('active'); 
             document.getElementById('mgrPassword').value = 'Password123';
@@ -3716,16 +3928,18 @@
             // Populate branches
             const select = document.getElementById('mgrBranch');
             select.innerHTML = '<option value="">Select Branch</option>';
+            select.innerHTML += '<option value="Headquarters">Headquarters (All Branches)</option>';
             allBranches.forEach(b => {
-                select.innerHTML += `<option value="${b.location}" data-id="${b.id}">${b.name} (${b.location})</option>`;
+                select.innerHTML += `<option value="${b.location || b.name}" data-id="${b.id}">${b.name} (${b.location})</option>`;
             });
             
             if(allBranches.length === 0) {
                 loadBranches().then(() => {
                     const select = document.getElementById('mgrBranch');
                     select.innerHTML = '<option value="">Select Branch</option>';
+                    select.innerHTML += '<option value="Headquarters">Headquarters (All Branches)</option>';
                     allBranches.forEach(b => {
-                        select.innerHTML += `<option value="${b.location}" data-id="${b.id}">${b.name} (${b.location})</option>`;
+                        select.innerHTML += `<option value="${b.location || b.name}" data-id="${b.id}">${b.name} (${b.location})</option>`;
                     });
                 });
             }
@@ -3733,17 +3947,31 @@
         function closeManagerModal() { document.getElementById('managerModal').classList.remove('active'); }
         
         async function createManager() {
-            // Create Manager
-            const name = document.getElementById('mgrName').value;
-            const email = document.getElementById('mgrEmail').value;
+            const name = document.getElementById('mgrName').value.trim();
+            const email = document.getElementById('mgrEmail').value.trim();
+            const phone = document.getElementById('mgrPhone')?.value.trim() || '0000000000';
+            const role = document.getElementById('mgrRole')?.value || 'manager';
             const branchSelect = document.getElementById('mgrBranch');
             const branchLocation = branchSelect.value;
             const branchId = branchSelect.options[branchSelect.selectedIndex]?.dataset.id;
-            const password = document.getElementById('mgrPassword').value;
+            const password = document.getElementById('mgrPassword').value.trim() || 'Password123';
+            const customUsername = document.getElementById('mgrUsername')?.value.trim();
+            const customEmployeeId = document.getElementById('mgrEmployeeId')?.value.trim();
 
-            if(!name || !email || !branchLocation || !password) {
-                alert("Please fill all fields");
+            if(!name || !email || !branchLocation) {
+                alert("Please fill all required fields: Full Name, Email, and Assigned Branch.");
                 return;
+            }
+
+            const username = customUsername || email.split('@')[0];
+            const rolePrefix = role.toUpperCase().substring(0, 3);
+            const employeeId = customEmployeeId || `${rolePrefix}-${Date.now().toString().slice(-6)}`;
+
+            const submitBtn = document.getElementById('btnCreateManagerSubmit');
+            const originalBtnText = submitBtn ? submitBtn.innerHTML : '';
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
             }
 
             const token = localStorage.getItem('authToken');
@@ -3753,28 +3981,47 @@
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
                     body: JSON.stringify({
                         fullName: name,
-                        username: email.split('@')[0],
+                        username: username,
                         email: email,
-                        role: 'manager',
+                        role: role,
                         store: branchLocation,
                         password: password,
-                        phone: '0000000000', // Default
-                        employeeId: 'MGR-' + Date.now()
+                        phone: phone,
+                        employeeId: employeeId
                     })
                 });
                 
                 if(res.ok) {
-                    showToast("Manager Created Successfully!"); 
+                    showToast(`User "${name}" created successfully!`); 
                     closeManagerModal();
                     // Reset form
                     document.getElementById('mgrName').value = '';
                     document.getElementById('mgrEmail').value = '';
+                    if (document.getElementById('mgrPhone')) document.getElementById('mgrPhone').value = '';
+                    if (document.getElementById('mgrUsername')) document.getElementById('mgrUsername').value = '';
+                    if (document.getElementById('mgrEmployeeId')) document.getElementById('mgrEmployeeId').value = '';
                     document.getElementById('mgrBranch').value = '';
+                    document.getElementById('mgrPassword').value = 'Password123';
+
+                    // 1. Immediately refresh the users table without needing page reload
+                    await loadUsers(false);
+                    // 2. Also refresh headcount KPI
+                    loadPeople();
+                    // 3. Broadcast real-time event to all other open tabs/windows
+                    broadcastSync('users', 'create', { name, email, role, store: branchLocation });
                 } else {
                     const err = await res.json();
-                    alert("Error: " + err.message);
+                    alert("Error: " + (err.message || "Failed to create user"));
                 }
-            } catch(e) { console.error(e); alert("Server error"); }
+            } catch(e) { 
+                console.error("createManager error:", e); 
+                alert("Server error occurred while creating user."); 
+            } finally {
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalBtnText;
+                }
+            }
         }
 
         // Branch Modal Logic
