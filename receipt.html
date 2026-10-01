@@ -49,15 +49,17 @@
             border: 1.5px solid rgba(249, 165, 26, 0.7);
         }
         .store-name { 
-            font-size: 20px; 
-            font-weight: bold; 
+            font-size: 18px; 
+            font-weight: 800; 
             text-transform: uppercase; 
-            margin-bottom: 5px;
-            color: #d97706;
+            margin-top: 8px;
+            margin-bottom: 3px;
+            color: #111216;
+            letter-spacing: 0.5px;
         }
         .store-info { 
-            font-size: 11px; 
-            font-weight: bold;
+            font-size: 11.5px; 
+            font-weight: 600;
             color: #555; 
             margin-bottom: 2px;
             line-height: 1.3;
@@ -247,7 +249,7 @@
             <div class="store-logo">
                 <img src="logo.png" alt="Store Logo" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
             </div>
-            
+            <div class="store-name" id="rStoreName">FOOTPRINT</div>
             <div class="store-info" id="rAddress" style="display:none;"></div>
             <div class="store-info" id="rPhone" style="display:none;"></div>
         </div>
@@ -355,6 +357,9 @@
                 // Pre-populate from posSettings cache if available to prevent any layout jump
                 try {
                     const cachedSettings = JSON.parse(localStorage.getItem('posSettings') || '{}');
+                    if (cachedSettings.store_name && document.getElementById('rStoreName')) {
+                        document.getElementById('rStoreName').textContent = cachedSettings.store_name.toUpperCase();
+                    }
                     if (cachedSettings.phone && document.getElementById('rPhone')) {
                         document.getElementById('rPhone').textContent = `Tel: ${cachedSettings.phone}`;
                         document.getElementById('rPhone').style.display = 'block';
@@ -368,6 +373,9 @@
                 const settingsRes = await fetch('/api/settings', { headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
                 if(settingsRes.ok) {
                     const settings = await settingsRes.json();
+                    if(settings.store_name && document.getElementById('rStoreName')) {
+                        document.getElementById('rStoreName').textContent = settings.store_name.toUpperCase();
+                    }
                     if(settings.phone && document.getElementById('rPhone')) {
                         document.getElementById('rPhone').textContent = `Tel: ${settings.phone}`;
                         document.getElementById('rPhone').style.display = 'block';
@@ -395,7 +403,7 @@
                 const rAddress = document.getElementById('rAddress');
                 if(rAddress) {
                     if (branchDisplay) {
-                        rAddress.textContent = `Branch: ${branchDisplay}`;
+                        rAddress.textContent = `Branch: ${branchDisplay.toUpperCase()}`;
                         rAddress.style.display = 'block';
                     } else {
                         rAddress.style.display = 'none';
