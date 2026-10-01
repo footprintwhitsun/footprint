@@ -3065,13 +3065,13 @@ async function printDocument(data, type, terms = '..............................
 
     doc.addImage(img, 'PNG', 14, 10, 15, 15); // Circular logo aspect ratio
     doc.setFont('times', 'bold'); // Use standard font name
-    doc.setFontSize(17);
-    doc.text('FOOTPRINT', 34, 19); // Same line as logo
+    const compName = (systemSettings && systemSettings.store_name) ? systemSettings.store_name.toUpperCase() : 'FOOTPRINT';
+    const compPhone = (systemSettings && systemSettings.phone) ? systemSettings.phone : '+233 24 512 2959';
+    doc.text(compName, 34, 19); // Same line as logo
 
     doc.setFont('times', 'normal');
     doc.setFontSize(9.5);
-    doc.text('H/NO. 49, Stadium Road, Amasaman | Phone: +233 24 512 2959', 14, 30); // Under the logo
-    doc.text('Location: Stadium Road, Amasaman, Ga West, Greater Accra.', 14, 34); // Under the logo
+    doc.text(`Phone: ${compPhone}`, 14, 30); // Under the logo
 
     // Invoice details (right side)
     doc.setFontSize(10);

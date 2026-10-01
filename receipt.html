@@ -248,8 +248,8 @@
                 <img src="logo.png" alt="Store Logo" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
             </div>
             
-            <div class="store-info" id="rAddress">Stadium Road, Amasaman</div>
-            <div class="store-info" id="rPhone">Tel: +233 24 512 2959</div>
+            <div class="store-info" id="rAddress" style="display:none;"></div>
+            <div class="store-info" id="rPhone" style="display:none;"></div>
         </div>
 
 
@@ -352,18 +352,33 @@
             try {
                 const token = localStorage.getItem('authToken') || localStorage.getItem('companyToken');
                 
-                // 1. Fetch Settings (for Store Name/Footer)
-                const settingsRes = await fetch('/api/settings', { headers: { 'Authorization': `Bearer ${token}` } });
+                // Pre-populate from posSettings cache if available to prevent any layout jump
+                try {
+                    const cachedSettings = JSON.parse(localStorage.getItem('posSettings') || '{}');
+                    if (cachedSettings.phone && document.getElementById('rPhone')) {
+                        document.getElementById('rPhone').textContent = `Tel: ${cachedSettings.phone}`;
+                        document.getElementById('rPhone').style.display = 'block';
+                    }
+                    if (cachedSettings.receipt_footer && document.getElementById('rFooter')) {
+                        document.getElementById('rFooter').textContent = cachedSettings.receipt_footer;
+                    }
+                } catch(e) {}
+
+                // 1. Fetch Settings (for Store Name/Footer/Phone)
+                const settingsRes = await fetch('/api/settings', { headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
                 if(settingsRes.ok) {
                     const settings = await settingsRes.json();
                     if(settings.phone && document.getElementById('rPhone')) {
                         document.getElementById('rPhone').textContent = `Tel: ${settings.phone}`;
+                        document.getElementById('rPhone').style.display = 'block';
                     }
-                    if(settings.receipt_footer) document.getElementById('rFooter').textContent = settings.receipt_footer;
+                    if(settings.receipt_footer && document.getElementById('rFooter')) {
+                        document.getElementById('rFooter').textContent = settings.receipt_footer;
+                    }
                 }
 
                 // 2. Fetch Transaction
-                const res = await fetch(`/transactions/receipt/${id}`, { headers: { 'Authorization': `Bearer ${token}` } });
+                const res = await fetch(`/transactions/receipt/${id}`, { headers: token ? { 'Authorization': `Bearer ${token}` } : {} });
                 if(!res.ok) throw new Error("Transaction not found");
                 
                 const data = await res.json();
@@ -375,10 +390,16 @@
                 let cashierName = data.cashier_name || 'Staff';
                 document.getElementById('rCashier').textContent = cashierName;
                 
-                // Set branch address from transaction data based on assigned store
+                // Set branch address dynamically from transaction data
                 const branchDisplay = data.branch_name || data.store_location || '';
-                if(branchDisplay) {
-                    document.getElementById('rAddress').textContent = `Branch: ${branchDisplay}`;
+                const rAddress = document.getElementById('rAddress');
+                if(rAddress) {
+                    if (branchDisplay) {
+                        rAddress.textContent = `Branch: ${branchDisplay}`;
+                        rAddress.style.display = 'block';
+                    } else {
+                        rAddress.style.display = 'none';
+                    }
                 }
                 
                 if (data.type === 'RETURN') {
