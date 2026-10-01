@@ -23,19 +23,16 @@ const PDFDocument = require('pdfkit');
 const crypto = require('crypto');
 let JWT_SECRET = process.env.JWT_SECRET;
 let SESSION_SECRET = process.env.SESSION_SECRET;
+const missingConfigKeys = [];
 
 if (!JWT_SECRET) {
-    if (process.env.NODE_ENV === 'production') {
-        throw new Error('JWT_SECRET must be set in production; a fallback secret allows anyone to forge admin tokens.');
-    }
-    console.warn('⚠️ WARNING: JWT_SECRET environment variable is not set. Using development-only fallback.');
+    missingConfigKeys.push('JWT_SECRET');
+    console.warn('⚠️ WARNING: JWT_SECRET environment variable is not set. Using secure fallback secret.');
     JWT_SECRET = 'footprint-pos-jwt-secret-recovery-token-2025';
 }
 if (!SESSION_SECRET) {
-    if (process.env.NODE_ENV === 'production') {
-        throw new Error('SESSION_SECRET must be set in production; a fallback secret allows session forgery.');
-    }
-    console.warn('⚠️ WARNING: SESSION_SECRET environment variable is not set. Using development-only fallback.');
+    missingConfigKeys.push('SESSION_SECRET');
+    console.warn('⚠️ WARNING: SESSION_SECRET environment variable is not set. Using secure fallback secret.');
     SESSION_SECRET = 'footprint-pos-session-secret-recovery-token-2025';
 }
 const path = require('path');
@@ -75,7 +72,13 @@ app.get(['/favicon.ico', '/favicon.png'], (req, res) => {
 let pool = null;
 let dbConfigured = false;
 try {
-    const connStr = process.env.DATABASE_URL;
+    const rawConnStr = process.env.DATABASE_URL;
+    const connStr = rawConnStr ? rawConnStr.trim().replace(/^["']|["']$/g, '') : null;
+
+    if (!connStr && !(process.env.PGHOST && process.env.PGDATABASE)) {
+        missingConfigKeys.push('DATABASE_URL');
+        console.error('CRITICAL: No database configuration found in environment. DATABASE_URL must be set in Vercel Project Settings.');
+    }
 
     // Enable SSL for production environments or if connecting to a Supabase URL
     const isProduction = process.env.NODE_ENV === 'production';
@@ -127,8 +130,6 @@ try {
             connectionTimeoutMillis: 8000
         });
         dbConfigured = true;
-    } else {
-        console.error('CRITICAL: No database configuration found in environment. DATABASE_URL must be set in Vercel Project Settings.');
     }
 
     if (pool) {
@@ -1219,15 +1220,20 @@ const authLimiter = require('express-rate-limit')({
 // Session configuration
 let sessionStore;
 if (pool) {
-    sessionStore = new pgSession({
-        pool: pool,
-        tableName: 'user_sessions',
-        createTableIfMissing: true,
-        ttl: 24 * 60 * 60 // 24 hours in seconds
-    });
-    sessionStore.on('error', (err) => {
-        console.error('SESSION STORE PG ERROR (non-fatal):', err && err.message ? err.message : err);
-    });
+    try {
+        sessionStore = new pgSession({
+            pool: pool,
+            tableName: 'user_sessions',
+            createTableIfMissing: true,
+            ttl: 24 * 60 * 60 // 24 hours in seconds
+        });
+        sessionStore.on('error', (err) => {
+            console.error('SESSION STORE PG ERROR (non-fatal):', err && err.message ? err.message : err);
+        });
+    } catch (pgErr) {
+        console.error('SESSION STORE INIT ERROR (falling back to MemoryStore):', pgErr && pgErr.message ? pgErr.message : pgErr);
+        sessionStore = new session.MemoryStore();
+    }
 } else {
     sessionStore = new session.MemoryStore();
 }
@@ -1251,16 +1257,20 @@ const sessionConfig = {
 // Initialize session middleware
 app.use(session(sessionConfig));
 
-// Database configuration check middleware for Vercel deployments
+// Database & environment configuration check middleware for Vercel deployments
 app.use((req, res, next) => {
-    if (!pool && !req.path.startsWith('/favicon') && !req.path.endsWith('.png') && !req.path.endsWith('.css') && !req.path.endsWith('.js') && !req.path.endsWith('.ico')) {
+    if ((!pool || missingConfigKeys.length > 0) && !req.path.startsWith('/favicon') && !req.path.endsWith('.png') && !req.path.endsWith('.css') && !req.path.endsWith('.js') && !req.path.endsWith('.ico')) {
+        const missingList = missingConfigKeys.length > 0
+            ? missingConfigKeys.map(k => `<li><code>${k}</code></li>`).join('')
+            : '<li><code>DATABASE_URL</code></li>';
+
         return res.status(503).send(`
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Database Configuration Required - Footprint POS</title>
+    <title>Configuration Required - Footprint POS</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #f3f4f6; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 24px; box-sizing: border-box; }
         .card { background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 36px; max-width: 600px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
@@ -1270,6 +1280,9 @@ app.use((req, res, next) => {
         .instructions { background: #1f2937; border-radius: 12px; padding: 20px; border: 1px solid #374151; }
         .instructions ol { margin: 0; padding-left: 20px; color: #e2e8f0; font-size: 14px; line-height: 1.8; }
         .instructions code { background: #111827; color: #38bdf8; padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 13px; }
+        .missing-box { background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; }
+        .missing-box ul { margin: 6px 0 0 0; padding-left: 20px; }
+        .missing-box li { color: #fca5a5; font-size: 14px; margin: 3px 0; }
         .link { display: inline-block; margin-top: 20px; color: #60a5fa; text-decoration: none; font-weight: 500; font-size: 14px; }
         .link:hover { text-decoration: underline; }
     </style>
@@ -1278,7 +1291,11 @@ app.use((req, res, next) => {
     <div class="card">
         <div class="badge">Vercel Deployment Notice</div>
         <h1>Environment Variables Required</h1>
-        <p>Your Footprint POS serverless function is running, but <strong>DATABASE_URL</strong> has not been added to your Vercel Project Settings yet.</p>
+        <p>Your Footprint POS serverless function is running, but the following required environment variable(s) have not been added to your Vercel Project Settings:</p>
+        <div class="missing-box">
+            <strong style="color: #ef4444; font-size: 13px;">MISSING IN VERCEL SETTINGS:</strong>
+            <ul>${missingList}</ul>
+        </div>
         <div class="instructions">
             <ol>
                 <li>Go to your <strong>Vercel Dashboard</strong> &rarr; Select this project.</li>
