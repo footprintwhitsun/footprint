@@ -1433,8 +1433,7 @@ app.use((req, res, next) => {
 // Server-side Route Guard Middleware for HTML page endpoints (Defense-in-depth)
 const PAGE_ROLES = {
     CEO_ONLY: ['ceo', 'admin'],
-    // 'ceo' was missing from these two lists, so the account owner was bounced off every
-    // staff and management page (and the rejection destroyed their session).
+    LEADERSHIP: ['ceo', 'admin', 'manager', 'store_manager', 'company', 'business_client'],
     MANAGERS: ['ceo', 'admin', 'manager', 'store_manager'],
     STAFF_ALL: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'],
     COMPANY: ['company', 'business_client'],
@@ -1502,9 +1501,9 @@ app.get('/terms', (req, res) => {
 
 // CEO & Admin Portal
 app.get('/ceo-portal', guardPageRoute(PAGE_ROLES.CEO_ONLY, 'ceo-portal.html'));
-app.get('/tax-management', guardPageRoute(PAGE_ROLES.CEO_ONLY, 'tax-management.html'));
-app.get('/settings', guardPageRoute(PAGE_ROLES.CEO_ONLY, 'settings.html'));
-app.get('/locations', guardPageRoute(PAGE_ROLES.CEO_ONLY, 'locations.html'));
+app.get('/tax-management', guardPageRoute(PAGE_ROLES.LEADERSHIP, 'tax-management.html'));
+app.get('/settings', guardPageRoute(PAGE_ROLES.LEADERSHIP, 'settings.html'));
+app.get('/locations', guardPageRoute(PAGE_ROLES.LEADERSHIP, 'locations.html'));
 
 // Management & Executive Portals
 app.get('/dashboard', guardPageRoute(PAGE_ROLES.MANAGERS, 'dashboard.html'));
