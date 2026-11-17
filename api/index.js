@@ -13,7 +13,10 @@ module.exports = (req, res) => {
     if (initError) {
         res.statusCode = 500;
         res.setHeader('Content-Type', 'text/html; charset=utf-8');
-        const errMessage = (initError && initError.stack) ? initError.stack : String(initError);
+        const isProd = process.env.NODE_ENV === 'production';
+        const errMessage = isProd
+            ? 'Initialization failed. Check server logs for details.'
+            : ((initError && initError.stack) ? initError.stack : String(initError));
         const safeError = errMessage.replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
         return res.end(`<!DOCTYPE html>
@@ -21,7 +24,7 @@ module.exports = (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Initialization Error - Footprint POS</title>
+    <title>Server Initialization Error - OKWESIWA LTD</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #f3f4f6; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 24px; box-sizing: border-box; }
         .card { background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 36px; max-width: 650px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }

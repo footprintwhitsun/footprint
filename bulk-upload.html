@@ -3,60 +3,150 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="auth-guard.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Bulk Product Upload</title>
-    <link rel="icon" type="image/png" href="logo.png">
+    <title>Bulk Product Upload - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <style>
-        body { font-family: 'Segoe UI', sans-serif; padding: 40px; background: #f4f4f9; display: flex; justify-content: center; }
-        .container { width: 100%; max-width: 500px; background: white; padding: 30px; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1); }
-        h2 { color: #f59e0b; margin-top: 0; text-align: center; }
-        .description { color: #666; font-size: 14px; margin-bottom: 20px; text-align: center; }
-        .form-group { margin-bottom: 20px; }
-        label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
-        input[type="file"] { width: 100%; padding: 12px; border: 2px dashed #ddd; border-radius: 8px; background: #fafafa; cursor: pointer; }
-        input[type="file"]:hover { border-color: #f59e0b; background: #f0f4ff; }
-        button { background: #f59e0b; color: #000000; font-weight: bold; border: none; padding: 12px 20px; border-radius: 8px; cursor: pointer; width: 100%; font-size: 16px; font-weight: 600; transition: background 0.2s; }
-        button:hover { background: #2a3a7c; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
+        body { margin: 0; background: var(--color-bg, #f4f4f9); }
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { flex: 1; padding: 28px 24px; max-width: 760px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        .container { width: 100%; background: var(--color-surface, #ffffff); padding: 28px; border-radius: 12px; border: 1px solid var(--color-border, #e2e8f0); box-shadow: 0 4px 16px rgba(15,23,42,0.06); }
+        .container h2 { color: var(--color-primary, #273990); margin-top: 0; margin-bottom: 8px; }
+        .description { color: var(--color-text-muted, #64748b); font-size: 14px; margin-bottom: 20px; line-height: 1.6; }
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: var(--color-text, #1e293b); }
+        input[type="file"] { width: 100%; padding: 14px; border: 2px dashed var(--color-border-strong, #cbd5e1); border-radius: 8px; background: var(--color-surface-subtle, #f8fafc); cursor: pointer; box-sizing: border-box; }
+        input[type="file"]:hover { border-color: #f59e0b; }
+        .actions-row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 6px; }
+        .btn-upload { background: #273990; color: #ffffff; border: none; padding: 12px 22px; border-radius: 8px; cursor: pointer; font-size: 15px; font-weight: 600; flex: 1; min-width: 180px; }
+        .btn-upload:hover { opacity: 0.92; }
+        .btn-upload:disabled { background: #94a3b8; cursor: not-allowed; }
+        .btn-sample { background: #f9a51a; color: #0f172a; border: none; padding: 12px 18px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 700; }
+        .btn-sample:hover { opacity: 0.92; }
         #status { margin-top: 20px; padding: 15px; border-radius: 8px; display: none; font-size: 14px; line-height: 1.5; }
         .success { background: #e8f5e9; color: #27ae60; border: 1px solid #c8e6c9; }
         .error { background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; }
-        .back-link { display: inline-flex; align-items: center; gap: 8px; color: #64748b; background: white; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: none; }
-        .back-link:hover { color: var(--primary-color, #f59e0b); transform: translateX(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
     </style>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" defer crossorigin="anonymous"></script>
     <script src="currency.js"></script>
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
     <link rel="stylesheet" href="sidebar.css">
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
 </head>
 <body>
-    <div class="container">
-        <h2>📦 Bulk Stock Upload</h2>
-        <p class="description">Upload an Excel file (.xlsx) with columns:<br><strong>Product Name, Category, Cost, Markup, Price, Current Stock, Batch Number, Selling Unit, Packaging Unit, Items per Package, Reorder Level</strong><br><small style="color:#64748b;">(Expiry Date is optional and not required for hardware items)</small></p>
-        
-        <div class="form-group">
-            <label>Select Excel File</label>
-            <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
         </div>
-        
-        <button onclick="uploadFile()">Upload Products</button>
-        
-        <div id="status"></div>
-        <a href="/dashboard" class="back-link">← Back to Dashboard</a>
-    </div>
+        <nav class="nav-links"></nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap">
+            <div class="container">
+                <h2>Bulk Stock Import</h2>
+                <p class="description">Download the sample Excel template first to avoid column or formatting errors, then upload your completed <code>.xlsx</code>, <code>.xls</code>, or <code>.csv</code> file.<br><strong>Required columns:</strong> Product Name, Category, Cost, Markup, Price, Current Stock, Batch Number, Selling Unit, Packaging Unit, Items per Package, Reorder Level <small>(Expiry Date is optional)</small>.</p>
+
+                <div class="form-group">
+                    <label for="fileInput">Select Excel / CSV File</label>
+                    <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
+                </div>
+
+                <div class="actions-row">
+                    <button type="button" class="btn-sample" onclick="downloadSampleTemplate()">Download Sample Template (.xlsx)</button>
+                    <button type="button" class="btn-upload" id="uploadBtn" onclick="uploadFile()">Upload Products</button>
+                </div>
+
+                <div id="status"></div>
+            </div>
+        </div>
+        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted,#64748b);font-size:13px;border-top:1px solid var(--color-border,#e2e8f0);">© 2026 OKWESIWA LTD</footer>
+    </main>
+</div>
 
     <script>
+        function downloadSampleTemplate() {
+            const sampleRows = [
+                {
+                    "Product Name": "Portland Cement (50kg Bag)",
+                    "Category": "Building Materials",
+                    "Cost": 85,
+                    "Markup": "29%",
+                    "Price": 110,
+                    "Current Stock": 200,
+                    "Batch Number": "LOT-CEM-01",
+                    "Expiry Date": "",
+                    "Selling Unit": "Bag",
+                    "Packaging Unit": "Pallet",
+                    "Items per Package": 40,
+                    "Reorder Level": 50
+                },
+                {
+                    "Product Name": "High Tensile Steel Rod 12mm",
+                    "Category": "Building Materials",
+                    "Cost": 60,
+                    "Markup": "30%",
+                    "Price": 78,
+                    "Current Stock": 150,
+                    "Batch Number": "LOT-ROD-12",
+                    "Expiry Date": "",
+                    "Selling Unit": "Piece",
+                    "Packaging Unit": "Bundle",
+                    "Items per Package": 10,
+                    "Reorder Level": 30
+                },
+                {
+                    "Product Name": "Acrylic Emulsion Paint White (20L)",
+                    "Category": "Paints & Finishes",
+                    "Cost": 280,
+                    "Markup": "28%",
+                    "Price": 360,
+                    "Current Stock": 40,
+                    "Batch Number": "LOT-PNT-20",
+                    "Expiry Date": "",
+                    "Selling Unit": "Bucket",
+                    "Packaging Unit": "Carton",
+                    "Items per Package": 1,
+                    "Reorder Level": 10
+                }
+            ];
+
+            if (window.XLSX) {
+                const ws = window.XLSX.utils.json_to_sheet(sampleRows);
+                ws['!cols'] = Object.keys(sampleRows[0]).map(k => ({ wch: Math.max(16, k.length + 4) }));
+                const wb = window.XLSX.utils.book_new();
+                window.XLSX.utils.book_append_sheet(wb, ws, 'Sample_Products');
+                window.XLSX.writeFile(wb, 'okwesiwa-bulk-import-sample.xlsx');
+                return;
+            }
+            const headers = Object.keys(sampleRows[0]);
+            const csv = [headers, ...sampleRows.map(r => headers.map(h => `"${String(r[h] ?? '').replace(/"/g, '""')}"`))]
+                .map(row => row.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'okwesiwa-bulk-import-sample.csv';
+            a.click();
+        }
+
         async function uploadFile() {
             const fileInput = document.getElementById('fileInput');
             const statusDiv = document.getElementById('status');
-            const btn = document.querySelector('button');
+            const btn = document.getElementById('uploadBtn');
             
             if (!fileInput.files[0]) {
                 alert('Please select a file first');
@@ -83,19 +173,19 @@
                 statusDiv.style.display = 'block';
                 if (data.success) {
                     statusDiv.className = 'success';
-                    statusDiv.innerHTML = `<strong>✅ Upload Complete!</strong><br>Successfully Added: ${data.results.success}<br>Failed: ${data.results.failed}`;
+                    statusDiv.innerHTML = `<strong>Upload complete.</strong><br>Successfully Added: ${data.results.success}<br>Failed: ${data.results.failed}`;
                     if (data.results.errors.length > 0) {
                         const escapeHtml = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                         statusDiv.innerHTML += '<br><br><strong>Errors:</strong><br>' + data.results.errors.map(escapeHtml).join('<br>');
                     }
                 } else {
                     statusDiv.className = 'error';
-                    statusDiv.innerText = '❌ ' + (data.message || 'Upload failed');
+                    statusDiv.innerText = (data.message || 'Upload failed');
                 }
             } catch (err) {
                 statusDiv.style.display = 'block';
                 statusDiv.className = 'error';
-                statusDiv.innerText = '❌ System Error: ' + err.message;
+                statusDiv.innerText = 'System error: ' + err.message;
             } finally {
                 btn.disabled = false;
                 btn.innerText = 'Upload Products';

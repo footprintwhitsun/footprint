@@ -3,17 +3,17 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="auth-guard.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footprint | Negative Stock Analysis</title>
-    <link rel="icon" type="image/png" href="logo.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>OKWESIWA LTD | Negative Stock Analysis</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <style>
         :root {
             --primary: #273990; --accent: #f9a51a;
@@ -24,7 +24,12 @@
             --danger: #c62828;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
-        body { background: var(--bg); color: var(--text); padding: 20px; }
+        body { background: var(--bg); color: var(--text); }
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { padding: 24px; max-width: 1400px; width: 100%; margin: 0 auto; }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
         
         .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .header h1 { color: var(--primary); font-size: 24px; }
@@ -74,10 +79,22 @@
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
     <link rel="stylesheet" href="sidebar.css">
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
 </head>
 <body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
+        </div>
+        <nav class="nav-links"></nav>
+    </aside>
 
-    <div class="header">
+    <main class="main-content">
+        <div class="page-wrap">
+            <div class="header">
         <div>
             <a href="/inventory" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Inventory</a>
             <h1>Negative Stock Management</h1>
@@ -125,6 +142,9 @@
             </table>
         </div>
     </div>
+        </div>
+    </main>
+</div>
 
     <script>
         async function fetchAnalysis() {
@@ -150,6 +170,8 @@
         }
 
         function renderData(data) {
+            data = data || {};
+            data.summary = data.summary || {};
             // Update Summary
             document.getElementById('totalItems').textContent = data.summary.negative_items || 0;
             document.getElementById('totalUnits').textContent = data.summary.total_units_owed || 0;
@@ -169,10 +191,10 @@
             list.innerHTML = data.items.map(item => `
                 <tr>
                     <td>
-                        <div style="font-weight: 600;">${item.name}</div>
-                        <div style="font-size: 11px; color: #888;">${item.barcode}</div>
+                        <div style="font-weight: 600;">${OkwUI.escapeHtml(item.name)}</div>
+                        <div style="font-size: 11px; color: #888;">${OkwUI.escapeHtml(item.barcode)}</div>
                     </td>
-                    <td>${item.category || 'General'}</td>
+                    <td>${OkwUI.escapeHtml(item.category || 'General')}</td>
                     <td><span class="badge badge-danger">${item.stock}</span></td>
                     <td class="units-owed">${item.units_owed}</td>
                     <td>₵${parseFloat(item.cost_price || 0).toFixed(2)}</td>

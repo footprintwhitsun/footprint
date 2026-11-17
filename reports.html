@@ -1,752 +1,1075 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <script src="auth-guard.js"></script>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footprint | Reports</title>
-    <link rel="icon" type="image/png" href="logo.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="sidebar.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js" defer crossorigin="anonymous"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer crossorigin="anonymous"></script>
+    <title>Reports - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" defer crossorigin="anonymous"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" crossorigin="anonymous"></script>
+    <script src="/auth-guard.js"></script>
+    <script src="/currency.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
     <style>
-        :root { 
-            --primary-color: #273990; --accent-color: #f9a51a; 
-            --secondary-color: #1c2b70; 
-            --accent-color: #f9a51a; 
-            --text-color: #202223; 
-            --text-secondary: #6d7175; 
-            --gray-light: #f6f6f7; 
-            --border-color: #e1e3e5; 
-            --sidebar-width: 260px; 
-            --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05); 
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
-        body { background: var(--gray-light); display: flex; flex-direction: column; min-height: 100vh; color: var(--text-color); }
-        .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 28px 36px; }
-        
-        .card { background: white; padding: 22px 24px; border-radius: 8px; border: 1px solid var(--border-color); box-shadow: var(--shadow-card); }
-        table { width: 100%; border-collapse: collapse; }
-        th { text-align: left; padding: 11px 14px; color: var(--text-secondary); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border-color); background: #fafbfb; }
-        td { padding: 12px 14px; border-bottom: 1px solid #f1f2f3; color: var(--text-color); font-size: 13.5px; }
-
-        /* Footer */
-        footer {
-            margin-left: var(--sidebar-width);
-            padding: 10px;
-            text-align: center;
-            color: white;
-            font-size: 12px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        }
-
-        /* Tab System */
-        .tab-content { display: none; animation: fadeIn 0.3s; }
-        .tab-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Menu Grid */
-        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 20px; margin-top: 30px; }
-        .menu-card {
-            background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            text-align: center; cursor: pointer; transition: all 0.3s ease; border: 1px solid transparent;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-        }
-        .menu-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); border-color: rgba(26, 42, 108, 0.1); }
-        .menu-card i { font-size: 40px; color: var(--primary-color); margin-bottom: 20px; transition: 0.3s; }
-        .menu-card:hover i { transform: scale(1.1); color: var(--secondary-color); }
-        .menu-card h3 { font-size: 18px; font-weight: 600; margin-bottom: 10px; color: #333; }
-        .menu-card p { font-size: 13px; color: #777; line-height: 1.5; }
-
-        /* Back Link */
-        .back-link { display: inline-flex; align-items: center; gap: 8px; color: #64748b; background: white; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: none; }
-        .back-link:hover { color: var(--primary-color, #f59e0b); transform: translateX(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-
-        /* Pagination */
-        .pagination-controls { display: flex; justify-content: flex-end; align-items: center; gap: 15px; margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee; }
-        .btn-page { padding: 8px 16px; border: 1px solid #ddd; background: white; border-radius: 6px; cursor: pointer; transition: 0.2s; font-size: 14px; }
-        .btn-page:hover:not(:disabled) { background: #f5f5f5; border-color: #ccc; }
-        .btn-page:disabled { opacity: 0.5; cursor: not-allowed; }
-        .page-info { font-size: 14px; color: #666; }
-        .limit-select { padding: 8px; border: 1px solid #ddd; border-radius: 6px; outline: none; font-size: 14px; cursor: pointer; }
-
-        /* Mobile Responsive Styles */
-        .mobile-menu-btn {
-            display: none;
-            position: fixed;
-            top: 15px;
-            left: 15px;
-            z-index: 1001;
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-        }
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
-
-        @media (max-width: 768px) {
-            .sidebar { transform: translateX(-100%); z-index: 1000; transition: transform 0.3s ease; }
-            .sidebar.active { transform: translateX(0); }
-            .main-content { margin-left: 0; padding: 20px; padding-top: 70px; }
-            .mobile-menu-btn { display: block; }
-            .overlay.active { display: block; }
-            .menu-grid { grid-template-columns: 1fr; }
-            .card { overflow-x: auto; }
-            footer { margin-left: 0; }
-
-            /* Shift card-table */
-            .shift-table thead { display: none; }
-            .shift-table tbody tr {
-                display: block;
-                border: 1px solid #e2e8f0;
-                border-radius: 10px;
-                margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-                background: white;
-            }
-            .shift-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
-            .shift-table td {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 9px 14px;
-                border-bottom: 1px solid #f1f5f9;
-                font-size: 13px;
-                text-align: right;
-            }
-            .shift-table td:last-child { border-bottom: none; }
-            .shift-table td::before {
-                content: attr(data-label);
-                font-weight: 600;
-                font-size: 11px;
-                color: #888;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                flex-shrink: 0;
-                min-width: 100px;
-                margin-right: 10px;
-                text-align: left;
-            }
-
-            /* Transaction card-table */
-            .transaction-table thead { display: none; }
-            .transaction-table tbody tr {
-                display: block;
-                border: 1px solid #e2e8f0;
-                border-radius: 10px;
-                margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
-                background: white;
-            }
-            .transaction-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
-            .transaction-table td {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 9px 14px;
-                border-bottom: 1px solid #f1f5f9;
-                font-size: 13px;
-                text-align: right;
-            }
-            .transaction-table td:last-child { border-bottom: none; }
-            .transaction-table td::before {
-                content: attr(data-label);
-                font-weight: 600;
-                font-size: 11px;
-                color: #888;
-                text-transform: uppercase;
-                letter-spacing: 0.5px;
-                flex-shrink: 0;
-                min-width: 100px;
-                margin-right: 10px;
-                text-align: left;
-            }
-        }
-    .user-profile-row { display: flex; align-items: center; gap: 10px; }
-        
-        .sidebar-logout-btn { margin-left: auto; flex-shrink: 0; background: none; border: none; color: rgba(255,255,255,0.65); cursor: pointer; padding: 7px; border-radius: 6px; font-size: 16px; line-height: 1; transition: color 0.2s ease, background 0.2s ease; } .sidebar-logout-btn:hover { color: white; background: rgba(220,53,69,0.6); }
-        </style>
-    <script src="currency.js"></script>
-    <script src="telemetry-guard.js"></script>
-    <script src="instant-nav.js"></script>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { flex: 1; padding: 24px; max-width: 1360px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
 </head>
 <body>
-    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-    <div class="overlay" onclick="toggleSidebar()"></div>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD"></div>
+        <nav class="nav-links"></nav>
+    </aside>
 
-    <div class="sidebar">
-        <div class="brand" style="display: flex; flex-direction: column; align-items: center;">
-            <img src="logo.png" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
-            
-        </div>
-        <div class="nav-links">
-            <a href="dashboard" class="nav-item"><i class="fas fa-home"></i> Dashboard</a>
-            
-            <div class="nav-section">Sales & Finance</div>
-            <a href="sales-dashboard" class="nav-item"><i class="fas fa-chart-pie"></i> Sales</a>
-            <a href="profitability" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Profitability</a>
-            <a href="promotions" class="nav-item"><i class="fas fa-tags"></i> Promotions</a>
+    <main class="main-content">
+        <div class="page-wrap" id="hub"></div>
+        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA LTD</footer>
+    </main>
+</div>
 
-            <div class="nav-section">Operations</div>
-            <a href="pos-register" class="nav-item"><i class="fas fa-users"></i> Staff</a>
-            <a href="credit-customers" class="nav-item"><i class="fas fa-address-book"></i> Credit</a>
-            <a href="inventory" class="nav-item"><i class="fas fa-warehouse"></i> Inventory</a>
-            <a href="reports" class="nav-item active"><i class="fas fa-chart-line"></i> Reports</a>
-            <a href="settings" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
-        </div>
-        <div class="user-profile">
-            <div class="user-profile-row">
-                <div class="user-avatar"><i class="fas fa-user"></i></div>
-            <div class="user-info">
-                <div style="font-weight: bold;" id="userName">...</div>
-                <div style="font-size: 12px; opacity: 0.7;" id="userRole">...</div>
-            </div>
-            </div>
-            <button class="sidebar-logout-btn" onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
-        </div>
-    </div>
+<script>
+(function () {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const esc = OkwUI.escapeHtml;
+    const fmt = (n) => (typeof formatCurrency === 'function' ? formatCurrency(n) : 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    const monthStart = () => new Date().toISOString().slice(0, 8) + '01';
+    const todayStr = () => new Date().toISOString().slice(0, 10);
+    const cssVar = (name, fallback) => (getComputedStyle(document.documentElement).getPropertyValue(name) || '').trim() || fallback;
 
-    <div class="main-content">
-        <!-- 1. OVERVIEW TAB -->
-        <div id="tab-overview" class="tab-content active">
-            <h2 style="margin-bottom: 30px;">Sales Reports</h2>
-            <div class="menu-grid">
-                <div class="menu-card" onclick="switchTab('shifts')">
-                    <i class="fas fa-clock"></i>
-                    <h3>Shift Reports</h3>
-                    <p>View daily shift summaries, cash handling, and staff performance.</p>
-                </div>
-                <div class="menu-card" onclick="switchTab('transactions')">
-                    <i class="fas fa-receipt"></i>
-                    <h3>Transaction History</h3>
-                    <p>Browse detailed sales history, filter by cashier, and reprint receipts.</p>
-                </div>
-            </div>
-        </div>
+    /* ====================================================================
+       Section 1 - Overview: charts and totals from /api/reports/all
+       (replaces the old Sales dashboard and Profitability pages)
+       ==================================================================== */
+    let overviewCharts = [];
+    function destroyOverviewCharts() {
+        overviewCharts.forEach(c => { try { c.destroy(); } catch (_) { } });
+        overviewCharts = [];
+    }
 
-        <!-- 2. SHIFT REPORTS TAB -->
-        <div id="tab-shifts" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Reports</div>
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center;">
-                    <h3>Shift Reports</h3>
-                    <input type="text" id="shiftSearch" placeholder="Search cashier..." style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; outline: none;" onkeyup="filterShifts()">
-                </div>
-                <table class="shift-table" style="margin-top: 20px;" id="shiftReportTable">
-                    <thead>
-                        <tr>
-                            <th>Staff</th>
-                            <th>Start Time</th>
-                            <th>End Time</th>
-                            <th>Start Cash</th>
-                            <th>End Cash</th>
-                            <th>Total Sales</th>
-                            <th>Status</th>
-                            <th>Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="shiftTable"></tbody>
-                </table>
-                <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
-                    <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                    <select id="shiftRowsPerPage" onchange="changeShiftRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
-                        <option value="10">10</option>
-                        <option value="25">25</option>
-                        <option value="100">100</option>
-                    </select>
-                    <span id="shiftPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                    <button onclick="changeShiftPage(-1)" id="btnShiftPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                    <button onclick="changeShiftPage(1)" id="btnShiftNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
-                </div>
-            </div>
-        </div>
+    function mountOverview(panel, ctx) {
+        destroyOverviewCharts();
 
-        <!-- 3. TRANSACTION HISTORY TAB -->
-        <div id="tab-transactions" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Reports</div>
-            <div class="card">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h3>Transaction History</h3>
-                    <div style="display: flex; gap: 10px;">
-                        <input type="date" id="dateFilter" onchange="filterTransactions()" style="padding: 8px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
-                        <button onclick="clearDateFilter()" style="padding: 8px 12px; border: 1px solid #ddd; border-radius: 6px; background: white; cursor: pointer;">Clear</button>
+        let range = { from: monthStart(), to: todayStr() };
+        let branch = 'All Branches';
+
+        ctx.toolbar.innerHTML = `
+            <select id="ov-branch" class="okw-select" aria-label="Branch"><option value="All Branches">All Branches</option></select>
+            <div id="ov-date-picker"></div>`;
+        panel.innerHTML = `
+            <div class="okw-kpi-row" id="ov-kpis"></div>
+            <div id="ov-body"><div class="okw-empty">Loading...</div></div>
+            <div class="okw-card" id="ov-ytd-card" style="margin-top:20px;">
+                <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;">
+                    <div>
+                        <h2 class="okw-chart-title" style="margin:0;">Year-to-Date (YTD) Product Performance</h2>
+                        <div id="ov-ytd-summary" style="font-size:13px;color:var(--color-text-muted);margin-top:4px;">Loading YTD sales...</div>
+                    </div>
+                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <input id="ov-ytd-search" class="okw-input" type="search" placeholder="Search product or barcode..." style="min-width:220px;">
+                        <button id="ov-ytd-export" class="okw-btn okw-btn-secondary" type="button">Export CSV</button>
                     </div>
                 </div>
-                <table class="transaction-table">
-                <thead>
-                    <tr>
-                        <th>Date</th>
-                        <th>Transaction ID</th>
-                        <th>Items</th>
-                        <th>Total</th>
-                        <th>Cashier</th>
-                    </tr>
-                </thead>
-                <tbody id="reportTable">
-                    <!-- JS will populate -->
-                </tbody>
-            </table>
+                <div id="ov-ytd-table"><div class="okw-empty">Loading...</div></div>
+            </div>`;
 
-                <!-- Pagination Controls -->
-                <div class="pagination-controls">
-                    <div style="display: flex; align-items: center; gap: 10px;">
-                        <span style="font-size: 14px; color: #666;">Rows per page:</span>
-                        <select id="rowsPerPage" class="limit-select" onchange="changeRowsPerPage()">
-                            <option value="10">10</option>
-                            <option value="25">25</option>
-                            <option value="100">100</option>
-                        </select>
-                    </div>
-                    <span id="pageInfo" class="page-info">Page 1 of 1</span>
-                    <button class="btn-page" id="btnPrev" onclick="changePage(-1)" disabled><i class="fas fa-chevron-left"></i></button>
-                    <button class="btn-page" id="btnNext" onclick="changePage(1)" disabled><i class="fas fa-chevron-right"></i></button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <footer>
-        © 2026 Footprint
-    </footer>
-
-    <script>
-        function toggleSidebar() {
-            document.querySelector('.sidebar').classList.toggle('active');
-            document.querySelector('.overlay').classList.toggle('active');
-        }
-
-        let allTransactions = [];
-        let filteredTransactions = [];
-        let allShifts = [];
-        let filteredShifts = [];
-        let shiftPage = 1;
-        let shiftRows = 10;
-        let currentPage = 1;
-        let rowsPerPage = 10;
-
-        document.addEventListener('DOMContentLoaded', async () => {
-            // Handle URL parameters for tabs
-            const urlParams = new URLSearchParams(window.location.search);
-            const tab = urlParams.get('tab');
-            if (tab) {
-                switchTab(tab);
-            }
-
-            // Update User Info from Session
-            try {
-                const userStr = localStorage.getItem('currentUser');
-                if (userStr) {
-                    const user = JSON.parse(userStr);
-                    if(document.getElementById('userName')) document.getElementById('userName').textContent = user.name || user.fullName || 'User';
-                    if(document.getElementById('userRole')) {
-                        const _roleLabel = user.role === 'manager' ? 'Store Manager' : (user.role === 'admin' ? 'Administrator' : (user.role || 'Staff'));
-                        const _branchLabel = user.store_location ? ` · ${user.store_location}` : '';
-                        document.getElementById('userRole').textContent = _roleLabel + _branchLabel;
-                    }
-                }
-            } catch (e) { console.error(e); }
-
-            // 1. Load Shifts
-            try {
-                const token = localStorage.getItem('authToken');
-                const res = await fetch('/api/shifts/history', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+        const branchSel = ctx.toolbar.querySelector('#ov-branch');
+        fetch('/api/branches', { headers, credentials: 'include' })
+            .then(r => (r.ok ? r.json() : []))
+            .then(list => {
+                (Array.isArray(list) ? list : []).forEach(b => {
+                    if (!b.name) return;
+                    const o = document.createElement('option');
+                    o.value = b.name; o.textContent = b.name;
+                    branchSel.appendChild(o);
                 });
-                if (res.ok) {
-                    allShifts = await res.json();
-                    filteredShifts = [...allShifts];
-                    renderShiftTable();
-                }
-            } catch (e) { console.error("Error loading shifts", e); }
+            }).catch(() => { });
+        branchSel.addEventListener('change', () => { branch = branchSel.value; load(); });
+        OkwUI.dateRangePicker('#ov-date-picker', (r) => { range = r; load(); });
 
-            // 2. Load Transactions (From DB instead of localStorage)
+        async function load() {
+            const body = panel.querySelector('#ov-body');
+            if (!body) return;
+            const qs = new URLSearchParams({ from: range.from, to: range.to });
+            if (branch !== 'All Branches') qs.set('branch', branch);
+            let d;
             try {
-                const token = localStorage.getItem('authToken');
-                
-                // Determine endpoint based on user role (Cashiers see only their own)
-                let endpoint = '/transactions/all';
-                const userStr = localStorage.getItem('currentUser');
-                if (userStr) {
-                    const user = JSON.parse(userStr);
-                    if (user.role !== 'admin' && user.role !== 'manager') {
-                        endpoint = '/transactions/me';
-                    }
-                }
-
-                const res = await fetch(endpoint, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    allTransactions = await res.json();
-                    filteredTransactions = [...allTransactions];
-                    renderTransactions();
-                }
-            } catch (e) { console.error("Error loading transactions", e); }
-        });
-
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab-' + tabId).classList.add('active');
-        }
-
-        function renderTransactions() {
-            const tbody = document.getElementById('reportTable');
-            tbody.innerHTML = '';
-            
-            if (filteredTransactions.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;padding:20px;">No transactions found</td></tr>';
-                updatePaginationInfo();
+                const res = await fetch(`/api/reports/all?${qs}`, { headers, credentials: 'include' });
+                if (!res.ok) throw new Error('Failed to load the overview');
+                d = await res.json();
+                OkwUI.warnIfPartial(d);
+            } catch (err) {
+                OkwUI.toast(err.message || 'Failed to load the overview', 'danger');
+                body.innerHTML = '<div class="okw-empty">The overview could not be loaded.</div>';
                 return;
             }
 
-            // Pagination Logic
-            const start = (currentPage - 1) * rowsPerPage;
-            const end = start + rowsPerPage;
-            const paginatedItems = filteredTransactions.slice(start, end);
+            const p = d.profitAndLoss || {};
+            const daily = d.dailySummary || [];
+            const receipts = daily.reduce((s, r) => s + Number(r.receipts || 0), 0);
+            const margin = Number(p.sales) > 0 ? (Number(p.gross_profit || 0) / Number(p.sales)) * 100 : 0;
+            const bestProduct = (d.fastMovers || []).slice().sort((a, b) => Number(b.revenue || 0) - Number(a.revenue || 0))[0];
+            const topCashier = (d.salesByTeller || []).slice().sort((a, b) => Number(b.sales || 0) - Number(a.sales || 0))[0];
+            const topCashierName = topCashier ? String(topCashier.teller || '').replace(/\s*\(@[^)]*\)\s*/g, '').trim() : 'None yet';
+            panel.querySelector('#ov-kpis').innerHTML = [
+                OkwUI.kpiCard({ label: 'Sales', value: fmt(p.sales), subtext: `${receipts} receipts`, tone: 'primary' }),
+                OkwUI.kpiCard({ label: 'Gross profit', value: fmt(p.gross_profit), subtext: `${margin.toFixed(1)}% gross margin`, tone: 'info' }),
+                OkwUI.kpiCard({ label: 'Expenses', value: fmt(p.expenses), tone: 'warning' }),
+                OkwUI.kpiCard({ label: 'Net profit', value: fmt(p.net_profit), subtext: Number(p.net_profit) < 0 ? 'Loss for this period' : '', tone: Number(p.net_profit) < 0 ? 'danger' : 'success' }),
+                OkwUI.kpiCard({ label: 'Best product', value: bestProduct ? bestProduct.name : 'None yet', subtext: bestProduct ? fmt(bestProduct.revenue) + ' revenue' : '', tone: 'primary' }),
+                OkwUI.kpiCard({ label: 'Top cashier', value: topCashierName || 'None yet', subtext: topCashier ? fmt(topCashier.sales) + ' in sales' : '', tone: 'primary' })
+            ].join('');
 
-            paginatedItems.forEach(t => {
-                const date = new Date(t.created_at || t.date).toLocaleString();
-                const items = t.items || [];
-                const itemCount = items.reduce((sum, i) => sum + i.qty, 0);
-                const total = parseFloat(t.total_amount || t.total || 0);
-                
-                tbody.innerHTML += `
-                    <tr>
-                        <td data-label="Date">${date}</td>
-                        <td data-label="Transaction ID">#${(t.receipt_number || t.id).slice(-8)}</td>
-                        <td data-label="Items">${itemCount} items</td>
-                        <td data-label="Total">${formatCurrency(total)}</td>
-                        <td data-label="Cashier">${t.cashier_name || t.cashier || 'Teller'}</td>
-                    </tr>
-                `;
-            });
-            
-            updatePaginationInfo();
-        }
+            destroyOverviewCharts();
 
-        function updatePaginationInfo() {
-            const totalItems = filteredTransactions.length;
-            const totalPages = Math.ceil(totalItems / rowsPerPage) || 1;
-            
-            document.getElementById('pageInfo').textContent = `Page ${currentPage} of ${totalPages} (${totalItems} items)`;
-            document.getElementById('btnPrev').disabled = currentPage === 1;
-            document.getElementById('btnNext').disabled = currentPage === totalPages;
-        }
-
-        function changePage(delta) {
-            currentPage += delta;
-            renderTransactions();
-        }
-
-        function changeRowsPerPage() {
-            rowsPerPage = parseInt(document.getElementById('rowsPerPage').value);
-            currentPage = 1;
-            renderTransactions();
-        }
-
-        function filterTransactions() {
-            const selectedDate = document.getElementById('dateFilter').value;
-            if (!selectedDate) {
-                filteredTransactions = [...allTransactions];
-            } else {
-                filteredTransactions = allTransactions.filter(t => {
-                    const transactionDate = new Date(t.created_at || t.date);
-                    const transactionDateString = transactionDate.toISOString().split('T')[0];
-                    return transactionDateString === selectedDate;
-                });
+            if (!daily.length) {
+                body.innerHTML = '<div class="okw-empty">No sales in this period.</div>';
+                return;
             }
-            currentPage = 1;
-            renderTransactions();
-        }
-
-        function clearDateFilter() {
-            document.getElementById('dateFilter').value = '';
-            filterTransactions();
-        }
-
-        function renderShiftTable() {
-            const tbody = document.getElementById('shiftTable');
-            tbody.innerHTML = '';
-
-            const start = (shiftPage - 1) * shiftRows;
-            const end = start + shiftRows;
-            const pageData = filteredShifts.slice(start, end);
-
-            if (pageData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:20px;">No shifts found</td></tr>';
-            } else {
-                pageData.forEach((s) => {
-                    // Find original index for report generation
-                    const originalIndex = allShifts.findIndex(shift => shift.id === s.id);
-                    const start = new Date(s.start_time).toLocaleString();
-                    const end = s.end_time ? new Date(s.end_time).toLocaleString() : '-';
-                    const statusStyle = s.status === 'open' ? 'color:green' : 'color:#666';
-                    
-                    tbody.innerHTML += `
-                        <tr>
-                            <td data-label="Staff">${s.user_name || 'Unknown'}</td>
-                            <td data-label="Start Time">${start}</td>
-                            <td data-label="End Time">${end}</td>
-                            <td data-label="Start Cash">${formatCurrency(s.start_cash)}</td>
-                            <td data-label="End Cash">${s.end_cash ? formatCurrency(s.end_cash) : '-'}</td>
-                            <td data-label="Total Sales">${formatCurrency(s.total_sales)}</td>
-                            <td data-label="Status" style="font-weight:bold; text-transform:uppercase; ${statusStyle}">${s.status}</td>
-                            <td data-label="Action">
-                                <button onclick="generateShiftReport(${originalIndex})" title="Download Detailed Report" style="padding: 6px 12px; background: var(--primary-color); color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                    <i class="fas fa-file-download"></i>
-                                </button>
-                            </td>
-                        </tr>
-                    `;
-                });
+            if (typeof Chart === 'undefined') {
+                body.innerHTML = '<div class="okw-empty">Charts could not load. Check the internet connection and refresh.</div>';
+                return;
             }
-            updateShiftPagination();
-        }
 
-        function filterShifts() {
-            const input = document.getElementById('shiftSearch');
-            const filter = input.value.toLowerCase();
-            
-            filteredShifts = allShifts.filter(s => {
-                const staffName = (s.user_name || 'Unknown').toLowerCase();
-                const status = (s.status || '').toLowerCase();
-                return staffName.includes(filter) || status.includes(filter);
+            body.innerHTML = `
+                <div class="okw-chart-grid">
+                    <div class="okw-card"><h2 class="okw-chart-title">Sales and profit by day</h2><div class="okw-chart-box"><canvas id="ov-trend"></canvas></div></div>
+                    <div class="okw-card"><h2 class="okw-chart-title">Payment methods</h2><div class="okw-chart-box"><canvas id="ov-methods"></canvas></div></div>
+                    <div class="okw-card"><h2 class="okw-chart-title">Top 5 products by revenue</h2><div class="okw-chart-box"><canvas id="ov-top"></canvas></div></div>
+                    <div class="okw-card"><h2 class="okw-chart-title">Revenue, cost and profit</h2><div class="okw-chart-box"><canvas id="ov-pnl"></canvas></div></div>
+                </div>`;
+
+            const primary = cssVar('--color-primary', '#273990');
+            const accent = cssVar('--color-accent', '#F9A51A');
+            const success = cssVar('--color-success', '#15803D');
+            const info = cssVar('--color-info', '#0369A1');
+            const danger = cssVar('--color-danger', '#B91C1C');
+            const warning = cssVar('--color-warning', '#B45309');
+            const muted = cssVar('--color-text-muted', '#6B7280');
+            const grid = cssVar('--color-border', '#E2E8F0');
+            Chart.defaults.color = muted;
+            Chart.defaults.font.family = cssVar('--font-sans', 'Inter, sans-serif');
+            const baseOpts = { responsive: true, maintainAspectRatio: false };
+            const scales = { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: grid } } };
+            const make = (id, cfg) => { const c = new Chart(body.querySelector('#' + id), cfg); overviewCharts.push(c); };
+
+            make('ov-trend', {
+                type: 'line',
+                data: {
+                    labels: daily.map(r => String(r.day).slice(0, 10)),
+                    datasets: [
+                        { label: 'Sales', data: daily.map(r => Number(r.sales || 0)), borderColor: primary, backgroundColor: primary, tension: 0.3, pointRadius: 2 },
+                        { label: 'Profit', data: daily.map(r => Number(r.profit || 0)), borderColor: success, backgroundColor: success, tension: 0.3, pointRadius: 2 }
+                    ]
+                },
+                options: { ...baseOpts, scales }
             });
-            
-            shiftPage = 1;
-            renderShiftTable();
+
+            const m = d.salesByPaymentMethod || [];
+            const sum = (k) => m.reduce((s, r) => s + Number(r[k] || 0), 0);
+            const methodRows = [['Cash', sum('cash'), primary], ['Mobile money', sum('momo'), accent], ['Card', sum('card'), info], ['Bank / cheque', sum('bank'), success], ['Credit', sum('credit'), warning]].filter(r => r[1] > 0);
+            make('ov-methods', {
+                type: 'doughnut',
+                data: { labels: methodRows.map(r => r[0]), datasets: [{ data: methodRows.map(r => r[1]), backgroundColor: methodRows.map(r => r[2]), borderWidth: 0 }] },
+                options: { ...baseOpts, cutout: '62%', plugins: { legend: { position: 'bottom' } } }
+            });
+
+            const top = (d.fastMovers || []).slice().sort((a, b) => Number(b.revenue || 0) - Number(a.revenue || 0)).slice(0, 5);
+            make('ov-top', {
+                type: 'bar',
+                data: { labels: top.map(r => r.name), datasets: [{ label: 'Revenue', data: top.map(r => Number(r.revenue || 0)), backgroundColor: accent, borderRadius: 4 }] },
+                options: { ...baseOpts, indexAxis: 'y', plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, grid: { color: grid } }, y: { grid: { display: false } } } }
+            });
+
+            make('ov-pnl', {
+                type: 'bar',
+                data: {
+                    labels: ['Sales', 'Cost of goods', 'Gross profit', 'Expenses', 'Net profit'],
+                    datasets: [{
+                        data: [p.sales, p.cost_of_goods, p.gross_profit, p.expenses, p.net_profit].map(v => Number(v || 0)),
+                        backgroundColor: [primary, warning, info, danger, success], borderRadius: 4
+                    }]
+                },
+                options: { ...baseOpts, plugins: { legend: { display: false } }, scales }
+            });
+        }
+        let ytdRows = [];
+        function renderYtdTable() {
+            const host = panel.querySelector('#ov-ytd-table');
+            if (!host) return;
+            const q = (panel.querySelector('#ov-ytd-search')?.value || '').trim().toLowerCase();
+            const filtered = q
+                ? ytdRows.filter(r => String(r.name || '').toLowerCase().includes(q) || String(r.barcode || '').toLowerCase().includes(q))
+                : ytdRows;
+            if (!filtered.length) {
+                host.innerHTML = `<div class="okw-empty">${q ? 'No matching products.' : 'No YTD product sales recorded yet.'}</div>`;
+                return;
+            }
+            host.innerHTML = `
+                <div style="overflow-x:auto;">
+                    <table class="okw-table" style="width:100%;">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Barcode</th>
+                                <th style="text-align:right;">YTD Units Sold</th>
+                                <th style="text-align:right;">YTD Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filtered.map(r => `
+                                <tr>
+                                    <td><strong>${esc(r.name || 'Unnamed')}</strong></td>
+                                    <td style="color:var(--color-text-muted);">${esc(r.barcode || '—')}</td>
+                                    <td style="text-align:right;">${Number(r.qty || 0).toLocaleString()}</td>
+                                    <td style="text-align:right;"><strong>${fmt(r.revenue || 0)}</strong></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
         }
 
-        async function loadAuditLogs() {
-            const token = localStorage.getItem('authToken');
+        async function loadYtd() {
+            const summaryEl = panel.querySelector('#ov-ytd-summary');
+            const tableEl = panel.querySelector('#ov-ytd-table');
             try {
-                const res = await fetch('/api/audit-logs', { headers: { 'Authorization': `Bearer ${token}` } });
-                if (res.ok) {
-                    const logs = await res.json();
-                    const tbody = document.getElementById('auditTableBody');
-                    if (logs.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:20px;">No logs found</td></tr>';
+                const res = await fetch('/api/analytics/ytd/all', { headers, credentials: 'include' });
+                if (!res.ok) throw new Error('Failed to load YTD analytics');
+                const ytd = await res.json();
+                ytdRows = Array.isArray(ytd.breakdown) ? ytd.breakdown : [];
+                if (summaryEl) {
+                    summaryEl.textContent = `${Number(ytd.totalUnits || 0).toLocaleString()} units sold · ${fmt(ytd.totalRevenue || 0)} YTD revenue (${ytdRows.length} products)`;
+                }
+                renderYtdTable();
+            } catch (err) {
+                if (summaryEl) summaryEl.textContent = 'Could not load YTD summary.';
+                if (tableEl) tableEl.innerHTML = '<div class="okw-empty">Could not load YTD product breakdown.</div>';
+            }
+        }
+
+        panel.querySelector('#ov-ytd-search')?.addEventListener('input', renderYtdTable);
+        panel.querySelector('#ov-ytd-export')?.addEventListener('click', () => {
+            if (!ytdRows.length) return;
+            const csv = [['Product', 'Barcode', 'YTD Units Sold', 'YTD Revenue'], ...ytdRows.map(r => [r.name || '', r.barcode || '', Number(r.qty || 0), Number(r.revenue || 0).toFixed(2)])]
+                .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+                .join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `ytd-product-performance-${todayStr()}.csv`;
+            a.click();
+            URL.revokeObjectURL(a.href);
+        });
+
+        load();
+        loadYtd();
+    }
+
+    /* ====================================================================
+       Section 2 - Detailed reports: the full 32-type report engine that
+       lived on the old Reports page, moved here unchanged apart from how
+       it is mounted and how a report is chosen from the link (?report=).
+       ==================================================================== */
+    const DETAILED_TYPE_SELECT = `<select id="rep-type" class="okw-select" aria-label="Report Type"><option value="pnl">Profit / Loss Report</option><option value="z_report">Z Report</option><option value="purchase_sale">Purchase &amp; Sale</option><option value="tax">Tax Report</option><option value="supplier_customer">Supplier &amp; Customer Report</option><option value="customer_groups">Customer Groups Report</option><option value="stock">Stock Report</option><option value="adj">Stock Adjustment Report</option><option value="trending">Trending Products</option><option value="items_report">Items Report</option><option value="product_purchase">Product Purchase Report</option><option value="product_sell">Product Sell Report</option><option value="daily_sales_product">Daily Sales by Product</option><option value="purchase_sale_product">Purchase &amp; Sale Product</option><option value="purchase_payment">Purchase Payment Report</option><option value="sell_payment">Sell Payment Report</option><option value="payment_by_age">Payment by Age</option><option value="expense">Expense Report</option><option value="shifts">Register Report</option><option value="teller">Sales Representative Report</option><option value="activity_log">Activity Log</option><option value="deleted_transactions">Deleted Transactions</option><option value="transactions">Transaction History</option><option value="daily">Daily Summary</option><option value="cat">Sales by Category</option><option value="method">By Payment Method</option><option value="hourly">Hourly Sales</option><option value="quotes">Quotations</option><option value="slow_movers">Slow Movers (30+ Days)</option><option value="margin">Profit by Item</option><option value="variance">Stock Count Variance</option></select>`;
+
+    function mountDetailed(panel, ctx) {
+        destroyOverviewCharts();
+        ctx.toolbar.innerHTML = DETAILED_TYPE_SELECT + `
+            <select id="rep-branch" class="okw-select" aria-label="Branch"><option value="All Branches">All Branches</option></select>
+            <div id="rep-date-picker"></div>`;
+        panel.innerHTML = '<div id="rep-host">Loading report...</div>';
+                    const token = localStorage.getItem("authToken") || localStorage.getItem("token") || sessionStorage.getItem("token");
+            const headers = { Authorization: "Bearer " + token };
+            const fmt = (n) => (typeof formatCurrency === "function" ? formatCurrency(n) : ("GH₵ " + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })));
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const initReport = urlParams.get("report");
+            let reportType = "transactions";
+            const typeSelect = document.getElementById("rep-type");
+            if (typeSelect && initReport && Array.from(typeSelect.options).some(o => o.value === initReport)) reportType = initReport;
+            if (typeSelect) typeSelect.value = reportType;
+
+            let dateRange = { from: new Date().toISOString().slice(0, 8) + "01", to: new Date().toISOString().slice(0, 10) };
+            let selectedBranch = "All Branches";
+            const branchSelect = document.getElementById("rep-branch");
+            let cacheAll = null;
+            let cacheTrx = null;
+            let cacheShifts = null;
+
+            async function loadBranches() {
+                try {
+                    const res = await fetch("/api/branches", { headers });
+                    if (!res.ok) return;
+                    const data = await res.json();
+                    const list = Array.isArray(data) ? data : (data.locations || []);
+                    if (branchSelect && list.length) {
+                        const existing = new Set(Array.from(branchSelect.options).map(o => o.value));
+                        for (const loc of list) {
+                            const name = loc.name || loc.location_name;
+                            if (name && !existing.has(name)) {
+                                const opt = document.createElement("option");
+                                opt.value = name;
+                                opt.textContent = name;
+                                branchSelect.appendChild(opt);
+                                existing.add(name);
+                            }
+                        }
+                    }
+                } catch (_) {}
+            }
+            loadBranches();
+
+            OkwUI.dateRangePicker("#rep-date-picker", (r) => {
+                dateRange = r;
+                cacheAll = null;
+                loadAndRender();
+            });
+
+            async function loadAndRender() {
+                const host = document.getElementById("rep-host");
+                if (!host) return;
+                host.innerHTML = "<div style=\"padding:20px;color:var(--color-text-muted);\">Loading report...</div>";
+
+                try {
+                    if (reportType === "transactions") {
+                        if (!cacheTrx) {
+                            const res = await fetch("/api/transactions", { headers });
+                            cacheTrx = res.ok ? await res.json() : [];
+                        }
+                        const filtered = (Array.isArray(cacheTrx) ? cacheTrx : []).filter(t => {
+                            const d = String(t.created_at || "").slice(0, 10);
+                            const dateOk = (!dateRange.from || d >= dateRange.from) && (!dateRange.to || d <= dateRange.to);
+                            const branchOk = selectedBranch === "All Branches" || String(t.store_location || "").toLowerCase() === selectedBranch.toLowerCase();
+                            return dateOk && branchOk;
+                        }).map(t => ({
+                            date: new Date(t.created_at).toLocaleString(),
+                            receipt: t.receipt_number || ("#" + t.id),
+                            items: Array.isArray(t.items) ? t.items.map(i => i.name + " (" + i.qty + ")").join(", ") : "—",
+                            cashier: t.cashier_name || t.seller_name || "Staff",
+                            total: Number(t.total_amount || 0)
+                        }));
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "date", label: "Date" },
+                                { key: "receipt", label: "Receipt #" },
+                                { key: "items", label: "Items" },
+                                { key: "cashier", label: "Staff" },
+                                { key: "total", label: "Total", numeric: true, render: fmt }
+                            ],
+                            rows: filtered,
+                            searchPlaceholder: "Search receipt, item, or staff...",
+                            exportFilename: "okwesiwa-transactions-report.xlsx",
+                            printTitle: "OKWESIWA LTD — Transaction History"
+                        });
                         return;
                     }
-                    tbody.innerHTML = logs.map(log => {
-                        const details = log.details ? JSON.stringify(log.details) : '-';
-                        return `
-                            <tr style="border-bottom: 1px solid #eee;">
-                                <td style="font-size:12px; padding: 12px;">${new Date(log.created_at).toLocaleString()}</td>
-                                <td style="padding: 12px;">${log.user_name || 'System'}</td>
-                                <td style="padding: 12px;"><span style="font-size:11px; padding:2px 6px; background:#eee; border-radius:4px; text-transform: capitalize;">${log.user_role || '-'}</span></td>
-                                <td style="font-weight:600; color:var(--primary-color); padding: 12px;">${log.action}</td>
-                                <td style="font-size:12px; color:#555; max-width:300px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding: 12px;" title='${details}'>${details}</td>
-                                <td style="font-size:12px; color:#888; padding: 12px;">${log.ip_address || '-'}</td>
-                            </tr>
-                        `;
-                    }).join('');
-                }
-            } catch (e) { console.error(e); }
-        }
 
-        function filterAuditLogs() {
-            const input = document.getElementById('auditSearch');
-            const filter = input.value.toLowerCase();
-            const rows = document.getElementById('auditTableBody').getElementsByTagName('tr');
-            for (let i = 0; i < rows.length; i++) {
-                const text = rows[i].textContent.toLowerCase();
-                rows[i].style.display = text.indexOf(filter) > -1 ? "" : "none";
-            }
-        }
-
-        function changeShiftPage(delta) {
-            shiftPage += delta;
-            renderShiftTable();
-        }
-
-        function changeShiftRows() {
-            shiftRows = parseInt(document.getElementById('shiftRowsPerPage').value);
-            shiftPage = 1;
-            renderShiftTable();
-        }
-
-        function updateShiftPagination() {
-            const totalItems = filteredShifts.length;
-            const totalPages = Math.ceil(totalItems / shiftRows) || 1;
-            
-            document.getElementById('shiftPageInfo').textContent = `Page ${shiftPage} of ${totalPages}`;
-            document.getElementById('btnShiftPrev').disabled = shiftPage === 1;
-            document.getElementById('btnShiftNext').disabled = shiftPage === totalPages;
-        }
-
-        function generateShiftReport(index) {
-            const shift = allShifts[index];
-            if (!shift) return;
-
-            // Filter transactions for this specific shift
-            const shiftTxns = allTransactions.filter(t => {
-                const tTime = new Date(t.created_at || t.date).getTime();
-                const sStart = new Date(shift.start_time).getTime();
-                const sEnd = shift.end_time ? new Date(shift.end_time).getTime() : Date.now();
-                
-                // Match user and time range
-                return t.user_id === shift.user_id && tTime >= sStart && tTime <= sEnd;
-            });
-
-            // Calculate Breakdown Stats
-            const paymentStats = { 'Cash': 0, 'Mobile Money': 0, 'Card': 0 };
-            const productStats = {};
-
-            shiftTxns.forEach(t => {
-                // Payment Breakdown
-                let method = t.payment_method || 'Cash';
-                if (method.toLowerCase().includes('momo') || method.toLowerCase().includes('mobile')) method = 'Mobile Money';
-                else if (method.toLowerCase().includes('card')) method = 'Card';
-                else method = 'Cash';
-                
-                paymentStats[method] = (paymentStats[method] || 0) + parseFloat(t.total_amount || 0);
-
-                // Product Breakdown
-                if (t.items && Array.isArray(t.items)) {
-                    // Calculate ratio to include tax/discount in product totals
-                    let txnSubtotal = parseFloat(t.subtotal || 0);
-                    // If subtotal missing, calculate from items
-                    if (txnSubtotal <= 0) {
-                        txnSubtotal = t.items.reduce((sum, i) => sum + (i.price * i.qty), 0);
+                    if (reportType === "shifts") {
+                        if (!cacheShifts) {
+                            const res = await fetch("/api/shifts", { headers });
+                            cacheShifts = res.ok ? await res.json() : [];
+                        }
+                        const filtered = (Array.isArray(cacheShifts) ? cacheShifts : []).filter(s => {
+                            const d = String(s.start_time || s.created_at || "").slice(0, 10);
+                            return (!dateRange.from || d >= dateRange.from) && (!dateRange.to || d <= dateRange.to);
+                        }).map(s => ({
+                            staff: s.user_name || "Staff",
+                            start: s.start_time ? new Date(s.start_time).toLocaleString() : "—",
+                            end: s.end_time ? new Date(s.end_time).toLocaleString() : "Active",
+                            start_cash: Number(s.start_cash || 0),
+                            end_cash: s.end_cash !== null && s.end_cash !== undefined ? Number(s.end_cash) : 0,
+                            sales: Number(s.total_sales || 0),
+                            status: String(s.status || "open").toUpperCase()
+                        }));
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "staff", label: "Staff" },
+                                { key: "start", label: "Start Time" },
+                                { key: "end", label: "End Time" },
+                                { key: "start_cash", label: "Start Cash", numeric: true, render: fmt },
+                                { key: "end_cash", label: "End Cash", numeric: true, render: fmt },
+                                { key: "sales", label: "Total Sales", numeric: true, render: fmt },
+                                { key: "status", label: "Status", render: v => OkwUI.badge(v, v === "OPEN" ? "success" : "neutral") }
+                            ],
+                            rows: filtered,
+                            searchPlaceholder: "Search staff or status...",
+                            exportFilename: "okwesiwa-shift-reports.xlsx",
+                            printTitle: "OKWESIWA LTD — Shift Reports"
+                        });
+                        return;
                     }
-                    
-                    const txnTotal = parseFloat(t.total_amount || 0);
-                    const ratio = (txnSubtotal > 0 && txnTotal > 0) ? (txnTotal / txnSubtotal) : 1;
 
-                    t.items.forEach(item => {
-                        if (!productStats[item.name]) productStats[item.name] = { qty: 0, total: 0 };
-                        productStats[item.name].qty += item.qty;
-                        productStats[item.name].total += (item.price * item.qty * ratio);
-                    });
-                }
-            });
-
-            // Generate PDF
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            
-            // Header Info
-            doc.setFontSize(18);
-            doc.text("Detailed Shift Report", 14, 20);
-            
-            doc.setFontSize(11);
-            doc.text(`Staff: ${shift.user_name || 'Unknown'}`, 14, 30);
-            doc.text(`Start Time: ${new Date(shift.start_time).toLocaleString()}`, 14, 36);
-            doc.text(`End Time: ${shift.end_time ? new Date(shift.end_time).toLocaleString() : 'Ongoing'}`, 14, 42);
-            doc.text(`Start Cash: ${parseFloat(shift.start_cash).toFixed(2)}`, 14, 48);
-            doc.text(`End Cash: ${shift.end_cash ? parseFloat(shift.end_cash).toFixed(2) : '-'}`, 14, 54);
-
-            // Payment Breakdown Table
-            const paymentData = Object.entries(paymentStats).map(([key, val]) => [key, val.toFixed(2)]);
-            doc.autoTable({
-                head: [['Payment Method', 'Amount (GHS)']],
-                body: paymentData,
-                startY: 60,
-                theme: 'striped',
-                headStyles: { fillColor: [26, 42, 108] }
-            });
-
-            // Products Sold Table
-            const productData = Object.entries(productStats).map(([name, data]) => [name, data.qty, data.total.toFixed(2)]);
-            doc.autoTable({
-                head: [['Product', 'Qty Sold', 'Total (GHS)']],
-                body: productData,
-                startY: doc.lastAutoTable.finalY + 10,
-                theme: 'striped',
-                headStyles: { fillColor: [178, 31, 31] }
-            });
-            
-            doc.save(`shift_report_${shift.id}.pdf`);
-        }
-
-        async function logout() {
-            if (window.authGuard && typeof window.authGuard.logout === 'function') {
-                return window.authGuard.logout();
-            }
-            try {
-                const token = localStorage.getItem('authToken');
-                if (token) {
-                    await fetch('/api/logout', { 
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    }).catch(() => {});
-                }
-            } catch (e) {
-                console.error(e);
-            } finally {
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.replace('/login?logout=true');
-            }
-        }
-    </script>
-
-<!-- ================== GLOBAL UX FIXES ================== -->
-<style>
-#custom-toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
-.custom-toast.show { opacity: 1; transform: translateY(0); }
-.custom-toast.error { background: #e74c3c; border-left: 4px solid #c0392b; }
-.custom-toast.success { background: #27ae60; border-left: 4px solid #2ecc71; }
-</style>
-<script>
-(function() {
-    // 1. Toast Notification Override
-    const container = document.createElement('div');
-    container.id = 'custom-toast-container';
-    document.body.appendChild(container);
-
-    window.alert = function(message) {
-        const toast = document.createElement('div');
-        toast.className = 'custom-toast';
-        if (typeof message === 'string') {
-            const msg = message.toLowerCase();
-            if (msg.includes('error') || msg.includes('fail')) toast.classList.add('error');
-            else if (msg.includes('success') || msg.includes('saved')) toast.classList.add('success');
-        }
-        toast.textContent = message;
-        container.appendChild(toast);
-        toast.offsetHeight; // trigger reflow
-        toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    };
-
-    // 2. Mobile Table Auto-Labeler
-    function applyTableDataLabels() {
-        document.querySelectorAll('.card-table').forEach(table => {
-            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-            if (headers.length === 0) return;
-            table.querySelectorAll('tbody tr').forEach(tr => {
-                tr.querySelectorAll('td').forEach((td, index) => {
-                    if (headers[index] && !td.hasAttribute('data-label')) {
-                        td.setAttribute('data-label', headers[index]);
+                    if (!cacheAll) {
+                        const brParam = selectedBranch && selectedBranch !== "All Branches" ? ("&branch=" + encodeURIComponent(selectedBranch)) : "";
+                        const res = await fetch("/api/reports/all?from=" + dateRange.from + "&to=" + dateRange.to + brParam, { headers });
+                        if (!res.ok) {
+                            host.innerHTML = "<div style=\"padding:20px;color:var(--color-danger);\">Failed to load report data.</div>";
+                            return;
+                        }
+                        cacheAll = await res.json();
+                        OkwUI.warnIfPartial(cacheAll);
                     }
+                    const d = cacheAll;
+
+                    if (reportType === "cat") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "category", label: "Category" },
+                                { key: "qty", label: "Qty", numeric: true },
+                                { key: "revenue", label: "Revenue", numeric: true, render: fmt },
+                                { key: "cost", label: "Cost", numeric: true, render: fmt },
+                                { key: "profit", label: "Profit", numeric: true, render: fmt }
+                            ],
+                            rows: d.salesByCategory || [], exportFilename: "okwesiwa-sales-by-category.xlsx", printTitle: "OKWESIWA LTD — Sales by Category"
+                        });
+                    } else if (reportType === "daily") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "day", label: "Date" },
+                                { key: "receipts", label: "Receipts", numeric: true },
+                                { key: "sales", label: "Sales", numeric: true, render: fmt },
+                                { key: "profit", label: "Profit", numeric: true, render: fmt },
+                                { key: "avg_sale", label: "Avg Sale", numeric: true, render: fmt }
+                            ],
+                            rows: d.dailySummary || [], exportFilename: "okwesiwa-daily-summary.xlsx", printTitle: "OKWESIWA LTD — Daily Summary"
+                        });
+                    } else if (reportType === "teller") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "teller", label: "Teller" },
+                                { key: "receipts", label: "Receipts", numeric: true },
+                                { key: "sales", label: "Sales", numeric: true, render: fmt },
+                                { key: "discounts", label: "Discounts Given", numeric: true, render: fmt },
+                                { key: "voids", label: "Voids/Returns", numeric: true }
+                            ],
+                            rows: d.salesByTeller || [], exportFilename: "okwesiwa-sales-by-teller.xlsx", printTitle: "OKWESIWA LTD — Sales by Teller"
+                        });
+                    } else if (reportType === "method") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "day", label: "Day" },
+                                { key: "cash", label: "Cash", numeric: true, render: fmt },
+                                { key: "momo", label: "MoMo", numeric: true, render: fmt },
+                                { key: "card", label: "Card", numeric: true, render: fmt },
+                                { key: "bank", label: "Bank/Cheque", numeric: true, render: fmt },
+                                { key: "credit", label: "Credit", numeric: true, render: fmt }
+                            ],
+                            rows: d.salesByPaymentMethod || [], exportFilename: "okwesiwa-payment-methods.xlsx", printTitle: "OKWESIWA LTD — Sales by Payment Method"
+                        });
+                    } else if (reportType === "hourly") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "hour", label: "Hour" },
+                                { key: "receipts", label: "Receipts", numeric: true },
+                                { key: "sales", label: "Sales", numeric: true, render: fmt }
+                            ],
+                            rows: d.hourlySales || [], exportFilename: "okwesiwa-hourly-sales.xlsx", printTitle: "OKWESIWA LTD — Hourly Sales"
+                        });
+                    } else if (reportType === "quotes") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "quote_number", label: "Quote #" },
+                                { key: "customer_name", label: "Customer" },
+                                { key: "total_amount", label: "Total", numeric: true, render: fmt },
+                                { key: "status", label: "Status" }
+                            ],
+                            rows: (d.quotations && d.quotations.rows) || [], exportFilename: "okwesiwa-quotations.xlsx", printTitle: "OKWESIWA LTD — Quotations"
+                        });
+                    } else if (reportType === "fast_movers" || reportType === "trending") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "name", label: "Item" },
+                                { key: "brand", label: "Brand" },
+                                { key: "qty", label: "Qty Sold", numeric: true },
+                                { key: "revenue", label: "Revenue", numeric: true, render: fmt }
+                            ],
+                            rows: d.fastMovers || [], exportFilename: "okwesiwa-trending-products.xlsx", printTitle: "Trending Products"
+                        });
+                    } else if (reportType === "z_report") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "close_date", label: "Date", render: v => v ? String(v).slice(0, 10) : "" },
+                                { key: "branch_name", label: "Branch" },
+                                { key: "closed_by_name", label: "Closed By" },
+                                { key: "expected_cash", label: "Expected Cash", numeric: true, render: fmt },
+                                { key: "counted_cash", label: "Counted Cash", numeric: true, render: fmt },
+                                { key: "cash_difference", label: "Variance", numeric: true, render: fmt },
+                                { key: "total_sales", label: "Total Sales", numeric: true, render: fmt }
+                            ],
+                            rows: d.zReport || [], exportFilename: "okwesiwa-z-report.xlsx", printTitle: "Z Report"
+                        });
+                    } else if (reportType === "purchase_sale") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "metric", label: "Metric" },
+                                { key: "amount", label: "Amount", numeric: true, render: fmt }
+                            ],
+                            rows: d.purchaseSaleSummary || [], exportFilename: "okwesiwa-purchase-sale.xlsx", printTitle: "Purchase & Sale Report"
+                        });
+                    } else if (reportType === "supplier_customer") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "contact", label: "Contact" },
+                                { key: "type", label: "Type" },
+                                { key: "total", label: "Total Volume", numeric: true, render: fmt },
+                                { key: "due", label: "Balance Due", numeric: true, render: fmt }
+                            ],
+                            rows: d.supplierCustomerReport || [], exportFilename: "okwesiwa-supplier-customer.xlsx", printTitle: "Supplier & Customer Report"
+                        });
+                    } else if (reportType === "customer_groups") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "name", label: "Customer Group" },
+                                { key: "price_group", label: "Price Group" },
+                                { key: "discount_pct", label: "Discount %", numeric: true },
+                                { key: "customers", label: "Customers", numeric: true },
+                                { key: "total_sales", label: "Total Sales", numeric: true, render: fmt }
+                            ],
+                            rows: d.customerGroupsReport || [], exportFilename: "okwesiwa-customer-groups.xlsx", printTitle: "Customer Groups Report"
+                        });
+                    } else if (reportType === "stock") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "barcode", label: "Barcode" },
+                                { key: "name", label: "Item" },
+                                { key: "category", label: "Category" },
+                                { key: "brand", label: "Brand" },
+                                { key: "stock", label: "Stock", numeric: true },
+                                { key: "reorder_level", label: "Reorder Level", numeric: true },
+                                { key: "cost_price", label: "Unit Cost", numeric: true, render: fmt },
+                                { key: "price", label: "Selling Price", numeric: true, render: fmt },
+                                { key: "stock_value", label: "Stock Value", numeric: true, render: fmt }
+                            ],
+                            rows: d.stockReport || [], exportFilename: "okwesiwa-stock-report.xlsx", printTitle: "Stock Report"
+                        });
+                    } else if (reportType === "items_report") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "barcode", label: "Barcode" },
+                                { key: "name", label: "Item" },
+                                { key: "category", label: "Category" },
+                                { key: "purchased_qty", label: "Purchased Qty", numeric: true },
+                                { key: "sold_qty", label: "Sold Qty", numeric: true },
+                                { key: "stock", label: "Current Stock", numeric: true },
+                                { key: "revenue", label: "Revenue", numeric: true, render: fmt },
+                                { key: "cost", label: "Cost", numeric: true, render: fmt }
+                            ],
+                            rows: d.itemsReport || [], exportFilename: "okwesiwa-items-report.xlsx", printTitle: "Items Report"
+                        });
+                    } else if (reportType === "product_purchase") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "date", label: "Date" },
+                                { key: "po_number", label: "PO #" },
+                                { key: "supplier", label: "Supplier" },
+                                { key: "barcode", label: "Barcode" },
+                                { key: "name", label: "Item" },
+                                { key: "qty", label: "Qty", numeric: true },
+                                { key: "unit_cost", label: "Unit Cost", numeric: true, render: fmt },
+                                { key: "total", label: "Total", numeric: true, render: fmt }
+                            ],
+                            rows: d.productPurchaseReport || [], exportFilename: "okwesiwa-product-purchase.xlsx", printTitle: "Product Purchase Report"
+                        });
+                    } else if (reportType === "product_sell") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "date", label: "Date" },
+                                { key: "receipt", label: "Receipt #" },
+                                { key: "customer", label: "Customer" },
+                                { key: "barcode", label: "Barcode" },
+                                { key: "name", label: "Item" },
+                                { key: "qty", label: "Qty", numeric: true },
+                                { key: "unit_price", label: "Unit Price", numeric: true, render: fmt },
+                                { key: "total", label: "Total", numeric: true, render: fmt }
+                            ],
+                            rows: d.productSellReport || [], exportFilename: "okwesiwa-product-sell.xlsx", printTitle: "Product Sell Report"
+                        });
+                    } else if (reportType === "daily_sales_product") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "day", label: "Date" },
+                                { key: "barcode", label: "Barcode" },
+                                { key: "name", label: "Item" },
+                                { key: "qty", label: "Qty Sold", numeric: true },
+                                { key: "sales", label: "Total Sales", numeric: true, render: fmt }
+                            ],
+                            rows: d.dailySalesByProduct || [], exportFilename: "okwesiwa-daily-sales-product.xlsx", printTitle: "Daily Sales by Product"
+                        });
+                    } else if (reportType === "purchase_sale_product") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "name", label: "Item" },
+                                { key: "barcode", label: "Barcode" },
+                                { key: "purchased_qty", label: "Purchased Qty", numeric: true },
+                                { key: "purchased_value", label: "Purchased Value", numeric: true, render: fmt },
+                                { key: "sold_qty", label: "Sold Qty", numeric: true },
+                                { key: "sold_value", label: "Sold Value", numeric: true, render: fmt },
+                                { key: "net_margin", label: "Net Margin", numeric: true, render: fmt }
+                            ],
+                            rows: d.purchaseSaleProduct || [], exportFilename: "okwesiwa-purchase-sale-product.xlsx", printTitle: "Purchase & Sale Product"
+                        });
+                    } else if (reportType === "purchase_payment") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "created_at", label: "Date", render: v => new Date(v).toLocaleDateString() },
+                                { key: "purchase_order_id", label: "PO #" },
+                                { key: "supplier_name", label: "Supplier" },
+                                { key: "payment_method", label: "Method" },
+                                { key: "reference", label: "Reference" },
+                                { key: "amount", label: "Amount Paid", numeric: true, render: fmt }
+                            ],
+                            rows: d.purchasePaymentReport || [], exportFilename: "okwesiwa-purchase-payments.xlsx", printTitle: "Purchase Payment Report"
+                        });
+                    } else if (reportType === "sell_payment") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "date", label: "Date" },
+                                { key: "receipt", label: "Receipt #" },
+                                { key: "customer", label: "Customer" },
+                                { key: "method", label: "Method" },
+                                { key: "paid_amount", label: "Paid", numeric: true, render: fmt },
+                                { key: "balance_due", label: "Due", numeric: true, render: fmt }
+                            ],
+                            rows: d.sellPaymentReport || [], exportFilename: "okwesiwa-sell-payments.xlsx", printTitle: "Sell Payment Report"
+                        });
+                    } else if (reportType === "payment_by_age") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "customer", label: "Customer" },
+                                { key: "receipt", label: "Receipt #" },
+                                { key: "total_due", label: "Total Due", numeric: true, render: fmt },
+                                { key: "days_0_30", label: "0-30 Days", numeric: true, render: fmt },
+                                { key: "days_31_60", label: "31-60 Days", numeric: true, render: fmt },
+                                { key: "days_61_90", label: "61-90 Days", numeric: true, render: fmt },
+                                { key: "days_90_plus", label: "90+ Days", numeric: true, render: fmt }
+                            ],
+                            rows: d.paymentByAge || [], exportFilename: "okwesiwa-payment-by-age.xlsx", printTitle: "Payment by Age"
+                        });
+                    } else if (reportType === "expense") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "created_at", label: "Date", render: v => new Date(v).toLocaleDateString() },
+                                { key: "category", label: "Category" },
+                                { key: "description", label: "Description" },
+                                { key: "store_location", label: "Branch" },
+                                { key: "amount", label: "Amount", numeric: true, render: fmt }
+                            ],
+                            rows: d.expenseReport || [], exportFilename: "okwesiwa-expense-report.xlsx", printTitle: "Expense Report"
+                        });
+                    } else if (reportType === "activity_log") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "created_at", label: "Date", render: v => new Date(v).toLocaleString() },
+                                { key: "user_name", label: "User" },
+                                { key: "action", label: "Action" },
+                                { key: "details", label: "Details", render: v => typeof v === 'object' ? OkwUI.escapeHtml(JSON.stringify(v)) : OkwUI.escapeHtml(v || '') }
+                            ],
+                            rows: d.activityLogReport || [], exportFilename: "okwesiwa-activity-log.xlsx", printTitle: "Activity Log"
+                        });
+                    } else if (reportType === "deleted_transactions") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "created_at", label: "Date", render: v => new Date(v).toLocaleString() },
+                                { key: "receipt_number", label: "Receipt #" },
+                                { key: "customer_name", label: "Customer" },
+                                { key: "store_location", label: "Branch" },
+                                { key: "total_amount", label: "Amount", numeric: true, render: fmt },
+                                { key: "status", label: "Status" }
+                            ],
+                            rows: d.deletedTransactions || [], exportFilename: "okwesiwa-deleted-transactions.xlsx", printTitle: "Deleted Transactions"
+                        });
+                    } else if (reportType === "slow_movers") {
+                        const smRows = d.slowMovers || [];
+                        const smCap = Number(d.slowMoverCapital ?? smRows.reduce((s, r) => s + Number(r.stock_value || (Math.max(0, Number(r.stock || 0)) * Number(r.cost_price || 0))), 0));
+                        host.innerHTML = "<div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px;\">" +
+                            OkwUI.kpiCard({ label: "Slow Movers (30+ Days)", value: smRows.length, tone: "warning" }) +
+                            OkwUI.kpiCard({ label: "Capital Tied Up", value: fmt(smCap), tone: "danger" }) +
+                        "</div><div id=\"rep-sm-tbl\"></div>";
+                        OkwUI.dataTable("#rep-sm-tbl", {
+                            columns: [
+                                { key: "name", label: "Item" },
+                                { key: "brand", label: "Brand" },
+                                { key: "stock", label: "Stock on Hand", numeric: true },
+                                { key: "stock_value", label: "Stock Value", numeric: true, render: (v, r) => fmt(v ?? (Math.max(0, Number(r.stock || 0)) * Number(r.cost_price || 0))) }
+                            ],
+                            rows: smRows, exportFilename: "okwesiwa-slow-movers.xlsx", printTitle: "OKWESIWA LTD — Slow Movers & Tied Capital"
+                        });
+                    } else if (reportType === "pnl") {
+                        const p = d.profitAndLoss || {};
+                        host.innerHTML = "<div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-bottom:16px;\">" +
+                            OkwUI.kpiCard({ label: "Sales", value: fmt(p.sales), tone: "primary" }) +
+                            OkwUI.kpiCard({ label: "Cost of Goods", value: fmt(p.cost_of_goods), tone: "warning" }) +
+                            OkwUI.kpiCard({ label: "Gross Profit", value: fmt(p.gross_profit), tone: "info" }) +
+                            OkwUI.kpiCard({ label: "Expenses", value: fmt(p.expenses), tone: "danger" }) +
+                            OkwUI.kpiCard({ label: "Net Profit", value: fmt(p.net_profit), tone: "success" }) +
+                        "</div><div id=\"rep-pnl-tbl\"></div>";
+                        OkwUI.dataTable("#rep-pnl-tbl", {
+                            columns: [
+                                { key: "line_item", label: "P&L Line Item" },
+                                { key: "amount", label: "Amount", numeric: true, render: fmt }
+                            ],
+                            rows: [
+                                { line_item: "Total Sales", amount: Number(p.sales || 0) },
+                                { line_item: "Cost of Goods Sold", amount: Number(p.cost_of_goods || 0) },
+                                { line_item: "Gross Profit", amount: Number(p.gross_profit || 0) },
+                                { line_item: "Total Expenses", amount: Number(p.expenses || 0) },
+                                { line_item: "Net Profit", amount: Number(p.net_profit || 0) }
+                            ],
+                            exportFilename: "okwesiwa-profit-loss.xlsx",
+                            printTitle: "Profit / Loss Report"
+                        });
+                    } else if (reportType === "margin") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "name", label: "Item" },
+                                { key: "brand", label: "Brand" },
+                                { key: "revenue", label: "Revenue", numeric: true, render: fmt },
+                                { key: "profit", label: "Profit", numeric: true, render: fmt },
+                                { key: "margin_pct", label: "Margin %", numeric: true, render: v => v < 10 ? OkwUI.badge(v + "% Low", "danger") : (v + "%") }
+                            ],
+                            rows: d.profitByItem || [], exportFilename: "okwesiwa-profit-by-item.xlsx", printTitle: "OKWESIWA LTD — Profit by Item"
+                        });
+                    } else if (reportType === "tax") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "tax", label: "Tax" },
+                                { key: "rate", label: "Rate %", numeric: true },
+                                { key: "collected", label: "Collected", numeric: true, render: fmt }
+                            ],
+                            rows: d.taxReport || [], exportFilename: "okwesiwa-tax-report.xlsx", printTitle: "OKWESIWA LTD — Tax Report"
+                        });
+                    } else if (reportType === "adj") {
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "created_at", label: "Date", render: v => new Date(v).toLocaleString() },
+                                { key: "product_name", label: "Item" },
+                                { key: "product_barcode", label: "Barcode" },
+                                { key: "qty_adjusted", label: "Change", numeric: true },
+                                { key: "variance_value", label: "Cost Impact", numeric: true, render: fmt },
+                                { key: "reason", label: "Reason" }
+                            ],
+                            rows: d.stockAdjustments || [], exportFilename: "okwesiwa-stock-adjustments.xlsx", printTitle: "OKWESIWA LTD — Stock Adjustments"
+                        });
+                    } else if (reportType === "variance") {
+                        const vRows = d.stockVariance || d.stockAdjustments || [];
+                        const netQty = vRows.reduce((s, r) => s + Number(r.qty_adjusted ?? r.quantity_adjusted ?? 0), 0);
+                        const netVal = vRows.reduce((s, r) => s + Number(r.variance_value || 0), 0);
+                        host.innerHTML = "<div style=\"display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px;\">" +
+                            OkwUI.kpiCard({ label: "Count / Adjustment Entries", value: vRows.length, tone: "info" }) +
+                            OkwUI.kpiCard({ label: "Net Qty Variance", value: netQty.toLocaleString(), tone: netQty < 0 ? "danger" : "success" }) +
+                            OkwUI.kpiCard({ label: "Net Cost Impact", value: fmt(netVal), tone: netVal < 0 ? "danger" : "primary" }) +
+                        "</div><div id=\"rep-var-tbl\"></div>";
+                        OkwUI.dataTable("#rep-var-tbl", {
+                            columns: [
+                                { key: "created_at", label: "Date", render: v => new Date(v).toLocaleString() },
+                                { key: "product_name", label: "Item" },
+                                { key: "product_barcode", label: "Barcode" },
+                                { key: "qty_adjusted", label: "Qty Variance", numeric: true, render: v => Number(v || 0) < 0 ? OkwUI.badge(String(v), "danger") : OkwUI.badge("+" + Number(v || 0), "success") },
+                                { key: "variance_value", label: "Cost Impact", numeric: true, render: fmt },
+                                { key: "reason", label: "Reason" }
+                            ],
+                            rows: vRows, exportFilename: "okwesiwa-stock-variance.xlsx", printTitle: "OKWESIWA LTD — Stock Count Variance"
+                        });
+                    }
+                } catch (err) {
+                    console.error("Report load error:", err);
+                    host.innerHTML = "<div style=\"padding:20px;color:var(--color-danger);\">Error loading report.</div>";
+                }
+            }
+
+            if (typeSelect) {
+                typeSelect.addEventListener("change", (e) => {
+                    reportType = e.target.value;
+                    loadAndRender();
                 });
+            }
+            if (branchSelect) {
+                branchSelect.addEventListener("change", (e) => {
+                    selectedBranch = e.target.value || "All Branches";
+                    cacheAll = null;
+                    loadAndRender();
+                });
+            }
+
+            loadAndRender();
+    }
+
+    /* ====================================================================
+       Section 3 - Items, brands and customers (drill-down)
+       Saved views are stored in the database for each user.
+       ==================================================================== */
+    function mountDrilldown(panel, ctx) {
+        destroyOverviewCharts();
+        ctx.toolbar.style.flexWrap = 'wrap';
+        let range = { from: monthStart(), to: todayStr() };
+        let active = 'items_today';
+        let data = null;
+        let drillBrand = null;
+        let views = [];
+
+        ctx.toolbar.innerHTML = `
+            <select id="cr-report-type" class="okw-select" aria-label="Report type">
+                <option value="items_today">Items sold today</option>
+                <option value="items_period">Items sold (any period)</option>
+                <option value="by_brand">Sales by brand</option>
+                <option value="top_customers">Top customers</option>
+                <option value="customers_owing">Customers owing (aging)</option>
+                <option value="stock_on_hand">Stock on hand</option>
+            </select>
+            <div id="cr-date-picker"></div>
+            <input type="text" id="cr-brand" class="okw-input" placeholder="Brand..." aria-label="Brand">
+            <input type="text" id="cr-category" class="okw-input" placeholder="Category..." aria-label="Category">
+            <input type="text" id="cr-item" class="okw-input" placeholder="Item name..." aria-label="Item name">
+            <select id="cr-method" class="okw-select" aria-label="Payment method">
+                <option value="">All payment methods</option>
+                <option value="cash">Cash</option>
+                <option value="momo">Mobile money</option>
+                <option value="card">Card</option>
+                <option value="credit">Credit</option>
+                <option value="split">Split</option>
+            </select>
+            <button type="button" class="okw-btn okw-btn-primary" id="cr-apply">Apply</button>
+            <select id="cr-views" class="okw-select" aria-label="Saved views"><option value="">Saved views...</option></select>
+            <button type="button" class="okw-btn okw-btn-outline" id="cr-save-view">Save view</button>
+            <button type="button" class="okw-btn okw-btn-outline" id="cr-delete-view">Delete view</button>`;
+        panel.innerHTML = `
+            <div class="okw-kpi-row" id="cr-kpis"></div>
+            <div id="cr-drill-bar"></div>
+            <div id="cr-table-host">Loading report...</div>`;
+
+        const $ = (sel) => ctx.toolbar.querySelector(sel);
+        const filters = () => ({ brand: $('#cr-brand').value, category: $('#cr-category').value, item: $('#cr-item').value, method: $('#cr-method').value });
+
+        OkwUI.dateRangePicker('#cr-date-picker', (r) => { range = r; load(); });
+
+        async function load() {
+            const f = filters();
+            const day = todayStr();
+            const qs = new URLSearchParams({
+                from: active === 'items_today' ? day : range.from,
+                to: active === 'items_today' ? day : range.to,
+                brand: f.brand, category: f.category, item: f.item, payment_method: f.method
             });
+            try {
+                const res = await fetch(`/api/reports/core?${qs}`, { headers, credentials: 'include' });
+                if (!res.ok) throw new Error('Failed to load the report');
+                data = await res.json();
+                OkwUI.warnIfPartial(data);
+            } catch (err) {
+                OkwUI.toast(err.message || 'Failed to load the report', 'danger');
+                panel.querySelector('#cr-table-host').innerHTML = '<div class="okw-empty">The report could not be loaded.</div>';
+                return;
+            }
+            renderKpis();
+            renderTable();
+        }
+
+        function renderKpis() {
+            const p = data.period || {};
+            const delta = p.pct_change !== null && p.pct_change !== undefined ? `${p.pct_change >= 0 ? '+' : ''}${p.pct_change}% vs prior period` : 'No prior baseline';
+            const owing = (data.customersOwing || []).reduce((s, c) => s + Number(c.balance || 0), 0);
+            const stockVal = (data.stockOnHand || []).reduce((s, i) => s + Number(i.value_at_cost || 0), 0);
+            panel.querySelector('#cr-kpis').innerHTML = [
+                OkwUI.kpiCard({ label: 'Period sales', value: fmt(p.current_revenue), subtext: delta, tone: 'primary' }),
+                OkwUI.kpiCard({ label: 'Period profit', value: fmt(p.current_profit), subtext: `${p.from || ''} to ${p.to || ''}`, tone: 'success' }),
+                OkwUI.kpiCard({ label: 'Customers owing', value: fmt(owing), subtext: `${(data.customersOwing || []).length} accounts`, tone: 'warning' }),
+                OkwUI.kpiCard({ label: 'Stock value (cost)', value: fmt(stockVal), subtext: `${(data.stockOnHand || []).length} SKUs`, tone: 'info' })
+            ].join('');
+        }
+
+        function renderTable() {
+            if (!data) return;
+            const bar = panel.querySelector('#cr-drill-bar');
+            bar.innerHTML = drillBrand
+                ? `<div class="okw-filter-bar okw-drill-bar"><span>Drill-down: <strong>${esc(drillBrand)}</strong></span><button type="button" class="okw-btn okw-btn-outline" id="cr-clear-drill">Back to all brands</button></div>`
+                : '';
+            const clear = bar.querySelector('#cr-clear-drill');
+            if (clear) clear.onclick = () => { drillBrand = null; renderTable(); };
+
+            const host = '#cr-table-host';
+            if (active === 'items_today' || active === 'items_period') {
+                let rows = data.itemsSoldRows || [];
+                if (drillBrand) rows = rows.filter(r => r.brand === drillBrand);
+                OkwUI.dataTable(host, {
+                    columns: [
+                        { key: 'day', label: 'Day' },
+                        { key: 'receipt_number', label: 'Receipt' },
+                        { key: 'brand', label: 'Brand' },
+                        { key: 'item', label: 'Item' },
+                        { key: 'unit', label: 'Unit' },
+                        { key: 'qty', label: 'Qty', numeric: true },
+                        { key: 'revenue', label: 'Revenue', numeric: true, render: fmt },
+                        { key: 'profit', label: 'Profit', numeric: true, render: fmt },
+                        { key: 'customer', label: 'Customer' },
+                        { key: 'teller', label: 'Teller' }
+                    ],
+                    rows, exportFilename: `okwesiwa-${active}.xlsx`, printTitle: 'Items sold'
+                });
+            } else if (active === 'by_brand') {
+                OkwUI.dataTable(host, {
+                    columns: [
+                        { key: 'brand', label: 'Brand (click to drill)', render: (v) => `<a href="#" class="okw-link-strong" data-drill-brand="${esc(v)}">${esc(v)}</a>` },
+                        { key: 'qty', label: 'Qty sold', numeric: true },
+                        { key: 'revenue', label: 'Revenue', numeric: true, render: fmt },
+                        { key: 'cost', label: 'Cost', numeric: true, render: fmt },
+                        { key: 'profit', label: 'Profit', numeric: true, render: fmt },
+                        { key: 'margin_pct', label: 'Margin %', numeric: true, render: v => `${v}%` }
+                    ],
+                    rows: data.salesByBrand || [], exportFilename: 'okwesiwa-sales-by-brand.xlsx', printTitle: 'Sales by brand'
+                });
+                panel.querySelectorAll('[data-drill-brand]').forEach(a => {
+                    a.onclick = (e) => {
+                        e.preventDefault();
+                        drillBrand = a.dataset.drillBrand;
+                        active = 'items_period';
+                        $('#cr-report-type').value = active;
+                        renderTable();
+                    };
+                });
+            } else if (active === 'top_customers') {
+                OkwUI.dataTable(host, {
+                    columns: [
+                        { key: 'customer', label: 'Customer' },
+                        { key: 'visits', label: 'Visits', numeric: true },
+                        { key: 'revenue', label: 'Total spent', numeric: true, render: fmt },
+                        { key: 'profit', label: 'Profit', numeric: true, render: fmt },
+                        { key: 'favourite_brand', label: 'Favourite brand' }
+                    ],
+                    rows: data.topCustomers || [], exportFilename: 'okwesiwa-top-customers.xlsx', printTitle: 'Top customers'
+                });
+            } else if (active === 'customers_owing') {
+                OkwUI.dataTable(host, {
+                    columns: [
+                        { key: 'name', label: 'Customer' },
+                        { key: 'phone', label: 'Phone' },
+                        { key: 'customer_type', label: 'Type' },
+                        { key: 'balance', label: 'Balance owed', numeric: true, render: v => `<strong>${esc(fmt(v))}</strong>` },
+                        { key: 'days_0_30', label: '0-30 days', numeric: true, render: fmt },
+                        { key: 'days_31_60', label: '31-60 days', numeric: true, render: fmt },
+                        { key: 'days_61_90', label: '61-90 days', numeric: true, render: fmt },
+                        { key: 'days_90_plus', label: '90+ days', numeric: true, render: fmt }
+                    ],
+                    rows: data.customersOwing || [], exportFilename: 'okwesiwa-customers-owing.xlsx', printTitle: 'Customers owing'
+                });
+            } else if (active === 'stock_on_hand') {
+                OkwUI.dataTable(host, {
+                    columns: [
+                        { key: 'name', label: 'Item' },
+                        { key: 'brand', label: 'Brand' },
+                        { key: 'category', label: 'Category' },
+                        { key: 'unit', label: 'Unit' },
+                        { key: 'stock', label: 'Qty on hand', numeric: true },
+                        { key: 'value_at_cost', label: 'Value at cost', numeric: true, render: fmt },
+                        { key: 'locations', label: 'Locations' }
+                    ],
+                    rows: data.stockOnHand || [], exportFilename: 'okwesiwa-stock-on-hand.xlsx', printTitle: 'Stock on hand'
+                });
+            }
+        }
+
+        $('#cr-report-type').addEventListener('change', (e) => {
+            drillBrand = null;
+            active = e.target.value;
+            if (active === 'items_today' || !data) load(); else renderTable();
         });
+        $('#cr-apply').addEventListener('click', load);
+
+        // Saved views live in the database (per user), not in this browser.
+        async function migrateBrowserViews() {
+            // Views saved in this browser by the old Core Reports page move to the person's account once.
+            let old = [];
+            try { old = JSON.parse(localStorage.getItem('okwesiwa_saved_views') || '[]'); } catch (_) { old = []; }
+            if (!Array.isArray(old) || !old.length) return;
+            let allSaved = true;
+            for (const v of old) {
+                try {
+                    const res = await fetch('/api/reports/saved-views', {
+                        method: 'POST', headers, credentials: 'include',
+                        body: JSON.stringify({ name: v.name, filters: { brand: v.brand, category: v.category, item: v.item, method: v.method } })
+                    });
+                    if (!res.ok) allSaved = false;
+                } catch (_) { allSaved = false; }
+            }
+            if (allSaved) {
+                try { localStorage.removeItem('okwesiwa_saved_views'); } catch (_) { }
+                OkwUI.toast(`${old.length} saved view${old.length === 1 ? '' : 's'} moved to your account`, 'success');
+            }
+        }
+
+        async function loadViews() {
+            try {
+                const res = await fetch('/api/reports/saved-views', { headers, credentials: 'include' });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error('Could not load saved views');
+                views = d.views || [];
+            } catch (err) {
+                views = [];
+                OkwUI.toast(err.message || 'Could not load saved views', 'warning');
+            }
+            $('#cr-views').innerHTML = '<option value="">Saved views...</option>' +
+                views.map(v => `<option value="${esc(v.id)}">${esc(v.name)}</option>`).join('');
+        }
+        $('#cr-views').addEventListener('change', (e) => {
+            const v = views.find(x => String(x.id) === e.target.value);
+            if (!v) return;
+            const f = v.filters || {};
+            $('#cr-brand').value = f.brand || '';
+            $('#cr-category').value = f.category || '';
+            $('#cr-item').value = f.item || '';
+            $('#cr-method').value = f.method || '';
+            load();
+        });
+        $('#cr-save-view').addEventListener('click', async () => {
+            const name = prompt('Save the current filters as:');
+            if (!name || !name.trim()) return;
+            try {
+                const res = await fetch('/api/reports/saved-views', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ name: name.trim(), filters: filters() }) });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.message || 'Failed to save the view');
+                OkwUI.toast('View saved', 'success');
+                loadViews();
+            } catch (err) {
+                OkwUI.toast(err.message || 'Failed to save the view', 'danger');
+            }
+        });
+        $('#cr-delete-view').addEventListener('click', async () => {
+            const id = $('#cr-views').value;
+            if (!id) return OkwUI.toast('Choose a saved view first', 'warning');
+            try {
+                const res = await fetch('/api/reports/saved-views/' + encodeURIComponent(id), { method: 'DELETE', headers, credentials: 'include' });
+                if (!res.ok) throw new Error('Failed to delete the view');
+                OkwUI.toast('View deleted', 'success');
+                loadViews();
+            } catch (err) {
+                OkwUI.toast(err.message || 'Failed to delete the view', 'danger');
+            }
+        });
+
+        migrateBrowserViews().then(loadViews);
+        load();
     }
-    /* Optimized: Global MutationObserver removed to prevent DOM thrashing */
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', applyTableDataLabels);
-    } else {
-        applyTableDataLabels();
-    }
+
+    const linkParams = new URLSearchParams(window.location.search);
+    OkwUI.sectionPage({
+        mount: '#hub',
+        title: 'Reports',
+        subtitle: 'Sales, profit, stock and customer reports in one place.',
+        defaultId: (!linkParams.get('tab') && linkParams.get('report')) ? 'detailed' : 'overview',
+        sections: [
+            { id: 'overview', label: 'Overview', render: mountOverview },
+            { id: 'detailed', label: 'Detailed reports', render: mountDetailed },
+            { id: 'drilldown', label: 'Items, brands & customers', render: mountDrilldown }
+        ]
+    });
 })();
 </script>
-<!-- ====================================================== -->
 </body>
 </html>

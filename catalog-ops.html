@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brands, Units, Prices & Groups - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <style>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { padding: 24px; max-width: 1400px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        .tabs-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
+            <span class="sidebar-role-badge">Catalog & Prices</span>
+        </div>
+        <nav class="nav-links">
+            <div class="nav-section">Products & Contacts</div>
+            <a href="/inventory"><span>Products & Inventory</span></a>
+            <a href="/catalog-ops" class="active"><span>Brands, Units & Prices</span></a>
+            <a href="/operations"><span>Deliveries, Transfers & Reorder</span></a>
+            <a href="/customers"><span>Customers</span></a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap">
+            <h1 style="margin:0 0 6px;font-size:24px;">Brands, Units, Bulk Prices & Customer Groups</h1>
+            <p style="margin:0 0 18px;color:var(--color-text-muted);font-size:14px;">Manage building-material brands, unit conversions, bulk price updates with history, customer groups, and project sites.</p>
+
+            <div class="tabs-row" id="cat-tabs">
+                <button type="button" class="okw-btn okw-btn-primary" data-ctab="brands">Brands</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-ctab="units">Units & Conversions</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-ctab="prices">Bulk Price Update & History</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-ctab="groups">Customer Groups & Sites</button>
+            </div>
+
+            <div class="okw-card" id="cat-panel">Loading...</div>
+        </div>
+    </main>
+</div>
+
+<script>
+(function () {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const fmt = (n) => 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    let activeTab = 'brands';
+
+    async function renderBrands() {
+        const res = await fetch('/api/brands', { headers });
+        const d = await res.json().catch(() => ({}));
+        const panel = document.getElementById('cat-panel');
+        panel.innerHTML = `
+            <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
+                <input type="text" id="b-name" class="okw-input" placeholder="Brand name (e.g. Ghacem, Dangote, Coral)">
+                <button type="button" class="okw-btn okw-btn-primary" id="b-add">+ Add Brand</button>
+            </div>
+            <div id="brands-tbl"></div>
+        `;
+        OkwUI.dataTable('#brands-tbl', {
+            columns: [
+                { key: 'name', label: 'Brand' },
+                { key: 'product_count', label: 'Products', numeric: true },
+                { key: 'total_stock', label: 'Stock Qty', numeric: true },
+                { key: 'stock_value', label: 'Stock Value', numeric: true, render: v => fmt(v) }
+            ],
+            rows: d.brands || [],
+            exportFilename: 'okwesiwa-brands.xlsx'
+        });
+        document.getElementById('b-add').onclick = async () => {
+            const name = document.getElementById('b-name').value.trim();
+            if (!name) return;
+            const r = await fetch('/api/brands', { method: 'POST', headers, body: JSON.stringify({ name }) });
+            if (r.ok) { OkwUI.toast('Brand saved', 'success'); renderBrands(); }
+        };
+    }
+
+    async function renderUnits() {
+        const res = await fetch('/api/units', { headers });
+        const d = await res.json().catch(() => ({}));
+        const panel = document.getElementById('cat-panel');
+        panel.innerHTML = `
+            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+                <input type="text" id="u-base" class="okw-input" placeholder="Base unit (e.g. Bag)">
+                <input type="text" id="u-alt" class="okw-input" placeholder="Pack unit (e.g. Pallet)">
+                <input type="number" id="u-factor" class="okw-input" placeholder="Factor (e.g. 50)" step="any">
+                <input type="text" id="u-notes" class="okw-input" placeholder="Notes">
+                <button type="button" class="okw-btn okw-btn-primary" id="u-add">+ Add Conversion</button>
+            </div>
+            <div id="units-tbl"></div>
+        `;
+        OkwUI.dataTable('#units-tbl', {
+            columns: [
+                { key: 'alt_unit', label: 'Pack / Sell Unit' },
+                { key: 'factor', label: 'Equals Base Qty', numeric: true },
+                { key: 'base_unit', label: 'Base Unit' },
+                { key: 'notes', label: 'Notes' }
+            ],
+            rows: d.units || [],
+            exportFilename: 'okwesiwa-units.xlsx'
+        });
+        document.getElementById('u-add').onclick = async () => {
+            const payload = {
+                base_unit: document.getElementById('u-base').value,
+                alt_unit: document.getElementById('u-alt').value,
+                factor: document.getElementById('u-factor').value,
+                notes: document.getElementById('u-notes').value
+            };
+            const r = await fetch('/api/units', { method: 'POST', headers, body: JSON.stringify(payload) });
+            if (r.ok) { OkwUI.toast('Unit conversion added', 'success'); renderUnits(); }
+        };
+    }
+
+    async function renderPrices() {
+        const histRes = await fetch('/api/prices/history', { headers });
+        const histData = await histRes.json().catch(() => ({}));
+        const panel = document.getElementById('cat-panel');
+        panel.innerHTML = `
+            <h3 style="margin:0 0 10px;">Bulk Price Update</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                <input type="text" id="bp-brand" class="okw-input" placeholder="Filter by brand (optional)">
+                <input type="text" id="bp-cat" class="okw-input" placeholder="Filter by category (optional)">
+                <select id="bp-mode" class="okw-select"><option value="percent">% Change</option><option value="amount">Fixed GH₵ Change</option></select>
+                <input type="number" id="bp-val" class="okw-input" placeholder="e.g. 5 or -10" step="0.01">
+                <button type="button" class="okw-btn okw-btn-primary" id="bp-preview">Preview Changes</button>
+                <button type="button" class="okw-btn okw-btn-accent" id="bp-apply" style="display:none;">Apply Update</button>
+            </div>
+            <div id="bp-preview-host" style="margin-bottom:20px;"></div>
+            <h3 style="margin:0 0 10px;">Price Change History</h3>
+            <div id="bp-history-host"></div>
+        `;
+
+        let previewRows = [];
+        document.getElementById('bp-preview').onclick = async () => {
+            const r = await fetch('/api/prices/bulk-preview', {
+                method: 'POST', headers,
+                body: JSON.stringify({
+                    brand: document.getElementById('bp-brand').value,
+                    category: document.getElementById('bp-cat').value,
+                    mode: document.getElementById('bp-mode').value,
+                    value: document.getElementById('bp-val').value
+                })
+            });
+            const d = await r.json().catch(() => ({}));
+            previewRows = d.preview || [];
+            document.getElementById('bp-apply').style.display = previewRows.length ? 'inline-flex' : 'none';
+            OkwUI.dataTable('#bp-preview-host', {
+                columns: [
+                    { key: 'name', label: 'Product' },
+                    { key: 'brand', label: 'Brand' },
+                    { key: 'old_price', label: 'Old Price', numeric: true, render: v => fmt(v) },
+                    { key: 'new_price', label: 'New Price', numeric: true, render: v => `<strong>${fmt(v)}</strong>` }
+                ],
+                rows: previewRows,
+                exportFilename: 'okwesiwa-price-preview.xlsx'
+            });
+        };
+
+        document.getElementById('bp-apply').onclick = async () => {
+            if (!previewRows.length) return;
+            const reason = prompt('Reason for price change (e.g. Supplier price increase):', 'Market price update') || 'Bulk price update';
+            const r = await fetch('/api/prices/bulk-apply', { method: 'POST', headers, body: JSON.stringify({ items: previewRows, reason }) });
+            if (r.ok) { OkwUI.toast(`Updated ${previewRows.length} prices`, 'success'); renderPrices(); }
+        };
+
+        OkwUI.dataTable('#bp-history-host', {
+            columns: [
+                { key: 'created_at', label: 'Date', render: v => new Date(v).toLocaleString() },
+                { key: 'product_name', label: 'Product' },
+                { key: 'brand', label: 'Brand' },
+                { key: 'old_price', label: 'Old', numeric: true, render: v => fmt(v) },
+                { key: 'new_price', label: 'New', numeric: true, render: v => fmt(v) },
+                { key: 'change_reason', label: 'Reason' },
+                { key: 'changed_by_name', label: 'Changed By' }
+            ],
+            rows: histData.history || [],
+            exportFilename: 'okwesiwa-price-history.xlsx'
+        });
+    }
+
+    async function renderGroups(selectedView = 'groups') {
+        const [gRes, sRes] = await Promise.all([
+            fetch('/api/customer-groups', { headers }),
+            fetch('/api/customer-sites', { headers })
+        ]);
+        const gData = await gRes.json().catch(() => ({}));
+        const sData = await sRes.json().catch(() => ({}));
+        const panel = document.getElementById('cat-panel');
+
+        function drawView(view) {
+            panel.innerHTML = `
+                <div class="okw-filter-bar" style="margin-bottom:16px;">
+                    <label for="cg-view-type">Filter Type</label>
+                    <select id="cg-view-type" class="okw-select">
+                        <option value="groups"${view === 'groups' ? ' selected' : ''}>Customer Groups</option>
+                        <option value="sites"${view === 'sites' ? ' selected' : ''}>Customer Project Sites</option>
+                    </select>
+                </div>
+                <div id="cg-view-body"></div>
+            `;
+
+            document.getElementById('cg-view-type').onchange = (e) => drawView(e.target.value);
+            const body = document.getElementById('cg-view-body');
+
+            if (view === 'groups') {
+                body.innerHTML = `
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                        <input type="text" id="cg-name" class="okw-input" placeholder="Group name (e.g. VIP)">
+                        <select id="cg-pg" class="okw-select"><option value="retail">Retail</option><option value="contractor">Contractor</option><option value="wholesale">Wholesale</option></select>
+                        <input type="number" id="cg-disc" class="okw-input" placeholder="Discount %" step="0.1">
+                        <button type="button" class="okw-btn okw-btn-primary" id="cg-add">Save Group</button>
+                    </div>
+                    <div id="cg-tbl"></div>
+                `;
+                OkwUI.dataTable('#cg-tbl', {
+                    columns: [
+                        { key: 'name', label: 'Group' },
+                        { key: 'price_group', label: 'Price List' },
+                        { key: 'discount_pct', label: 'Default Discount %', numeric: true, render: v => `${v}%` }
+                    ],
+                    rows: gData.groups || []
+                });
+                document.getElementById('cg-add').onclick = async () => {
+                    const r = await fetch('/api/customer-groups', {
+                        method: 'POST', headers,
+                        body: JSON.stringify({
+                            name: document.getElementById('cg-name').value,
+                            price_group: document.getElementById('cg-pg').value,
+                            discount_pct: document.getElementById('cg-disc').value
+                        })
+                    });
+                    if (r.ok) { OkwUI.toast('Customer group saved', 'success'); renderGroups('groups'); }
+                };
+            } else {
+                body.innerHTML = `<div id="cs-tbl"></div>`;
+                OkwUI.dataTable('#cs-tbl', {
+                    columns: [
+                        { key: 'customer_name', label: 'Customer' },
+                        { key: 'site_name', label: 'Site Name' },
+                        { key: 'address', label: 'Address' },
+                        { key: 'contact_phone', label: 'Phone' }
+                    ],
+                    rows: sData.sites || []
+                });
+            }
+        }
+
+        drawView(selectedView);
+    }
+
+    function switchTab(tab) {
+        activeTab = tab;
+        document.getElementById('cat-tabs').querySelectorAll('[data-ctab]').forEach(b => {
+            b.className = b.dataset.ctab === tab ? 'okw-btn okw-btn-primary' : 'okw-btn okw-btn-outline';
+        });
+        if (tab === 'brands') renderBrands();
+        else if (tab === 'units') renderUnits();
+        else if (tab === 'prices') renderPrices();
+        else renderGroups();
+    }
+
+    document.getElementById('cat-tabs').querySelectorAll('[data-ctab]').forEach(b => {
+        b.onclick = () => switchTab(b.dataset.ctab);
+    });
+    switchTab('brands');
+})();
+</script>
+</body>
+</html>
+

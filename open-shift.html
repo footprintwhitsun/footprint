@@ -3,17 +3,17 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="auth-guard.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footprint | Open Shift</title>
-    <link rel="icon" type="image/png" href="logo.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>OKWESIWA LTD | Open Shift</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <style>
         :root {
             --primary-color: #273990; --accent-color: #f9a51a;
@@ -25,14 +25,13 @@
 
         /* Header */
         header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: var(--primary-color);
             padding: 0 25px;
             height: 70px;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            color: white;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            color: var(--ink, #17202A);
         }
         .brand { font-size: 18px; font-weight: 700; letter-spacing: 1px; font-family: 'Montserrat', sans-serif; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
         .user-info { font-size: 14px; opacity: 0.9; }
@@ -45,7 +44,6 @@
             background: white;
             border-radius: 12px;
             padding: 40px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08);
             text-align: center;
         }
 
@@ -68,7 +66,7 @@
 
         /* Footer */
         footer {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: var(--primary-color);
             padding: 8px 25px;
             display: flex;
             justify-content: center;
@@ -91,28 +89,51 @@
             background: #ffffff;
             padding: 3px 10px;
             border: 1.5px solid rgba(249, 165, 26, 0.7);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
         }
             .user-info { font-size: 12px; }
         }
+        .main-content { margin-left: var(--sidebar-width); flex: 1; min-width: 0; padding: 24px 28px; box-sizing: border-box; }
+        .container { margin: 0 auto; }
+        @media (max-width: 992px) { .main-content { margin-left: 0; padding: 16px; } }
     </style>
     <script src="currency.js"></script>
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
     <link rel="stylesheet" href="sidebar.css">
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style id="shift-face">
+        .main-content .container { max-width: 520px !important; margin: 56px auto 0 !important; padding: 0 !important; background: transparent !important; box-shadow: none !important; border: 0 !important; }
+        .container h2 { text-align: left !important; font-family: var(--font-display); font-size: 28px; font-weight: 700; margin: 0 0 6px; }
+        .container > p { text-align: left !important; color: var(--muted); font-size: 15px; margin: 0 0 6px; }
+        .shift-who { margin: 0 0 24px; font-size: 14px; color: var(--ink-2); font-weight: 600; }
+        .form-group label { font-size: 13px; font-weight: 600; color: var(--muted); }
+        #startCash { height: 72px; font-family: var(--font-display); font-size: 34px; font-weight: 600; font-variant-numeric: tabular-nums; padding: 0 20px; border-radius: 12px; }
+        .btn-open { height: 56px; border-radius: 12px !important; font-size: 17px !important; }
+        .okw-sub-footer { display: none !important; }
+    </style>
 </head>
 <body>
 
-    <header>
-        <div class="brand"><img src="logo.png" alt="FOOTPRINT" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;"><span style="font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; text-transform: uppercase;">FOOTPRINT</span></div>
-        <div class="user-info" id="userName">Teller</div>
-    </header>
+    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div class="overlay" onclick="toggleSidebar()"></div>
 
+    <div class="sidebar">
+        <div class="brand">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
+        </div>
+        <div class="nav-links"></div>
+    </div>
+
+    <div class="main-content">
     <div class="container">
-        <div style="font-size: 48px; margin-bottom: 20px;">☀️</div>
+        
         <h2>Start Your Shift</h2>
-        <p>Enter your opening cash amount to begin sales.</p>
+        <p>Count the cash in the drawer and enter it to begin sales.</p>
+        <p class="shift-who" id="shiftWho"></p>
 
+        <script>(function () { try { var u = JSON.parse(localStorage.getItem("currentUser") || "{}"); var el = document.getElementById("shiftWho"); if (el) el.textContent = [u.name, u.store_location].filter(Boolean).join(" · "); } catch (e) { } })();</script>
         <form onsubmit="openShift(event)">
             <div class="form-group">
                 <label>Opening Cash Amount</label>
@@ -126,16 +147,17 @@
         </form>
     </div>
 
-    <footer>
-        <div>&copy; 2025 Footprint. All rights reserved.</div>
+    <footer class="okw-sub-footer">
+        <div>&copy; 2025 OKWESIWA LTD. All rights reserved.</div>
     </footer>
+    </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             try {
                 const token = localStorage.getItem('authToken');
                 if (!token) {
-                    window.location.href = '/';
+                    (window.top || window).location.href = '/';
                     return;
                 }
 
@@ -144,7 +166,7 @@
                 });
                 
                 if (!response.ok) {
-                    window.location.href = '/';
+                    (window.top || window).location.href = '/';
                     return;
                 }
                 
@@ -152,18 +174,15 @@
                 const user = data.user;
                 const userRole = user.role ? user.role.toLowerCase() : '';
                 
-                // Verify user role - only cashier/teller can access this page
-                if (userRole === 'admin' || userRole === 'manager') {
-                    window.location.href = 'dashboard';
-                    return;
-                } else if (userRole !== 'cashier' && userRole !== 'teller') {
-                    // For any other role, redirect to login
-                    window.location.href = '/';
+                // Allow staff roles (teller/cashier, managers, CEO, super_admin)
+                if (!['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'].includes(userRole)) {
+                    (window.top || window).location.href = '/';
                     return;
                 }
                 
                 // Update UI with user info
-                document.getElementById('userName').textContent = user.name || 'Cashier';
+                const userNameEl = document.getElementById('userName');
+                if (userNameEl) userNameEl.textContent = user.name || 'Cashier';
                 
                 // Check if shift is already open
                 const shiftCheck = await fetch('/api/shifts/active', {
@@ -173,14 +192,14 @@
                 if (shiftCheck.ok) {
                     const shiftData = await shiftCheck.json();
                     if (shiftData.active) {
-                        window.location.href = 'pos';
+                        (window.top || window).location.href = 'pos';
                         return;
                     }
                 }
                 document.body.style.visibility = 'visible';
             } catch (error) {
                 console.error('Error checking session:', error);
-                window.location.href = '/';
+                (window.top || window).location.href = '/';
             }
         });
 
@@ -205,7 +224,7 @@
                 
                 if (!sessionRes.ok) {
                     if (customerWindow) customerWindow.close();
-                    window.location.href = '/';
+                    (window.top || window).location.href = '/';
                     return;
                 }
                 
@@ -225,7 +244,7 @@
                 });
 
                 if (res.ok) {
-                    window.location.href = 'pos';
+                    (window.top || window).location.href = 'pos';
                 } else {
                     if (customerWindow) customerWindow.close();
                     const error = await res.json();
@@ -242,7 +261,7 @@
 <!-- ================== GLOBAL UX FIXES ================== -->
 <style>
 #custom-toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
+.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
 .custom-toast.show { opacity: 1; transform: translateY(0); }
 .custom-toast.error { background: #e74c3c; border-left: 4px solid #c0392b; }
 .custom-toast.success { background: #27ae60; border-left: 4px solid #2ecc71; }

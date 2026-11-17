@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS stock_transfer_items (
 -- 7. PRODUCT BATCHES TABLE (Enhanced with tracking)
 CREATE TABLE IF NOT EXISTS product_batches_v2 (
     id SERIAL PRIMARY KEY,
+    tenant_id INTEGER DEFAULT 1,
     product_barcode VARCHAR(50) REFERENCES products(barcode) ON DELETE CASCADE,
     batch_number VARCHAR(100) NOT NULL,
     expiry_date DATE,
@@ -135,7 +136,7 @@ CREATE TABLE IF NOT EXISTS product_batches_v2 (
     branch_id INTEGER,
     status VARCHAR(50) DEFAULT 'Active', -- 'Active', 'Near Expiry', 'Expired', 'Sold Out'
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(product_barcode, batch_number, branch_id)
+    UNIQUE(tenant_id, product_barcode, batch_number, branch_id)
 );
 
 -- 8. GOODS RECEIVED LOG TABLE

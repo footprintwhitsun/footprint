@@ -15,29 +15,49 @@ process.on('uncaughtException', (err) => {
 
 const express = require('express');
 const cors = require('cors');
-const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const nodemailer = require('nodemailer');
 const PDFDocument = require('pdfkit');
 const crypto = require('crypto');
-let JWT_SECRET = process.env.JWT_SECRET;
-let SESSION_SECRET = process.env.SESSION_SECRET;
-const missingConfigKeys = [];
+const { randomUUID: uuidv4 } = crypto;
+const fs = require('fs');
+const { pool, dbConfigured, tenantContext, missingConfigKeys, setRlsBootstrapComplete } = require('./db/pool');
+const { PgRateLimitStore, hit: hitCounter, clearHits } = require('./services/shared-state');
+const {
+    JWT_SECRET,
+    SESSION_SECRET,
+    tokenBlacklist,
+    revokeToken,
+    PAGE_ROLES,
+    MANAGER_ROLES,
+    userTenantScope,
+    authenticateToken,
+    requireRole,
+    requirePermission,
+    guardPageRoute
+} = require('./middleware/auth');
+// Secrets: a production server must not start with a placeholder or a short secret.
+(function checkSecrets() {
+    const placeholders = ['footprint-secure-secret-key-2025', 'okwesiwa-dev-jwt-secret-local-only', 'okwesiwa-dev-session-secret-local-only', 'change_this_to_a_random_secret_string'];
+    const problems = [];
+    for (const [name, value] of [['JWT_SECRET', JWT_SECRET], ['SESSION_SECRET', SESSION_SECRET]]) {
+        if (placeholders.includes(value)) problems.push(`${name} is a placeholder value that is published with the project`);
+        else if (String(value).length < 32) problems.push(`${name} is shorter than 32 characters`);
+    }
+    if (!problems.length) return;
+    const message = 'Insecure secrets: ' + problems.join('; ') + '. Generate new ones, for example: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"';
+    if (process.env.NODE_ENV === 'production') { console.error('FATAL: ' + message); process.exit(1); }
+    console.warn('WARNING: ' + message);
+})();
 
-if (!JWT_SECRET) {
-    missingConfigKeys.push('JWT_SECRET');
-    console.warn('⚠️ WARNING: JWT_SECRET environment variable is not set. Using secure fallback secret.');
-    JWT_SECRET = 'footprint-pos-jwt-secret-recovery-token-2025';
-}
-if (!SESSION_SECRET) {
-    missingConfigKeys.push('SESSION_SECRET');
-    console.warn('⚠️ WARNING: SESSION_SECRET environment variable is not set. Using secure fallback secret.');
-    SESSION_SECRET = 'footprint-pos-session-secret-recovery-token-2025';
-}
+// Errors that escape a handler are logged in one machine-readable line so they can be found and alerted on.
+process.on('unhandledRejection', (reason) => {
+    console.error(JSON.stringify({ level: 'error', event: 'unhandledRejection', message: reason && reason.message ? reason.message : String(reason), stack: reason && reason.stack ? String(reason.stack).split('\n').slice(0, 4).join(' | ') : undefined, at: new Date().toISOString() }));
+});
+
 const path = require('path');
 const axios = require('axios');
-const { v4: uuidv4 } = require('uuid');
 const https = require('https');
 const session = require('express-session');
 const pgSession = require('connect-pg-simple')(session);
@@ -47,10 +67,7 @@ const { body, validationResult } = require('express-validator');
 const security = require('./security');
 const multer = require('multer');
 const xlsx = require('xlsx');
-const { AsyncLocalStorage } = require('async_hooks');
 
-// SaaS RLS Wrapper Context Tracking
-const tenantContext = new AsyncLocalStorage();
 const faviconPath = path.join(__dirname, 'logo.png');
 
 const app = express();
@@ -60,136 +77,21 @@ app.use(compression());
 // Override port 5000 to 5001 to avoid macOS AirPlay conflict
 const port = (process.env.PORT && process.env.PORT !== '5000') ? process.env.PORT : 8080;
 
-// Configure Multer for memory storage (handling file uploads)
-const upload = multer({ storage: multer.memoryStorage() });
+// Configure Multer for memory storage with upload size limit (5 MB)
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
-// Serve favicon
+// Serve favicon if user has added favicon.ico or logo.png
 app.get(['/favicon.ico', '/favicon.png'], (req, res) => {
-    res.sendFile(faviconPath);
+    const icoPath = path.join(__dirname, 'favicon.ico');
+    if (req.path === '/favicon.ico' && fs.existsSync(icoPath)) return res.sendFile(icoPath);
+    if (fs.existsSync(faviconPath)) return res.sendFile(faviconPath);
+    return res.status(204).end();
+});
+app.get('/manifest.json', (req, res) => {
+    res.sendFile(path.join(__dirname, 'manifest.json'));
 });
 
-// Database connection
-let pool = null;
-let dbConfigured = false;
-try {
-    const rawConnStr = process.env.DATABASE_URL;
-    const connStr = rawConnStr ? rawConnStr.trim().replace(/^["']|["']$/g, '') : null;
-
-    if (!connStr && !(process.env.PGHOST && process.env.PGDATABASE)) {
-        missingConfigKeys.push('DATABASE_URL');
-        console.error('CRITICAL: No database configuration found in environment. DATABASE_URL must be set in Vercel Project Settings.');
-    }
-
-    // Enable SSL for production environments or if connecting to a Supabase URL
-    const isProduction = process.env.NODE_ENV === 'production';
-    const isSupabase = connStr && (
-        connStr.includes('supabase.co') ||
-        connStr.includes('supabase.com') ||
-        connStr.includes('sslmode=require')
-    );
-    const ssl = (isProduction || isSupabase) ? { rejectUnauthorized: false } : false;
-
-    if (process.env.PGHOST || process.env.PGUSER || process.env.PGPASSWORD || process.env.PGDATABASE) {
-        const poolConfig = {
-            host: process.env.PGHOST || 'localhost',
-            user: process.env.PGUSER || undefined,
-            password: process.env.PGPASSWORD || undefined,
-            database: process.env.PGDATABASE || undefined,
-            port: process.env.PGPORT ? parseInt(process.env.PGPORT) : undefined,
-            ssl,
-            statement_timeout: 8000,
-            idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 8000
-        };
-        console.log('Using individual PG env vars for connection (masked).');
-        pool = new Pool(poolConfig);
-        dbConfigured = true;
-    } else if (connStr) {
-        // Supabase Pooler (Port 6543) requires prepare_threshold=0 to avoid "prepared statement" errors
-        // We also strip sslmode from the string to ensure our explicit ssl config object works
-        let cleanConnStr = connStr.replace(/sslmode=[^&]*/g, '')
-            .replace(/\?&/, '?')
-            .replace(/&&/g, '&')
-            .replace(/[?&]$/, '');
-
-        if (cleanConnStr.includes(':6543')) {
-            const separator = cleanConnStr.includes('?') ? '&' : '?';
-            if (!cleanConnStr.includes('prepare_threshold')) {
-                cleanConnStr += `${separator}prepare_threshold=0`;
-            }
-        }
-
-        try {
-            console.log('Using DATABASE_URL (masked):', cleanConnStr.replace(/:(.*)@/, ':*****@'));
-        } catch (e) { console.log('Using DATABASE_URL (masked)'); }
-        pool = new Pool({
-            connectionString: cleanConnStr,
-            ssl,
-            statement_timeout: 8000,
-            idleTimeoutMillis: 30000,
-            connectionTimeoutMillis: 8000
-        });
-        dbConfigured = true;
-    }
-
-    if (pool) {
-        // CRITICAL: Listen for pool errors to prevent Node.js from crashing silently
-        pool.on('error', (err) => {
-            console.error('DATABASE POOL ERROR:', err);
-        });
-    }
-} catch (err) {
-    console.error('Postgres pool init error:', err && err.message ? err.message : err);
-}
-
-// SaaS RLS Wrapper: Inject tenant context on client checkout without per-query round-trip overhead
-// During bootstrap, schema/maintenance queries legitimately run outside any tenant context.
-// Once bootstrapping finishes, a client with no context must not keep a previous caller's
-// tenant or super-admin setting, because the pool hands that session state to the next borrower.
-let rlsBootstrapComplete = false;
-if (pool) {
-    const originalPoolConnect = pool.connect.bind(pool);
-    pool.connect = async function () {
-        const client = await originalPoolConnect();
-        const ctx = tenantContext.getStore();
-        if (ctx) {
-            const tenantKey = `${ctx.tenantId || ''}:${ctx.isSuperAdmin ? 'true' : 'false'}`;
-            if (client.__currentSessionKey !== tenantKey) {
-                try {
-                    await client.query(
-                        `SELECT set_config('app.current_tenant', $1, false), set_config('app.is_super_admin', $2, false)`,
-                        [ctx.isSuperAdmin ? '' : (ctx.tenantId ? ctx.tenantId.toString() : '1'), ctx.isSuperAdmin ? 'true' : 'false']
-                    );
-                    client.__currentSessionKey = tenantKey;
-                } catch (e) {
-                    console.error('Failed to set tenant config on client:', e.message);
-                }
-            }
-        } else if (rlsBootstrapComplete && client.__currentSessionKey) {
-            try {
-                await client.query(
-                    `SELECT set_config('app.current_tenant', $1, false), set_config('app.is_super_admin', $2, false)`,
-                    ['1', 'false']
-                );
-                client.__currentSessionKey = '1:false';
-            } catch (e) {
-                console.error('Failed to reset tenant config on client:', e.message);
-            }
-        }
-        return client;
-    };
-
-    // Direct pool.query wrapper
-    const originalPoolQuery = pool.query.bind(pool);
-    pool.query = async function (...args) {
-        const client = await pool.connect();
-        try {
-            return await client.query(...args);
-        } finally {
-            client.release();
-        }
-    };
-}
+// Shared PostgreSQL pool & RLS context live in ./db/pool (imported above).
 
 // Audit Logging Helper
 async function logActivity(req, action, details = {}) {
@@ -231,7 +133,7 @@ function resolveBranchStockFromLevels(levels, candidates) {
         let key = keys.find(k => k === candTrim);
         // 2. Case-insensitive exact match
         if (!key) key = keys.find(k => k.trim().toLowerCase() === candLower);
-        // 3. Substring/fuzzy fallback (e.g. 'Footprint Ent Dzorwulu' <-> 'Dzorwulu')
+        // 3. Substring/fuzzy fallback (e.g. 'OKWESIWA LTD Ent Dzorwulu' <-> 'Dzorwulu')
         if (!key) key = keys.find(k => {
             const kl = k.trim().toLowerCase();
             return kl.includes(candLower) || candLower.includes(kl);
@@ -276,6 +178,7 @@ async function initDb() {
             -- Company Portal Core Tables
             CREATE TABLE IF NOT EXISTS companies (
                 id SERIAL PRIMARY KEY,
+                tenant_id INTEGER REFERENCES tenants(id) DEFAULT 1,
                 name VARCHAR(255) NOT NULL,
                 tax_id VARCHAR(50),
                 phone VARCHAR(50),
@@ -285,6 +188,8 @@ async function initDb() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             ALTER TABLE companies ADD COLUMN IF NOT EXISTS registration_number VARCHAR(100);
+            ALTER TABLE companies ADD COLUMN IF NOT EXISTS tenant_id INTEGER REFERENCES tenants(id) DEFAULT 1;
+            UPDATE companies SET tenant_id = 1 WHERE tenant_id IS NULL;
         `);
 
         // Force explicit separate creation for company_users to prevent transaction pooling drops
@@ -793,6 +698,9 @@ async function initDb() {
             -- Add branch_id to system_settings if not exists
             ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS branch_id INT DEFAULT 1;
             ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS tax_id VARCHAR(50);
+            ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS address TEXT;
+            ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS email VARCHAR(255);
+            ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS logo_url TEXT;
             ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
             ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS bank_name VARCHAR(255);
             ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS bank_account_name VARCHAR(255);
@@ -802,7 +710,8 @@ async function initDb() {
             ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS momo_name VARCHAR(255);
             
             -- Add credit_auth_code to system_settings
-            ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS credit_auth_code VARCHAR(50) DEFAULT '123456';
+            ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS credit_auth_code VARCHAR(50);
+            ALTER TABLE system_settings ALTER COLUMN credit_auth_code DROP DEFAULT;
             ALTER TABLE system_settings ADD COLUMN IF NOT EXISTS credit_auth_code_expiry TIMESTAMP;
             
             -- Add monthly_target to system_settings
@@ -865,6 +774,9 @@ async function initDb() {
             ALTER TABLE customers     ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
             ALTER TABLE branches      ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
             ALTER TABLE branches      ADD COLUMN IF NOT EXISTS is_main BOOLEAN DEFAULT FALSE;
+            ALTER TABLE branches      ADD COLUMN IF NOT EXISTS phone VARCHAR(50);
+            ALTER TABLE branches      ADD COLUMN IF NOT EXISTS manager VARCHAR(120);
+            ALTER TABLE branches      ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Active';
             ALTER TABLE promotions    ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
             -- Ensure branch 1 is the main branch if no main branch is set yet
             UPDATE branches SET is_main = TRUE WHERE id = 1 AND NOT EXISTS (SELECT 1 FROM branches WHERE is_main = TRUE);
@@ -1027,6 +939,8 @@ async function initDb() {
             ALTER TABLE stock_transfers ADD COLUMN IF NOT EXISTS from_location VARCHAR(255);
             ALTER TABLE stock_transfers ADD COLUMN IF NOT EXISTS to_location VARCHAR(255);
             ALTER TABLE stock_transfers ADD COLUMN IF NOT EXISTS items JSONB;
+            -- databases built by init_db_and_users.js lack this column, which made GET /api/transfers return 500
+            ALTER TABLE stock_transfers ADD COLUMN IF NOT EXISTS transfer_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
 
             CREATE TABLE IF NOT EXISTS stock_transfer_items (
                 id SERIAL PRIMARY KEY,
@@ -1059,10 +973,15 @@ async function initDb() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
 
-            -- Ensure unique constraint on product_batches for ON CONFLICT clauses
+            -- Ensure per-tenant unique constraint on product_batches for ON CONFLICT clauses
+            ALTER TABLE product_batches ADD COLUMN IF NOT EXISTS tenant_id INT REFERENCES tenants(id) DEFAULT 1;
+            UPDATE product_batches SET tenant_id = 1 WHERE tenant_id IS NULL;
             DO $$ BEGIN
-                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'product_batches_barcode_batch_branch_key') THEN
-                    ALTER TABLE product_batches ADD CONSTRAINT product_batches_barcode_batch_branch_key UNIQUE (product_barcode, batch_number, branch_id);
+                IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'product_batches_barcode_batch_branch_key') THEN
+                    ALTER TABLE product_batches DROP CONSTRAINT product_batches_barcode_batch_branch_key;
+                END IF;
+                IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'product_batches_tenant_barcode_batch_branch_key') THEN
+                    ALTER TABLE product_batches ADD CONSTRAINT product_batches_tenant_barcode_batch_branch_key UNIQUE (tenant_id, product_barcode, batch_number, branch_id);
                 END IF;
             END $$;
         `);
@@ -1129,7 +1048,7 @@ async function initDb() {
 
 
         // SaaS MULTI-TENANT ARCHITECTURE LOOP
-        // Natively inject tenant_id global sandboxes across all 28 operational tables
+        // Natively inject tenant_id global sandboxes across all operational tables
         const saasTables = [
             'proforma_invoices', 'proforma_invoice_items', 'company_transactions',
             'sales_invoices', 'sales_invoice_items', 'product_batches', 'transactions',
@@ -1137,7 +1056,16 @@ async function initDb() {
             'activity_logs', 'system_settings', 'customer_ledger', 'shelf_inventory',
             'shelf_movements', 'stock_adjustments', 'stock_takes', 'stock_take_items',
             'reorder_alerts', 'inventory_audit_log', 'goods_received', 'stock_transfers',
-            'stock_transfer_items', 'price_lists', 'price_list_items', 'tax_rules'
+            'stock_transfer_items', 'price_lists', 'price_list_items', 'tax_rules',
+            'products', 'suppliers', 'purchase_orders', 'purchase_order_items',
+            'delivery_notes', 'pos_holds', 'pos_quotations', 'pos_approval_tokens',
+            'layaways', 'layaway_payments', 'staff_attendance', 'cash_accounts',
+            'branch_targets', 'cash_drops', 'daily_closes', 'brands',
+            'unit_conversions', 'price_history', 'customer_groups', 'customer_sites',
+            'supplier_payments', 'roles', 'companies', 'company_users',
+            'business_settings', 'notification_templates', 'expense_categories',
+            'gl_accounts', 'gl_journal_entries', 'gl_journal_lines', 'bank_statement_lines',
+            'payroll_profiles', 'payroll_runs', 'payroll_items'
         ];
 
         for (const table of saasTables) {
@@ -1148,6 +1076,7 @@ async function initDb() {
 
                 // RLS: Natively lock the database table to the current Express Session context mathematically
                 await pool.query(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY;`);
+                await pool.query(`ALTER TABLE ${table} FORCE ROW LEVEL SECURITY;`);
                 await pool.query(`DROP POLICY IF EXISTS tenant_isolation_policy ON ${table};`);
                 await pool.query(`
                     CREATE POLICY tenant_isolation_policy ON ${table}
@@ -1186,17 +1115,31 @@ async function initDb() {
             }
         }
 
+        // Ensure branch-scoped reporting columns exist on delivery_notes at startup
+        await pool.query(`ALTER TABLE delivery_notes ADD COLUMN IF NOT EXISTS store_location VARCHAR(120) DEFAULT '';`).catch(() => {});
+
         console.log('Database schema checked/updated');
     } catch (err) {
         console.error('DB Init Error:', err);
+    } finally {
+        setRlsBootstrapComplete(true);
     }
 }
-initDb();
+const initDbPromise = initDb();
 console.log('initDb() called');
 
 // Security middleware
 app.use(security.securityHeaders);
 app.use(security.limiter);
+
+app.get('/healthz', async (req, res) => {
+    try {
+        await pool.query('SELECT 1');
+        res.status(200).json({ ok: true, db: 'connected', uptime: Math.round(process.uptime()) });
+    } catch (err) {
+        res.status(503).json({ ok: false, db: 'disconnected' });
+    }
+});
 
 // Tighter dedicated limiter for the login endpoint (10 attempts / 15 min per IP)
 const loginLimiter = require('express-rate-limit')({
@@ -1204,7 +1147,8 @@ const loginLimiter = require('express-rate-limit')({
     max: 10,
     message: { success: false, message: 'Too many login attempts. Please wait 15 minutes and try again.' },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    store: new PgRateLimitStore('login:')
 });
 
 // Same protection for the other credential-guessing surfaces: company login, password reset
@@ -1214,7 +1158,8 @@ const authLimiter = require('express-rate-limit')({
     max: 10,
     message: { success: false, message: 'Too many attempts. Please wait 15 minutes and try again.' },
     standardHeaders: true,
-    legacyHeaders: false
+    legacyHeaders: false,
+    store: new PgRateLimitStore('auth:')
 });
 
 // Session configuration
@@ -1231,7 +1176,12 @@ if (pool) {
             console.error('SESSION STORE PG ERROR (non-fatal):', err && err.message ? err.message : err);
         });
     } catch (pgErr) {
-        console.error('SESSION STORE INIT ERROR (falling back to MemoryStore):', pgErr && pgErr.message ? pgErr.message : pgErr);
+        if (process.env.NODE_ENV === 'production') {
+            // A memory store would log users out at random across serverless instances. Fail loudly instead.
+            console.error('FATAL: the session store could not start: ' + (pgErr && pgErr.message ? pgErr.message : pgErr));
+            process.exit(1);
+        }
+        console.error('SESSION STORE INIT ERROR (falling back to MemoryStore, development only):', pgErr && pgErr.message ? pgErr.message : pgErr);
         sessionStore = new session.MemoryStore();
     }
 } else {
@@ -1243,6 +1193,7 @@ const sessionConfig = {
     secret: SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
+    rolling: true, // the cookie's clock restarts on activity
     cookie: {
         secure: process.env.NODE_ENV === 'production',
         httpOnly: true,
@@ -1257,6 +1208,27 @@ const sessionConfig = {
 // Initialize session middleware
 app.use(session(sessionConfig));
 
+// Cross-site request check. A cookie-authenticated write must come from this site; calls that carry
+// their own bearer token cannot be forged by another site and pass through.
+const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
+app.use((req, res, next) => {
+    if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
+    if (req.headers.authorization) return next();
+    let origin = req.headers.origin;
+    if (!origin && req.headers.referer) { try { origin = new URL(req.headers.referer).origin; } catch (_) { origin = ''; } }
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    if (origin) {
+        let originHost = '';
+        try { originHost = new URL(origin).host; } catch (_) { originHost = ''; }
+        if (originHost && originHost !== host && !ALLOWED_ORIGINS.includes(origin)) {
+            return res.status(403).json({ success: false, message: 'Cross-site request blocked.' });
+        }
+    } else if (req.headers['sec-fetch-site'] === 'cross-site') {
+        return res.status(403).json({ success: false, message: 'Cross-site request blocked.' });
+    }
+    next();
+});
+
 // Database & environment configuration check middleware for Vercel deployments
 app.use((req, res, next) => {
     if ((!pool || missingConfigKeys.length > 0) && !req.path.startsWith('/favicon') && !req.path.endsWith('.png') && !req.path.endsWith('.css') && !req.path.endsWith('.js') && !req.path.endsWith('.ico')) {
@@ -1270,7 +1242,7 @@ app.use((req, res, next) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuration Required - Footprint POS</title>
+    <title>Configuration Required - OKWESIWA LTD</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #f3f4f6; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 24px; box-sizing: border-box; }
         .card { background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 36px; max-width: 600px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
@@ -1291,7 +1263,7 @@ app.use((req, res, next) => {
     <div class="card">
         <div class="badge">Vercel Deployment Notice</div>
         <h1>Environment Variables Required</h1>
-        <p>Your Footprint POS serverless function is running, but the following required environment variable(s) have not been added to your Vercel Project Settings:</p>
+        <p>Your OKWESIWA LTD serverless function is running, but the following required environment variable(s) have not been added to your Vercel Project Settings:</p>
         <div class="missing-box">
             <strong style="color: #ef4444; font-size: 13px;">MISSING IN VERCEL SETTINGS:</strong>
             <ul>${missingList}</ul>
@@ -1350,59 +1322,26 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions)); // Enable pre-flight for all routes
 
 // Body parser middleware
-app.use(express.json({ limit: '50mb' })); // Limit JSON body size to allow PDF attachments
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Enterprise Token Blacklist & Session Revocation
-const tokenBlacklist = new Set();
-setInterval(() => {
-    if (tokenBlacklist.size > 20000) tokenBlacklist.clear();
-}, 6 * 60 * 60 * 1000);
-
-// Middleware to verify JWT token or Session (Hybrid approach)
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    let token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
-
-    if (token === 'null' || token === 'undefined') token = null;
-
-    // Helper to evaluate SaaS tenant boundaries securely before passing to API logic
-    const enforceSaaSBoundary = (userPayload) => {
-        if (!userPayload) return res.status(401).json({ message: 'Not authenticated' });
-
-        if (userPayload.role) userPayload.role = userPayload.role.toLowerCase();
-        userPayload.tenant_id = userPayload.tenant_id ? parseInt(userPayload.tenant_id, 10) : 1;
-        req.user = userPayload;
-
-        const isSuperAdmin = (userPayload.role === 'ceo' || userPayload.role === 'admin');
-        const tenantId = userPayload.tenant_id ? userPayload.tenant_id.toString() : '1';
-
-        // Engulf the remaining endpoint execution inside the Postgres RLS interceptor
-        tenantContext.run({ tenantId, isSuperAdmin }, () => next());
-    };
-
-    if (token) {
-        if (tokenBlacklist.has(token)) {
-            return res.status(401).json({ message: 'Session has been revoked. Please log in again.' });
-        }
-        jwt.verify(token, JWT_SECRET, (err, user) => {
-            if (err) return res.status(403).json({ message: 'Invalid or expired token' });
-            enforceSaaSBoundary(user);
-        });
-    } else if (req.session && req.session.user) {
-        enforceSaaSBoundary(req.session.user);
-    } else if (req.session && req.session.companyUser) {
-        enforceSaaSBoundary(req.session.companyUser);
-    } else {
-        res.status(401).json({ message: 'Not authenticated' });
+// Wait for schema & RLS bootstrap before serving API/page requests
+app.use(async (req, res, next) => {
+    try {
+        await initDbPromise;
+    } catch (e) {
+        // initDb logs errors internally
     }
-};
+    next();
+});
+
+// Enterprise Token Blacklist & authenticateToken are imported from ./middleware/auth above.
 
 // Session Revocation Endpoint
-app.post('/api/auth/revoke', authenticateToken, (req, res) => {
+app.post('/api/auth/revoke', authenticateToken, async (req, res) => {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    if (token) tokenBlacklist.add(token);
+    if (token) await revokeToken(token);
     if (req.session) {
         req.session.destroy(() => { });
     }
@@ -1430,49 +1369,23 @@ app.use((req, res, next) => {
     next();
 });
 
-// Server-side Route Guard Middleware for HTML page endpoints (Defense-in-depth)
-const PAGE_ROLES = {
-    CEO_ONLY: ['ceo', 'admin'],
-    LEADERSHIP: ['ceo', 'admin', 'manager', 'store_manager', 'company', 'business_client'],
-    MANAGERS: ['ceo', 'admin', 'manager', 'store_manager'],
-    STAFF_ALL: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'],
-    COMPANY: ['company', 'business_client'],
-    ALL_USERS: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller', 'company', 'business_client']
-};
+// PAGE_ROLES, MANAGER_ROLES, userTenantScope, and guardPageRoute are imported from ./middleware/auth above.
 
-// Roles allowed to administer other accounts. CEO/Admin/Manager only — cashiers and
-// company (B2B) accounts must never reach the user-management writes below.
-const MANAGER_ROLES = ['ceo', 'admin', 'manager', 'store_manager'];
-
-// Tenant boundary for users-table statements (that table carries no RLS policy).
-// Returns null for the platform owner, meaning "do not filter by tenant".
-const userTenantScope = (req) => (req.user.role === 'ceo' ? null : (req.user.tenant_id || 1));
-
-const guardPageRoute = (allowedRoles, htmlFile) => (req, res) => {
-    const sessionUser = req.session && (req.session.user || req.session.companyUser);
-    let bearerUser = null;
-    if (!sessionUser) {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
-        if (token && token !== 'null' && token !== 'undefined') {
-            try { bearerUser = jwt.verify(token, JWT_SECRET); } catch (e) { bearerUser = null; }
-        }
-    }
-    const effectiveUser = sessionUser || bearerUser;
-
-    // If an authenticated session/bearer is present with a prohibited role, deny access.
-    if (effectiveUser && effectiveUser.role) {
-        const role = (effectiveUser.role || '').toLowerCase().trim().replace(/[\s-]+/g, '_');
-        if (Array.isArray(allowedRoles) && !allowedRoles.includes(role)) {
-            if (req.session) {
-                req.session.destroy(() => { });
-            }
-            return res.redirect('/login?unauthorized=true');
-        }
-    }
-
-    // Serve HTML file for client-side auth-guard.js to verify localStorage JWT before rendering
-    res.sendFile(path.join(__dirname, htmlFile));
+// A page that now lives inside a hub section: it is served only when embedded (?embed=1),
+// and a direct visit goes to its hub section instead.
+const embeddedPage = (file, roles, hubUrl) => {
+    const guard = guardPageRoute(roles, file);
+    return (req, res, next) => {
+        if (req.query.embed !== '1') return res.redirect(hubUrl(req));
+        // inside a frame a redirect to the login page would nest it; send the whole window there instead
+        const redirect = res.redirect.bind(res);
+        res.redirect = (...args) => {
+            const target = String(args[args.length - 1]);
+            if (!target.startsWith('/')) return redirect(...args);
+            return res.status(200).type('html').send(`<script>(window.top || window).location.replace(${JSON.stringify(target)});</script>`);
+        };
+        return guard(req, res, next);
+    };
 };
 
 // Explicitly serve HTML pages with role authorization guards
@@ -1497,33 +1410,61 @@ app.get('/terms', (req, res) => {
 
 // CEO & Admin Portal
 app.get('/ceo-portal', guardPageRoute(PAGE_ROLES.CEO_ONLY, 'ceo-portal.html'));
-app.get('/tax-management', guardPageRoute(PAGE_ROLES.LEADERSHIP, 'tax-management.html'));
+app.get('/ceo-live', guardPageRoute(PAGE_ROLES.CEO_ONLY, 'ceo-live.html'));
+app.get('/all-reports', (req, res) => res.redirect('/reports?tab=detailed'));
+app.get('/extras', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'extras.html'));
+app.get('/roles', embeddedPage('roles.html', PAGE_ROLES.MANAGERS, () => '/team?tab=roles'));
+app.get('/team', guardPageRoute(PAGE_ROLES.MANAGERS, 'team.html'));
+app.get('/backups', (req, res) => res.redirect('/settings?tab=backups'));
+app.get('/activity-log', (req, res) => res.redirect('/settings?tab=activity'));
+app.get('/tax-management', (req, res) => res.redirect('/settings?tab=taxrates'));
 app.get('/settings', guardPageRoute(PAGE_ROLES.LEADERSHIP, 'settings.html'));
-app.get('/locations', guardPageRoute(PAGE_ROLES.LEADERSHIP, 'locations.html'));
+app.get('/business-settings', (req, res) => {
+    // keep the old ?tab= (business, tax, product, invoice, barcode, printers)
+    const tab = /^[a-z]+$/.test(String(req.query.tab || '')) ? req.query.tab : 'business';
+    res.redirect('/settings?tab=' + tab);
+});
+app.get('/notification-templates', (req, res) => res.redirect('/settings?tab=notifications'));
+app.get('/money', guardPageRoute(PAGE_ROLES.MANAGERS, 'money.html'));
+app.get('/till', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'till.html'));
+app.get('/expenses', embeddedPage('expenses.html', PAGE_ROLES.MANAGERS, (req) => '/money?tab=expenses-' + (['list', 'add', 'categories'].includes(req.query.tab) ? req.query.tab : 'list')));
+app.get('/stock-adjustments', embeddedPage('stock-adjustments.html', PAGE_ROLES.MANAGERS, (req) => '/stock?tab=adj-' + (['list', 'add', 'bulk'].includes(req.query.tab) ? req.query.tab : 'list')));
+app.get('/stock-transfers', embeddedPage('stock-transfers.html', PAGE_ROLES.MANAGERS, (req) => '/stock?tab=tr-' + (req.query.tab === 'add' ? 'add' : 'list')));
+const SELL_TABS = ['all', 'add', 'list_pos', 'add_draft', 'drafts', 'add_quotation', 'quotations', 'returns', 'shipments', 'discounts', 'import'];
+app.get('/sales', guardPageRoute(PAGE_ROLES.MANAGERS, 'sales.html'));
+app.get('/sell', embeddedPage('sell.html', PAGE_ROLES.MANAGERS, (req) => '/sales?tab=' + (SELL_TABS.includes(req.query.tab) ? req.query.tab : 'all')));
+app.get('/locations', (req, res) => res.redirect('/settings?tab=locations'));
 
 // Management & Executive Portals
 app.get('/dashboard', guardPageRoute(PAGE_ROLES.MANAGERS, 'dashboard.html'));
-app.get('/inventory', guardPageRoute(PAGE_ROLES.MANAGERS, 'inventory.html'));
+const STOCK_TABS = ['stock', 'orders', 'receiving', 'shelf', 'distribution', 'stocktaking', 'barcodes', 'returns', 'suppliers'];
+app.get('/stock', guardPageRoute(PAGE_ROLES.MANAGERS, 'stock.html'));
+app.get('/inventory', embeddedPage('inventory.html', PAGE_ROLES.MANAGERS, (req) => req.query.tab === 'analytics' ? '/reports?tab=overview' : '/stock?tab=' + (STOCK_TABS.includes(req.query.tab) ? req.query.tab : 'stock')));
 app.get('/reports', guardPageRoute(PAGE_ROLES.MANAGERS, 'reports.html'));
-app.get('/sales-dashboard', guardPageRoute(PAGE_ROLES.MANAGERS, 'sales-dashboard.html'));
-app.get('/profitability', guardPageRoute(PAGE_ROLES.MANAGERS, 'profitability.html'));
-app.get('/bulk-upload', guardPageRoute(PAGE_ROLES.MANAGERS, 'bulk-upload.html'));
-app.get('/categories', guardPageRoute(PAGE_ROLES.MANAGERS, 'categories.html'));
-app.get('/negative-stock', guardPageRoute(PAGE_ROLES.MANAGERS, 'negative-stock.html'));
-app.get('/promotions', guardPageRoute(PAGE_ROLES.MANAGERS, 'promotions.html'));
-app.get('/transactions', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'transactions.html'));
-app.get('/credit-customers', guardPageRoute(PAGE_ROLES.MANAGERS, 'credit-customers.html'));
+app.get('/core-reports', (req, res) => res.redirect('/reports?tab=drilldown'));
+app.get('/daily-close', embeddedPage('daily-close.html', PAGE_ROLES.STAFF_ALL, () => '/till?tab=daily'));
+app.get('/sales-dashboard', (req, res) => res.redirect('/reports?tab=overview'));
+app.get('/profitability', (req, res) => res.redirect('/reports?tab=overview'));
+app.get('/bulk-upload', embeddedPage('bulk-upload.html', PAGE_ROLES.MANAGERS, () => '/stock?tab=import'));
+app.get('/categories', embeddedPage('categories.html', PAGE_ROLES.MANAGERS, () => '/stock?tab=categories'));
+app.get('/catalog-ops', embeddedPage('catalog-ops.html', PAGE_ROLES.MANAGERS, () => '/stock?tab=catalog'));
+app.get('/operations', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'operations.html'));
+app.get('/negative-stock', embeddedPage('negative-stock.html', PAGE_ROLES.MANAGERS, () => '/stock?tab=negative'));
+app.get('/promotions', embeddedPage('promotions.html', PAGE_ROLES.MANAGERS, () => '/sales?tab=promotions'));
+app.get('/transactions', embeddedPage('transactions.html', PAGE_ROLES.STAFF_ALL, () => '/till?tab=transactions'));
+app.get('/credit-customers', embeddedPage('credit-customers.html', PAGE_ROLES.MANAGERS, (req) => '/customers?tab=' + (req.query.tab === 'auth' ? 'auth' : 'clients')));
 app.get('/purchase-orders', guardPageRoute(PAGE_ROLES.MANAGERS, 'purchase-orders.html'));
 app.get('/suppliers', guardPageRoute(PAGE_ROLES.MANAGERS, 'suppliers.html'));
 
 // POS & Staff Operations
 app.get('/pos', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'pos.html'));
-app.get('/pos-register', guardPageRoute(PAGE_ROLES.MANAGERS, 'pos-register.html'));
-app.get('/open-shift', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'open-shift.html'));
-app.get('/close-shift', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'close-shift.html'));
+app.get('/pos-register', embeddedPage('pos-register.html', PAGE_ROLES.MANAGERS, (req) => '/team?tab=' + (req.query.tab === 'register' ? 'onboard' : 'staff')));
+app.get('/open-shift', embeddedPage('open-shift.html', PAGE_ROLES.STAFF_ALL, () => '/till?tab=open'));
+app.get('/close-shift', embeddedPage('close-shift.html', PAGE_ROLES.STAFF_ALL, () => '/till?tab=close'));
 app.get('/payment', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'payment.html'));
 app.get('/receipt', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'receipt.html'));
-app.get('/customers', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'customers.html'));
+app.get('/customers', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'customers-hub.html'));
+app.get('/customers-list', embeddedPage('customers.html', PAGE_ROLES.STAFF_ALL, () => '/customers?tab=all'));
 app.get('/customer-display', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'customer-display.html'));
 
 // Corporate B2B Client Portal
@@ -1574,16 +1515,16 @@ app.post('/forgot-password', authLimiter, async (req, res) => {
 
         // Email content
         const mailOptions = {
-            from: `"Footprint Retail Store" <${process.env.ADMIN_EMAIL}>`,
+            from: `"OKWESIWA LTD" <${process.env.ADMIN_EMAIL}>`,
             to: user.email,
             subject: 'Your Password Reset Request',
             html: `
                 <p>Hello ${user.name},</p>
-                <p>You requested a password reset for your Footprint Retail Store account.</p>
+                <p>You requested a password reset for your OKWESIWA LTD account.</p>
                 <p>Please click the following link to reset your password. This link is valid for 1 hour:</p>
                 <a href="${resetLink}" style="background-color: #1a2a6c; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">Reset Password</a>
                 <p>If you did not request a password reset, please ignore this email.</p>
-                <p>Thank you,<br>The Footprint Team</p>
+                <p>Thank you,<br>The OKWESIWA LTD Team</p>
             `
         };
 
@@ -1614,7 +1555,7 @@ app.post('/login', loginLimiter, [
     try {
         // Find user by email with branch/store and tenant information (Case Insensitive)
         const userResult = await pool.query(
-            'SELECT id, name, email, password, role, store_id, store_location, status, tenant_id FROM users WHERE LOWER(email) = LOWER($1) AND deleted_at IS NULL',
+            'SELECT id, username, name, email, password, role, store_id, store_location, status, tenant_id FROM users WHERE LOWER(email) = LOWER($1) AND deleted_at IS NULL',
             [email]
         );
 
@@ -1637,6 +1578,7 @@ app.post('/login', loginLimiter, [
                         company_name: compUser.company_name,
                         email: compUser.email,
                         role: 'company',
+                        type: 'company',
                         tenant_id: compUser.tenant_id || 1
                     };
                     const token = jwt.sign(req.session.companyUser, JWT_SECRET, { expiresIn: '8h' });
@@ -1658,7 +1600,7 @@ app.post('/login', loginLimiter, [
         const user = userResult.rows[0];
 
         // Check if user is active
-        if (user.status !== 'Active') {
+        if (String(user.status || '').toLowerCase() !== 'active') {
             return res.status(403).json({
                 success: false,
                 message: 'Account is inactive. Please contact administrator.'
@@ -1674,22 +1616,50 @@ app.post('/login', loginLimiter, [
             });
         }
 
-        // Normalize role to lowercase for internal processing
+        // Normalize role to lowercase for internal processing and resolve canonical branch
         const normalizedRole = user.role.toLowerCase();
+        const tenantId = user.tenant_id || 1;
+        let resolvedStoreId = user.store_id || null;
+        let resolvedStoreLoc = user.store_location || null;
+        try {
+            const brRes = await pool.query(
+                `SELECT id, name FROM branches
+                 WHERE COALESCE(tenant_id, 1) = $1
+                   AND (($2::int IS NOT NULL AND id = $2::int) OR ($3::text IS NOT NULL AND (LOWER(name) = LOWER($3::text) OR LOWER(location) = LOWER($3::text))))
+                 LIMIT 1`,
+                [tenantId, resolvedStoreId, resolvedStoreLoc]
+            );
+            if (brRes.rows.length > 0) {
+                resolvedStoreId = brRes.rows[0].id;
+                resolvedStoreLoc = brRes.rows[0].name;
+            } else {
+                const fallbackBr = await pool.query(
+                    'SELECT id, name FROM branches WHERE COALESCE(tenant_id, 1) = $1 ORDER BY is_main DESC NULLS LAST, id ASC LIMIT 1',
+                    [tenantId]
+                );
+                if (fallbackBr.rows.length > 0) {
+                    resolvedStoreId = resolvedStoreId || fallbackBr.rows[0].id;
+                    resolvedStoreLoc = resolvedStoreLoc || fallbackBr.rows[0].name;
+                }
+            }
+        } catch (_) {}
+        const resolvedUsername = user.username || (user.email ? user.email.split('@')[0] : 'staff');
+        const finalStoreLoc = resolvedStoreLoc || process.env.MAIN_BRANCH_LOCATION || 'Main Warehouse';
 
         // Set session
         req.session.user = {
             id: user.id,
+            username: resolvedUsername,
             email: user.email,
             name: user.name,
             role: normalizedRole,
-            tenant_id: user.tenant_id || 1,
-            store_id: user.store_id || (['admin', 'ceo', 'manager'].includes(normalizedRole) ? 1 : null), // Ensure High-level users have a default store context
-            store_location: user.store_location || (['admin', 'ceo', 'manager'].includes(normalizedRole) ? (process.env.MAIN_BRANCH_LOCATION || 'Amasaman') : null) // Ensure High-level users have a default view context
+            tenant_id: tenantId,
+            store_id: resolvedStoreId || 1,
+            store_location: finalStoreLoc
         };
 
         // Log Login Activity
-        await logActivity(req, 'LOGIN', { email: user.email, role: user.role });
+        await logActivity(req, 'LOGIN', { email: user.email, username: resolvedUsername, role: user.role });
 
         // Generate JWT Token
         const token = jwt.sign(req.session.user, JWT_SECRET, { expiresIn: '8h' });
@@ -1697,7 +1667,7 @@ app.post('/login', loginLimiter, [
         // Set redirect path based on role
         const userRole = user.role.toLowerCase();
         let redirectTo = '/open-shift';
-        if (userRole === 'admin' || userRole === 'manager') redirectTo = '/dashboard';
+        if (userRole === 'super_admin' || userRole === 'admin' || userRole === 'manager') redirectTo = '/dashboard';
         if (userRole === 'ceo') redirectTo = '/ceo-portal';
 
         // Check for active shift for cashiers to prevent flash
@@ -1714,11 +1684,13 @@ app.post('/login', loginLimiter, [
             redirectTo: redirectTo.replace(/^\//, ''),
             user: {
                 id: user.id,
+                username: resolvedUsername,
                 email: user.email,
                 name: user.name,
                 role: user.role,
-                store_id: user.store_id,
-                store_location: user.store_location
+                tenant_id: tenantId,
+                store_id: resolvedStoreId || 1,
+                store_location: finalStoreLoc
             }
         });
 
@@ -1729,11 +1701,59 @@ app.post('/login', loginLimiter, [
 });
 
 // Session Check Endpoint
-app.get('/api/session', authenticateToken, (req, res) => {
-    if (req.user) {
+app.get('/api/session', authenticateToken, async (req, res) => {
+    if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
+    if (req.user.type === 'company') {
+        return res.json({ user: req.user });
+    }
+    try {
+        const uRes = await pool.query(
+            'SELECT id, username, name, email, role, store_id, store_location, tenant_id FROM users WHERE id = $1 AND deleted_at IS NULL LIMIT 1',
+            [req.user.id]
+        );
+        if (uRes.rows.length === 0) {
+            return res.json({ user: req.user });
+        }
+        const dbUser = uRes.rows[0];
+        const tenantId = dbUser.tenant_id || req.user.tenant_id || 1;
+        let storeId = dbUser.store_id || req.user.store_id || null;
+        let storeLocation = dbUser.store_location || req.user.store_location || null;
+        try {
+            const brRes = await pool.query(
+                `SELECT id, name FROM branches
+                 WHERE COALESCE(tenant_id, 1) = $1
+                   AND (($2::int IS NOT NULL AND id = $2::int) OR ($3::text IS NOT NULL AND (LOWER(name) = LOWER($3::text) OR LOWER(location) = LOWER($3::text))))
+                 LIMIT 1`,
+                [tenantId, storeId, storeLocation]
+            );
+            if (brRes.rows.length > 0) {
+                storeId = brRes.rows[0].id;
+                storeLocation = brRes.rows[0].name;
+            } else {
+                const fallbackBr = await pool.query(
+                    'SELECT id, name FROM branches WHERE COALESCE(tenant_id, 1) = $1 ORDER BY is_main DESC NULLS LAST, id ASC LIMIT 1',
+                    [tenantId]
+                );
+                if (fallbackBr.rows.length > 0) {
+                    storeId = storeId || fallbackBr.rows[0].id;
+                    storeLocation = storeLocation || fallbackBr.rows[0].name;
+                }
+            }
+        } catch (_) {}
+        const username = dbUser.username || (dbUser.email ? dbUser.email.split('@')[0] : 'staff');
+        res.json({
+            user: {
+                ...req.user,
+                ...dbUser,
+                role: (dbUser.role || req.user.role || '').toLowerCase(),
+                username,
+                tenant_id: tenantId,
+                store_id: storeId || 1,
+                store_location: storeLocation || process.env.MAIN_BRANCH_LOCATION || 'Main Warehouse'
+            }
+        });
+    } catch (err) {
         res.json({ user: req.user });
-    } else {
-        res.status(401).json({ message: 'Not authenticated' });
     }
 });
 
@@ -1742,7 +1762,7 @@ app.post('/api/logout', async (req, res) => {
     // Destroying the session alone left an issued bearer token valid for its full 8h life.
     const authHeader = req.headers['authorization'];
     const bearer = authHeader && authHeader.split(' ')[1];
-    if (bearer && bearer !== 'null' && bearer !== 'undefined') tokenBlacklist.add(bearer);
+    if (bearer && bearer !== 'null' && bearer !== 'undefined') await revokeToken(bearer);
     await logActivity(req, 'LOGOUT');
     req.session.destroy((err) => {
         if (err) {
@@ -1763,7 +1783,7 @@ app.post('/api/company/login', authLimiter, [
     try {
         // Find company user by email
         const userResult = await pool.query(
-            'SELECT id, company_name, email, password, contact_person, phone, address, status FROM company_users WHERE LOWER(email) = LOWER($1)',
+            'SELECT id, company_id, company_name, email, password, contact_person, phone, address, status, tenant_id FROM company_users WHERE LOWER(email) = LOWER($1)',
             [email]
         );
 
@@ -1777,7 +1797,7 @@ app.post('/api/company/login', authLimiter, [
         const user = userResult.rows[0];
 
         // Check if user is active
-        if (user.status !== 'Active') {
+        if (String(user.status || '').toLowerCase() !== 'active') {
             return res.status(403).json({
                 success: false,
                 message: 'Account is inactive. Please contact administrator.'
@@ -1796,6 +1816,7 @@ app.post('/api/company/login', authLimiter, [
         // Set company session
         req.session.companyUser = {
             id: user.id,
+            company_id: user.company_id,
             email: user.email,
             company_name: user.company_name,
             contact_person: user.contact_person,
@@ -1803,7 +1824,8 @@ app.post('/api/company/login', authLimiter, [
             address: user.address,
             store_id: user.id + 1000, // Use a unique offset to avoid collision with physical branches
             role: 'company',
-            type: 'company'
+            type: 'company',
+            tenant_id: user.tenant_id || 1
         };
 
         // Generate JWT Token
@@ -1814,6 +1836,7 @@ app.post('/api/company/login', authLimiter, [
             token: token,
             user: {
                 id: user.id,
+                company_id: user.company_id,
                 email: user.email,
                 company_name: user.company_name,
                 contact_person: user.contact_person,
@@ -1821,7 +1844,8 @@ app.post('/api/company/login', authLimiter, [
                 address: user.address,
                 store_id: user.id + 1000,
                 role: 'company',
-                type: 'company'
+                type: 'company',
+                tenant_id: user.tenant_id || 1
             }
         });
 
@@ -1973,7 +1997,7 @@ app.get('/api/users', authenticateToken, async (req, res) => {
         // If the requester is a manager, never show CEO or Admin accounts in user management
         if (req.user.role === 'manager' || req.user.role === 'store_manager') {
             query += ` AND LOWER(role) NOT IN ('ceo', 'admin')`;
-        } else if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_location) {
+        } else if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_location) {
             query += ` AND store_location = $${paramIndex}`;
             params.push(req.user.store_location);
         }
@@ -2008,8 +2032,11 @@ app.post('/api/users', authenticateToken, async (req, res) => {
             if (branchRes.rows.length > 0) storeId = branchRes.rows[0].id;
         }
 
-        // Hash password (defaults to Password123 if not explicitly provided)
-        const rawPassword = password || process.env.DEFAULT_USER_PASS || 'Password123';
+        // Require an explicit password (>= 8 chars) or DEFAULT_USER_PASS env var
+        const rawPassword = (password && String(password).trim()) || process.env.DEFAULT_USER_PASS || '';
+        if (rawPassword.length < 8) {
+            return res.status(400).json({ message: 'Password must be at least 8 characters' });
+        }
         const salt = await bcrypt.genSalt(10);
         const hashedPassword = await bcrypt.hash(rawPassword, salt);
 
@@ -2072,7 +2099,7 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
         const finalRole = (role || targetRes.rows[0]?.role || 'staff').toLowerCase();
         // Only the platform owner may hand out executive roles; otherwise any manager could
         // promote themselves or an accomplice to admin.
-        if ((finalRole === 'ceo' || finalRole === 'admin') && userRole !== 'ceo') {
+        if ((finalRole === 'super_admin' || finalRole === 'ceo' || finalRole === 'admin') && userRole !== 'ceo' && userRole !== 'super_admin') {
             return res.status(403).json({ message: 'Only the CEO can assign CEO or Admin roles' });
         }
         await pool.query(`
@@ -2202,7 +2229,8 @@ app.post('/api/update-password', authenticateToken, async (req, res) => {
 
 // Dashboard Data Endpoint
 app.get('/api/dashboard', authenticateToken, async (req, res) => {
-    if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'manager' && req.user.role !== 'ceo')) {
+    const dashRole = (req.user?.role || '').toLowerCase();
+    if (!req.user || !['super_admin', 'admin', 'manager', 'store_manager', 'ceo'].includes(dashRole)) {
         return res.status(403).json({ message: 'Unauthorized' });
     }
 
@@ -2212,36 +2240,97 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
         const dbUser = userRes.rows[0];
 
         const user = req.user;
+        const tenantId = user.tenant_id || 1;
         const storeLocation = dbUser?.store_location || user.store_location;
 
-        // Filter parameters
-        let locationFilter = "AND t.tenant_id = $" + (storeLocation ? "2" : "1");
-        let queryParams = storeLocation ? [storeLocation, req.user.tenant_id] : [req.user.tenant_id];
+        const todayStr = new Date().toISOString().slice(0, 10);
+        const fromDate = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.from || '')) ? req.query.from : todayStr.slice(0, 8) + '01';
+        const toDate = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.to || '')) ? req.query.to : todayStr;
+        const fromTs = `${fromDate} 00:00:00`;
+        const toTs = `${toDate} 23:59:59.999`;
 
+        // Filter parameters
+        let locationFilter = "AND COALESCE(t.tenant_id, 1) = $3";
+        let queryParams = [fromTs, toTs, tenantId];
+
+        const isGlobalDash = ['super_admin', 'admin', 'ceo'].includes(dashRole);
         if (storeLocation) {
-            locationFilter = "AND t.store_location = $1 AND t.tenant_id = $2";
+            locationFilter = "AND t.store_location = $4 AND COALESCE(t.tenant_id, 1) = $3";
+            queryParams.push(storeLocation);
         }
 
-        // Total Sales (Sum of transactions today)
-        const salesRes = await pool.query(
-            `SELECT COALESCE(SUM(
-                CASE WHEN t.is_return THEN -1 ELSE 1 END * 
-                (SELECT COALESCE(SUM((item->>'qty')::numeric * (item->>'price')::numeric), 0) FROM jsonb_array_elements(t.items) as item)
-             ), 0) as total 
-             FROM transactions t WHERE LOWER(t.status) = 'completed' AND t.created_at >= CURRENT_DATE ${locationFilter}`,
+        // Gross Sales, Sell Returns, Invoice Due & Transactions in selected date range
+        const salesSummaryRes = await pool.query(
+            `SELECT
+                COALESCE(SUM(CASE WHEN COALESCE(t.is_return, false) = false THEN
+                    COALESCE(NULLIF(t.total_amount, 0), (SELECT COALESCE(SUM((item->>'qty')::numeric * (item->>'price')::numeric), 0) FROM jsonb_array_elements(t.items) as item))
+                ELSE 0 END), 0) AS gross_sales,
+                COALESCE(SUM(CASE WHEN t.is_return = true THEN
+                    ABS(COALESCE(NULLIF(t.total_amount, 0), (SELECT COALESCE(SUM((item->>'qty')::numeric * (item->>'price')::numeric), 0) FROM jsonb_array_elements(t.items) as item)))
+                ELSE 0 END), 0) AS sell_return,
+                COALESCE(SUM(CASE WHEN COALESCE(t.is_return, false) = false THEN GREATEST(COALESCE(t.balance_due, 0), 0) ELSE 0 END), 0) AS invoice_due,
+                COUNT(*) FILTER (WHERE COALESCE(t.is_return, false) = false)::int AS txn_count
+             FROM transactions t
+             WHERE LOWER(t.status) IN ('completed', 'pending', 'partial', 'credit')
+               AND t.created_at >= $1 AND t.created_at <= $2 ${locationFilter}`,
             queryParams
         );
-        // Total Transactions
-        const txnsRes = await pool.query(
-            `SELECT COUNT(*) as count FROM transactions t WHERE LOWER(t.status) = 'completed' AND t.is_return = FALSE AND t.created_at >= CURRENT_DATE ${locationFilter}`,
-            queryParams
-        );
+
+        const grossSales = Number(salesSummaryRes.rows[0]?.gross_sales || 0);
+        const totalSellReturn = Number(salesSummaryRes.rows[0]?.sell_return || 0);
+        const netSales = Number((grossSales - totalSellReturn).toFixed(2));
+        let invoiceDue = Number(salesSummaryRes.rows[0]?.invoice_due || 0);
+        if (invoiceDue === 0) {
+            try {
+                const custDueRes = await pool.query(
+                    'SELECT COALESCE(SUM(GREATEST(current_balance, 0)), 0) AS due FROM customers WHERE COALESCE(tenant_id, 1) = $1',
+                    [tenantId]
+                );
+                invoiceDue = Number(custDueRes.rows[0]?.due || 0);
+            } catch (_) {}
+        }
+
+        // Purchases, Purchase Due, Purchase Returns & Expenses in selected date range
+        let totalPurchase = 0;
+        let purchaseDue = 0;
+        let totalPurchaseReturn = 0;
+        try {
+            const poSummary = await pool.query(
+                `SELECT
+                    COALESCE(SUM(CASE WHEN LOWER(COALESCE(po.status,'')) NOT IN ('cancelled', 'returned', 'return') THEN COALESCE(po.total_amount, 0) ELSE 0 END), 0) AS total_purchase,
+                    COALESCE(SUM(CASE WHEN LOWER(COALESCE(po.status,'')) IN ('ordered', 'pending', 'received') THEN GREATEST(COALESCE(po.total_amount, 0) - COALESCE(sp.paid, 0), 0) ELSE 0 END), 0) AS purchase_due,
+                    COALESCE(SUM(CASE WHEN LOWER(COALESCE(po.status,'')) IN ('returned', 'return') THEN COALESCE(po.total_amount, 0) ELSE 0 END), 0) AS purchase_return
+                 FROM purchase_orders po
+                 LEFT JOIN (
+                    SELECT purchase_order_id, SUM(amount) AS paid
+                    FROM supplier_payments
+                    WHERE COALESCE(tenant_id, 1) = $1
+                    GROUP BY purchase_order_id
+                 ) sp ON sp.purchase_order_id = po.id
+                 WHERE COALESCE(po.tenant_id, 1) = $1 AND po.created_at >= $2 AND po.created_at <= $3`,
+                [tenantId, fromTs, toTs]
+            );
+            totalPurchase = Number(poSummary.rows[0]?.total_purchase || 0);
+            purchaseDue = Number(poSummary.rows[0]?.purchase_due || 0);
+            totalPurchaseReturn = Number(poSummary.rows[0]?.purchase_return || 0);
+        } catch (_) {}
+
+        let totalExpense = 0;
+        try {
+            const expSummary = await pool.query(
+                `SELECT COALESCE(SUM(amount), 0) AS total_expense
+                 FROM expenses
+                 WHERE COALESCE(tenant_id, 1) = $1 AND created_at >= $2 AND created_at <= $3`,
+                [tenantId, fromTs, toTs]
+            );
+            totalExpense = Number(expSummary.rows[0]?.total_expense || 0);
+        } catch (_) {}
 
         // Low & Out of Stock Logic
         let lowStockCount = 0;
         let outOfStockCount = 0;
 
-        if (storeLocation) {
+        if (storeLocation && !isGlobalDash) {
             // Generic branch lookup — fetch BOTH name and location from branches table
             // stock_levels keys may be stored under the branch name, location, or a historical variant
             const branchLookup = await pool.query(
@@ -2299,7 +2388,9 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
              (CASE WHEN t.is_return THEN -1 ELSE 1 END * 
               (SELECT COALESCE(SUM((item->>'qty')::numeric * (item->>'price')::numeric), 0) FROM jsonb_array_elements(t.items) as item)
              ) as total_amount,
-             CASE WHEN t.is_return THEN 'RETURN' ELSE 'SALE' END as type, u.name as cashier_name 
+             CASE WHEN t.is_return THEN 'RETURN' ELSE 'SALE' END as type,
+             CASE WHEN u.id IS NOT NULL THEN COALESCE(u.name, u.username, 'Staff') || ' (@' || COALESCE(u.username, SPLIT_PART(u.email, '@', 1)) || ' · ' || UPPER(COALESCE(u.role, 'staff')) || ')' ELSE NULL END as cashier_name,
+             u.username as cashier_username, u.role as cashier_role
              FROM transactions t 
              LEFT JOIN users u ON t.user_id = u.id 
              ${recentWhere}
@@ -2307,10 +2398,12 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
             recentParams
         );
 
-        // Cashier Performance Stats
-        let cashierWhere = "AND t.tenant_id = $" + (storeLocation ? "2" : "1");
+        // Cashier Performance Stats (in selected date range)
+        let cashierWhere = "AND COALESCE(t.tenant_id, 1) = $3";
+        const cashierParams = [fromTs, toTs, tenantId];
         if (storeLocation) {
-            cashierWhere += " AND t.store_location = $1";
+            cashierWhere += " AND t.store_location = $4";
+            cashierParams.push(storeLocation);
         }
 
         const cashierRes = await pool.query(
@@ -2319,22 +2412,30 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
                     SUM(t.total_amount) as total_sales
              FROM transactions t
              LEFT JOIN users u ON t.user_id = u.id
-             WHERE LOWER(t.status) = 'completed' AND t.created_at >= CURRENT_DATE ${cashierWhere}
+             WHERE LOWER(t.status) = 'completed' AND t.created_at >= $1 AND t.created_at <= $2 ${cashierWhere}
              GROUP BY u.name, u.username, u.role
              ORDER BY total_sales DESC LIMIT 5`,
-            storeLocation ? [storeLocation, req.user.tenant_id] : [req.user.tenant_id]
+            cashierParams
         );
 
         res.json({
             stats: {
-                totalSales: parseFloat(salesRes.rows[0].total),
-                totalTransactions: parseInt(txnsRes.rows[0].count),
+                totalSales: grossSales,
+                invoiceDue,
+                netSales,
+                totalSellReturn,
+                totalPurchase,
+                purchaseDue,
+                totalPurchaseReturn,
+                totalExpense,
+                totalTransactions: parseInt(salesSummaryRes.rows[0]?.txn_count || 0),
                 lowStockCount: lowStockCount,
                 outOfStockCount: outOfStockCount
             },
             recentTransactions: recentRes.rows,
             cashierStats: cashierRes.rows,
-            branch: storeLocation || 'All Branches'
+            branch: storeLocation || 'All Branches',
+            range: { from: fromDate, to: toDate }
         });
         await logActivity(req, 'VIEW_DASHBOARD');
     } catch (err) {
@@ -2352,7 +2453,22 @@ app.get('/api/shifts/active', authenticateToken, async (req, res) => {
             "SELECT * FROM shifts WHERE user_id = $1 AND end_time IS NULL",
             [req.user.id]
         );
-        res.json({ active: result.rows.length > 0, shift: result.rows[0] });
+        if (result.rows.length > 0) {
+            return res.json({ active: true, shift: result.rows[0] });
+        }
+        if (MANAGER_ROLES.includes((req.user.role || '').toLowerCase())) {
+            return res.json({
+                active: true,
+                managerBypass: true,
+                shift: {
+                    id: 'mgr-' + req.user.id,
+                    user_id: req.user.id,
+                    role: req.user.role,
+                    store_location: req.user.store_location
+                }
+            });
+        }
+        res.json({ active: false, shift: undefined });
     } catch (err) {
         res.status(500).json({ message: 'Server error' });
     }
@@ -2382,6 +2498,17 @@ app.post('/api/shifts/open', authenticateToken, async (req, res) => {
             "INSERT INTO shifts (user_id, start_cash, notes) VALUES ($1, $2, $3)",
             [req.user.id, Number.isFinite(openingCash) ? openingCash : 0, notes]
         );
+        // Automatically log staff attendance clock-in when shift opens
+        try {
+            const now = new Date();
+            const isLate = now.getHours() > 8 || (now.getHours() === 8 && now.getMinutes() > 15);
+            await pool.query(
+                `INSERT INTO staff_attendance (tenant_id, user_id, staff_name, is_late)
+                 SELECT $1, $2, $3, $4
+                 WHERE NOT EXISTS (SELECT 1 FROM staff_attendance WHERE user_id = $2 AND tenant_id = $1 AND clock_out IS NULL)`,
+                [req.user.tenant_id || 1, req.user.id, req.user.name || req.user.username || 'Staff', isLate]
+            );
+        } catch (_) {}
         await logActivity(req, 'OPEN_SHIFT', { startCash });
         res.json({ success: true });
     } catch (err) {
@@ -2450,6 +2577,16 @@ app.post('/api/shifts/close', authenticateToken, async (req, res) => {
         );
         await logActivity(req, 'CLOSE_SHIFT', { endCash });
         if (result.rowCount === 0) return res.status(400).json({ message: 'No active shift to close' });
+        // Automatically clock out open attendance record when shift closes
+        try {
+            await pool.query(
+                `UPDATE staff_attendance
+                 SET clock_out = NOW(),
+                     hours_worked = ROUND(EXTRACT(EPOCH FROM (NOW() - clock_in)) / 3600.0, 2)
+                 WHERE user_id = $1 AND COALESCE(tenant_id, 1) = $2 AND clock_out IS NULL`,
+                [req.user.id, req.user.tenant_id || 1]
+            );
+        } catch (_) {}
         res.json({ success: true });
     } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
 });
@@ -2457,7 +2594,7 @@ app.post('/api/shifts/close', authenticateToken, async (req, res) => {
 // Get shift history for reports
 app.get('/api/shifts/history', authenticateToken, async (req, res) => {
     try {
-        const isRestricted = req.user.role !== 'admin' && req.user.role !== 'ceo';
+        const isRestricted = !['super_admin', 'admin', 'ceo'].includes((req.user.role || '').toLowerCase());
         const userBranch = req.user.store_location || 'Main Warehouse';
 
         let query = `
@@ -2496,7 +2633,7 @@ app.get('/api/promotions', authenticateToken, async (req, res) => {
         let params = [];
 
         // Filter by branch for non-CEO/Admin users if they are assigned to a store
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
             // For branch users, show only their branch's usage in 'total_discounted'
             query = `
                 SELECT p.code, p.discount_percentage, p.created_at, p.branch_id,
@@ -2527,7 +2664,7 @@ app.get('/api/promotions', authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/api/promotions', authenticateToken, async (req, res) => {
+app.post('/api/promotions', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
     const { code, discount } = req.body;
     const branchId = req.user.store_id;
@@ -2565,14 +2702,14 @@ app.post('/api/promotions', authenticateToken, async (req, res) => {
     }
 });
 
-app.delete('/api/promotions/:code', authenticateToken, async (req, res) => {
+app.delete('/api/promotions/:code', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
     try {
         // Soft delete: hidden from frontend but kept for compliance
         let query = 'UPDATE promotions SET deleted_at = NOW() WHERE code = $1 AND tenant_id = $2 AND deleted_at IS NULL';
         let params = [req.params.code, req.user.tenant_id];
 
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
             query += ' AND branch_id = $3';
             params.push(req.user.store_id);
         }
@@ -2596,7 +2733,7 @@ app.get('/api/promotions/validate/:code', authenticateToken, async (req, res) =>
         let params = [req.params.code, req.user.tenant_id];
 
         // Validate branch applicability
-        if (req.user && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+        if (req.user && req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
             query += ' AND branch_id = $3';
             params.push(req.user.store_id);
         }
@@ -2617,7 +2754,7 @@ app.get('/api/promotions/validate/:code', authenticateToken, async (req, res) =>
 app.get('/products', authenticateToken, async (req, res) => {
     try {
         const userBranch = req.user.store_location;
-        const isRestricted = req.user.role !== 'admin' && req.user.role !== 'ceo';
+        const isRestricted = !['super_admin', 'admin', 'ceo'].includes((req.user.role || '').toLowerCase());
 
         // Ensure all products have stock_levels initialized
         await pool.query(`
@@ -2710,7 +2847,7 @@ app.get('/products', authenticateToken, async (req, res) => {
 app.get('/api/products', authenticateToken, async (req, res) => {
     try {
         const userBranch = req.user.store_location;
-        const isRestricted = req.user.role !== 'admin' && req.user.role !== 'ceo';
+        const isRestricted = !['super_admin', 'admin', 'ceo'].includes((req.user.role || '').toLowerCase());
 
         // Ensure all products have stock_levels initialized
         await pool.query(`
@@ -2832,7 +2969,7 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
         const dbUser = userRes.rows[0] || {};
 
         let userBranch = dbUser.store_location || req.user.store_location || 'Main Warehouse';
-        const isRestricted = req.user.role !== 'admin' && req.user.role !== 'ceo';
+        const isRestricted = !['super_admin', 'admin', 'ceo'].includes((req.user.role || '').toLowerCase());
 
         // Core mapping: Always link external company portals directly to the primary/main warehouse
         if (req.user.role === 'business_client' || req.user.type === 'company') {
@@ -2990,7 +3127,7 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/api/products', authenticateToken, async (req, res) => {
+app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const { barcode, name, category, price, stock, cost_price, selling_unit, packaging_unit, conversion_rate, reorder_level, track_batch, track_expiry, batch_number, expiry_date } = req.body;
     try {
         const tenantId = req.user.tenant_id || 1;
@@ -3045,7 +3182,7 @@ app.post('/api/products', authenticateToken, async (req, res) => {
             await pool.query(
                 `INSERT INTO product_batches (product_barcode, batch_number, expiry_date, quantity, quantity_available, quantity_received, branch_id, status, tenant_id)
                  VALUES ($1, $2, $3, $4, $4, $4, $5, 'Active', $6)
-                 ON CONFLICT (product_barcode, batch_number, branch_id) 
+                 ON CONFLICT (tenant_id, product_barcode, batch_number, branch_id) 
                  DO UPDATE SET 
                      expiry_date = EXCLUDED.expiry_date,
                      quantity = EXCLUDED.quantity,
@@ -3185,7 +3322,7 @@ function parseFlexibleDate(dateInput) {
 }
 
 // --- BULK UPLOAD ENDPOINT ---
-app.post('/api/products/bulk', authenticateToken, upload.single('file'), async (req, res) => {
+app.post('/api/products/bulk', authenticateToken, requireRole(MANAGER_ROLES), upload.single('file'), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
 
     try {
@@ -3367,11 +3504,12 @@ app.post('/api/products/bulk', authenticateToken, upload.single('file'), async (
 
                 // If batch number is provided, create/update batch record
                 if (batchNumber) {
+                    const tenantId = req.user.tenant_id || 1;
                     await pool.query(
-                        `INSERT INTO product_batches (product_barcode, batch_number, expiry_date, quantity, quantity_available, quantity_received, branch_id, status)
-                         VALUES ($1, $2, $3, $4, $4, $4, $5, 'Active')
-                         ON CONFLICT (product_barcode, batch_number, branch_id) DO NOTHING`,
-                        [barcode, batchNumber, expiryDate || null, stock, branchId]
+                        `INSERT INTO product_batches (product_barcode, batch_number, expiry_date, quantity, quantity_available, quantity_received, branch_id, tenant_id, status)
+                         VALUES ($1, $2, $3, $4, $4, $4, $5, $6, 'Active')
+                         ON CONFLICT (tenant_id, product_barcode, batch_number, branch_id) DO NOTHING`,
+                        [barcode, batchNumber, expiryDate || null, stock, branchId, tenantId]
                     );
                 }
 
@@ -3424,21 +3562,22 @@ app.post('/api/products/bulk', authenticateToken, upload.single('file'), async (
     }
 });
 
-app.put('/api/products/:id', authenticateToken, async (req, res) => {
+app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const { barcode: newBarcode, name, category, price, stock, cost_price, selling_unit, packaging_unit, conversion_rate, reorder_level, track_batch, track_expiry, stock_levels: incomingStockLevels } = req.body;
     const { id } = req.params;
+    const tenantId = req.user.tenant_id || 1;
     try {
         const userRes = await pool.query('SELECT store_id, store_location FROM users WHERE id = $1', [req.user.id]);
         const dbUser = userRes.rows[0];
         const userBranch = dbUser?.store_location || 'Main Warehouse';
         const branchId = dbUser?.store_id || 1;
 
-        const stockValue = parseInt(stock) || 0;
+        const stockValue = Number(stock) || 0;
 
-        // Get existing stock levels and tracking settings using ID
+        // Get existing stock levels and tracking settings using ID scoped to tenant
         const checkRes = await pool.query(
-            'SELECT stock_levels, track_batch, track_expiry, barcode FROM products WHERE id = $1',
-            [id]
+            'SELECT stock_levels, track_batch, track_expiry, barcode FROM products WHERE id = $1 AND COALESCE(tenant_id, 1) = $2',
+            [id, tenantId]
         );
 
         if (checkRes.rows.length === 0) {
@@ -3475,10 +3614,10 @@ app.put('/api/products/:id', authenticateToken, async (req, res) => {
                 cost_price = $6, selling_unit = $7, packaging_unit = $8, 
                 conversion_rate = $9, reorder_level = $10, track_batch = $11, 
                 track_expiry = $12, stock_levels = $13
-             WHERE id = $14 RETURNING *`,
+             WHERE id = $14 AND COALESCE(tenant_id, 1) = $15 RETURNING *`,
             [finalBarcode, name, category, price, totalStock, cost_price, selling_unit, packaging_unit,
                 conversion_rate, reorder_level, track_batch ?? current.track_batch, track_expiry ?? current.track_expiry,
-                JSON.stringify(stockLevels), id]
+                JSON.stringify(stockLevels), id, tenantId]
         );
 
         // Cascade barcode change to batches if barcode actually changed
@@ -3497,7 +3636,7 @@ app.delete('/products/:barcode', authenticateToken, async (req, res) => {
     try {
         const tenantId = req.user.tenant_id || 1;
         const userBranch = req.user.store_location;
-        const isGlobalAdmin = req.user.role === 'admin' || req.user.role === 'ceo';
+        const isGlobalAdmin = req.user.role === 'super_admin' || req.user.role === 'admin' || req.user.role === 'ceo';
 
         const productRes = await pool.query('SELECT name, stock_levels, stock FROM products WHERE (barcode = $1 OR id::text = $1) AND tenant_id = $2', [req.params.barcode, tenantId]);
         if (productRes.rows.length === 0) {
@@ -3544,7 +3683,7 @@ app.delete('/products/:barcode', authenticateToken, async (req, res) => {
 });
 
 // new API prefix delete route for front-end compatibility
-app.delete('/api/products/:barcode', authenticateToken, async (req, res) => {
+app.delete('/api/products/:barcode', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     try {
         const tenantId = req.user.tenant_id || 1;
         const userBranch = req.user.store_location;
@@ -3611,22 +3750,26 @@ app.delete('/api/products/:barcode', authenticateToken, async (req, res) => {
 });
 
 // Transactions Endpoint
-app.get('/transactions/all', authenticateToken, async (req, res) => {
-    if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'manager' && req.user.role !== 'ceo' && req.user.role !== 'cashier' && req.user.role !== 'teller')) {
+app.get(['/transactions/all', '/api/transactions'], authenticateToken, async (req, res) => {
+    const trxRole = (req.user?.role || '').toLowerCase();
+    if (!req.user || !['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'].includes(trxRole)) {
         return res.status(403).json({ message: 'Unauthorized' });
     }
 
     try {
-        // CEO users see all branches; managers/admins see their location only
-        const storeLocation = req.user.role === 'ceo' ? null : req.user.store_location;
-        let query = `SELECT t.*, u.name as cashier_name 
+        const tenantId = req.user.tenant_id || 1;
+        const isGlobalTrx = ['super_admin', 'ceo', 'admin'].includes(trxRole);
+        const storeLocation = isGlobalTrx ? null : req.user.store_location;
+        let query = `SELECT t.*,
+             CASE WHEN u.id IS NOT NULL THEN COALESCE(u.name, u.username, 'Staff') || ' (@' || COALESCE(u.username, SPLIT_PART(u.email, '@', 1)) || ' · ' || UPPER(COALESCE(u.role, 'staff')) || ')' ELSE NULL END as cashier_name,
+             u.username as cashier_username, u.role as cashier_role
              FROM transactions t 
              LEFT JOIN users u ON t.user_id = u.id
-             WHERE t.status = 'completed'`;
+             WHERE t.status = 'completed' AND COALESCE(t.tenant_id, 1) = $1`;
 
-        const params = [];
+        const params = [tenantId];
         if (storeLocation) {
-            query += ` AND t.store_location = $1`;
+            query += ` AND t.store_location = $2`;
             params.push(storeLocation);
         }
 
@@ -3649,7 +3792,7 @@ app.get('/api/categories', authenticateToken, async (req, res) => {
         let params = [tenantId];
 
         // Filter by branch for non-CEO/Admin users
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
             query += ' AND branch_id = $2';
             params.push(req.user.store_id);
         }
@@ -3660,7 +3803,7 @@ app.get('/api/categories', authenticateToken, async (req, res) => {
     } catch (err) { console.error(err); res.status(500).json({ message: 'Server error' }); }
 });
 
-app.post('/api/categories', authenticateToken, async (req, res) => {
+app.post('/api/categories', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const { name, description } = req.body;
     const branchId = req.user.store_id || 1;
     const tenantId = req.user.tenant_id || 1;
@@ -3688,13 +3831,13 @@ app.post('/api/categories', authenticateToken, async (req, res) => {
     }
 });
 
-app.delete('/api/categories/:id', authenticateToken, async (req, res) => {
+app.delete('/api/categories/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     try {
         // Soft delete: category hidden but retained
         let query = 'UPDATE categories SET deleted_at = NOW() WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL';
         let params = [req.params.id, req.user.tenant_id];
 
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
             query += ' AND branch_id = $3';
             params.push(req.user.store_id);
         }
@@ -3716,7 +3859,7 @@ app.get('/api/suppliers', authenticateToken, async (req, res) => {
             WHERE s.tenant_id = $1 AND s.deleted_at IS NULL`;
         let params = [req.user.tenant_id];
 
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
             query += ' AND s.branch_id = $2';
             params.push(req.user.store_id);
         }
@@ -3728,7 +3871,7 @@ app.get('/api/suppliers', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ message: 'Server error' }); }
 });
 
-app.post('/api/suppliers', authenticateToken, async (req, res) => {
+app.post('/api/suppliers', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const { name, contact, phone, email, address } = req.body;
     const branchId = req.user.store_id || 1;
     const tenantId = req.user.tenant_id || 1;
@@ -3758,13 +3901,13 @@ app.post('/api/suppliers', authenticateToken, async (req, res) => {
     }
 });
 
-app.put('/api/suppliers/:id', authenticateToken, async (req, res) => {
+app.put('/api/suppliers/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const { name, contact, phone, email, address } = req.body;
     try {
         let query = 'UPDATE suppliers SET name = $1, contact_person = $2, phone = $3, email = $4, address = $5 WHERE id = $6 AND tenant_id = $7';
         let params = [name, contact, phone, email, address, req.params.id, req.user.tenant_id];
 
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
             query += ' AND branch_id = $8';
             params.push(req.user.store_id);
         }
@@ -3777,13 +3920,13 @@ app.put('/api/suppliers/:id', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ message: 'Error updating supplier' }); }
 });
 
-app.delete('/api/suppliers/:id', authenticateToken, async (req, res) => {
+app.delete('/api/suppliers/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     try {
         // Soft delete: supplier hidden but retained for compliance
         let query = 'UPDATE suppliers SET deleted_at = NOW() WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL';
         let params = [req.params.id, req.user.tenant_id];
 
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
             query += ' AND branch_id = $3';
             params.push(req.user.store_id);
         }
@@ -3799,92 +3942,23 @@ app.delete('/api/suppliers/:id', authenticateToken, async (req, res) => {
     }
 });
 
-// --- PRODUCT UPDATES (Consolidated & Fixed) ---
-
-app.put('/api/products/:identifier', authenticateToken, async (req, res) => {
-    const { identifier: paramIdentifier } = req.params;
-    const { barcode: newBarcode, name, category, price, stock, cost_price, selling_unit, packaging_unit, conversion_rate, reorder_level, track_batch, track_expiry, batch_number, expiry_date, stock_levels: incomingStockLevels } = req.body;
-
-    try {
-        const userRes = await pool.query('SELECT store_id, store_location FROM users WHERE id = $1', [req.user.id]);
-        const dbUser = userRes.rows[0];
-        const userBranch = dbUser?.store_location || 'Main Warehouse';
-        const branchId = dbUser?.store_id || 1;
-
-        const stockValue = parseInt(stock) || 0;
-
-        // Determine if identifier is an ID (numeric) or barcode
-        const isId = /^\d+$/.test(paramIdentifier);
-
-        // Get current product to manage stock_levels
-        let currentRes;
-        if (isId) {
-            currentRes = await pool.query('SELECT id, barcode, stock_levels, track_batch, track_expiry FROM products WHERE id = $1 AND tenant_id = $2', [paramIdentifier, req.user.tenant_id]);
-        } else {
-            currentRes = await pool.query('SELECT id, barcode, stock_levels, track_batch, track_expiry FROM products WHERE barcode = $1 AND tenant_id = $2', [paramIdentifier, req.user.tenant_id]);
-        }
-
-        if (currentRes.rows.length === 0) return res.status(404).json({ message: 'Product not found' });
-
-        const product = currentRes.rows[0];
-        const productId = product.id;
-        const productBarcode = product.barcode;
-
-        let stockLevels = incomingStockLevels || product.stock_levels || {};
-        if (typeof stockLevels === 'string') stockLevels = JSON.parse(stockLevels);
-
-        // Fallback: update branch stock manually using the 'stock' field if stock_levels wasn't explicitly provided
-        if (!incomingStockLevels) {
-            const existingBranches = Object.keys(stockLevels).filter(k => !isNaN(parseInt(stockLevels[k])));
-            const targetBranch = existingBranches.length > 0 ? existingBranches[0] : userBranch;
-            stockLevels[targetBranch] = stockValue;
-        }
-
-        const totalStock = Object.values(stockLevels).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
-
-        const oldBarcode = product.barcode;
-        const finalBarcode = newBarcode || oldBarcode;
-
-        await pool.query(
-            'UPDATE products SET barcode = $1, name = $2, category = $3, price = $4, stock = $5, stock_levels = $6, cost_price = $7, selling_unit = $8, packaging_unit = $9, conversion_rate = $10, reorder_level = $11, track_batch = $12, track_expiry = $13 WHERE id = $14 AND tenant_id = $15',
-            [finalBarcode, name, category, price, totalStock, JSON.stringify(stockLevels), cost_price, selling_unit, packaging_unit, conversion_rate, reorder_level, track_batch ?? product.track_batch, track_expiry ?? product.track_expiry, productId, req.user.tenant_id]
-        );
-
-        // Cascade barcode change to batches if needed
-        if (newBarcode && newBarcode !== oldBarcode) {
-            await pool.query('UPDATE product_batches SET product_barcode = $1 WHERE product_barcode = $2', [newBarcode, oldBarcode]);
-        }
-
-        if (batch_number) {
-            await pool.query(`
-                INSERT INTO product_batches (product_barcode, batch_number, expiry_date, quantity, quantity_available, quantity_received, branch_id, status)
-                VALUES ($1, $2, $3, $4, $4, $4, $5, 'Active')
-                ON CONFLICT (product_barcode, batch_number, branch_id) 
-                DO UPDATE SET expiry_date = EXCLUDED.expiry_date, quantity_available = EXCLUDED.quantity_available
-            `, [productBarcode, batch_number, expiry_date || null, stockValue, branchId]);
-        }
-
-        await logActivity(req, 'UPDATE_PRODUCT', { id: productId, barcode: productBarcode, name });
-        res.json({ success: true });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error updating product' });
-    }
-});
+// Dead shadowed PUT /api/products/:identifier route removed.
 
 // --- PROCUREMENT (Purchase Orders) ---
-app.get('/api/purchase-orders', authenticateToken, async (req, res) => {
+app.get('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id || 1;
         let query = `
             SELECT po.*, s.name as supplier_name, b.name as branch_name
             FROM purchase_orders po 
-            LEFT JOIN suppliers s ON po.supplier_id = s.id 
+            LEFT JOIN suppliers s ON po.supplier_id = s.id AND COALESCE(s.tenant_id, 1) = $1
             LEFT JOIN branches b ON po.branch_id = b.id
+            WHERE COALESCE(po.tenant_id, 1) = $1
         `;
-        let params = [];
+        const params = [tenantId];
 
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
-            query += ' WHERE po.branch_id = $1';
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+            query += ' AND po.branch_id = $2';
             params.push(req.user.store_id);
         }
 
@@ -3895,25 +3969,26 @@ app.get('/api/purchase-orders', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ message: 'Server error' }); }
 });
 
-app.get('/api/purchase-orders/:id', authenticateToken, async (req, res) => {
+app.get('/api/purchase-orders/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const { id } = req.params;
+    const tenantId = req.user.tenant_id || 1;
     try {
         const poRes = await pool.query(`
             SELECT po.*, s.name as supplier_name, b.name as branch_name
             FROM purchase_orders po 
-            LEFT JOIN suppliers s ON po.supplier_id = s.id 
+            LEFT JOIN suppliers s ON po.supplier_id = s.id AND COALESCE(s.tenant_id, 1) = $2
             LEFT JOIN branches b ON po.branch_id = b.id
-            WHERE po.id = $1
-        `, [id]);
+            WHERE po.id = $1 AND COALESCE(po.tenant_id, 1) = $2
+        `, [id, tenantId]);
 
         if (poRes.rows.length === 0) return res.status(404).json({ message: 'PO not found' });
 
         const itemsRes = await pool.query(`
             SELECT poi.*, p.name 
             FROM purchase_order_items poi
-            LEFT JOIN products p ON poi.product_barcode = p.barcode
-            WHERE poi.po_id = $1
-        `, [id]);
+            LEFT JOIN products p ON poi.product_barcode = p.barcode AND COALESCE(p.tenant_id, 1) = $2
+            WHERE poi.po_id = $1 AND COALESCE(poi.tenant_id, 1) = $2
+        `, [id, tenantId]);
 
         const po = poRes.rows[0];
         po.items = itemsRes.rows;
@@ -3922,8 +3997,12 @@ app.get('/api/purchase-orders/:id', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ message: 'Server error' }); }
 });
 
-app.post('/api/purchase-orders', authenticateToken, async (req, res) => {
-    const { supplierId, items, total } = req.body;
+app.post('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('purchases', 'create'), async (req, res) => {
+    const { supplierId, items } = req.body;
+    const tenantId = req.user.tenant_id || 1;
+    if (!supplierId || !Array.isArray(items) || !items.length) {
+        return res.status(400).json({ message: 'Supplier and items are required' });
+    }
     let branchId = req.user.store_id;
 
     // Ensure branchId is set (fallback to location lookup or default)
@@ -3940,30 +4019,45 @@ app.post('/api/purchase-orders', authenticateToken, async (req, res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        const supCheck = await client.query('SELECT id FROM suppliers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [supplierId, tenantId]);
+        if (!supCheck.rows.length) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Supplier not found' });
+        }
+
+        const serverTotal = Number(items.reduce((sum, item) => {
+            const qty = Math.max(0, Number(item.qty || 0));
+            const cost = Math.max(0, Number(item.cost || 0));
+            return sum + qty * cost;
+        }, 0).toFixed(2));
+
         const poRes = await client.query(
-            'INSERT INTO purchase_orders (supplier_id, total_amount, status, branch_id) VALUES ($1, $2, $3, $4) RETURNING id',
-            [supplierId, total, 'Pending', branchId]
+            'INSERT INTO purchase_orders (supplier_id, total_amount, status, branch_id, tenant_id) VALUES ($1, $2, $3, $4, $5) RETURNING id',
+            [supplierId, serverTotal, 'Pending', branchId, tenantId]
         );
         const poId = poRes.rows[0].id;
 
         for (const item of items) {
+            const qty = Math.max(0, Number(item.qty || 0));
+            const cost = Math.max(0, Number(item.cost || 0));
             await client.query(
-                'INSERT INTO purchase_order_items (po_id, product_barcode, quantity, unit_cost) VALUES ($1, $2, $3, $4)',
-                [poId, item.barcode, item.qty, item.cost]
+                'INSERT INTO purchase_order_items (po_id, product_barcode, quantity, unit_cost, tenant_id) VALUES ($1, $2, $3, $4, $5)',
+                [poId, item.barcode, qty, cost, tenantId]
             );
         }
         await client.query('COMMIT');
-        await logActivity(req, 'CREATE_PO', { supplierId, total, itemCount: items.length });
-        res.json({ success: true });
+        await logActivity(req, 'CREATE_PO', { supplierId, total: serverTotal, itemCount: items.length });
+        res.json({ success: true, id: poId, total: serverTotal });
     } catch (err) {
         await client.query('ROLLBACK');
         res.status(500).json({ message: 'Error creating PO' });
     } finally { client.release(); }
 });
 
-app.post('/api/purchase-orders/:id/receive', authenticateToken, async (req, res) => {
+app.post('/api/purchase-orders/:id/receive', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('purchases', 'edit'), async (req, res) => {
     const { id } = req.params;
     const { receivedItems } = req.body; // Array of { product_barcode, batch_number, expiry_date }
+    const tenantId = req.user.tenant_id || 1;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -3974,12 +4068,15 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, async (req, res)
         const poRes = await client.query(`
             SELECT po.*, s.name as supplier_name 
             FROM purchase_orders po
-            LEFT JOIN suppliers s ON po.supplier_id = s.id
-            WHERE po.id = $1
+            LEFT JOIN suppliers s ON po.supplier_id = s.id AND COALESCE(s.tenant_id, 1) = $2
+            WHERE po.id = $1 AND COALESCE(po.tenant_id, 1) = $2
             FOR UPDATE
-        `, [id]);
+        `, [id, tenantId]);
 
-        if (poRes.rows.length === 0) throw new Error('PO not found');
+        if (poRes.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'PO not found' });
+        }
         const po = poRes.rows[0];
         if ((po.status || '').toLowerCase() === 'received') {
             await client.query('ROLLBACK');
@@ -3987,7 +4084,7 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, async (req, res)
         }
 
         // Get PO items
-        const itemsRes = await client.query('SELECT * FROM purchase_order_items WHERE po_id = $1', [id]);
+        const itemsRes = await client.query('SELECT * FROM purchase_order_items WHERE po_id = $1 AND COALESCE(tenant_id, 1) = $2', [id, tenantId]);
 
         const today = new Date();
         const dateStr = today.toISOString().slice(2, 10).replace(/-/g, ''); // YYMMDD
@@ -3997,7 +4094,7 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, async (req, res)
         const branchId = req.user.store_id || 1;
         for (const item of itemsRes.rows) {
             // Fetch product details for conversion
-            const prodRes = await client.query('SELECT name, conversion_rate FROM products WHERE barcode = $1', [item.product_barcode]);
+            const prodRes = await client.query('SELECT name, conversion_rate, track_expiry FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2', [item.product_barcode, tenantId]);
             const product = prodRes.rows[0] || { name: 'ITEM', conversion_rate: 1 };
 
             // Determine quantity to receive (use user input if available, else PO quantity)
@@ -4027,8 +4124,8 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, async (req, res)
                         ARRAY[$3::text], 
                         to_jsonb(COALESCE((stock_levels->>$3)::int, 0) + $1)
                     )
-                WHERE barcode = $2
-            `, [totalUnits, item.product_barcode, branchName]);
+                WHERE barcode = $2 AND COALESCE(tenant_id, 1) = $4
+            `, [totalUnits, item.product_barcode, branchName, tenantId]);
 
             // Auto-generate if missing
             const itemCode = product.name.substring(0, 3).toUpperCase().replace(/\s/g, '');
@@ -4042,8 +4139,8 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, async (req, res)
 
             // Check for existing batch with same number
             const existingBatchRes = await client.query(
-                'SELECT expiry_date FROM product_batches WHERE product_barcode = $1 AND batch_number = $2 AND branch_id = $3',
-                [item.product_barcode, finalBatchNum, branchId]
+                'SELECT expiry_date FROM product_batches WHERE product_barcode = $1 AND batch_number = $2 AND branch_id = $3 AND COALESCE(tenant_id, 1) = $4',
+                [item.product_barcode, finalBatchNum, branchId, tenantId]
             );
 
             if (existingBatchRes.rows.length > 0 && finalExpiry) {
@@ -4054,9 +4151,9 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, async (req, res)
             }
 
             await client.query(`
-                INSERT INTO product_batches (product_barcode, batch_number, quantity, quantity_available, quantity_received, expiry_date, branch_id, status) 
-                VALUES ($1, $2, $3, $3, $3, $4, $5, 'Active')
-                ON CONFLICT (product_barcode, batch_number, branch_id) 
+                INSERT INTO product_batches (product_barcode, batch_number, quantity, quantity_available, quantity_received, expiry_date, branch_id, tenant_id, status) 
+                VALUES ($1, $2, $3, $3, $3, $4, $5, $6, 'Active')
+                ON CONFLICT (tenant_id, product_barcode, batch_number, branch_id) 
                 DO UPDATE SET 
                     quantity = product_batches.quantity + $3,
                     quantity_available = product_batches.quantity_available + $3,
@@ -4092,7 +4189,7 @@ app.get('/api/goods-received', authenticateToken, async (req, res) => {
             JOIN products p ON gr.product_barcode = p.barcode
         `;
         let params = [];
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
             query += ' WHERE gr.branch_id = $1';
             params.push(req.user.store_id);
         }
@@ -4109,7 +4206,7 @@ app.get('/api/transfers', authenticateToken, async (req, res) => {
         let params = [];
 
         // Filter transfers relevant to the user's branch (either sending or receiving)
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_location) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_location) {
             const userCanonicalLocation = await getBranchNameFromLocation(req.user.store_location, pool);
             query += ' WHERE from_location = $1 OR to_location = $1';
             params.push(userCanonicalLocation);
@@ -4124,7 +4221,7 @@ app.get('/api/transfers', authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/api/transfers', authenticateToken, async (req, res) => {
+app.post('/api/transfers', authenticateToken, requirePermission('stock', 'create'), async (req, res) => {
     const { from, to, items } = req.body;
     const client = await pool.connect();
     try {
@@ -4152,13 +4249,20 @@ app.post('/api/transfers', authenticateToken, async (req, res) => {
 
         // Deduct Stock FIRST (validate and update)
         for (const item of items) {
-            // Get current product stock data using product_id instead of barcode
+            // Get current product stock data using product_id or barcode/name fallback
+            const pid = item.product_id ? Number(item.product_id) : null;
+            const bc = item.barcode ? String(item.barcode).trim() : null;
             const checkRes = await client.query(`
-                SELECT stock, stock_levels, barcode, id FROM products WHERE id = $1 AND tenant_id = $2 FOR UPDATE
-            `, [item.product_id, req.user.tenant_id]);
+                SELECT stock, stock_levels, barcode, id FROM products
+                WHERE tenant_id = $3 AND deleted_at IS NULL
+                  AND (($1::int IS NOT NULL AND id = $1::int) OR ($2::varchar IS NOT NULL AND (barcode = $2::varchar OR LOWER(name) = LOWER($2::varchar))))
+                ORDER BY (id = $1::int) DESC NULLS LAST
+                LIMIT 1
+                FOR UPDATE
+            `, [pid, bc, req.user.tenant_id]);
 
             if (checkRes.rows.length === 0) {
-                throw new Error(`Product ${item.barcode || item.product_id} not found`);
+                throw new Error(`Product ${item.barcode || item.name || item.product_id} not found`);
             }
 
             const product = checkRes.rows[0];
@@ -4241,7 +4345,7 @@ app.post('/api/transfers/:id/receive', authenticateToken, async (req, res) => {
         const userBranchName = await getBranchNameFromLocation(req.user.store_location, pool);
         const userRole = (req.user.role || '').toLowerCase();
 
-        const isAuthorized = userRole === 'admin' || userRole === 'ceo' ||
+        const isAuthorized = userRole === 'super_admin' || userRole === 'admin' || userRole === 'ceo' ||
             (userBranchName.toLowerCase().trim() === (transfer.to_location || '').toLowerCase().trim());
 
         if (!isAuthorized) {
@@ -4334,7 +4438,7 @@ app.get('/api/batches/expiry', authenticateToken, async (req, res) => {
         `;
         let params = [];
 
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
             query += ` AND b.branch_id = $1`;
             params.push(req.user.store_id);
         }
@@ -4402,7 +4506,7 @@ app.get('/api/inventory/reorder', authenticateToken, async (req, res) => {
         let query;
         let params = [];
 
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_location) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_location) {
             // Branch specific check using stock_levels JSON
             query = `
                 SELECT * FROM products 
@@ -4424,7 +4528,7 @@ app.get('/api/inventory/reorder', authenticateToken, async (req, res) => {
 // Negative Stock Analysis
 app.get('/api/inventory/negative-analysis', authenticateToken, async (req, res) => {
     try {
-        const isAdmin = req.user.role === 'admin' || req.user.role === 'ceo';
+        const isAdmin = req.user.role === 'super_admin' || req.user.role === 'admin' || req.user.role === 'ceo';
         const isCompany = req.user.type === 'company';
 
         let userBranch = req.user.store_location || 'Main Warehouse';
@@ -4489,7 +4593,7 @@ app.get('/api/analytics/ytd/all', authenticateToken, async (req, res) => {
         `;
         let params = [];
 
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_location) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_location) {
             query += ` AND store_location = $1`;
             params.push(req.user.store_location);
         }
@@ -4547,7 +4651,7 @@ app.get('/api/analytics/ytd/:barcode', authenticateToken, async (req, res) => {
         `;
         let params = [];
 
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_location) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_location) {
             query += ` AND store_location = $1`;
             params.push(req.user.store_location);
         }
@@ -4630,6 +4734,7 @@ app.get('/transactions/:id', authenticateToken, async (req, res) => {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
 
     let { id } = req.params;
+    const tenantId = req.user.tenant_id || 1;
     const isReceiptFormat = id.startsWith('RCP') || id.startsWith('REF') || (id.length > 10 && !isNaN(id));
 
     try {
@@ -4638,24 +4743,30 @@ app.get('/transactions/:id', authenticateToken, async (req, res) => {
             // Query by receipt_number column
             const receiptNum = (id.startsWith('RCP') || id.startsWith('REF')) ? id : 'RCP' + id;
             result = await pool.query(`
-                SELECT t.*, CASE WHEN t.is_return THEN 'RETURN' ELSE 'SALE' END as type, u.name AS cashier_name, u.store_id, c.name AS customer_name, c.current_balance, c.credit_limit
+                SELECT t.*, CASE WHEN t.is_return THEN 'RETURN' ELSE 'SALE' END as type,
+                       CASE WHEN u.id IS NOT NULL THEN COALESCE(u.name, u.username, 'Staff') || ' (@' || COALESCE(u.username, SPLIT_PART(u.email, '@', 1)) || ' · ' || UPPER(COALESCE(u.role, 'staff')) || ')' ELSE NULL END AS cashier_name,
+                       u.username AS cashier_username, u.role AS cashier_role,
+                       u.store_id, c.name AS customer_name, c.current_balance, c.credit_limit
                 FROM transactions t
                 LEFT JOIN users u ON t.user_id = u.id
                 LEFT JOIN customers c ON t.customer_id = c.id
-                WHERE t.receipt_number = $1
-            `, [receiptNum]);
+                WHERE t.receipt_number = $1 AND COALESCE(t.tenant_id, 1) = $2
+            `, [receiptNum, tenantId]);
         } else {
             // Query by numeric ID
             const numericId = parseInt(id);
             if (isNaN(numericId)) return res.status(400).json({ message: 'Invalid transaction ID format' });
 
             result = await pool.query(`
-            SELECT t.*, CASE WHEN t.is_return THEN 'RETURN' ELSE 'SALE' END as type, u.name AS cashier_name, u.store_id, c.name AS customer_name, c.current_balance, c.credit_limit
+            SELECT t.*, CASE WHEN t.is_return THEN 'RETURN' ELSE 'SALE' END as type,
+                   CASE WHEN u.id IS NOT NULL THEN COALESCE(u.name, u.username, 'Staff') || ' (@' || COALESCE(u.username, SPLIT_PART(u.email, '@', 1)) || ' · ' || UPPER(COALESCE(u.role, 'staff')) || ')' ELSE NULL END AS cashier_name,
+                   u.username AS cashier_username, u.role AS cashier_role,
+                   u.store_id, c.name AS customer_name, c.current_balance, c.credit_limit
             FROM transactions t
             LEFT JOIN users u ON t.user_id = u.id
             LEFT JOIN customers c ON t.customer_id = c.id
-            WHERE t.id = $1
-            `, [numericId]);
+            WHERE t.id = $1 AND COALESCE(t.tenant_id, 1) = $2
+            `, [numericId, tenantId]);
         }
 
         if (result.rows.length === 0) {
@@ -4707,6 +4818,7 @@ app.put('/transactions/:id/finalize', authenticateToken, async (req, res) => {
 
     const { id } = req.params;
     const { paymentMethod, receiptNumber, customerId } = req.body;
+    const tenantId = req.user.tenant_id || 1;
 
     // Convert customerId to integer if provided
     const parsedCustomerId = customerId ? parseInt(customerId) : null;
@@ -4719,8 +4831,8 @@ app.put('/transactions/:id/finalize', authenticateToken, async (req, res) => {
             // Lock and read the transaction first. A retry of an already-completed sale must
             // not charge the customer's credit balance a second time.
             const txnRes = await client.query(
-                'SELECT id, total_amount, receipt_number, is_return, status FROM transactions WHERE id = $1 FOR UPDATE',
-                [id]
+                'SELECT id, total_amount, receipt_number, is_return, status FROM transactions WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 FOR UPDATE',
+                [id, tenantId]
             );
             if (txnRes.rows.length === 0) {
                 await client.query('ROLLBACK');
@@ -4729,41 +4841,47 @@ app.put('/transactions/:id/finalize', authenticateToken, async (req, res) => {
             const alreadyCompleted = (txnRes.rows[0].status || '').toLowerCase() === 'completed';
 
             let customerName = null;
-            // If paying by credit, update customer balance and get customer name
-            if (paymentMethod === 'credit' && parsedCustomerId && !alreadyCompleted) {
-                const total = Math.abs(parseFloat(txnRes.rows[0].total_amount));
-                const isReturn = txnRes.rows[0].is_return || false;
-                const receiptNum = receiptNumber || txnRes.rows[0].receipt_number || ('RCP' + Date.now());
-
-                // Get customer details
-                const custDetailRes = await client.query('SELECT name, current_balance, credit_limit FROM customers WHERE id = $1 AND deleted_at IS NULL', [parsedCustomerId]);
-                if (custDetailRes.rows.length === 0) throw new Error('Customer not found');
-
-                customerName = custDetailRes.rows[0].name;
-
-                // For returns, subtract from balance (reduce debt). For sales, add to balance.
-                const balanceChange = isReturn ? -total : total;
-
-                const custRes = await client.query(
-                    'UPDATE customers SET current_balance = current_balance + $1 WHERE id = $2 RETURNING current_balance',
-                    [balanceChange, parsedCustomerId]
+            if (parsedCustomerId) {
+                const custCheck = await client.query(
+                    'SELECT name, current_balance, credit_limit FROM customers WHERE id = $1 AND deleted_at IS NULL AND COALESCE(tenant_id, 1) = $2 FOR UPDATE',
+                    [parsedCustomerId, tenantId]
                 );
-                const newBalance = custRes.rows[0].current_balance;
+                if (custCheck.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(404).json({ message: 'Customer not found' });
+                }
+                customerName = custCheck.rows[0].name;
 
-                // Add to Ledger (Part 2)
-                const ledgerDesc = isReturn ? `Credit Return - ${receiptNum}` : `Credit Sale - ${receiptNum}`;
-                const ledgerType = isReturn ? 'RETURN' : 'SALE';
+                // If paying by credit, update customer balance and get customer name
+                if (paymentMethod === 'credit' && !alreadyCompleted) {
+                    const total = Math.abs(parseFloat(txnRes.rows[0].total_amount));
+                    const isReturn = txnRes.rows[0].is_return || false;
+                    const receiptNum = receiptNumber || txnRes.rows[0].receipt_number || ('RCP' + Date.now());
 
-                await client.query(
-                    `INSERT INTO customer_ledger (customer_id, date, description, type, debit, credit, balance, transaction_id) 
-                     VALUES ($1, NOW(), $2, $3, $4, $5, $6, $7)`,
-                    [parsedCustomerId, ledgerDesc, ledgerType, isReturn ? 0 : total, isReturn ? total : 0, newBalance, id]
-                );
+                    // For returns, subtract from balance (reduce debt). For sales, add to balance.
+                    const balanceChange = isReturn ? -total : total;
+
+                    const custRes = await client.query(
+                        'UPDATE customers SET current_balance = current_balance + $1 WHERE id = $2 AND COALESCE(tenant_id, 1) = $3 RETURNING current_balance',
+                        [balanceChange, parsedCustomerId, tenantId]
+                    );
+                    const newBalance = custRes.rows[0].current_balance;
+
+                    // Add to Ledger (Part 2)
+                    const ledgerDesc = isReturn ? `Credit Return - ${receiptNum}` : `Credit Sale - ${receiptNum}`;
+                    const ledgerType = isReturn ? 'RETURN' : 'SALE';
+
+                    await client.query(
+                        `INSERT INTO customer_ledger (customer_id, date, description, type, debit, credit, balance, transaction_id) 
+                         VALUES ($1, NOW(), $2, $3, $4, $5, $6, $7)`,
+                        [parsedCustomerId, ledgerDesc, ledgerType, isReturn ? 0 : total, isReturn ? total : 0, newBalance, id]
+                    );
+                }
             }
 
             await client.query(
-                "UPDATE transactions SET payment_method = $1, receipt_number = $2, customer_id = $3, customer_name = $4, status = 'completed' WHERE id = $5",
-                [paymentMethod, receiptNumber, parsedCustomerId || null, customerName, id]
+                "UPDATE transactions SET payment_method = $1, receipt_number = $2, customer_id = $3, customer_name = $4, status = 'completed' WHERE id = $5 AND COALESCE(tenant_id, 1) = $6",
+                [paymentMethod, receiptNumber, parsedCustomerId || null, customerName, id, tenantId]
             );
             await client.query('COMMIT');
         } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
@@ -4781,6 +4899,7 @@ app.get('/transactions/receipt/:receiptNumber', authenticateToken, async (req, r
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
 
     const { receiptNumber } = req.params;
+    const tenantId = req.user.tenant_id || 1;
 
     try {
         let result;
@@ -4791,21 +4910,27 @@ app.get('/transactions/receipt/:receiptNumber', authenticateToken, async (req, r
         if (isNumeric) {
             // Search by ID if input is numeric
             result = await pool.query(`
-                SELECT t.*, u.name AS cashier_name, u.store_id, c.name AS customer_name, c.current_balance, c.credit_limit
+                SELECT t.*,
+                       CASE WHEN u.id IS NOT NULL THEN COALESCE(u.name, u.username, 'Staff') || ' (@' || COALESCE(u.username, SPLIT_PART(u.email, '@', 1)) || ' · ' || UPPER(COALESCE(u.role, 'staff')) || ')' ELSE NULL END AS cashier_name,
+                       u.username AS cashier_username, u.role AS cashier_role,
+                       u.store_id, c.name AS customer_name, c.current_balance, c.credit_limit
                 FROM transactions t
                 LEFT JOIN users u ON t.user_id = u.id
                 LEFT JOIN customers c ON t.customer_id = c.id
-                WHERE t.id = $1 AND t.status = 'completed'
-            `, [receiptNumber]);
+                WHERE t.id = $1 AND t.status = 'completed' AND COALESCE(t.tenant_id, 1) = $2
+            `, [receiptNumber, tenantId]);
         } else {
             // Search by receipt_number if input contains letters
             result = await pool.query(`
-                SELECT t.*, u.name AS cashier_name, u.store_id, c.name AS customer_name, c.current_balance, c.credit_limit
+                SELECT t.*,
+                       CASE WHEN u.id IS NOT NULL THEN COALESCE(u.name, u.username, 'Staff') || ' (@' || COALESCE(u.username, SPLIT_PART(u.email, '@', 1)) || ' · ' || UPPER(COALESCE(u.role, 'staff')) || ')' ELSE NULL END AS cashier_name,
+                       u.username AS cashier_username, u.role AS cashier_role,
+                       u.store_id, c.name AS customer_name, c.current_balance, c.credit_limit
                 FROM transactions t
                 LEFT JOIN users u ON t.user_id = u.id
                 LEFT JOIN customers c ON t.customer_id = c.id
-                WHERE t.receipt_number = $1 AND t.status = 'completed'
-            `, [receiptNumber]);
+                WHERE t.receipt_number = $1 AND t.status = 'completed' AND COALESCE(t.tenant_id, 1) = $2
+            `, [receiptNumber, tenantId]);
         }
 
         if (result.rows.length === 0) {
@@ -4832,8 +4957,8 @@ app.get('/transactions/receipt/:receiptNumber', authenticateToken, async (req, r
                     )), '[]'::json) FROM sales_invoice_items WHERE invoice_id = si.id) as items
                 FROM sales_invoices si
                 LEFT JOIN users u ON si.created_by = u.id
-                WHERE si.invoice_number = $1 OR si.id::text = $1
-            `, [receiptNumber]);
+                WHERE (si.invoice_number = $1 OR si.id::text = $1) AND COALESCE(si.tenant_id, 1) = $2
+            `, [receiptNumber, tenantId]);
 
             if (invoiceResult.rows.length > 0) {
                 result = invoiceResult;
@@ -4878,7 +5003,10 @@ app.get('/api/transactions/returns', authenticateToken, async (req, res) => {
 
     try {
         const result = await pool.query(`
-            SELECT t.*, u.name AS cashier_name, u.store_id, c.name AS customer_name, c.current_balance, c.credit_limit
+            SELECT t.*,
+                   CASE WHEN u.id IS NOT NULL THEN COALESCE(u.name, u.username, 'Staff') || ' (@' || COALESCE(u.username, SPLIT_PART(u.email, '@', 1)) || ' · ' || UPPER(COALESCE(u.role, 'staff')) || ')' ELSE NULL END AS cashier_name,
+                   u.username AS cashier_username, u.role AS cashier_role,
+                   u.store_id, c.name AS customer_name, c.current_balance, c.credit_limit
             FROM transactions t
             LEFT JOIN users u ON t.user_id = u.id
             LEFT JOIN customers c ON t.customer_id = c.id
@@ -4917,7 +5045,7 @@ app.get('/api/sales-summary', authenticateToken, async (req, res) => {
             paramIndex++;
         }
 
-        if (branchId && req.user.role !== 'admin' && req.user.role !== 'ceo') {
+        if (branchId && req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') {
             whereClause += ` AND t.user_id IN (SELECT id FROM users WHERE store_id = $${paramIndex})`;
             params.push(branchId);
             paramIndex++;
@@ -4969,22 +5097,24 @@ app.get('/api/sales-summary', authenticateToken, async (req, res) => {
     }
 });
 
-// Mock Mobile Money Payment Endpoints (auth required)
+// Mobile Money Payment Endpoints (require live gateway integration)
 app.post('/pay/momo', authenticateToken, (req, res) => {
-    res.json({
-        success: true,
-        transactionId: 'MOMO-' + Date.now(),
-        message: 'Payment initiated'
+    res.status(501).json({
+        success: false,
+        message: 'Live MTN MoMo API integration is not active yet. Confirm MoMo payment on your merchant phone and record it manually.'
     });
 });
 
 app.get('/pay/momo/status/:id', authenticateToken, (req, res) => {
-    res.json({ status: 'SUCCESSFUL' });
+    res.status(501).json({
+        status: 'UNAVAILABLE',
+        message: 'Live MTN MoMo status check is not active yet.'
+    });
 });
 
 // --- DEBUG: Check Database Schema (admin only) ---
 app.get('/api/debug/schema/:tableName', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') {
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') {
         return res.status(403).json({ message: 'Unauthorized' });
     }
     try {
@@ -5051,6 +5181,9 @@ app.get('/api/branch-mapping', authenticateToken, async (req, res) => {
 
 // --- Role Emulator / Switcher (executive preview tool) ---
 app.post('/api/debug/switch-role', authenticateToken, async (req, res) => {
+    if (process.env.NODE_ENV === 'production') {
+        return res.status(404).json({ message: 'Not found' });
+    }
     const { role } = req.body;
     try {
         // Handing out a signed token for an arbitrary role is a privilege-escalation path,
@@ -5094,7 +5227,7 @@ app.post('/api/debug/switch-role', authenticateToken, async (req, res) => {
         };
 
         let redirectTo = '/open-shift';
-        if (user.role === 'admin' || user.role === 'manager') redirectTo = '/dashboard';
+        if (user.role === 'super_admin' || user.role === 'admin' || user.role === 'manager') redirectTo = '/dashboard';
         if (user.role === 'ceo') redirectTo = '/ceo-portal';
 
         const token = jwt.sign(req.session.user, JWT_SECRET, { expiresIn: '8h' });
@@ -5111,7 +5244,7 @@ app.post('/api/debug/switch-role', authenticateToken, async (req, res) => {
 
 // 1. Executive Financial Pulse (Global View)
 app.get('/api/ceo/financials', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
 
     const { branch, startDate, endDate } = req.query;
 
@@ -5189,7 +5322,7 @@ app.get('/api/ceo/financials', authenticateToken, async (req, res) => {
         const branchCount = parseInt(branchRes.rows[0].count || 0);
 
         // Fetch Monthly Target (Global from ID 1)
-        let target = 50000;
+        let target = 0; // no invented target: the CEO page shows "No target set"
         const targetRes = await pool.query("SELECT monthly_target FROM system_settings WHERE id = 1");
         if (targetRes.rows.length > 0 && targetRes.rows[0].monthly_target) {
             target = parseFloat(targetRes.rows[0].monthly_target);
@@ -5279,12 +5412,12 @@ app.get('/api/ceo/financials', authenticateToken, async (req, res) => {
 
 // 1b. Update Monthly Revenue Target
 app.post('/api/ceo/target', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     const { target } = req.body;
     try {
         await pool.query(`
             INSERT INTO system_settings (id, branch_id, store_name, currency_symbol, vat_rate, receipt_footer, monthly_target)
-            VALUES (1, 1, 'Footprint', '₵ (GHS)', 0.00, 'Thank you!', $1)
+            VALUES (1, 1, 'OKWESIWA LTD', '₵ (GHS)', 0.00, 'Thank you!', $1)
             ON CONFLICT (id) DO UPDATE SET monthly_target = $1
         `, [target]);
         await logActivity(req, 'UPDATE_REVENUE_TARGET', { target });
@@ -5297,7 +5430,7 @@ app.post('/api/ceo/target', authenticateToken, async (req, res) => {
 
 // 2. Branch Performance Matrix
 app.get('/api/ceo/branches', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
 
     const { startDate, endDate } = req.query;
 
@@ -5329,7 +5462,7 @@ app.get('/api/ceo/branches', authenticateToken, async (req, res) => {
 
 // 3. Risk & Audit Radar
 app.get('/api/ceo/risks', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
 
     try {
         const risks = [];
@@ -5353,7 +5486,7 @@ app.get('/api/ceo/risks', authenticateToken, async (req, res) => {
 
 // 4. Analytics Trend (Revenue vs Cost vs Forecast)
 app.get('/api/ceo/analytics/trend', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         // Get last 7 days revenue
         const result = await pool.query(`
@@ -5380,7 +5513,7 @@ app.get('/api/ceo/analytics/trend', authenticateToken, async (req, res) => {
 
 // 5. Pending Credit Approvals
 app.get('/api/ceo/approvals/credit-customers', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const result = await pool.query(`
             SELECT c.*, u.name as created_by_name, u.store_location as branch,
@@ -5403,7 +5536,7 @@ app.get('/api/ceo/approvals/credit-customers', authenticateToken, async (req, re
 
 // 5b. Credit Approval History
 app.get('/api/ceo/approvals/history', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const result = await pool.query("SELECT * FROM customers WHERE status IN ('Active', 'Rejected') AND deleted_at IS NULL ORDER BY created_at DESC");
         await logActivity(req, 'VIEW_CEO_APPROVALS_HISTORY');
@@ -5417,7 +5550,7 @@ app.get('/api/ceo/approvals/history', authenticateToken, async (req, res) => {
 
 // 6. Approve Credit Customer
 app.post('/api/ceo/approvals/credit-customers/:id/approve', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const { id } = req.params;
 
@@ -5441,7 +5574,7 @@ app.post('/api/ceo/approvals/credit-customers/:id/approve', authenticateToken, a
 
 // 7. Reject Credit Customer
 app.post('/api/ceo/approvals/credit-customers/:id/reject', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const { id } = req.params;
 
@@ -5465,7 +5598,7 @@ app.post('/api/ceo/approvals/credit-customers/:id/reject', authenticateToken, as
 
 // 12. Peak Sales Hours (New)
 app.get('/api/ceo/analytics/peak-hours', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const result = await pool.query(`
             SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as count, SUM(total_amount) as revenue
@@ -5481,10 +5614,12 @@ app.get('/api/ceo/analytics/peak-hours', authenticateToken, async (req, res) => 
 
 // 13. High Value Transactions (New)
 app.get('/api/ceo/transactions/high-value', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const result = await pool.query(`
-            SELECT t.*, u.name as cashier_name 
+            SELECT t.*,
+                   CASE WHEN u.id IS NOT NULL THEN COALESCE(u.name, u.username, 'Staff') || ' (@' || COALESCE(u.username, SPLIT_PART(u.email, '@', 1)) || ' · ' || UPPER(COALESCE(u.role, 'staff')) || ')' ELSE NULL END as cashier_name,
+                   u.username as cashier_username, u.role as cashier_role
             FROM transactions t
             LEFT JOIN users u ON t.user_id = u.id
             WHERE t.status = 'completed' AND t.created_at >= date_trunc('month', CURRENT_DATE)
@@ -5498,7 +5633,7 @@ app.get('/api/ceo/transactions/high-value', authenticateToken, async (req, res) 
 
 // 8. Staff Performance
 app.get('/api/ceo/staff-performance', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const result = await pool.query(`
             SELECT u.name, COUNT(CASE WHEN t.is_return = FALSE THEN 1 END) as transactions, SUM(t.total_amount) as sales
@@ -5529,7 +5664,7 @@ app.get('/api/ceo/staff-performance', authenticateToken, async (req, res) => {
 
 // 9. Low Stock (CEO View)
 app.get('/api/ceo/inventory/low-stock', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const result = await pool.query(`
             SELECT name, stock, reorder_level 
@@ -5548,7 +5683,7 @@ app.get('/api/ceo/inventory/low-stock', authenticateToken, async (req, res) => {
 
 // 10. Tech Status (Mock)
 app.get('/api/ceo/tech-status', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     await logActivity(req, 'VIEW_CEO_TECH_STATUS');
     res.json([
         { service: 'Database Server', status: 'Operational', latency: '24ms', lastAudit: 'Today' },
@@ -5560,7 +5695,7 @@ app.get('/api/ceo/tech-status', authenticateToken, async (req, res) => {
 
 // 11. Strategy (Mock)
 app.get('/api/ceo/strategy', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     await logActivity(req, 'VIEW_CEO_STRATEGY');
     res.json([
         { initiative: 'Northern Expansion', owner: 'COO', budget: '₵500k', burnRate: '12%', status: 'On Track' },
@@ -5573,7 +5708,7 @@ app.get('/api/ceo/strategy', authenticateToken, async (req, res) => {
 
 // GET /api/ceo/suppliers?branch=&limit=&offset=
 app.get('/api/ceo/suppliers', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const { branch, limit = 50, offset = 0 } = req.query;
         const lim = Math.min(parseInt(limit) || 50, 100);
@@ -5604,7 +5739,7 @@ app.get('/api/ceo/suppliers', authenticateToken, async (req, res) => {
 
 // GET /api/ceo/purchase-orders?branch=&status=&limit=&offset=
 app.get('/api/ceo/purchase-orders', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const { branch, status, limit = 50, offset = 0 } = req.query;
         const lim = Math.min(parseInt(limit) || 50, 200);
@@ -5631,7 +5766,7 @@ app.get('/api/ceo/purchase-orders', authenticateToken, async (req, res) => {
 
 // GET /api/ceo/top-products?branch=&start=&end=&limit=
 app.get('/api/ceo/top-products', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const { branch, start, end, limit = 10 } = req.query;
         const lim = Math.min(parseInt(limit) || 10, 100);
@@ -5662,7 +5797,7 @@ app.get('/api/ceo/top-products', authenticateToken, async (req, res) => {
 
 // GET /api/ceo/branch-performance?start=&end=&limit=
 app.get('/api/ceo/branch-performance', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const { start, end, limit = 50 } = req.query;
         const lim = Math.min(parseInt(limit) || 50, 500);
@@ -5693,6 +5828,8 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
     const idempotencyKey = req.headers['x-idempotency-key'] || req.body?.idempotencyKey;
 
     const { items, total, refundAmount, paymentMethod, promoCode, discount, customerId, taxBreakdown, status, isReturn, originalTransactionId, returnItems } = req.body;
+    const tenantId = req.user.tenant_id || 1;
+    const scopedIdemKey = idempotencyKey ? `${tenantId}:${String(idempotencyKey)}` : null;
 
     if (!Array.isArray(items) || items.length === 0) {
         return res.status(400).json({ message: 'Invalid request: items must be a non-empty array' });
@@ -5700,25 +5837,31 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
     if (typeof total !== 'number' || !Number.isFinite(total) || (!isReturn && total < 0)) {
         return res.status(400).json({ message: 'Invalid request: total must be a valid number' });
     }
+    if (isReturn) {
+        const userRole = (req.user.role || '').toLowerCase();
+        if (!MANAGER_ROLES.includes(userRole)) {
+            return res.status(403).json({ message: 'Returns require Manager or CEO approval' });
+        }
+        if (!originalTransactionId) {
+            return res.status(400).json({ message: 'Returns must reference an original transaction' });
+        }
+    }
 
     try {
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
 
-            // Claim the idempotency key inside the transaction. A concurrent replay of the
-            // same key gets no RETURNING row and is answered from the original. Because the
-            // claim shares this transaction's fate, a failed sale never blocks a retry.
-            if (idempotencyKey) {
+            if (scopedIdemKey) {
                 const claim = await client.query(
                     `INSERT INTO idempotency_claims (key, user_id) VALUES ($1, $2)
                      ON CONFLICT (key) DO NOTHING RETURNING key`,
-                    [idempotencyKey, req.user.id]
+                    [scopedIdemKey, req.user.id]
                 );
                 if (claim.rows.length === 0) {
                     const prior = await client.query(
                         'SELECT receipt_number, transaction_id FROM idempotency_claims WHERE key = $1',
-                        [idempotencyKey]
+                        [scopedIdemKey]
                     );
                     await client.query('ROLLBACK');
                     return res.json({
@@ -5730,79 +5873,118 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                 }
             }
 
-            // Convert customerId to integer if provided
+            // Convert customerId to integer if provided (scoped to tenant)
             const parsedCustomerId = customerId ? parseInt(customerId) : null;
-
-            // Fetch customer name if ID is provided (Ensures data consistency)
             let customerName = null;
             if (parsedCustomerId) {
-                const cRes = await client.query('SELECT name FROM customers WHERE id = $1 AND deleted_at IS NULL', [parsedCustomerId]);
+                const cRes = await client.query('SELECT name FROM customers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL', [parsedCustomerId, tenantId]);
                 if (cRes.rows.length > 0) customerName = cRes.rows[0].name;
             }
 
-            // 1. Verify products exist (but allow negative stock)
+            // 1. Verify products exist & compute server-authoritative prices
+            let serverSubtotal = 0;
+            const verifiedItems = [];
             for (const item of items) {
-                const res = await client.query('SELECT name FROM products WHERE barcode = $1 AND tenant_id = $2', [item.barcode, req.user.tenant_id]);
-                if (res.rows.length === 0) throw new Error(`Product ${item.barcode} not found`);
+                const qty = Number(item.qty);
+                if (!item.barcode || !Number.isFinite(qty) || qty <= 0) {
+                    throw new Error('Each item must have a valid barcode and positive quantity');
+                }
+                const pRes = await client.query('SELECT id, name, price FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2', [item.barcode, tenantId]);
+                if (pRes.rows.length === 0) throw new Error(`Product ${item.barcode} not found`);
+                const prod = pRes.rows[0];
+                const unitPrice = Number(prod.price || 0);
+                serverSubtotal += unitPrice * qty;
+                verifiedItems.push({ ...item, id: prod.id, name: prod.name, qty, price: unitPrice });
             }
 
-            // Create transaction
-            // Date.now() alone collides for same-millisecond sales
+            const safeDiscount = Math.max(0, Number(discount || 0));
+            const role = (req.user.role || '').toLowerCase();
+            const capPct = (role === 'super_admin' || role === 'ceo' || role === 'admin') ? 100 : (MANAGER_ROLES.includes(role) ? 20 : 5);
+            const discPct = serverSubtotal > 0 ? (safeDiscount / serverSubtotal) * 100 : 0;
+            if (!isReturn && discPct > capPct) {
+                await client.query('ROLLBACK');
+                return res.status(403).json({ message: `Discount (${discPct.toFixed(1)}%) exceeds your ${capPct}% role limit` });
+            }
+            const authoritativeTotal = isReturn ? -Math.abs(Number(total)) : Math.max(0, Number((serverSubtotal - safeDiscount).toFixed(2)));
+
             const receiptNumber = (isReturn ? 'REF' : 'RCP') + Date.now() + crypto.randomInt(100, 1000);
+            // Resolve canonical store for the logged-in seller (manager or teller)
+            let sellerStoreLoc = req.user.store_location || null;
+            let sellerStoreId = req.user.store_id || null;
+            const uStoreRes = await client.query('SELECT store_id, store_location FROM users WHERE id = $1 LIMIT 1', [req.user.id]);
+            if (uStoreRes.rows.length > 0) {
+                sellerStoreId = uStoreRes.rows[0].store_id || sellerStoreId;
+                sellerStoreLoc = uStoreRes.rows[0].store_location || sellerStoreLoc;
+            }
+            const brCanon = await client.query(
+                `SELECT name FROM branches
+                 WHERE COALESCE(tenant_id, 1) = $1
+                 ORDER BY CASE
+                     WHEN ($2::int IS NOT NULL AND id = $2::int) THEN 0
+                     WHEN ($3::text IS NOT NULL AND (LOWER(name) = LOWER($3::text) OR LOWER(location) = LOWER($3::text))) THEN 1
+                     ELSE 2
+                 END, is_main DESC NULLS LAST, id ASC
+                 LIMIT 1`,
+                [tenantId, sellerStoreId, sellerStoreLoc]
+            );
+            const canonicalStoreLoc = brCanon.rows.length > 0 ? brCanon.rows[0].name : (sellerStoreLoc || 'Main Warehouse');
+
             const txnRes = await client.query(
                 `INSERT INTO transactions
-                (user_id, store_location, total_amount, original_total, current_total, payment_method, receipt_number, items, created_at, customer_id, customer_name, status, tax_breakdown, is_return, original_transaction_id, return_items)
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), $9, $10, $11, $12, $13, $14, $15) RETURNING id`,
-                [req.user.id, req.user.store_location, total, isReturn ? 0 : total, total, paymentMethod, receiptNumber, JSON.stringify(items), parsedCustomerId, customerName, status || 'pending', JSON.stringify(taxBreakdown || []), isReturn || false, originalTransactionId || null, JSON.stringify(returnItems || [])]
+                (tenant_id, user_id, store_location, total_amount, original_total, current_total, payment_method, receipt_number, items, created_at, customer_id, customer_name, status, tax_breakdown, is_return, original_transaction_id, return_items)
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
+                [tenantId, req.user.id, canonicalStoreLoc, authoritativeTotal, isReturn ? 0 : authoritativeTotal, authoritativeTotal, paymentMethod, receiptNumber, JSON.stringify(verifiedItems), parsedCustomerId, customerName, status || 'pending', JSON.stringify(taxBreakdown || []), isReturn || false, originalTransactionId || null, JSON.stringify(returnItems || [])]
             );
 
             // Handle Stock Management (Deduction for sales, Restoration for returns)
             if (isReturn) {
-                const refAmt = (typeof refundAmount === 'number' && Number.isFinite(refundAmount)) ? Math.abs(refundAmount) : Math.abs(total);
-
-                if (originalTransactionId) {
-                    // Update original transaction totals
-                    const origTxn = await client.query('SELECT total_amount, receipt_number FROM transactions WHERE id = $1', [originalTransactionId]);
-                    if (origTxn.rows.length > 0) {
-                        const originalTotal = parseFloat(origTxn.rows[0].total_amount);
-                        const newTotal = originalTotal - refAmt;
-
-                        await client.query(
-                            'UPDATE transactions SET has_returns = TRUE, original_total = $1, current_total = $2 WHERE id = $3',
-                            [originalTotal, newTotal, originalTransactionId]
-                        );
-
-                        // Record entry in refunds table
-                        await client.query(
-                            `INSERT INTO refunds (transaction_id, original_receipt_number, refund_receipt_number, refund_amount, payment_method, processed_by)
-                             VALUES ($1, $2, $3, $4, $5, $6)`,
-                            [originalTransactionId, origTxn.rows[0].receipt_number, receiptNumber, refAmt, paymentMethod, req.user.id]
-                        );
-                    }
+                const origTxn = await client.query(
+                    'SELECT id, total_amount, receipt_number, items, is_return FROM transactions WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 FOR UPDATE',
+                    [originalTransactionId, tenantId]
+                );
+                if (origTxn.rows.length === 0 || origTxn.rows[0].is_return) {
+                    await client.query('ROLLBACK');
+                    return res.status(404).json({ message: 'Original transaction not found' });
                 }
 
-                // For returns, we need to ADD back stock (reverse the original sale)
-                for (const item of items) {
-                    // Resolve canonical branch name from user's store_location
-                    let storeLoc = req.user.store_location || 'Main Warehouse';
-                    const branchRes = await client.query('SELECT name FROM branches WHERE name = $1 OR location = $1', [storeLoc]);
-                    if (branchRes.rows.length > 0) {
-                        storeLoc = branchRes.rows[0].name;
-                    }
+                const refAmt = (typeof refundAmount === 'number' && Number.isFinite(refundAmount)) ? Math.abs(refundAmount) : Math.abs(serverSubtotal - safeDiscount);
+                const originalTotal = parseFloat(origTxn.rows[0].total_amount);
+                const newTotal = originalTotal - refAmt;
 
-                    // Get product ID - use item.id if available, otherwise lookup by barcode
-                    let productId = item.id;
-                    if (!productId && item.barcode) {
-                        const prodRes = await client.query('SELECT id FROM products WHERE barcode = $1 AND tenant_id = $2 LIMIT 1', [item.barcode, req.user.tenant_id]);
-                        if (prodRes.rows.length > 0) {
-                            productId = prodRes.rows[0].id;
-                        }
-                    }
+                await client.query(
+                    'UPDATE transactions SET has_returns = TRUE, original_total = $1, current_total = $2 WHERE id = $3 AND COALESCE(tenant_id, 1) = $4',
+                    [originalTotal, newTotal, originalTransactionId, tenantId]
+                );
 
-                    if (!productId) {
-                        console.error(`[RETURN] Cannot restore stock: No product ID or barcode for item ${item.name}`);
-                        continue; // Skip this item
+                // Record entry in refunds table
+                await client.query(
+                    `INSERT INTO refunds (tenant_id, transaction_id, original_receipt_number, refund_receipt_number, refund_amount, payment_method, processed_by)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+                    [tenantId, originalTransactionId, origTxn.rows[0].receipt_number, receiptNumber, refAmt, paymentMethod, req.user.id]
+                );
+
+                // Resolve canonical branch name once for this tenant
+                let storeLoc = req.user.store_location || 'Main Warehouse';
+                const branchRes = await client.query(
+                    'SELECT name FROM branches WHERE (name = $1 OR location = $1) AND COALESCE(tenant_id, 1) = $2 LIMIT 1',
+                    [storeLoc, tenantId]
+                );
+                if (branchRes.rows.length > 0) {
+                    storeLoc = branchRes.rows[0].name;
+                }
+
+                // For returns, ADD back stock using tenant-verified barcodes/products only
+                for (const item of verifiedItems) {
+                    const prodRes = await client.query(
+                        'SELECT id, barcode FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2 LIMIT 1 FOR UPDATE',
+                        [item.barcode, tenantId]
+                    );
+                    if (prodRes.rows.length === 0) {
+                        console.error(`[RETURN] Cannot restore stock: Product ${item.barcode} not found in tenant ${tenantId}`);
+                        continue;
                     }
+                    const productId = prodRes.rows[0].id;
+                    const productBarcode = prodRes.rows[0].barcode;
 
                     const updateRes = await client.query(`
                         UPDATE products 
@@ -5812,28 +5994,27 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                                 ARRAY[$3::text], 
                                 to_jsonb(COALESCE((stock_levels->>$3::text)::int, 0) + $1)
                             )
-                        WHERE id = $2
+                        WHERE id = $2 AND COALESCE(tenant_id, 1) = $4
                         RETURNING id, name, stock
-                    `, [item.qty, productId, storeLoc]);
+                    `, [item.qty, productId, storeLoc, tenantId]);
 
-                    if (updateRes.rows.length > 0) {
-                    } else {
+                    if (updateRes.rows.length === 0) {
                         console.error(`[RETURN] Failed to update stock for product ID ${productId}`);
                     }
 
                     const batches = await client.query(
-                        'SELECT * FROM product_batches WHERE product_barcode = $1 ORDER BY expiry_date ASC FOR UPDATE',
-                        [item.barcode]
+                        'SELECT * FROM product_batches WHERE product_barcode = $1 AND COALESCE(tenant_id, 1) = $2 ORDER BY expiry_date ASC FOR UPDATE',
+                        [productBarcode, tenantId]
                     );
 
                     let remainingQty = item.qty;
                     for (const batch of batches.rows) {
                         if (remainingQty <= 0) break;
 
-                        const addQty = Math.min(remainingQty, 999999); // Add to first available batch
+                        const addQty = Math.min(remainingQty, 999999);
                         await client.query(
-                            'UPDATE product_batches SET quantity = quantity + $1 WHERE id = $2',
-                            [addQty, batch.id]
+                            'UPDATE product_batches SET quantity = quantity + $1 WHERE id = $2 AND COALESCE(tenant_id, 1) = $3',
+                            [addQty, batch.id, tenantId]
                         );
                         remainingQty -= addQty;
                     }
@@ -5966,7 +6147,7 @@ app.get('/api/batches/product/:barcode', authenticateToken, async (req, res) => 
 app.get('/api/batches/expiring/:days', authenticateToken, async (req, res) => {
     const { days } = req.params;
     const userBranchId = req.user.store_id;
-    const isRestricted = req.user.role !== 'admin' && req.user.role !== 'ceo';
+    const isRestricted = req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo';
 
     try {
         let query = `
@@ -6007,6 +6188,69 @@ app.get('/api/batches/next/:product_barcode', authenticateToken, async (req, res
         res.json(result.rows[0] || null);
     } catch (err) {
         res.status(500).json({ message: 'Error fetching next batch' });
+    }
+});
+
+// Move stock from the store to the shelf (Inventory > Batch & lot tracking).
+// Managers only. Tenant-scoped. The staff id comes from the login, never from the body.
+app.post('/api/shelf/move', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
+    const barcode = String(req.body.product_barcode || '').trim();
+    const qty = Number(req.body.quantity);
+    const notes = String(req.body.notes || '').slice(0, 500);
+    const batchNumber = String(req.body.batch_number || '').slice(0, 100);
+    if (!barcode) return res.status(400).json({ message: 'Choose a product to move.' });
+    if (!Number.isInteger(qty) || qty <= 0) {
+        return res.status(400).json({ message: 'Quantity must be a whole number greater than zero.' });
+    }
+
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+
+        const prod = await client.query(
+            'SELECT barcode FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2 FOR UPDATE',
+            [barcode, tenantId]
+        );
+        if (!prod.rows.length) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Product not found.' });
+        }
+
+        // The branch must belong to this tenant; fall back to the user's own branch.
+        const requestedBranch = Number(req.body.branch_id) || Number(req.user.store_id) || 1;
+        const branch = await client.query(
+            'SELECT id FROM branches WHERE id = $1 AND deleted_at IS NULL AND COALESCE(tenant_id, 1) = $2',
+            [requestedBranch, tenantId]
+        );
+        if (!branch.rows.length) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'Branch not found.' });
+        }
+        const branchId = branch.rows[0].id;
+
+        await client.query(`
+            INSERT INTO shelf_inventory (product_barcode, branch_id, quantity_on_shelf, last_verified, staff_id, notes, tenant_id)
+            VALUES ($1, $2, $3, NOW(), $4, $5, $6)
+            ON CONFLICT (product_barcode, branch_id)
+            DO UPDATE SET quantity_on_shelf = COALESCE(shelf_inventory.quantity_on_shelf, 0) + EXCLUDED.quantity_on_shelf,
+                          last_verified = NOW(), staff_id = EXCLUDED.staff_id, notes = EXCLUDED.notes
+        `, [barcode, branchId, qty, req.user.id || null, notes, tenantId]);
+
+        await client.query(`
+            INSERT INTO shelf_movements (product_barcode, movement_type, quantity, staff_id, from_location, to_location, branch_id, notes, tenant_id)
+            VALUES ($1, 'store_to_shelf', $2, $3, 'Store', 'Shelf', $4, $5, $6)
+        `, [barcode, qty, req.user.id || null, branchId, [batchNumber && ('Batch ' + batchNumber), notes].filter(Boolean).join(' - '), tenantId]);
+
+        await client.query('COMMIT');
+        await logActivity(req, 'SHELF_MOVE', { barcode, quantity: qty, branch_id: branchId });
+        res.json({ success: true, message: 'Stock moved to shelf' });
+    } catch (err) {
+        await client.query('ROLLBACK').catch(() => { });
+        console.error('Shelf move error:', err);
+        res.status(500).json({ message: 'Could not move stock to the shelf.' });
+    } finally {
+        client.release();
     }
 });
 
@@ -6074,29 +6318,30 @@ app.post('/api/batches', authenticateToken, async (req, res) => {
         return res.status(400).json({ message: 'product_barcode and batch_number are required' });
     }
 
+    const tenantId = req.user.tenant_id || 1;
     try {
-        // Check if batch already exists
+        // Check if batch already exists for this tenant
         const existing = await pool.query(`
             SELECT id FROM product_batches 
-            WHERE product_barcode = $1 AND batch_number = $2
-        `, [product_barcode, batch_number]);
+            WHERE product_barcode = $1 AND batch_number = $2 AND COALESCE(tenant_id, 1) = $3
+        `, [product_barcode, batch_number, tenantId]);
 
         if (existing.rows.length > 0) {
             // Update existing batch
             const result = await pool.query(`
                 UPDATE product_batches 
                 SET expiry_date = $1, quantity = $2, quantity_available = $3
-                WHERE product_barcode = $4 AND batch_number = $5
+                WHERE id = $4 AND COALESCE(tenant_id, 1) = $5
                 RETURNING *
-            `, [expiry_date || null, quantity || 0, quantity_available || quantity || 0, product_barcode, batch_number]);
+            `, [expiry_date || null, quantity || 0, quantity_available || quantity || 0, existing.rows[0].id, tenantId]);
             res.json(result.rows[0]);
         } else {
             // Create new batch
             const result = await pool.query(`
-                INSERT INTO product_batches (product_barcode, batch_number, expiry_date, quantity, quantity_available, status)
-                VALUES ($1, $2, $3, $4, $5, 'Active')
+                INSERT INTO product_batches (tenant_id, product_barcode, batch_number, expiry_date, quantity, quantity_available, status)
+                VALUES ($1, $2, $3, $4, $5, $6, 'Active')
                 RETURNING *
-            `, [product_barcode, batch_number, expiry_date || null, quantity || 0, quantity_available || quantity || 0]);
+            `, [tenantId, product_barcode, batch_number, expiry_date || null, quantity || 0, quantity_available || quantity || 0]);
             res.json(result.rows[0]);
         }
     } catch (err) {
@@ -6106,16 +6351,17 @@ app.post('/api/batches', authenticateToken, async (req, res) => {
 });
 
 // 10. Create stock adjustment
-app.post('/api/stock-adjustments', authenticateToken, async (req, res) => {
+app.post('/api/stock-adjustments', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('stock', 'create'), async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
     const { product_barcode, adjustment_type, quantity_adjusted, reason, approver_id, branch_id, user_id } = req.body;
     const branchName = branch_id == 2 ? 'Accra Branch' : (branch_id == 3 ? 'Kumasi Branch' : 'Main Warehouse');
 
     try {
         const result = await pool.query(`
-            INSERT INTO stock_adjustments (product_barcode, adjustment_type, quantity_adjusted, reason, approver_id, branch_id, approved_at)
-            VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
+            INSERT INTO stock_adjustments (tenant_id, product_barcode, adjustment_type, quantity_adjusted, reason, approver_id, branch_id, approved_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
             RETURNING id
-        `, [product_barcode, adjustment_type, quantity_adjusted, reason, approver_id, branch_id]);
+        `, [tenantId, product_barcode, adjustment_type || 'Correction', quantity_adjusted, reason || '', approver_id || req.user.id || null, branch_id || req.user.store_id || 1]);
 
         await pool.query(`
             UPDATE products 
@@ -6125,13 +6371,13 @@ app.post('/api/stock-adjustments', authenticateToken, async (req, res) => {
                     ARRAY[$3::text], 
                     to_jsonb(COALESCE((stock_levels->>$3::text)::int, 0) + $1)
                 )
-            WHERE barcode = $2
-        `, [quantity_adjusted, product_barcode, branchName]);
+            WHERE barcode = $2 AND COALESCE(tenant_id, 1) = $4
+        `, [quantity_adjusted, product_barcode, branchName, tenantId]);
 
         await pool.query(`
             INSERT INTO inventory_audit_log (action_type, product_barcode, quantity_after, reference_id, reference_type, user_id, branch_id, notes)
-            SELECT 'Stock Adjustment', $1::varchar, stock - $6, stock, $2, 'Adjustment', $3, $4, $5 FROM products WHERE barcode = $1
-        `, [product_barcode, result.rows[0].id, user_id, branch_id, reason, quantity_adjusted]);
+            SELECT 'Stock Adjustment', $1::varchar, stock - $6, stock, $2, 'Adjustment', $3, $4, $5 FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $7
+        `, [product_barcode, result.rows[0].id, user_id || req.user.id || null, branch_id || req.user.store_id || 1, reason || '', quantity_adjusted, tenantId]).catch(() => {});
 
         await logActivity(req, 'STOCK_ADJUSTMENT', { product_barcode, quantity_adjusted, reason });
         res.json({ success: true, id: result.rows[0].id });
@@ -6141,18 +6387,55 @@ app.post('/api/stock-adjustments', authenticateToken, async (req, res) => {
     }
 });
 
+app.post('/api/stock-adjustments/bulk', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('stock', 'create'), async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
+    const { adjustments = [] } = req.body || {};
+    if (!Array.isArray(adjustments) || !adjustments.length) {
+        return res.status(400).json({ message: 'No adjustments provided' });
+    }
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        let count = 0;
+        for (const adj of adjustments) {
+            const qty = Number(adj.quantity_adjusted || 0);
+            if (!adj.product_barcode || !Number.isFinite(qty) || qty === 0) continue;
+            await client.query(
+                `INSERT INTO stock_adjustments (tenant_id, product_barcode, adjustment_type, quantity_adjusted, reason, approver_id, branch_id, approved_at)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)`,
+                [tenantId, adj.product_barcode, adj.adjustment_type || 'Correction', qty, adj.reason || 'Bulk Adjustment', req.user.id || null, req.user.store_id || 1]
+            );
+            await client.query(
+                `UPDATE products SET stock = COALESCE(stock, 0) + $1 WHERE barcode = $2 AND COALESCE(tenant_id, 1) = $3`,
+                [qty, adj.product_barcode, tenantId]
+            );
+            count++;
+        }
+        await client.query('COMMIT');
+        await logActivity(req, 'BULK_STOCK_ADJUSTMENT', { count });
+        res.json({ success: true, count });
+    } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        res.status(500).json({ message: 'Bulk stock adjustment failed' });
+    } finally {
+        client.release();
+    }
+});
+
 // Get Stock Adjustments History
 app.get('/api/stock-adjustments', authenticateToken, async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
     try {
         let query = `
             SELECT sa.*, p.name as product_name, u.name as approver_name
             FROM stock_adjustments sa
-            JOIN products p ON sa.product_barcode = p.barcode
+            JOIN products p ON sa.product_barcode = p.barcode AND COALESCE(p.tenant_id, 1) = $1
             LEFT JOIN users u ON sa.approver_id = u.id
+            WHERE COALESCE(sa.tenant_id, 1) = $1
         `;
-        let params = [];
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
-            query += ` WHERE sa.branch_id = $1`;
+        const params = [tenantId];
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+            query += ` AND sa.branch_id = $2`;
             params.push(req.user.store_id);
         }
         query += ` ORDER BY sa.created_at DESC`;
@@ -6186,7 +6469,7 @@ app.get('/api/stock-takes', authenticateToken, async (req, res) => {
             LEFT JOIN users u ON st.created_by = u.id
         `;
         let params = [];
-        if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
+        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
             query += ` WHERE st.branch_id = $1`;
             params.push(req.user.store_id);
         }
@@ -6510,17 +6793,18 @@ app.post('/api/pos/sale/:barcode', authenticateToken, async (req, res) => {
 
 app.get('/api/settings', authenticateToken, async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id || 1;
         // Company portal users always manage the master settings (branch_id=1)
         let branchId = 1;
         if (req.user.type !== 'company') {
-            const userRes = await pool.query('SELECT store_id FROM users WHERE id = $1', [req.user.id]);
+            const userRes = await pool.query('SELECT store_id FROM users WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [req.user.id, tenantId]);
             const dbStoreId = userRes.rows[0]?.store_id;
             branchId = dbStoreId || req.user.store_id || 1;
         }
 
-        let result = await pool.query('SELECT * FROM system_settings WHERE branch_id = $1', [branchId]);
+        let result = await pool.query('SELECT * FROM system_settings WHERE branch_id = $1 AND COALESCE(tenant_id, 1) = $2 LIMIT 1', [branchId, tenantId]);
         if (result.rows.length === 0) {
-            result = await pool.query('SELECT * FROM system_settings WHERE branch_id = 1');
+            result = await pool.query('SELECT * FROM system_settings WHERE COALESCE(tenant_id, 1) = $1 ORDER BY branch_id ASC, id ASC LIMIT 1', [tenantId]);
         }
 
         res.json(result.rows[0] || {});
@@ -6538,33 +6822,57 @@ app.post('/api/settings', authenticateToken, async (req, res) => {
         return res.status(403).json({ message: 'Unauthorized. Only authorized users can change settings.' });
     }
 
+    const tenantId = req.user.tenant_id || 1;
     const {
         storeName, currencySymbol, vatRate, receiptFooter, taxId, phone, monthlyTarget,
-        bankName, bankAccountName, bankAccountNumber, bankBranch, momoNumber, momoName
+        bankName, bankAccountName, bankAccountNumber, bankBranch, momoNumber, momoName,
+        address, email, logoUrl
     } = req.body;
     // Company portal users always manage the master settings (branch_id=1)
     const branchId = req.user.type === 'company' ? 1 : (req.user.store_id || 1);
 
     try {
-        await pool.query(`
-            INSERT INTO system_settings (id, branch_id, store_name, currency_symbol, vat_rate, receipt_footer, tax_id, phone, monthly_target, bank_name, bank_account_name, bank_account_number, bank_branch, momo_number, momo_name, updated_at)
-            VALUES ($1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, CURRENT_TIMESTAMP)
-            ON CONFLICT (id) DO UPDATE SET 
-                store_name = COALESCE($2, system_settings.store_name), 
-                currency_symbol = COALESCE($3, system_settings.currency_symbol), 
-                vat_rate = COALESCE($4, system_settings.vat_rate), 
-                receipt_footer = COALESCE($5, system_settings.receipt_footer),
-                tax_id = COALESCE($6, system_settings.tax_id),
-                phone = COALESCE($7, system_settings.phone),
-                monthly_target = COALESCE($8, system_settings.monthly_target),
-                bank_name = COALESCE($9, system_settings.bank_name),
-                bank_account_name = COALESCE($10, system_settings.bank_account_name),
-                bank_account_number = COALESCE($11, system_settings.bank_account_number),
-                bank_branch = COALESCE($12, system_settings.bank_branch),
-                momo_number = COALESCE($13, system_settings.momo_number),
-                momo_name = COALESCE($14, system_settings.momo_name),
-                updated_at = CURRENT_TIMESTAMP
-        `, [branchId, storeName || null, currencySymbol || null, vatRate || null, receiptFooter || null, taxId || null, phone || null, monthlyTarget || null, bankName || null, bankAccountName || null, bankAccountNumber || null, bankBranch || null, momoNumber || null, momoName || null]);
+        const existing = await pool.query(
+            'SELECT id FROM system_settings WHERE branch_id = $1 AND COALESCE(tenant_id, 1) = $2 LIMIT 1',
+            [branchId, tenantId]
+        );
+        const vals = [
+            storeName || null, currencySymbol || null, vatRate || null, receiptFooter || null,
+            taxId || null, phone || null, monthlyTarget || null, bankName || null,
+            bankAccountName || null, bankAccountNumber || null, bankBranch || null,
+            momoNumber || null, momoName || null, address || null, email || null, logoUrl || null
+        ];
+        if (existing.rows.length > 0) {
+            await pool.query(`
+                UPDATE system_settings SET
+                    store_name = COALESCE($1, store_name),
+                    currency_symbol = COALESCE($2, currency_symbol),
+                    vat_rate = COALESCE($3, vat_rate),
+                    receipt_footer = COALESCE($4, receipt_footer),
+                    tax_id = COALESCE($5, tax_id),
+                    phone = COALESCE($6, phone),
+                    monthly_target = COALESCE($7, monthly_target),
+                    bank_name = COALESCE($8, bank_name),
+                    bank_account_name = COALESCE($9, bank_account_name),
+                    bank_account_number = COALESCE($10, bank_account_number),
+                    bank_branch = COALESCE($11, bank_branch),
+                    momo_number = COALESCE($12, momo_number),
+                    momo_name = COALESCE($13, momo_name),
+                    address = COALESCE($14, address),
+                    email = COALESCE($15, email),
+                    logo_url = COALESCE($16, logo_url),
+                    updated_at = CURRENT_TIMESTAMP
+                WHERE id = $17 AND COALESCE(tenant_id, 1) = $18
+            `, [...vals, existing.rows[0].id, tenantId]);
+        } else {
+            await pool.query(`
+                INSERT INTO system_settings (
+                    branch_id, tenant_id, store_name, currency_symbol, vat_rate, receipt_footer, tax_id,
+                    phone, monthly_target, bank_name, bank_account_name, bank_account_number,
+                    bank_branch, momo_number, momo_name, address, email, logo_url, updated_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, CURRENT_TIMESTAMP)
+            `, [branchId, tenantId, ...vals]);
+        }
         await logActivity(req, 'UPDATE_SETTINGS', { storeName, vatRate });
         res.json({ success: true });
     } catch (err) {
@@ -6575,15 +6883,20 @@ app.post('/api/settings', authenticateToken, async (req, res) => {
 
 // Delete System VAT (Set to 0)
 app.delete('/api/settings/vat', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     const branchId = req.user.store_id || 1;
+    const tenantId = req.user.tenant_id || 1;
     try {
-        // Upsert to ensure row exists, setting VAT to 0
-        await pool.query(`
-            INSERT INTO system_settings (id, branch_id, vat_rate)
-            VALUES ($1, $1, 0)
-            ON CONFLICT (id) DO UPDATE SET vat_rate = 0
-        `, [branchId]);
+        const upd = await pool.query(
+            'UPDATE system_settings SET vat_rate = 0 WHERE branch_id = $1 AND COALESCE(tenant_id, 1) = $2',
+            [branchId, tenantId]
+        );
+        if (upd.rowCount === 0) {
+            await pool.query(
+                'INSERT INTO system_settings (branch_id, tenant_id, vat_rate) VALUES ($1, $2, 0)',
+                [branchId, tenantId]
+            );
+        }
         await logActivity(req, 'DELETE_SYSTEM_VAT');
         res.json({ success: true });
     } catch (err) {
@@ -6595,14 +6908,15 @@ app.delete('/api/settings/vat', authenticateToken, async (req, res) => {
 // Add Branch Management Endpoints
 app.get('/api/branches', authenticateToken, async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id || 1;
         // Join with system_settings to get VAT
         const result = await pool.query(`
             SELECT b.*, COALESCE(ss.vat_rate, 0.00) as vat_rate, COALESCE(b.is_main, FALSE) as is_main 
             FROM branches b
             LEFT JOIN system_settings ss ON b.id = ss.branch_id
-            WHERE b.deleted_at IS NULL
+            WHERE b.deleted_at IS NULL AND COALESCE(b.tenant_id, 1) = $1
             ORDER BY b.id
-        `);
+        `, [tenantId]);
         res.json(result.rows);
     } catch (err) {
         console.error(err);
@@ -6611,15 +6925,19 @@ app.get('/api/branches', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/branches', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     const { name, location, vat_rate, is_main } = req.body;
+    const phone = String(req.body.phone || '').trim().slice(0, 50);
+    const manager = String(req.body.manager || '').trim().slice(0, 120);
+    const status = ['Active', 'Maintenance', 'Closed'].includes(req.body.status) ? req.body.status : 'Active';
+    if (!String(name || '').trim()) return res.status(400).json({ message: 'Give the location a name.' });
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         const tenantId = req.user.tenant_id || 1;
         const resBranch = await client.query(
-            'INSERT INTO branches (name, location, is_main, tenant_id) VALUES ($1, $2, $3, $4) RETURNING id',
-            [name, location, is_main || false, tenantId]
+            'INSERT INTO branches (name, location, is_main, tenant_id, phone, manager, status) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id',
+            [String(name).trim(), location, is_main || false, tenantId, phone, manager, status]
         );
         const branchId = resBranch.rows[0].id;
 
@@ -6645,24 +6963,33 @@ app.post('/api/branches', authenticateToken, async (req, res) => {
 });
 
 app.put('/api/branches/:id', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     const { id } = req.params;
     const { name, location, vat_rate } = req.body;
+    if (!String(name || '').trim()) return res.status(400).json({ message: 'Give the location a name.' });
+    // Fields the caller leaves out keep their current value (the Locations page does not send VAT).
+    const vatProvided = vat_rate !== undefined && vat_rate !== null && vat_rate !== '';
+    const phone = req.body.phone === undefined ? null : String(req.body.phone).trim().slice(0, 50);
+    const manager = req.body.manager === undefined ? null : String(req.body.manager).trim().slice(0, 120);
+    const status = ['Active', 'Maintenance', 'Closed'].includes(req.body.status) ? req.body.status : null;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
         const tenantId = req.user.tenant_id || 1;
-        await client.query('UPDATE branches SET name = $1, location = $2 WHERE id = $3 AND (tenant_id = $4 OR tenant_id IS NULL)', [name, location, id, tenantId]);
+        await client.query(
+            'UPDATE branches SET name = $1, location = $2, phone = COALESCE($5, phone), manager = COALESCE($6, manager), status = COALESCE($7, status) WHERE id = $3 AND (tenant_id = $4 OR tenant_id IS NULL)',
+            [String(name).trim(), location, id, tenantId, phone, manager, status]
+        );
 
         // Update VAT in settings
         await client.query(`
             INSERT INTO system_settings (branch_id, store_name, currency_symbol, vat_rate, receipt_footer, tenant_id)
             VALUES ($1, $2, 'GH₵', $3, 'Thank you for shopping with us!', $4)
             ON CONFLICT (branch_id) DO UPDATE SET 
-                vat_rate = EXCLUDED.vat_rate, 
+                vat_rate = CASE WHEN $5 THEN EXCLUDED.vat_rate ELSE system_settings.vat_rate END,
                 store_name = EXCLUDED.store_name,
                 tenant_id = EXCLUDED.tenant_id
-        `, [id, name, vat_rate || 0.0, tenantId]);
+        `, [id, String(name).trim(), vat_rate || 0.0, tenantId, vatProvided]);
 
         await client.query('COMMIT');
         await logActivity(req, 'UPDATE_BRANCH', { id, vat_rate });
@@ -6676,7 +7003,7 @@ app.put('/api/branches/:id', authenticateToken, async (req, res) => {
 
 // Delete Branch
 app.delete('/api/branches/:id', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') {
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') {
         return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
 
@@ -6695,21 +7022,33 @@ app.delete('/api/branches/:id', authenticateToken, async (req, res) => {
             return res.status(404).json({ success: false, message: 'Branch not found.' });
         }
 
-        const wasMain = checkBranch.rows[0].is_main;
-        await client.query('DELETE FROM branches WHERE id = $1', [branchId]);
+        // A company must keep at least one location
+        const remaining = await client.query(
+            'SELECT COUNT(*)::int AS n FROM branches WHERE deleted_at IS NULL AND id <> $1 AND (tenant_id = $2 OR tenant_id IS NULL)',
+            [branchId, tenantId]
+        );
+        if (remaining.rows[0].n === 0) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ success: false, message: 'You cannot delete your only location.' });
+        }
 
-        // If deleted branch was main, promote the first remaining active branch (if any) as main
+        // Soft delete: the row and all its history stay in the database, hidden from every list.
+        // To bring one back, clear deleted_at on that branch.
+        const wasMain = checkBranch.rows[0].is_main;
+        await client.query('UPDATE branches SET deleted_at = NOW(), is_main = FALSE WHERE id = $1', [branchId]);
+
+        // If deleted branch was main, promote the first remaining active branch of the same company
         if (wasMain) {
             await client.query(`
                 UPDATE branches SET is_main = TRUE
-                WHERE id = (SELECT id FROM branches WHERE deleted_at IS NULL ORDER BY id ASC LIMIT 1)
-            `);
+                WHERE id = (SELECT id FROM branches WHERE deleted_at IS NULL AND (tenant_id = $1 OR tenant_id IS NULL) ORDER BY id ASC LIMIT 1)
+            `, [tenantId]);
         }
 
         await client.query('COMMIT');
 
         await logActivity(req, 'DELETE_BRANCH', { branchId, branchName: checkBranch.rows[0].name });
-        res.json({ success: true, message: 'Branch deleted successfully.' });
+        res.json({ success: true, message: 'Branch removed. Its history is kept.' });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Delete Branch Error:', err);
@@ -6744,7 +7083,7 @@ app.get('/api/branches/main', authenticateToken, async (req, res) => {
 
 // Set a branch as the main branch (CEO/admin only)
 app.patch('/api/branches/:id/set-main', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') {
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') {
         return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
     const branchId = parseInt(req.params.id, 10);
@@ -6775,29 +7114,41 @@ app.patch('/api/branches/:id/set-main', authenticateToken, async (req, res) => {
 });
 
 // --- CREDIT AUTHORIZATION CODE ---
+const FACTORY_AUTH_CODE = '123456'; // the old built-in default: refused until a manager sets a real one
+const safeEqual = (a, b) => {
+    const x = Buffer.from(String(a)); const y = Buffer.from(String(b));
+    return x.length === y.length && crypto.timingSafeEqual(x, y);
+};
 
 app.post('/api/verify-auth-code', authenticateToken, async (req, res) => {
     const { code } = req.body;
+    const tenantId = req.user.tenant_id || 1;
+    const attemptKey = `authcode:${tenantId}:${req.user.id}`;
+    const attempt = await hitCounter(attemptKey, 60000);
+    if (attempt.count > 10) {
+        return res.status(429).json({ success: false, message: 'Too many authorization attempts. Try again in a minute.' });
+    }
 
     try {
         // Refresh user store_id from DB to ensure accuracy
-        const userCheck = await pool.query('SELECT store_id FROM users WHERE id = $1', [req.user.id]);
+        const userCheck = await pool.query('SELECT store_id FROM users WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [req.user.id, tenantId]);
         const dbStoreId = userCheck.rows[0]?.store_id;
         const branchId = dbStoreId || req.user.store_id || 1;
 
-        const inputCode = String(code).trim();
+        const inputCode = String(code || '').trim();
 
-        // 1. Check User's Branch
-        const branchRes = await pool.query('SELECT credit_auth_code, credit_auth_code_expiry FROM system_settings WHERE branch_id = $1', [branchId]);
+        // 1. Check User's Branch (tenant-scoped)
+        const branchRes = await pool.query('SELECT credit_auth_code, credit_auth_code_expiry FROM system_settings WHERE branch_id = $1 AND COALESCE(tenant_id, 1) = $2', [branchId, tenantId]);
 
-        // 2. Check Main Branch (Fallback)
-        const mainRes = await pool.query('SELECT credit_auth_code, credit_auth_code_expiry FROM system_settings WHERE branch_id = 1');
+        // 2. Check Main Branch Fallback (tenant-scoped)
+        const mainRes = await pool.query('SELECT credit_auth_code, credit_auth_code_expiry FROM system_settings WHERE branch_id = 1 AND COALESCE(tenant_id, 1) = $1', [tenantId]);
 
-        const checkCode = (row, source) => {
+        const checkCode = (row) => {
             if (!row || !row.credit_auth_code) return false;
             const dbCode = String(row.credit_auth_code).trim();
 
-            if (dbCode === inputCode) {
+            if (safeEqual(dbCode, inputCode)) {
+                if (dbCode === FACTORY_AUTH_CODE) return 'default';
                 if (row.credit_auth_code_expiry && new Date() > new Date(row.credit_auth_code_expiry)) {
                     return 'expired';
                 }
@@ -6807,27 +7158,21 @@ app.post('/api/verify-auth-code', authenticateToken, async (req, res) => {
         };
 
         let status = false;
-
-        // Check local branch
         if (branchRes.rows.length > 0) {
-            status = checkCode(branchRes.rows[0], 'Local Branch');
-        } else {
+            status = checkCode(branchRes.rows[0]);
         }
-
-        // If not valid locally, and we are not already at branch 1, check main branch
         if (status !== 'valid' && branchId !== 1 && mainRes.rows.length > 0) {
-            const mainStatus = checkCode(mainRes.rows[0], 'Main Branch');
+            const mainStatus = checkCode(mainRes.rows[0]);
             if (mainStatus === 'valid') status = 'valid';
+            else if (mainStatus === 'default' && status !== 'valid') status = 'default';
             else if (mainStatus === 'expired' && status !== 'expired') status = 'expired';
         }
 
-        // Legacy/Default fallback
-        if (status !== 'valid' && inputCode === '123456') {
-            status = 'valid';
-        }
-
         if (status === 'valid') {
+            await clearHits(attemptKey);
             res.json({ success: true });
+        } else if (status === 'default') {
+            res.status(401).json({ success: false, message: 'The authorization code is still the factory default (123456). A manager must set a new code in Credit Management before it can be used.' });
         } else if (status === 'expired') {
             res.status(401).json({ success: false, message: 'Authorization code has expired' });
         } else {
@@ -6839,11 +7184,11 @@ app.post('/api/verify-auth-code', authenticateToken, async (req, res) => {
     }
 });
 
-app.get('/api/settings/auth-code', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'manager') return res.status(403).json({ message: 'Unauthorized' });
+app.get('/api/settings/auth-code', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const branchId = req.user.store_id || 1;
+    const tenantId = req.user.tenant_id || 1;
     try {
-        const result = await pool.query('SELECT credit_auth_code, credit_auth_code_expiry FROM system_settings WHERE branch_id = $1', [branchId]);
+        const result = await pool.query('SELECT credit_auth_code, credit_auth_code_expiry FROM system_settings WHERE branch_id = $1 AND COALESCE(tenant_id, 1) = $2', [branchId, tenantId]);
         if (result.rows.length > 0) {
             res.json(result.rows[0]);
         } else {
@@ -6852,32 +7197,25 @@ app.get('/api/settings/auth-code', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ message: 'Server error' }); }
 });
 
-app.post('/api/settings/auth-code', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'manager') return res.status(403).json({ message: 'Unauthorized' });
-
-    // Refresh store info from DB
-    const userCheck = await pool.query('SELECT store_id FROM users WHERE id = $1', [req.user.id]);
+app.post('/api/settings/auth-code', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('settings', 'edit'), async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
+    const userCheck = await pool.query('SELECT store_id FROM users WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [req.user.id, tenantId]);
     const branchId = userCheck.rows[0]?.store_id || req.user.store_id || 1;
 
     // Generate 6-digit code and set 24h expiry
     const code = crypto.randomInt(100000, 1000000).toString();
-    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
+    const expiry = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     try {
-        // Check if row exists
-        const check = await pool.query('SELECT id FROM system_settings WHERE branch_id = $1', [branchId]);
+        const check = await pool.query('SELECT id FROM system_settings WHERE branch_id = $1 AND COALESCE(tenant_id, 1) = $2', [branchId, tenantId]);
 
         if (check.rows.length > 0) {
-            await pool.query('UPDATE system_settings SET credit_auth_code = $1, credit_auth_code_expiry = $2 WHERE branch_id = $3', [code, expiry, branchId]);
+            await pool.query('UPDATE system_settings SET credit_auth_code = $1, credit_auth_code_expiry = $2 WHERE id = $3 AND COALESCE(tenant_id, 1) = $4', [code, expiry, check.rows[0].id, tenantId]);
         } else {
-            // Insert new row if missing (Fix for new branches)
-            const maxIdRes = await pool.query('SELECT MAX(id) as max_id FROM system_settings');
-            const nextId = (maxIdRes.rows[0].max_id || 0) + 1;
-
             await pool.query(`
-                INSERT INTO system_settings (id, branch_id, credit_auth_code, credit_auth_code_expiry, store_name, currency_symbol, vat_rate)
-                VALUES ($1, $2, $3, $4, 'Footprint', '₵ (GHS)', 0.00)
-            `, [nextId, branchId, code, expiry]);
+                INSERT INTO system_settings (branch_id, tenant_id, credit_auth_code, credit_auth_code_expiry, store_name, currency_symbol, vat_rate)
+                VALUES ($1, $2, $3, $4, 'OKWESIWA LTD', '₵ (GHS)', 0.00)
+            `, [branchId, tenantId, code, expiry]);
         }
 
         await logActivity(req, 'GENERATE_AUTH_CODE');
@@ -6891,58 +7229,58 @@ app.post('/api/settings/auth-code', authenticateToken, async (req, res) => {
 // ============ CUSTOMER MANAGEMENT ENDPOINTS ============
 
 app.get('/api/customers', authenticateToken, async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
     try {
-        const result = await pool.query('SELECT * FROM customers WHERE deleted_at IS NULL ORDER BY name');
+        const result = await pool.query('SELECT * FROM customers WHERE COALESCE(tenant_id, 1) = $1 AND deleted_at IS NULL ORDER BY name', [tenantId]);
         await logActivity(req, 'VIEW_CUSTOMER_LIST');
         res.json(result.rows);
     } catch (err) { res.status(500).json({ message: 'Server error' }); }
 });
 
-app.post('/api/customers', authenticateToken, async (req, res) => {
+app.post('/api/customers', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { name, phone, email, creditLimit, status } = req.body;
+    const tenantId = req.user.tenant_id || 1;
     try {
         const userCheck = await pool.query('SELECT id FROM users WHERE id = $1', [req.user.id]);
         if (userCheck.rows.length === 0) return res.status(401).json({ message: 'User session invalid. Please logout and login again.' });
 
         if (!name) return res.status(400).json({ message: 'Customer name is required' });
 
-        const limit = parseFloat(creditLimit) || 0;
+        const limit = Math.max(0, parseFloat(creditLimit) || 0);
 
-        // Restore if a soft-deleted customer with same phone exists
+        // Restore if a soft-deleted customer with same phone exists in this tenant
         if (phone) {
             const deletedRes = await pool.query(
-                'SELECT id, account_number FROM customers WHERE phone = $1 AND deleted_at IS NOT NULL LIMIT 1',
-                [phone]
+                'SELECT id, account_number FROM customers WHERE phone = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NOT NULL LIMIT 1',
+                [phone, tenantId]
             );
             if (deletedRes.rows.length > 0) {
                 await pool.query(
-                    'UPDATE customers SET name=$1, email=$2, credit_limit=$3, status=$4, deleted_at=NULL WHERE id=$5',
-                    [name, email, limit, status || 'Active', deletedRes.rows[0].id]
+                    'UPDATE customers SET name=$1, email=$2, credit_limit=$3, status=$4, deleted_at=NULL WHERE id=$5 AND COALESCE(tenant_id, 1) = $6',
+                    [name, email, limit, status || 'Active', deletedRes.rows[0].id, tenantId]
                 );
                 await logActivity(req, 'RESTORE_CUSTOMER', { name, accountNumber: deletedRes.rows[0].account_number });
                 return res.json({ success: true, restored: true, accountNumber: deletedRes.rows[0].account_number });
             }
         }
 
-        // Generate 10-digit sequential account number
-        const maxRes = await pool.query("SELECT MAX(CAST(account_number AS BIGINT)) as max_acc FROM customers WHERE account_number ~ '^[0-9]+$'");
-        const currentMax = maxRes.rows[0].max_acc ? parseInt(maxRes.rows[0].max_acc) : 1000000000;
-        const accountNumber = String(currentMax + 1);
+        const accountNumber = String(Date.now()).slice(-7) + String(crypto.randomInt(100, 999));
 
         await pool.query(
-            'INSERT INTO customers (name, phone, email, credit_limit, account_number, status, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7)',
-            [name, phone, email, limit, accountNumber, status || 'Active', req.user.id]
+            'INSERT INTO customers (tenant_id, name, phone, email, credit_limit, account_number, status, created_by) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
+            [tenantId, name, phone, email, limit, accountNumber, status || 'Active', req.user.id]
         );
         await logActivity(req, 'CREATE_CUSTOMER', { name, accountNumber });
         res.json({ success: true, accountNumber });
     } catch (err) {
         console.error('Error creating customer:', err);
-        res.status(500).json({ message: 'Error creating customer', error: err.message });
+        res.status(500).json({ message: 'Error creating customer' });
     }
 });
 
 app.post('/api/customers/:id/payment', authenticateToken, async (req, res) => {
     const { id } = req.params;
+    const tenantId = req.user.tenant_id || 1;
     const paid = parseFloat(req.body.amount);
     if (!Number.isFinite(paid) || paid <= 0) {
         return res.status(400).json({ message: 'amount must be a positive number' });
@@ -6953,15 +7291,24 @@ app.post('/api/customers/:id/payment', authenticateToken, async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // Update Balance and get new balance
-        const custRes = await client.query(
-            'UPDATE customers SET current_balance = current_balance - $1 WHERE id = $2 RETURNING current_balance',
-            [paid, id]
+        const curRes = await client.query(
+            'SELECT id, current_balance FROM customers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL FOR UPDATE',
+            [id, tenantId]
         );
-        if (custRes.rows.length === 0) {
+        if (curRes.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Customer not found' });
         }
+        const currentBal = Number(curRes.rows[0].current_balance || 0);
+        if (paid > currentBal + 0.01) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: `Payment exceeds customer balance (owed: GH₵ ${currentBal.toFixed(2)})` });
+        }
+
+        const custRes = await client.query(
+            'UPDATE customers SET current_balance = GREATEST(0, current_balance - $1) WHERE id = $2 AND COALESCE(tenant_id, 1) = $3 RETURNING current_balance',
+            [paid, id, tenantId]
+        );
         const newBalance = custRes.rows[0].current_balance;
 
         // Record Payment for Statement
@@ -6989,19 +7336,21 @@ app.post('/api/customers/:id/payment', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/customers/:id', authenticateToken, async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
     try {
-        const result = await pool.query('SELECT * FROM customers WHERE id = $1 AND deleted_at IS NULL', [req.params.id]);
+        const result = await pool.query('SELECT * FROM customers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL', [req.params.id, tenantId]);
         if (result.rows.length === 0) return res.status(404).json({ message: 'Customer not found' });
         res.json(result.rows[0]);
     } catch (err) { res.status(500).json({ message: 'Server error' }); }
 });
 
-app.put('/api/customers/:id', authenticateToken, async (req, res) => {
+app.put('/api/customers/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const { id } = req.params;
+    const tenantId = req.user.tenant_id || 1;
     const { name, phone, email, creditLimit } = req.body;
 
     try {
-        const currentRes = await pool.query('SELECT * FROM customers WHERE id = $1 AND deleted_at IS NULL', [id]);
+        const currentRes = await pool.query('SELECT * FROM customers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL', [id, tenantId]);
         if (currentRes.rows.length === 0) return res.status(404).json({ message: 'Customer not found' });
 
         const current = currentRes.rows[0];
@@ -7014,17 +7363,15 @@ app.put('/api/customers/:id', authenticateToken, async (req, res) => {
 
         // Handle Credit Limit Change
         if (creditLimit !== undefined && parseFloat(creditLimit) !== parseFloat(current.credit_limit)) {
-            if (req.user.role === 'ceo' || req.user.role === 'admin') {
-                // Direct update for CEO/Admin
+            if (req.user.role === 'super_admin' || req.user.role === 'ceo' || req.user.role === 'admin') {
                 newLimit = parseFloat(creditLimit);
-                await pool.query('UPDATE customers SET name = $1, phone = $2, email = $3, credit_limit = $4, pending_credit_limit = NULL WHERE id = $5', [newName, newPhone, newEmail, newLimit, id]);
+                await pool.query('UPDATE customers SET name = $1, phone = $2, email = $3, credit_limit = $4, pending_credit_limit = NULL WHERE id = $5 AND COALESCE(tenant_id, 1) = $6', [newName, newPhone, newEmail, newLimit, id, tenantId]);
             } else {
-                // Request approval for others
-                await pool.query('UPDATE customers SET name = $1, phone = $2, email = $3, pending_credit_limit = $4 WHERE id = $5', [newName, newPhone, newEmail, parseFloat(creditLimit), id]);
+                await pool.query('UPDATE customers SET name = $1, phone = $2, email = $3, pending_credit_limit = $4 WHERE id = $5 AND COALESCE(tenant_id, 1) = $6', [newName, newPhone, newEmail, parseFloat(creditLimit), id, tenantId]);
                 message = 'Credit limit increase requested. Sent to CEO for approval.';
             }
         } else {
-            await pool.query('UPDATE customers SET name = $1, phone = $2, email = $3 WHERE id = $4', [newName, newPhone, newEmail, id]);
+            await pool.query('UPDATE customers SET name = $1, phone = $2, email = $3 WHERE id = $4 AND COALESCE(tenant_id, 1) = $5', [newName, newPhone, newEmail, id, tenantId]);
         }
 
         await logActivity(req, 'UPDATE_CUSTOMER', { id, creditLimit: newLimit });
@@ -7032,14 +7379,14 @@ app.put('/api/customers/:id', authenticateToken, async (req, res) => {
     } catch (err) { res.status(500).json({ message: 'Error updating customer' }); }
 });
 
-app.delete('/api/customers/:id', authenticateToken, async (req, res) => {
+app.delete('/api/customers/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const { id } = req.params;
+    const tenantId = req.user.tenant_id || 1;
     const client = await pool.connect();
     try {
-        // Soft delete: customer hidden from frontend; all payments, ledger & transaction history retained
         const result = await client.query(
-            'UPDATE customers SET deleted_at = NOW() WHERE id = $1 AND deleted_at IS NULL RETURNING id',
-            [id]
+            'UPDATE customers SET deleted_at = NOW() WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL RETURNING id',
+            [id, tenantId]
         );
 
         if (result.rows.length === 0) {
@@ -7499,7 +7846,7 @@ app.post('/api/customers/:id/email-statement', authenticateToken, async (req, re
 
                     // Footer
                     doc.fontSize(9).font('Helvetica').fillColor('#1a2a6c').text('Thank you for your business.', { align: 'center' });
-                    doc.fontSize(8).fillColor('#999').text('For account enquiries, please contact us at accounts@footprint.com', { align: 'center' });
+                    doc.fontSize(8).fillColor('#999').text('For account enquiries, please contact us at accounts@okwesiwa.com', { align: 'center' });
 
                     doc.end();
                 } catch (err) {
@@ -7523,7 +7870,7 @@ app.post('/api/customers/:id/email-statement', authenticateToken, async (req, re
         const emailHtml = `
             <div style="font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 600px;">
                 <div style="background: linear-gradient(135deg, #1a2a6c, #b21f1f); padding: 30px; border-radius: 8px 8px 0 0; color: white; text-align: center;">
-                    <h1 style="margin: 0; font-size: 28px;">FOOTPRINT RETAIL SYSTEMS</h1>
+                    <h1 style="margin: 0; font-size: 28px;">OKWESIWA LTD</h1>
                     <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Account Statement</p>
                 </div>
                 
@@ -7556,19 +7903,19 @@ app.post('/api/customers/:id/email-statement', authenticateToken, async (req, re
                     <p style="font-size: 13px; color: #666; margin: 15px 0;">
                         <strong>Contact Us:</strong><br>
                         Phone: +233 (0) XXX XXX XXX<br>
-                        Email: accounts@footprint.com
+                        Email: accounts@okwesiwa.com
                     </p>
                     
                     <p style="font-size: 12px; color: #999; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
                         This is an automated message. Please do not reply to this email.<br>
-                        © 2026 Footprint Retail Systems. All rights reserved.
+                        © 2026 OKWESIWA LTD. All rights reserved.
                     </p>
                 </div>
             </div>
         `;
 
         const mailOptions = {
-            from: `"Footprint Accounts" <${process.env.ADMIN_EMAIL}>`,
+            from: `"OKWESIWA LTD Accounts" <${process.env.ADMIN_EMAIL}>`,
             to: customer.email,
             subject: `Account Statement - ${monthName} ${year}`,
             html: emailHtml,
@@ -7664,43 +8011,35 @@ app.post('/api/reset-password', authLimiter, async (req, res) => {
     }
 });
 
-// ============ AUDIT LOGS ENDPOINT ============
-app.get('/api/audit-logs', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.role !== 'manager') {
-        return res.status(403).json({ message: 'Unauthorized' });
-    }
-    try {
-        const result = await pool.query(`
-            SELECT a.*, 
-                COALESCE(u.name, cu.company_name) as user_name, 
-                CASE 
-                    WHEN u.role IS NOT NULL THEN u.role
-                    WHEN cu.id IS NOT NULL THEN 'Company'
-                    ELSE 'System'
-                END as user_role 
-            FROM activity_logs a 
-            LEFT JOIN users u ON a.user_id = u.id 
-            LEFT JOIN company_users cu ON a.user_id = cu.id
-            ORDER BY a.created_at DESC LIMIT 200
-        `);
-        await logActivity(req, 'VIEW_AUDIT_LOGS');
-        res.json(result.rows);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Server error' });
-    }
-});
-
-// Generic Client-Side Logging Endpoint
-app.post('/api/audit/log', authenticateToken, async (req, res) => {
-    const { action, details } = req.body;
-    try {
-        await logActivity(req, action, details);
-        res.json({ success: true });
-    } catch (err) {
-        res.status(500).json({ message: 'Error logging activity' });
-    }
-});
+// ============ MODULAR FOUNDATION ROUTES (Roles, Audit, Backups, POS) ============
+const rolesRouter = require('./routes/roles');
+const auditRouter = require('./routes/audit');
+const { router: backupsRouter, startNightlyBackupScheduler } = require('./routes/backups');
+const posRouter = require('./routes/pos');
+const dailyCloseRouter = require('./routes/daily-close');
+const coreReportsRouter = require('./routes/reports-core');
+const catalogOpsRouter = require('./routes/catalog-ops');
+const allReportsRouter = require('./routes/reports-all');
+const ceoLiveRouter = require('./routes/ceo-live');
+const extrasRouter = require('./routes/extras');
+const businessConfigRouter = require('./routes/business-config');
+const expensesRouter = require('./routes/expenses');
+const accountingRouter = require('./routes/accounting');
+const payrollRouter = require('./routes/payroll');
+app.use(rolesRouter);
+app.use(businessConfigRouter);
+app.use(expensesRouter);
+app.use(accountingRouter);
+app.use(payrollRouter);
+app.use(auditRouter);
+app.use(backupsRouter);
+app.use(posRouter);
+app.use(dailyCloseRouter);
+app.use(coreReportsRouter);
+app.use(catalogOpsRouter);
+app.use(allReportsRouter);
+app.use(ceoLiveRouter);
+app.use(extrasRouter);
 
 // ============ TAX MANAGEMENT (CEO Portal) ============
 
@@ -7711,21 +8050,22 @@ app.get('/api/taxes/active', authenticateToken, async (req, res) => {
         const userType = req.user.type || 'staff';
 
         // 1. Fetch Additional Taxes
-        let query = "SELECT id, name, rate FROM tax_rules WHERE status = 'Active' AND branch_id = $1 AND deleted_at IS NULL ORDER BY name ASC";
-        let params = [branchId];
+        const tenantId = req.user.tenant_id || 1;
+        let query = "SELECT id, name, rate FROM tax_rules WHERE status = 'Active' AND branch_id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL ORDER BY name ASC";
+        let params = [branchId, tenantId];
 
-        // Refined Isolation: Global taxes (Branch 1) flow to ALL physical branches but NOT to Company Portals
+        // Refined Isolation: Global taxes (Branch 1) flow to ALL physical branches of the same company but NOT to Company Portals
         if (userType !== 'company') {
-            query = "SELECT id, name, rate FROM tax_rules WHERE status = 'Active' AND (branch_id = $1 OR branch_id = 1) AND deleted_at IS NULL ORDER BY name ASC";
+            query = "SELECT id, name, rate FROM tax_rules WHERE status = 'Active' AND (branch_id = $1 OR branch_id = 1) AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL ORDER BY name ASC";
         }
 
         const rulesRes = await pool.query(query, params);
         let rules = rulesRes.rows;
 
         // 2. Fetch System VAT (for consistency with POS expectations)
-        let settingsRes = await pool.query("SELECT vat_rate FROM system_settings WHERE branch_id = $1", [branchId]);
+        let settingsRes = await pool.query("SELECT vat_rate FROM system_settings WHERE branch_id = $1 AND COALESCE(tenant_id, 1) = $2", [branchId, tenantId]);
         if (settingsRes.rows.length === 0) {
-            settingsRes = await pool.query("SELECT vat_rate FROM system_settings WHERE branch_id = 1");
+            settingsRes = await pool.query("SELECT vat_rate FROM system_settings WHERE COALESCE(tenant_id, 1) = $1 ORDER BY branch_id ASC LIMIT 1", [tenantId]);
         }
 
         const vatRate = settingsRes.rows.length > 0 ? parseFloat(settingsRes.rows[0].vat_rate) : 0;
@@ -7745,7 +8085,7 @@ app.get('/api/taxes/active', authenticateToken, async (req, res) => {
 // Get all tax rules for Management (isolated per portal)
 app.get('/api/taxes', authenticateToken, async (req, res) => {
     // Allow admin, ceo, or company users
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.type !== 'company') {
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.type !== 'company') {
         return res.status(403).json({ message: 'Unauthorized' });
     }
 
@@ -7753,12 +8093,12 @@ app.get('/api/taxes', authenticateToken, async (req, res) => {
         const branchId = req.user.store_id || 1;
         const userType = req.user.type || 'staff';
 
-        let query = 'SELECT * FROM tax_rules WHERE branch_id = $1 AND deleted_at IS NULL ORDER BY created_at DESC';
-        let params = [branchId];
+        let query = 'SELECT * FROM tax_rules WHERE branch_id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL ORDER BY created_at DESC';
+        let params = [branchId, req.user.tenant_id || 1];
 
-        // Management Isolation: CEO/Admin can see all company tax rules
-        if (userType !== 'company' && (req.user.role === 'ceo' || req.user.role === 'admin')) {
-            query = 'SELECT * FROM tax_rules WHERE (tenant_id = $1 OR tenant_id IS NULL OR branch_id = 1) AND deleted_at IS NULL ORDER BY created_at DESC';
+        // Management Isolation: CEO/Admin can see all of their own company's tax rules (never another company's)
+        if (userType !== 'company' && (req.user.role === 'super_admin' || req.user.role === 'ceo' || req.user.role === 'admin')) {
+            query = 'SELECT * FROM tax_rules WHERE COALESCE(tenant_id, 1) = $1 AND deleted_at IS NULL ORDER BY created_at DESC';
             params = [req.user.tenant_id || 1];
         }
 
@@ -7773,17 +8113,18 @@ app.get('/api/taxes', authenticateToken, async (req, res) => {
 // Add tax rule (auto-assign to current branch/portal)
 app.post('/api/taxes', authenticateToken, async (req, res) => {
     // Allow admin, ceo, or company users
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.type !== 'company') {
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.type !== 'company') {
         return res.status(403).json({ message: 'Unauthorized' });
     }
 
     const { name, rate } = req.body;
     try {
         const branchId = req.user.store_id || 1;
+        const tenantId = req.user.tenant_id || 1;
         // Restore if soft-deleted tax rule with same name exists for this branch
         const deletedRes = await pool.query(
-            'SELECT id FROM tax_rules WHERE name = $1 AND branch_id = $2 AND deleted_at IS NOT NULL LIMIT 1',
-            [name, branchId]
+            'SELECT id FROM tax_rules WHERE name = $1 AND branch_id = $2 AND COALESCE(tenant_id, 1) = $3 AND deleted_at IS NOT NULL LIMIT 1',
+            [name, branchId, tenantId]
         );
         if (deletedRes.rows.length > 0) {
             await pool.query(
@@ -7793,7 +8134,7 @@ app.post('/api/taxes', authenticateToken, async (req, res) => {
             await logActivity(req, 'RESTORE_TAX_RULE', { name, rate, branchId });
             return res.json({ success: true, restored: true });
         }
-        await pool.query('INSERT INTO tax_rules (name, rate, branch_id) VALUES ($1, $2, $3)', [name, rate, branchId]);
+        await pool.query('INSERT INTO tax_rules (name, rate, branch_id, tenant_id) VALUES ($1, $2, $3, $4)', [name, rate, branchId, tenantId]);
         await logActivity(req, 'CREATE_TAX_RULE', { name, rate, branchId });
         res.json({ success: true });
     } catch (err) {
@@ -7805,14 +8146,15 @@ app.post('/api/taxes', authenticateToken, async (req, res) => {
 
 // Update tax rule
 app.put('/api/taxes/:id', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     const { id } = req.params;
     const { name, rate, status } = req.body;
     try {
-        await pool.query(
-            'UPDATE tax_rules SET name = COALESCE($1, name), rate = COALESCE($2, rate), status = COALESCE($3, status) WHERE id = $4',
-            [name, rate, status, id]
+        const upd = await pool.query(
+            'UPDATE tax_rules SET name = COALESCE($1, name), rate = COALESCE($2, rate), status = COALESCE($3, status) WHERE id = $4 AND COALESCE(tenant_id, 1) = $5',
+            [name, rate, status, id, req.user.tenant_id || 1]
         );
+        if (upd.rowCount === 0) return res.status(404).json({ message: 'Tax rule not found.' });
         await logActivity(req, 'UPDATE_TAX_RULE', { id, name, rate, status });
         res.json({ success: true });
     } catch (err) {
@@ -7823,11 +8165,12 @@ app.put('/api/taxes/:id', authenticateToken, async (req, res) => {
 
 // Delete tax rule
 app.delete('/api/taxes/:id', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     const { id } = req.params;
     try {
         // Soft delete: tax rule hidden but retained for historical transaction accuracy
-        await pool.query('UPDATE tax_rules SET deleted_at = NOW() WHERE id = $1', [id]);
+        const del = await pool.query('UPDATE tax_rules SET deleted_at = NOW() WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [id, req.user.tenant_id || 1]);
+        if (del.rowCount === 0) return res.status(404).json({ message: 'Tax rule not found.' });
         await logActivity(req, 'DELETE_TAX_RULE', { id });
         res.json({ success: true });
     } catch (err) {
@@ -7838,21 +8181,25 @@ app.delete('/api/taxes/:id', authenticateToken, async (req, res) => {
 
 // Calculate Tax Liability Report
 app.get('/api/ceo/tax-report', authenticateToken, async (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
 
     const { startDate, endDate, branch } = req.query;
 
     try {
-        // 1. Get Active Tax Rules (for Columns) - Isolated from Company Portal
+        // 1. Get Active Tax Rules (for Columns) - only this company's rules
+        const tenantId = req.user.tenant_id || 1;
         const branchId = req.user.store_id || 1;
         const rulesRes = await pool.query(
-            "SELECT * FROM tax_rules WHERE status = 'Active' AND deleted_at IS NULL AND (branch_id = $1 OR branch_id = 1) ORDER BY created_at DESC",
-            [branchId]
+            "SELECT * FROM tax_rules WHERE status = 'Active' AND deleted_at IS NULL AND COALESCE(tenant_id, 1) = $2 AND (branch_id = $1 OR branch_id = 1) ORDER BY created_at DESC",
+            [branchId, tenantId]
         );
         const activeRules = rulesRes.rows;
 
         // Fetch System VAT (Default to Branch 1)
-        const settingsRes = await pool.query("SELECT vat_rate FROM system_settings WHERE branch_id = 1");
+        const settingsRes = await pool.query(
+            "SELECT vat_rate FROM system_settings WHERE COALESCE(tenant_id, 1) = $1 ORDER BY branch_id ASC LIMIT 1",
+            [tenantId]
+        );
         const systemVat = settingsRes.rows.length > 0 ? parseFloat(settingsRes.rows[0].vat_rate) : 0.0;
 
         // Define Report Columns (VAT + Active Rules)
@@ -7860,8 +8207,8 @@ app.get('/api/ceo/tax-report', authenticateToken, async (req, res) => {
         const reportRules = [{ name: 'VAT', rate: systemVat }, ...activeRules];
 
         // 2. Build Transaction Query
-        let whereClause = "LOWER(status) = 'completed'";
-        let params = [];
+        let whereClause = "LOWER(status) = 'completed' AND COALESCE(tenant_id, 1) = $1";
+        let params = [tenantId];
 
         if (startDate && endDate) {
             whereClause += ` AND created_at >= $${params.length + 1} AND created_at <= $${params.length + 2}::date + INTERVAL '1 day' - INTERVAL '1 second'`;
@@ -7949,12 +8296,15 @@ app.get('/api/ceo/tax-report', authenticateToken, async (req, res) => {
 
 // ============ COMPANY PORTAL ENDPOINTS ============
 
+const COMPANY_PORTAL_ROLES = ['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'business_client', 'company'];
+
 // Company Dashboard Data
-app.get('/api/company/dashboard', authenticateToken, async (req, res) => {
+app.get('/api/company/dashboard', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
         const companyId = req.user.id;
+        const tenantId = req.user.tenant_id || 1;
 
-        // Get dashboard statistics including credit metrics
+        // Get dashboard statistics including credit metrics (scoped to tenant)
         const [proformaResult, salesResult, revenueResult, balanceResult, draftProformaResult, creditResult] = await Promise.all([
             pool.query('SELECT COUNT(*) as count FROM proforma_invoices WHERE created_by = $1', [companyId]),
             pool.query('SELECT COUNT(*) as count FROM sales_invoices WHERE created_by = $1', [companyId]),
@@ -7967,7 +8317,8 @@ app.get('/api/company/dashboard', authenticateToken, async (req, res) => {
                     COALESCE(SUM(credit_limit), 0) as total_limit,
                     COUNT(*) FILTER (WHERE current_balance > 0) as active_debtors
                 FROM customers
-            `)
+                WHERE COALESCE(tenant_id, 1) = $1 AND deleted_at IS NULL
+            `, [tenantId])
         ]);
 
         // Get recent activity
@@ -8007,7 +8358,7 @@ app.get('/api/company/dashboard', authenticateToken, async (req, res) => {
 });
 
 // Get Proforma Invoices
-app.get('/api/company/proforma-invoices', authenticateToken, async (req, res) => {
+app.get('/api/company/proforma-invoices', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
         const result = await pool.query(
             'SELECT * FROM proforma_invoices WHERE created_by = $1 ORDER BY issue_date DESC',
@@ -8023,8 +8374,9 @@ app.get('/api/company/proforma-invoices', authenticateToken, async (req, res) =>
 });
 
 // Create Proforma Invoice
-app.post('/api/company/proforma-invoices', authenticateToken, async (req, res) => {
+app.post('/api/company/proforma-invoices', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id || 1;
         const {
             invoice_number, expiry_date, items, subtotal,
             markup_type, markup_value, markup_amount,
@@ -8037,21 +8389,28 @@ app.post('/api/company/proforma-invoices', authenticateToken, async (req, res) =
         try {
             await client.query('BEGIN');
 
-            // Get company ID
-            const companyResult = await client.query('SELECT id FROM companies ORDER BY id LIMIT 1');
-            const companyId = companyResult.rows[0].id;
+            // Get company ID scoped to tenant
+            const companyResult = await client.query(
+                'SELECT id FROM companies WHERE COALESCE(tenant_id, 1) = $1 ORDER BY id LIMIT 1',
+                [tenantId]
+            );
+            if (!companyResult.rows.length) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ message: 'Company profile not found for this tenant' });
+            }
+            const companyId = req.user.company_id || companyResult.rows[0].id;
 
             // Create proforma invoice
             const proformaResult = await client.query(`
                 INSERT INTO proforma_invoices (
-                    company_id, invoice_number, issue_date, expiry_date,
+                    tenant_id, company_id, invoice_number, issue_date, expiry_date,
                     subtotal, markup_type, markup_value, markup_amount,
                     discount_type, discount_value, discount_amount,
                     total_amount, notes, created_by
-                ) VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                ) VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 RETURNING *
             `, [
-                companyId, invoice_number, expiry_date, subtotal,
+                tenantId, companyId, invoice_number, expiry_date, subtotal,
                 markup_type, markup_value, markup_amount,
                 discount_type, discount_value, discount_amount,
                 total_amount, notes, req.user.id
@@ -8063,9 +8422,9 @@ app.post('/api/company/proforma-invoices', authenticateToken, async (req, res) =
             for (const item of items) {
                 await client.query(`
                     INSERT INTO proforma_invoice_items (
-                        proforma_id, product_name, quantity, unit_price, line_total, product_id, barcode
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-                `, [proformaId, item.product_name, item.quantity, item.unit_price, item.line_total, item.product_id, item.barcode]);
+                        tenant_id, proforma_id, product_name, quantity, unit_price, line_total, product_id, barcode
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                `, [tenantId, proformaId, item.product_name, item.quantity, item.unit_price, item.line_total, item.product_id, item.barcode]);
             }
 
             await client.query('COMMIT');
@@ -8085,11 +8444,12 @@ app.post('/api/company/proforma-invoices', authenticateToken, async (req, res) =
 });
 
 // Get Sales Invoices
-app.get('/api/company/sales-invoices', authenticateToken, async (req, res) => {
+app.get('/api/company/sales-invoices', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id || 1;
         const result = await pool.query(
-            'SELECT * FROM sales_invoices WHERE created_by = $1 ORDER BY issue_date DESC',
-            [req.user.id]
+            'SELECT * FROM sales_invoices WHERE created_by = $1 AND COALESCE(tenant_id, 1) = $2 ORDER BY issue_date DESC',
+            [req.user.id, tenantId]
         );
 
         res.json(result.rows);
@@ -8101,8 +8461,9 @@ app.get('/api/company/sales-invoices', authenticateToken, async (req, res) => {
 });
 
 // Create Sales Invoice
-app.post('/api/company/sales-invoices', authenticateToken, async (req, res) => {
+app.post('/api/company/sales-invoices', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id || 1;
         const {
             invoice_number, due_date, items, subtotal,
             markup_type, markup_value, markup_amount,
@@ -8115,21 +8476,28 @@ app.post('/api/company/sales-invoices', authenticateToken, async (req, res) => {
         try {
             await client.query('BEGIN');
 
-            // Get company ID
-            const companyResult = await client.query('SELECT id FROM companies ORDER BY id LIMIT 1');
-            const companyId = companyResult.rows[0].id;
+            // Get company ID scoped to tenant
+            const companyResult = await client.query(
+                'SELECT id FROM companies WHERE COALESCE(tenant_id, 1) = $1 ORDER BY id LIMIT 1',
+                [tenantId]
+            );
+            if (!companyResult.rows.length) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ message: 'Company profile not found for this tenant' });
+            }
+            const companyId = req.user.company_id || companyResult.rows[0].id;
 
             // Create sales invoice
             const salesResult = await client.query(`
                 INSERT INTO sales_invoices (
-                    company_id, invoice_number, issue_date, due_date,
+                    tenant_id, company_id, invoice_number, issue_date, due_date,
                     subtotal, markup_type, markup_value, markup_amount,
                     discount_type, discount_value, discount_amount,
                     total_amount, notes, created_by
-                ) VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                ) VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 RETURNING *
             `, [
-                companyId, invoice_number, due_date, subtotal,
+                tenantId, companyId, invoice_number, due_date, subtotal,
                 markup_type, markup_value, markup_amount,
                 discount_type, discount_value, discount_amount,
                 total_amount, notes, req.user.id
@@ -8141,9 +8509,9 @@ app.post('/api/company/sales-invoices', authenticateToken, async (req, res) => {
             for (const item of items) {
                 await client.query(`
                     INSERT INTO sales_invoice_items (
-                        invoice_id, product_name, quantity, unit_price, line_total, product_id, barcode
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-                `, [salesId, item.product_name, item.quantity, item.unit_price, item.line_total, item.product_id, item.barcode]);
+                        tenant_id, invoice_id, product_name, quantity, unit_price, line_total, product_id, barcode
+                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+                `, [tenantId, salesId, item.product_name, item.quantity, item.unit_price, item.line_total, item.product_id, item.barcode]);
             }
 
             await client.query('COMMIT');
@@ -8163,17 +8531,19 @@ app.post('/api/company/sales-invoices', authenticateToken, async (req, res) => {
 });
 
 // Get Transactions
-app.get('/api/company/transactions', authenticateToken, async (req, res) => {
+app.get('/api/company/transactions', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id || 1;
         const query = `
             SELECT ct.*, si.invoice_number
             FROM company_transactions ct
-            LEFT JOIN sales_invoices si ON ct.invoice_id = si.id
-            WHERE ct.company_id = (SELECT id FROM companies ORDER BY id LIMIT 1)
+            LEFT JOIN sales_invoices si ON ct.invoice_id = si.id AND COALESCE(si.tenant_id, 1) = $1
+            WHERE COALESCE(ct.tenant_id, 1) = $1
+              AND ct.company_id = COALESCE($2::int, (SELECT id FROM companies WHERE COALESCE(tenant_id, 1) = $1 ORDER BY id LIMIT 1))
             ORDER BY ct.created_at DESC
         `;
 
-        const result = await pool.query(query);
+        const result = await pool.query(query, [tenantId, req.user.company_id || null]);
         res.json(result.rows);
 
     } catch (error) {
@@ -8183,170 +8553,216 @@ app.get('/api/company/transactions', authenticateToken, async (req, res) => {
 });
 
 // Quick Sale Processing
-app.post('/api/company/quick-sale', authenticateToken, async (req, res) => {
+app.post('/api/company/quick-sale', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     const client = await pool.connect();
     try {
-        const { items, total, subtotal, discount, tax, tax_details, payment_method, customer_name, skip_stock, type, proforma_id, customer_id } = req.body;
-        let newId;
+        const tenantId = req.user.tenant_id || 1;
+        const { items, discount, tax, tax_details, payment_method, customer_name, skip_stock, type, proforma_id, customer_id } = req.body;
+        if (!Array.isArray(items) || items.length === 0) {
+            return res.status(400).json({ message: 'At least one item is required' });
+        }
 
+        let newId;
         await client.query('BEGIN');
 
-        // Resolve company_id (matching pattern from existing invoice routes)
-        const companyResult = await client.query('SELECT id FROM companies ORDER BY id LIMIT 1');
-        if (companyResult.rows.length === 0) throw new Error('Company record not found');
+        // Resolve company_id scoped to tenant
+        let companyResult;
+        if (req.user.company_id && /^\d+$/.test(String(req.user.company_id))) {
+            companyResult = await client.query(
+                'SELECT id FROM companies WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 LIMIT 1',
+                [parseInt(req.user.company_id, 10), tenantId]
+            );
+        }
+        if (!companyResult || companyResult.rows.length === 0) {
+            companyResult = await client.query(
+                'SELECT id FROM companies WHERE COALESCE(tenant_id, 1) = $1 ORDER BY id LIMIT 1',
+                [tenantId]
+            );
+        }
+        if (companyResult.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Company record not found' });
+        }
         const companyId = companyResult.rows[0].id;
+
+        // Verify items in tenant catalog and compute server-authoritative amounts
+        let authoritativeSubtotal = 0;
+        const verifiedItems = [];
+        for (const item of items) {
+            const qty = Number(item.quantity);
+            const pid = item.id || item.product_id;
+            const barcode = (item.barcode && item.barcode !== 'N/A') ? String(item.barcode) : null;
+            if ((!pid && !barcode) || !Number.isFinite(qty) || qty <= 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ message: 'Each item must specify a valid product and positive quantity' });
+            }
+            const prodRes = await client.query(
+                `SELECT id, barcode, name, price, stock_levels FROM products WHERE ${pid ? 'id = $1' : 'barcode = $1'} AND COALESCE(tenant_id, 1) = $2 LIMIT 1 FOR UPDATE`,
+                [pid || barcode, tenantId]
+            );
+            if (prodRes.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ message: `Product ${pid || barcode} not found` });
+            }
+            const prod = prodRes.rows[0];
+            const unitPrice = Number(prod.price || 0);
+            const lineTotal = Number((unitPrice * qty).toFixed(2));
+            authoritativeSubtotal += lineTotal;
+            verifiedItems.push({
+                product_id: prod.id,
+                barcode: prod.barcode,
+                product_name: prod.name,
+                quantity: qty,
+                unit_price: unitPrice,
+                line_total: lineTotal,
+                stock_levels: prod.stock_levels
+            });
+        }
+        authoritativeSubtotal = Number(authoritativeSubtotal.toFixed(2));
+
+        const role = (req.user.role || '').toLowerCase();
+        const capPct = (role === 'ceo' || role === 'admin') ? 100 : (MANAGER_ROLES.includes(role) ? 20 : 5);
+        const maxDiscount = (authoritativeSubtotal * capPct) / 100;
+        const safeDiscount = Number(Math.max(0, Math.min(Number(discount || 0), maxDiscount, authoritativeSubtotal)).toFixed(2));
+        const safeTax = Number(Math.max(0, Number(tax || 0)).toFixed(2));
+        const authoritativeTotal = Number((authoritativeSubtotal - safeDiscount + safeTax).toFixed(2));
+        const payMethod = String(payment_method || 'cash').toLowerCase();
 
         const invoiceNumber = (type === 'proforma' ? 'PRO-Q-' : 'INV-Q-') + Date.now();
 
         if (type === 'proforma') {
             const proformaResult = await client.query(`
                 INSERT INTO proforma_invoices (
-                    company_id, invoice_number, issue_date, expiry_date,
+                    tenant_id, company_id, invoice_number, issue_date, expiry_date,
                     subtotal, discount_amount, tax_amount, tax_details, total_amount, notes, created_by, client_name, payment_method, customer_id
-                ) VALUES ($1, $2, NOW(), NOW() + INTERVAL '30 days', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                ) VALUES ($1, $2, $3, NOW(), NOW() + INTERVAL '30 days', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
                 RETURNING id
-            `, [companyId, invoiceNumber, subtotal, discount, tax || 0, JSON.stringify(tax_details || []), total, `Quick Document for ${customer_name}`, req.user.id, customer_name, payment_method, customer_id]);
+            `, [tenantId, companyId, invoiceNumber, authoritativeSubtotal, safeDiscount, safeTax, JSON.stringify(tax_details || []), authoritativeTotal, `Quick Document for ${customer_name || ''}`, req.user.id, customer_name || null, payMethod, customer_id || null]);
 
             newId = proformaResult.rows[0].id;
 
-            for (const item of items) {
+            for (const item of verifiedItems) {
                 await client.query(`
                     INSERT INTO proforma_invoice_items (
                         proforma_id, product_name, quantity, unit_price, line_total, product_id, barcode
                     ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-                `, [newId, item.product_name, item.quantity, item.final_price || item.unit_price, item.total, item.product_id, item.barcode]);
+                `, [newId, item.product_name, item.quantity, item.unit_price, item.line_total, item.product_id, item.barcode]);
             }
         } else {
             // Create sales invoice
-            const status = payment_method === 'credit' ? 'Unpaid' : 'Paid';
+            const status = payMethod === 'credit' ? 'Unpaid' : 'Paid';
             const salesResult = await client.query(`
                 INSERT INTO sales_invoices (
-                    company_id, invoice_number, issue_date, due_date,
+                    tenant_id, company_id, invoice_number, issue_date, due_date,
                     subtotal, discount_amount, tax_amount, tax_details, total_amount, notes, created_by, client_name, payment_method, status, customer_id
-                ) VALUES ($1, $2, NOW(), NOW() + INTERVAL '30 days', $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+                ) VALUES ($1, $2, $3, NOW(), NOW() + INTERVAL '30 days', $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
                 RETURNING id
-            `, [companyId, invoiceNumber, subtotal, discount, tax || 0, JSON.stringify(tax_details || []), total, `Quick Document for ${customer_name}`, req.user.id, customer_name, payment_method, status, customer_id]);
+            `, [tenantId, companyId, invoiceNumber, authoritativeSubtotal, safeDiscount, safeTax, JSON.stringify(tax_details || []), authoritativeTotal, `Quick Document for ${customer_name || ''}`, req.user.id, customer_name || null, payMethod, status, customer_id || null]);
 
             newId = salesResult.rows[0].id;
 
-            // If credit payment, update customer balance
-            if (payment_method === 'credit' && customer_id) {
-                // Verify limit again on server side for safety
-                const custRes = await client.query('SELECT credit_limit, current_balance FROM customers WHERE id = $1 AND deleted_at IS NULL', [customer_id]);
-                if (custRes.rows.length > 0) {
-                    const cust = custRes.rows[0];
-                    const newBalance = parseFloat(cust.current_balance) + parseFloat(total);
-                    if (newBalance > parseFloat(cust.credit_limit)) {
-                        throw new Error('Credit limit exceeded');
-                    }
-                    await client.query('UPDATE customers SET current_balance = current_balance + $1 WHERE id = $2', [total, customer_id]);
+            // If credit payment, update customer balance (scoped to tenant)
+            if (payMethod === 'credit' && customer_id) {
+                const custRes = await client.query(
+                    'SELECT credit_limit, current_balance FROM customers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL FOR UPDATE',
+                    [customer_id, tenantId]
+                );
+                if (custRes.rows.length === 0) {
+                    await client.query('ROLLBACK');
+                    return res.status(404).json({ message: 'Customer not found' });
                 }
+                const cust = custRes.rows[0];
+                const newBalance = parseFloat(cust.current_balance || 0) + authoritativeTotal;
+                if (newBalance > parseFloat(cust.credit_limit || 0)) {
+                    await client.query('ROLLBACK');
+                    return res.status(400).json({ message: 'Credit limit exceeded' });
+                }
+                await client.query(
+                    'UPDATE customers SET current_balance = COALESCE(current_balance, 0) + $1 WHERE id = $2 AND COALESCE(tenant_id, 1) = $3',
+                    [authoritativeTotal, customer_id, tenantId]
+                );
             }
 
-            for (const item of items) {
+            for (const item of verifiedItems) {
                 await client.query(`
                     INSERT INTO sales_invoice_items (
                         invoice_id, product_name, quantity, unit_price, line_total, product_id, barcode
                     ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-                `, [newId, item.product_name, item.quantity, item.final_price || item.unit_price, item.total, item.product_id, item.barcode]);
+                `, [newId, item.product_name, item.quantity, item.unit_price, item.line_total, item.product_id, item.barcode]);
             }
 
             // Record in transaction history for Sales Invoices/Quick Sales
             await client.query(`
-                INSERT INTO company_transactions (company_id, invoice_id, transaction_type, amount, created_by)
-                VALUES ($1, $2, 'Sale', $3, $4)
-            `, [companyId, newId, total, req.user.id]);
+                INSERT INTO company_transactions (tenant_id, company_id, invoice_id, transaction_type, amount, created_by)
+                VALUES ($1, $2, $3, 'Sale', $4, $5)
+            `, [tenantId, companyId, newId, authoritativeTotal, req.user.id]);
 
-            // If this sale came from a proforma, mark it as completed
+            // If this sale came from a proforma, mark it as completed within tenant
             if (proforma_id) {
-                await client.query(`UPDATE proforma_invoices SET status = 'Completed' WHERE id = $1`, [proforma_id]);
+                await client.query(
+                    `UPDATE proforma_invoices SET status = 'Completed' WHERE id = $1 AND COALESCE(tenant_id, 1) = $2`,
+                    [proforma_id, tenantId]
+                );
             }
 
             // --- INVENTORY DEDUCTION LOGIC (Company Portal Sales) ---
             if (!skip_stock) {
-                // Dynamically resolve the target branch from the authenticated user's store_location.
-                // Falls back to branch id=1 (the primary branch) if not set.
-                // No hardcoded branch names — works for any branch added in the future.
                 const userStoreLocation = req.user.store_location || null;
                 const branchLookupRes = await client.query(`
-                    SELECT name FROM branches 
-                    WHERE ($1::text IS NOT NULL AND (name ILIKE $1 OR location ILIKE $1))
-                    UNION ALL
-                    SELECT name FROM branches WHERE id = 1
+                    SELECT name FROM branches
+                    WHERE COALESCE(tenant_id, 1) = $2
+                    ORDER BY CASE WHEN ($1::text IS NOT NULL AND (name ILIKE $1 OR location ILIKE $1)) THEN 0 ELSE 1 END, is_main DESC NULLS LAST, id ASC
                     LIMIT 1
-                `, [userStoreLocation]);
+                `, [userStoreLocation, tenantId]);
 
-                let targetBranch = branchLookupRes.rows.length > 0 ? branchLookupRes.rows[0].name : (userStoreLocation || 'Main Warehouse');
+                const targetBranch = branchLookupRes.rows.length > 0 ? branchLookupRes.rows[0].name : (userStoreLocation || 'Main Warehouse');
 
-                for (const item of items) {
-                    const pid = item.id || item.product_id;
-                    const barcode = item.barcode;
+                for (const item of verifiedItems) {
+                    let actualKey = null;
+                    const levels = item.stock_levels || {};
+                    const match = Object.keys(levels).find(k => k.toUpperCase() === targetBranch.toUpperCase());
+                    if (match) actualKey = match;
 
-                    if (pid || (barcode && barcode !== 'N/A')) {
-                        // Resolve which key actually exists in stock_levels (handle casing issues)
-                        const prodRes = await client.query(`
-                            SELECT stock_levels FROM products WHERE ${pid ? 'id = $1' : 'barcode = $1'}
-                        `, [pid || barcode]);
-
-                        let actualKey = null; // null = key not found in this product's stock_levels
-                        if (prodRes.rows.length > 0) {
-                            const levels = prodRes.rows[0].stock_levels || {};
-                            const keys = Object.keys(levels);
-                            const match = keys.find(k => k.toUpperCase() === targetBranch.toUpperCase());
-                            if (match) actualKey = match;
-                        }
-
-                        // 1. Update stock_levels JSONB and total stock column
-                        const productIdentifier = pid ? 'id = $3' : 'barcode = $3';
-                        const identifierValue = pid || barcode;
-
-                        if (actualKey) {
-                            // Key exists in stock_levels — decrement it safely
-                            await client.query(`
-                                UPDATE products 
-                                SET 
-                                    stock_levels = jsonb_set(
-                                        COALESCE(stock_levels, '{}'::jsonb), 
-                                        ARRAY[$1], 
-                                        (COALESCE((stock_levels->>$1)::int, 0) - $2)::text::jsonb
-                                    ),
-                                    stock = COALESCE(stock, 0) - $2
-                                WHERE ${productIdentifier}
-                            `, [actualKey, item.quantity, identifierValue]);
-                        } else {
-                            // Key does NOT exist for this branch — only decrement the total stock column.
-                            // Do NOT create a new negative key in stock_levels (that was the bug).
-                            console.warn(`[COMPANY SALE] Branch key "${targetBranch}" not found in stock_levels for product ${pid || barcode}. Skipping jsonb_set to prevent phantom negatives. Decrementing total stock only.`);
-                            await client.query(`
-                                UPDATE products 
-                                SET stock = COALESCE(stock, 0) - $1
-                                WHERE ${pid ? 'id = $2' : 'barcode = $2'}
-                            `, [item.quantity, identifierValue]);
-                        }
-
-                        // 2. Log inventory movement for audit
-                        // Note: Using $6 for the product identification in the WHERE clause to avoid indexing conflicts
+                    if (actualKey) {
                         await client.query(`
-                            INSERT INTO inventory_audit_log (
-                                action_type, product_barcode, quantity_before, quantity_after, 
-                                reference_id, reference_type, user_id, branch_id, notes
-                            )
-                            SELECT 
-                                'Stock Out', $1::text, (COALESCE((stock_levels->>$2::text)::int, 0) + $3::int), 
-                                (COALESCE((stock_levels->>$2::text)::int, 0)), $4::int, 'Quick Sale', $5::int, 
-                                (SELECT id FROM branches WHERE name = $2::text LIMIT 1), 'Company Portal Quick Sale (' || $2 || ')'
-                            FROM products WHERE ${pid ? 'id = $6' : 'barcode = $6'}
-                        `, [barcode || '', actualKey || targetBranch, item.quantity, newId, req.user.id, identifierValue]);
+                            UPDATE products
+                            SET
+                                stock_levels = jsonb_set(
+                                    COALESCE(stock_levels, '{}'::jsonb),
+                                    ARRAY[$1],
+                                    (COALESCE((stock_levels->>$1)::int, 0) - $2)::text::jsonb
+                                ),
+                                stock = COALESCE(stock, 0) - $2
+                            WHERE id = $3 AND COALESCE(tenant_id, 1) = $4
+                        `, [actualKey, item.quantity, item.product_id, tenantId]);
+                    } else {
+                        await client.query(`
+                            UPDATE products
+                            SET stock = COALESCE(stock, 0) - $1
+                            WHERE id = $2 AND COALESCE(tenant_id, 1) = $3
+                        `, [item.quantity, item.product_id, tenantId]);
                     }
+
+                    await client.query(`
+                        INSERT INTO inventory_audit_log (
+                            tenant_id, action_type, product_barcode, quantity_before, quantity_after,
+                            reference_id, reference_type, user_id, branch_id, notes
+                        )
+                        SELECT
+                            $7::int, 'Stock Out', $1::text, (COALESCE((stock_levels->>$2::text)::int, 0) + $3::int),
+                            (COALESCE((stock_levels->>$2::text)::int, 0)), $4::int, 'Quick Sale', $5::int,
+                            (SELECT id FROM branches WHERE name = $2::text AND COALESCE(tenant_id, 1) = $7::int LIMIT 1), 'Company Portal Quick Sale (' || $2 || ')'
+                        FROM products WHERE id = $6 AND COALESCE(tenant_id, 1) = $7::int
+                    `, [item.barcode || '', actualKey || targetBranch, item.quantity, newId, req.user.id, item.product_id, tenantId]);
                 }
             }
         }
 
-        const activityType = skip_stock ? `COMPANY_${payment_method.toUpperCase()}_GENERATED` : 'COMPANY_QUICK_SALE';
-        await logActivity(req, activityType, { invoiceNumber, total, customer_name, items_count: items.length });
+        const activityType = skip_stock ? `COMPANY_${payMethod.toUpperCase()}_GENERATED` : 'COMPANY_QUICK_SALE';
+        await logActivity(req, activityType, { invoiceNumber, total: authoritativeTotal, customer_name, items_count: verifiedItems.length });
 
         await client.query('COMMIT');
-        res.json({ success: true, invoice_number: invoiceNumber, id: newId });
+        res.json({ success: true, invoice_number: invoiceNumber, id: newId, total: authoritativeTotal, subtotal: authoritativeSubtotal });
     } catch (error) {
         await client.query('ROLLBACK');
         console.error('Quick sale error:', error);
@@ -8639,7 +9055,7 @@ app.get('/api/company/tax-report', authenticateToken, async (req, res) => {
 
 // Strict Static Asset Security Filter: Prevent access to database dumps, schemas, server code, and internal configs
 app.use((req, res, next) => {
-    const blockedExts = ['.sql', '.env', '.json', '.md', '.py', '.sh', '.yml', '.yaml', '.lock', '.log', '.xlsx', '.csv'];
+    const blockedExts = ['.sql', '.env', '.json', '.md', '.py', '.sh', '.yml', '.yaml', '.lock', '.log', '.xlsx', '.csv', '.txt', '.map', '.cjs', '.mjs', '.ds_store'];
     const lowerPath = req.path.toLowerCase();
 
     // Block dangerous extensions
@@ -8657,7 +9073,10 @@ app.use((req, res, next) => {
             '/sw.js',
             '/instant-nav.js',
             '/telemetry-guard.js',
-            '/offline-queue.js'
+            '/offline-queue.js',
+            '/layout.js',
+            '/ui-components.js',
+            '/pos-upgrade.js'
         ];
         if (!allowedClientScripts.includes(lowerPath)) {
             return res.status(403).send('Access Denied');
@@ -8669,9 +9088,15 @@ app.use((req, res, next) => {
 app.use(express.static(path.join(__dirname), {
     extensions: ['html'],
     redirect: false,
-    maxAge: process.env.NODE_ENV === 'production' ? '1d' : 0,
+    maxAge: 0,
     setHeaders: (res, filePath) => {
-        if (filePath.endsWith('.png') || filePath.endsWith('.ico') || filePath.endsWith('.svg') || filePath.endsWith('.woff2')) {
+        // HTML and shared JS/CSS must revalidate so every page renders the same
+        // layout.js/sidebar.css instead of a day-old cached copy.
+        if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache');
+        } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
+            res.setHeader('Cache-Control', 'public, max-age=120, must-revalidate');
+        } else if (filePath.endsWith('.png') || filePath.endsWith('.ico') || filePath.endsWith('.svg') || filePath.endsWith('.woff2')) {
             res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
         }
     }
@@ -8698,6 +9123,7 @@ app.pool = pool;
 
 // Start server if run directly (node server.js), otherwise export for Vercel/serverless
 if (require.main === module && !process.env.VERCEL) {
+    startNightlyBackupScheduler();
     const server = app.listen(port, '0.0.0.0', () => {
         console.log(`Server running on port ${port} (HTTP)`);
         console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);

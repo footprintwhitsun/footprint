@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Money - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/currency.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <style>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { flex: 1; padding: 24px; max-width: 1360px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD"></div>
+        <nav class="nav-links"></nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap" id="hub"></div>
+        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA LTD</footer>
+    </main>
+</div>
+
+<script>
+(function () {
+    const token = () => localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const authHeaders = () => ({ 'Content-Type': 'application/json', Authorization: 'Bearer ' + token() });
+    const esc = OkwUI.escapeHtml;
+    const fmt = (n) => (typeof formatCurrency === 'function' ? formatCurrency(n) : 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+    async function api(url, opts = {}) {
+        const res = await fetch(url, { credentials: 'include', headers: authHeaders(), ...opts });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.message || 'Request failed');
+        return data;
+    }
+
+    function mountCoa(panel) {
+        panel.innerHTML = `
+            <div class="okw-card" style="margin-bottom:16px;">
+                <h2 style="margin:0 0 10px;font-size:16px;">Add Ledger Account</h2>
+                <div style="display:grid;grid-template-columns:120px 1fr 160px auto;gap:8px;align-items:center;">
+                    <input id="coa-code" class="okw-input" placeholder="Code (e.g. 1050)">
+                    <input id="coa-name" class="okw-input" placeholder="Account name (e.g. Petty Cash)">
+                    <select id="coa-type" class="okw-select">
+                        <option value="Asset">Asset</option>
+                        <option value="Liability">Liability</option>
+                        <option value="Equity">Equity</option>
+                        <option value="Revenue">Revenue</option>
+                        <option value="Expense">Expense</option>
+                    </select>
+                    <button id="coa-add" class="okw-btn okw-btn-primary" type="button">+ Add Account</button>
+                </div>
+            </div>
+            <div class="okw-card" id="coa-list"><div class="okw-empty">Loading Chart of Accounts...</div></div>`;
+
+        async function load() {
+            const host = panel.querySelector('#coa-list');
+            try {
+                const { accounts } = await api('/api/gl/accounts');
+                host.innerHTML = `
+                    <div style="overflow-x:auto;">
+                        <table class="okw-table" style="width:100%;">
+                            <thead><tr><th>Code</th><th>Account Name</th><th>Type</th><th>Normal</th><th style="text-align:right;">Debits</th><th style="text-align:right;">Credits</th><th style="text-align:right;">Balance</th></tr></thead>
+                            <tbody>
+                                ${accounts.map(a => `
+                                    <tr>
+                                        <td><strong>${esc(a.code)}</strong></td>
+                                        <td>${esc(a.name)}</td>
+                                        <td>${OkwUI.badge(a.type, a.type === 'Asset' ? 'info' : (a.type === 'Revenue' ? 'success' : (a.type === 'Expense' ? 'warning' : 'neutral')))}</td>
+                                        <td style="text-transform:capitalize;color:var(--muted);">${esc(a.normal_balance)}</td>
+                                        <td style="text-align:right;">${fmt(a.total_debit)}</td>
+                                        <td style="text-align:right;">${fmt(a.total_credit)}</td>
+                                        <td style="text-align:right;"><strong>${fmt(a.balance)}</strong></td>
+                                    </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>`;
+            } catch (e) {
+                host.innerHTML = `<div class="okw-empty">${esc(e.message)}</div>`;
+            }
+        }
+
+        panel.querySelector('#coa-add').onclick = async () => {
+            try {
+                await api('/api/gl/accounts', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        code: panel.querySelector('#coa-code').value,
+                        name: panel.querySelector('#coa-name').value,
+                        type: panel.querySelector('#coa-type').value
+                    })
+                });
+                OkwUI.toast('Account added', 'success');
+                panel.querySelector('#coa-code').value = '';
+                panel.querySelector('#coa-name').value = '';
+                load();
+            } catch (e) { OkwUI.toast(e.message, 'danger'); }
+        };
+        load();
+    }
+
+    function mountJournal(panel) {
+        const today = new Date().toISOString().slice(0, 10);
+        panel.innerHTML = `
+            <div class="okw-card" style="margin-bottom:16px;">
+                <h2 style="margin:0 0 10px;font-size:16px;">Post Double-Entry Journal</h2>
+                <div style="display:grid;grid-template-columns:160px 180px 1fr;gap:8px;margin-bottom:10px;">
+                    <input id="je-date" type="date" class="okw-input" value="${today}">
+                    <input id="je-ref" class="okw-input" placeholder="Reference (optional)">
+                    <input id="je-memo" class="okw-input" placeholder="Memo / description">
+                </div>
+                <div id="je-lines" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                    <button id="je-add-line" class="okw-btn okw-btn-outline" type="button">+ Add Line</button>
+                    <div id="je-totals" style="font-size:13px;font-weight:600;">Debits: GH₵ 0.00 · Credits: GH₵ 0.00</div>
+                    <button id="je-post" class="okw-btn okw-btn-primary" type="button">Post Journal Entry</button>
+                </div>
+            </div>
+            <div class="okw-card" id="je-list"><div class="okw-empty">Loading journal entries...</div></div>`;
+
+        let accounts = [];
+        function addLineRow() {
+            const wrap = panel.querySelector('#je-lines');
+            const row = document.createElement('div');
+            row.className = 'je-line-row';
+            row.style.cssText = 'display:grid;grid-template-columns:1.5fr 1.2fr 130px 130px auto;gap:6px;align-items:center;';
+            row.innerHTML = `
+                <select class="okw-select je-acc">${accounts.map(a => `<option value="${a.id}">${esc(a.code + ' — ' + a.name)}</option>`).join('')}</select>
+                <input class="okw-input je-desc" placeholder="Line memo">
+                <input class="okw-input je-deb" type="number" step="0.01" min="0" placeholder="Debit">
+                <input class="okw-input je-cred" type="number" step="0.01" min="0" placeholder="Credit">
+                <button type="button" class="okw-btn okw-btn-outline je-rm">×</button>`;
+            row.querySelector('.je-rm').onclick = () => { if (wrap.children.length > 2) { row.remove(); updateTotals(); } };
+            row.querySelectorAll('.je-deb,.je-cred').forEach(inp => inp.addEventListener('input', updateTotals));
+            wrap.appendChild(row);
+        }
+
+        function updateTotals() {
+            let d = 0, c = 0;
+            panel.querySelectorAll('.je-line-row').forEach(r => {
+                d += Number(r.querySelector('.je-deb').value || 0);
+                c += Number(r.querySelector('.je-cred').value || 0);
+            });
+            const bal = Math.abs(d - c) < 0.01 && d > 0;
+            panel.querySelector('#je-totals').innerHTML = `Debits: ${fmt(d)} · Credits: ${fmt(c)} ${bal ? '<span style="color:var(--ok);margin-left:6px;">✓ Balanced</span>' : '<span style="color:var(--bad);margin-left:6px;">Out of balance</span>'}`;
+        }
+
+        async function load() {
+            try {
+                const [accData, jeData] = await Promise.all([api('/api/gl/accounts'), api('/api/gl/journal')]);
+                accounts = accData.accounts || [];
+                const wrap = panel.querySelector('#je-lines');
+                if (!wrap.children.length) { addLineRow(); addLineRow(); }
+                const host = panel.querySelector('#je-list');
+                const entries = jeData.entries || [];
+                if (!entries.length) { host.innerHTML = '<div class="okw-empty">No journal entries posted yet.</div>'; return; }
+                host.innerHTML = entries.map(e => `
+                    <div style="border-bottom:1px solid var(--edge);padding:12px 0;">
+                        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+                            <strong>${esc(e.entry_number)} · ${esc(String(e.entry_date).slice(0, 10))}</strong>
+                            <span style="font-size:12.5px;color:var(--muted);">${esc(e.reference || '')} ${e.memo ? '— ' + esc(e.memo) : ''} (${esc(e.source)})</span>
+                        </div>
+                        <table class="okw-table" style="width:100%;">
+                            <tbody>
+                                ${(e.lines || []).map(l => `
+                                    <tr>
+                                        <td style="width:45%;">${esc(l.account_code + ' — ' + l.account_name)}</td>
+                                        <td style="color:var(--muted);">${esc(l.description || '')}</td>
+                                        <td style="text-align:right;width:130px;">${Number(l.debit) > 0 ? fmt(l.debit) : '—'}</td>
+                                        <td style="text-align:right;width:130px;">${Number(l.credit) > 0 ? fmt(l.credit) : '—'}</td>
+                                    </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>`).join('');
+            } catch (e) { panel.querySelector('#je-list').innerHTML = `<div class="okw-empty">${esc(e.message)}</div>`; }
+        }
+
+        panel.querySelector('#je-add-line').onclick = addLineRow;
+        panel.querySelector('#je-post').onclick = async () => {
+            try {
+                const lines = [...panel.querySelectorAll('.je-line-row')].map(r => ({
+                    account_id: Number(r.querySelector('.je-acc').value),
+                    description: r.querySelector('.je-desc').value,
+                    debit: Number(r.querySelector('.je-deb').value || 0),
+                    credit: Number(r.querySelector('.je-cred').value || 0)
+                }));
+                await api('/api/gl/journal', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        entry_date: panel.querySelector('#je-date').value,
+                        reference: panel.querySelector('#je-ref').value,
+                        memo: panel.querySelector('#je-memo').value,
+                        lines
+                    })
+                });
+                OkwUI.toast('Journal entry posted', 'success');
+                panel.querySelector('#je-ref').value = '';
+                panel.querySelector('#je-memo').value = '';
+                panel.querySelector('#je-lines').innerHTML = '';
+                load();
+                updateTotals();
+            } catch (e) { OkwUI.toast(e.message, 'danger'); }
+        };
+        load();
+    }
+
+    function mountTrialBalance(panel) {
+        const today = new Date().toISOString().slice(0, 10);
+        panel.innerHTML = `
+            <div class="okw-card" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+                <label style="font-weight:600;font-size:13px;">As of Date:</label>
+                <input id="tb-date" type="date" class="okw-input" value="${today}" style="max-width:180px;">
+                <button id="tb-run" class="okw-btn okw-btn-primary" type="button">Refresh</button>
+            </div>
+            <div class="okw-kpi-row" id="tb-bs-kpis" style="margin-bottom:16px;"></div>
+            <div class="okw-card" id="tb-table"><div class="okw-empty">Loading Trial Balance...</div></div>`;
+
+        async function load() {
+            const asOf = panel.querySelector('#tb-date').value;
+            try {
+                const d = await api('/api/gl/trial-balance?as_of=' + encodeURIComponent(asOf));
+                const bs = d.balance_sheet || {};
+                panel.querySelector('#tb-bs-kpis').innerHTML = [
+                    OkwUI.kpiCard({ label: 'Total Assets', value: fmt(bs.assets), tone: 'info' }),
+                    OkwUI.kpiCard({ label: 'Total Liabilities', value: fmt(bs.liabilities), tone: 'warning' }),
+                    OkwUI.kpiCard({ label: 'Equity + Net Income', value: fmt(bs.equity), subtext: `Net Income: ${fmt(bs.net_income)}`, tone: 'success' }),
+                    OkwUI.kpiCard({ label: 'Trial Balance', value: d.totals.balanced ? 'Balanced' : 'Unbalanced', subtext: `DR ${fmt(d.totals.debit)} / CR ${fmt(d.totals.credit)}`, tone: d.totals.balanced ? 'success' : 'danger' })
+                ].join('');
+                panel.querySelector('#tb-table').innerHTML = `
+                    <div style="overflow-x:auto;">
+                        <table class="okw-table" style="width:100%;">
+                            <thead><tr><th>Code</th><th>Account</th><th>Type</th><th style="text-align:right;">Debits</th><th style="text-align:right;">Credits</th><th style="text-align:right;">Net Balance</th></tr></thead>
+                            <tbody>
+                                ${(d.rows || []).map(r => `
+                                    <tr>
+                                        <td><strong>${esc(r.code)}</strong></td>
+                                        <td>${esc(r.name)}</td>
+                                        <td>${esc(r.type)}</td>
+                                        <td style="text-align:right;">${fmt(r.debit)}</td>
+                                        <td style="text-align:right;">${fmt(r.credit)}</td>
+                                        <td style="text-align:right;"><strong>${fmt(r.net_balance)}</strong></td>
+                                    </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>`;
+            } catch (e) { panel.querySelector('#tb-table').innerHTML = `<div class="okw-empty">${esc(e.message)}</div>`; }
+        }
+        panel.querySelector('#tb-run').onclick = load;
+        load();
+    }
+
+    function mountReconcile(panel) {
+        const today = new Date().toISOString().slice(0, 10);
+        panel.innerHTML = `
+            <div class="okw-card" style="margin-bottom:16px;">
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
+                    <label style="font-weight:600;font-size:13px;">Bank / MoMo / Cash Account:</label>
+                    <select id="rec-acc" class="okw-select" style="min-width:240px;"></select>
+                </div>
+                <div style="display:grid;grid-template-columns:150px 1fr 140px 130px auto;gap:8px;align-items:center;">
+                    <input id="rec-date" type="date" class="okw-input" value="${today}">
+                    <input id="rec-desc" class="okw-input" placeholder="Statement description">
+                    <input id="rec-ref" class="okw-input" placeholder="Ref">
+                    <input id="rec-amt" type="number" step="0.01" class="okw-input" placeholder="Amount (+/-)">
+                    <button id="rec-add" class="okw-btn okw-btn-primary" type="button">+ Add Statement Line</button>
+                </div>
+            </div>
+            <div class="okw-kpi-row" id="rec-kpis" style="margin-bottom:16px;"></div>
+            <div class="okw-card" id="rec-list"><div class="okw-empty">Loading reconciliation...</div></div>`;
+
+        async function initAccounts() {
+            const { accounts } = await api('/api/gl/accounts');
+            const assetAccs = accounts.filter(a => a.type === 'Asset');
+            const sel = panel.querySelector('#rec-acc');
+            sel.innerHTML = assetAccs.map(a => `<option value="${a.id}">${esc(a.code + ' — ' + a.name)}</option>`).join('');
+            sel.addEventListener('change', load);
+            load();
+        }
+
+        async function load() {
+            const accId = panel.querySelector('#rec-acc').value;
+            if (!accId) return;
+            try {
+                const d = await api('/api/gl/reconcile?account_id=' + encodeURIComponent(accId));
+                const s = d.summary || {};
+                panel.querySelector('#rec-kpis').innerHTML = [
+                    OkwUI.kpiCard({ label: 'Statement Total', value: fmt(s.statement_total), tone: 'info' }),
+                    OkwUI.kpiCard({ label: 'Cleared / Matched', value: fmt(s.cleared_total), tone: 'success' }),
+                    OkwUI.kpiCard({ label: 'GL Ledger Balance', value: fmt(s.ledger_balance), tone: 'primary' }),
+                    OkwUI.kpiCard({ label: 'Difference', value: fmt(s.difference), tone: Math.abs(s.difference || 0) < 0.01 ? 'success' : 'warning' })
+                ].join('');
+                const rows = d.statement_lines || [];
+                const host = panel.querySelector('#rec-list');
+                if (!rows.length) { host.innerHTML = '<div class="okw-empty">No statement lines imported for this account yet.</div>'; return; }
+                host.innerHTML = `
+                    <div style="overflow-x:auto;">
+                        <table class="okw-table" style="width:100%;">
+                            <thead><tr><th>Date</th><th>Description</th><th>Ref</th><th style="text-align:right;">Amount</th><th>Status</th><th>Action</th></tr></thead>
+                            <tbody>
+                                ${rows.map(r => `
+                                    <tr>
+                                        <td>${esc(String(r.txn_date).slice(0, 10))}</td>
+                                        <td>${esc(r.description)}</td>
+                                        <td>${esc(r.reference || '—')}</td>
+                                        <td style="text-align:right;"><strong>${fmt(r.amount)}</strong></td>
+                                        <td>${OkwUI.badge(r.status, r.status === 'matched' ? 'success' : 'warning')}</td>
+                                        <td><button type="button" class="okw-btn okw-btn-outline rec-toggle" data-id="${r.id}">${r.status === 'matched' ? 'Unmatch' : 'Mark Matched'}</button></td>
+                                    </tr>`).join('')}
+                            </tbody>
+                        </table>
+                    </div>`;
+                host.querySelectorAll('.rec-toggle').forEach(btn => {
+                    btn.onclick = async () => {
+                        await api(`/api/gl/reconcile/${btn.dataset.id}/toggle`, { method: 'POST' });
+                        load();
+                    };
+                });
+            } catch (e) { panel.querySelector('#rec-list').innerHTML = `<div class="okw-empty">${esc(e.message)}</div>`; }
+        }
+
+        panel.querySelector('#rec-add').onclick = async () => {
+            try {
+                await api('/api/gl/reconcile/import', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        account_id: Number(panel.querySelector('#rec-acc').value),
+                        txn_date: panel.querySelector('#rec-date').value,
+                        description: panel.querySelector('#rec-desc').value,
+                        reference: panel.querySelector('#rec-ref').value,
+                        amount: Number(panel.querySelector('#rec-amt').value)
+                    })
+                });
+                OkwUI.toast('Statement line added', 'success');
+                panel.querySelector('#rec-desc').value = '';
+                panel.querySelector('#rec-ref').value = '';
+                panel.querySelector('#rec-amt').value = '';
+                load();
+            } catch (e) { OkwUI.toast(e.message, 'danger'); }
+        };
+        initAccounts().catch(() => {});
+    }
+
+    OkwUI.sectionPage({
+        mount: '#hub',
+        title: 'Money',
+        subtitle: 'Expenses, cash accounts, and double-entry general ledger.',
+        defaultId: 'expenses-list',
+        sections: [
+            { id: 'expenses-list', label: 'Expenses', group: 'Expenses & Cash', embed: '/expenses?tab=list' },
+            { id: 'expenses-add', label: 'Add expense', group: 'Expenses & Cash', embed: '/expenses?tab=add' },
+            { id: 'expenses-categories', label: 'Expense categories', group: 'Expenses & Cash', embed: '/expenses?tab=categories' },
+            { id: 'cash', label: 'Account and cash', group: 'Expenses & Cash', embed: '/extras?tab=accounts' },
+            { id: 'coa', label: 'Chart of Accounts', group: 'General Ledger', render: mountCoa },
+            { id: 'journal', label: 'Journal Entries', group: 'General Ledger', render: mountJournal },
+            { id: 'trial-balance', label: 'Trial Balance & Balance Sheet', group: 'General Ledger', render: mountTrialBalance },
+            { id: 'reconcile', label: 'Bank Reconciliation', group: 'General Ledger', render: mountReconcile }
+        ]
+    });
+})();
+</script>
+</body>
+</html>

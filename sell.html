@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sell - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" defer crossorigin="anonymous"></script>
+    <script src="/auth-guard.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <style>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { flex: 1; padding: 24px; max-width: 1360px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD"></div>
+        <nav class="nav-links"></nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap">
+            <div class="okw-card" style="margin-bottom:16px;padding:12px 16px;">
+                <div class="okw-filter-bar" style="justify-content:space-between;">
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <label for="sell-view">Section</label>
+                        <select id="sell-view" class="okw-select">
+                            <option value="all">All Sales</option>
+                            <option value="add">Add Sale</option>
+                            <option value="list_pos">List POS</option>
+                            <option value="add_draft">Add Draft</option>
+                            <option value="drafts">List Drafts</option>
+                            <option value="add_quotation">Add Quotation</option>
+                            <option value="quotations">List Quotations</option>
+                            <option value="returns">List Sell Return</option>
+                            <option value="shipments">Shipments</option>
+                            <option value="discounts">Discounts</option>
+                            <option value="import">Import Sales</option>
+                        </select>
+                        <div id="sell-date-picker"></div>
+                    </div>
+                    <a href="/pos" class="okw-btn okw-btn-accent">Open POS Till</a>
+                </div>
+            </div>
+
+            <div class="okw-card" id="sell-panel">Loading...</div>
+        </div>
+        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA LTD</footer>
+    </main>
+</div>
+
+<script>
+(function () {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const fmt = (n) => 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    const valid = ['all', 'add', 'list_pos', 'add_draft', 'drafts', 'add_quotation', 'quotations', 'returns', 'shipments', 'discounts', 'import'];
+    let activeView = valid.includes(urlTab) ? urlTab : 'all';
+    let dateRange = { from: new Date().toISOString().slice(0, 8) + '01', to: new Date().toISOString().slice(0, 10) };
+
+    const viewSel = document.getElementById('sell-view');
+    const dateHost = document.getElementById('sell-date-picker');
+    viewSel.value = activeView;
+    viewSel.addEventListener('change', () => { activeView = viewSel.value; render(); });
+
+    OkwUI.dateRangePicker('#sell-date-picker', (r) => {
+        dateRange = r;
+        if (['all', 'list_pos', 'returns'].includes(activeView)) render();
+    });
+
+    function inDateRange(iso) {
+        const d = String(iso || '').slice(0, 10);
+        return (!dateRange.from || d >= dateRange.from) && (!dateRange.to || d <= dateRange.to);
+    }
+
+    async function renderSalesTable(filterFn, title, filename) {
+        dateHost.style.display = 'block';
+        const res = await fetch('/api/transactions', { headers, credentials: 'include' });
+        const list = await res.json().catch(() => []);
+        const rows = (Array.isArray(list) ? list : []).filter(t => inDateRange(t.created_at) && filterFn(t)).map(t => ({
+            date: new Date(t.created_at).toLocaleString(),
+            receipt: t.receipt_number || (`#${t.id}`),
+            customer: t.customer_name || 'Walk-in',
+            branch: t.store_location || 'Main Shop',
+            method: t.payment_method || 'cash',
+            total: Number(t.total_amount || 0),
+            paid: Number(t.paid_amount ?? t.total_amount ?? 0),
+            due: Number(t.balance_due || 0),
+            status: String(t.status || 'completed').toUpperCase()
+        }));
+        document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
+        OkwUI.dataTable('#sell-tbl', {
+            columns: [
+                { key: 'date', label: 'Date' },
+                { key: 'receipt', label: 'Receipt / Invoice #' },
+                { key: 'customer', label: 'Customer' },
+                { key: 'branch', label: 'Location' },
+                { key: 'method', label: 'Method' },
+                { key: 'total', label: 'Total', numeric: true, render: fmt },
+                { key: 'paid', label: 'Paid', numeric: true, render: fmt },
+                { key: 'due', label: 'Due', numeric: true, render: fmt },
+                { key: 'status', label: 'Status' }
+            ],
+            rows,
+            exportFilename: filename,
+            printTitle: title
+        });
+    }
+
+    function renderItemBuilder(mode) {
+        dateHost.style.display = 'none';
+        const staged = [];
+        const titles = { add: 'Add Sale', add_draft: 'Add Draft', add_quotation: 'Add Quotation' };
+        const btnLabel = { add: 'Complete Sale', add_draft: 'Save Draft', add_quotation: 'Save Quotation' }[mode];
+        const panel = document.getElementById('sell-panel');
+        panel.innerHTML = `
+            <h2 style="margin:0 0 12px;font-size:18px;">${titles[mode]}</h2>
+            <div class="okw-filter-bar" style="margin-bottom:14px;">
+                <input type="text" id="sb-cust" class="okw-input" placeholder="Customer name (Walk-in)">
+                <input type="text" id="sb-q" class="okw-input" placeholder="Scan barcode or item name...">
+                <input type="number" step="any" id="sb-qty" class="okw-input" placeholder="Qty" value="1">
+                ${mode === 'add' ? `<select id="sb-method" class="okw-select"><option value="cash">Cash</option><option value="momo">MoMo</option><option value="card">Card</option><option value="credit">Credit</option></select>` : ''}
+                <button type="button" class="okw-btn okw-btn-outline" id="sb-add">Add Item</button>
+                <button type="button" class="okw-btn okw-btn-accent" id="sb-submit">${btnLabel}</button>
+            </div>
+            <div id="sb-tbl"></div>
+        `;
+        const draw = () => OkwUI.dataTable('#sb-tbl', {
+            columns: [
+                { key: 'name', label: 'Product' },
+                { key: 'barcode', label: 'Barcode' },
+                { key: 'qty', label: 'Qty', numeric: true },
+                { key: 'price', label: 'Unit Price', numeric: true, render: fmt },
+                { key: 'line_total', label: 'Line Total', numeric: true, render: (v, r) => fmt(Number(r.qty || 0) * Number(r.price || 0)) }
+            ],
+            rows: staged,
+            exportFilename: `okwesiwa-${mode}-draft.xlsx`
+        });
+        draw();
+
+        OkwUI.productTypeahead('#sb-q', (prod) => {
+            const qty = Number(document.getElementById('sb-qty').value || 1);
+            staged.push({ barcode: prod.barcode, name: prod.name, qty: qty > 0 ? qty : 1, price: Number(prod.price || 0) });
+            document.getElementById('sb-q').value = '';
+            draw();
+        });
+
+        document.getElementById('sb-add').onclick = async () => {
+            const q = document.getElementById('sb-q').value.trim();
+            const qty = Number(document.getElementById('sb-qty').value || 1);
+            if (!q || qty <= 0) return OkwUI.toast('Enter product and positive qty', 'warning');
+            const sr = await fetch(`/api/pos/search?q=${encodeURIComponent(q)}&limit=1`, { headers, credentials: 'include' });
+            const sd = await sr.json().catch(() => ({}));
+            const prod = (sd.products || [])[0];
+            if (!prod) return OkwUI.toast('Product not found', 'danger');
+            staged.push({ barcode: prod.barcode, name: prod.name, qty, price: Number(prod.price || 0) });
+            document.getElementById('sb-q').value = '';
+            draw();
+        };
+
+        document.getElementById('sb-submit').onclick = async () => {
+            if (!staged.length) return OkwUI.toast('Add at least one item', 'warning');
+            const customerName = document.getElementById('sb-cust').value.trim() || 'Walk-in';
+            const total = staged.reduce((s, it) => s + Number(it.qty) * Number(it.price), 0);
+            let url = '/api/pos/checkout';
+            let body = { items: staged, customer_name: customerName, payment_method: document.getElementById('sb-method')?.value || 'cash', payment_splits: [{ method: document.getElementById('sb-method')?.value || 'cash', amount: total }] };
+            if (mode === 'add_draft') {
+                url = '/api/pos/holds';
+                body = { label: customerName, customer_name: customerName, items: staged, total_amount: total };
+            } else if (mode === 'add_quotation') {
+                url = '/api/pos/quotations';
+                body = { customer_name: customerName, items: staged };
+            }
+            const r = await fetch(url, { method: 'POST', headers, credentials: 'include', body: JSON.stringify(body) });
+            const d = await r.json().catch(() => ({}));
+            if (r.ok) {
+                OkwUI.toast(`${titles[mode]} saved`, 'success');
+                activeView = mode === 'add_draft' ? 'drafts' : (mode === 'add_quotation' ? 'quotations' : 'all');
+                viewSel.value = activeView;
+                render();
+            } else {
+                OkwUI.toast(d.message || 'Action failed', 'danger');
+            }
+        };
+    }
+
+    async function renderDrafts() {
+        dateHost.style.display = 'none';
+        const res = await fetch('/api/pos/holds', { headers, credentials: 'include' });
+        const d = await res.json().catch(() => ({}));
+        document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
+        OkwUI.dataTable('#sell-tbl', {
+            columns: [
+                { key: 'created_at', label: 'Date', render: v => v ? new Date(v).toLocaleString() : '' },
+                { key: 'label', label: 'Draft / Label' },
+                { key: 'customer_name', label: 'Customer' },
+                { key: 'total_amount', label: 'Total', numeric: true, render: fmt }
+            ],
+            rows: d.holds || [],
+            exportFilename: 'okwesiwa-drafts.xlsx',
+            printTitle: 'Draft Sales'
+        });
+    }
+
+    async function renderQuotations() {
+        dateHost.style.display = 'none';
+        const res = await fetch('/api/pos/quotations', { headers, credentials: 'include' });
+        const d = await res.json().catch(() => ({}));
+        document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
+        OkwUI.dataTable('#sell-tbl', {
+            columns: [
+                { key: 'created_at', label: 'Date', render: v => v ? new Date(v).toLocaleDateString() : '' },
+                { key: 'quote_number', label: 'Quote #' },
+                { key: 'customer_name', label: 'Customer' },
+                { key: 'total_amount', label: 'Total', numeric: true, render: fmt },
+                { key: 'valid_until', label: 'Valid Until' },
+                { key: 'status', label: 'Status' }
+            ],
+            rows: d.quotations || [],
+            exportFilename: 'okwesiwa-quotations.xlsx',
+            printTitle: 'Quotations'
+        });
+    }
+
+    async function renderShipments() {
+        dateHost.style.display = 'none';
+        const res = await fetch('/api/deliveries', { headers, credentials: 'include' });
+        const d = await res.json().catch(() => ({}));
+        document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
+        OkwUI.dataTable('#sell-tbl', {
+            columns: [
+                { key: 'created_at', label: 'Date', render: v => v ? new Date(v).toLocaleDateString() : '' },
+                { key: 'delivery_number', label: 'Waybill #' },
+                { key: 'customer_name', label: 'Customer' },
+                { key: 'site_address', label: 'Site Address' },
+                { key: 'driver_name', label: 'Driver' },
+                { key: 'status', label: 'Status' }
+            ],
+            rows: d.deliveries || [],
+            exportFilename: 'okwesiwa-shipments.xlsx',
+            printTitle: 'Shipments'
+        });
+    }
+
+    async function renderDiscounts() {
+        dateHost.style.display = 'none';
+        const res = await fetch('/api/pos/discounts-history', { headers, credentials: 'include' });
+        const d = await res.json().catch(() => ({}));
+        document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
+        OkwUI.dataTable('#sell-tbl', {
+            columns: [
+                { key: 'created_at', label: 'Date', render: v => v ? new Date(v).toLocaleString() : '' },
+                { key: 'receipt_number', label: 'Receipt #' },
+                { key: 'customer_name', label: 'Customer' },
+                { key: 'discount_amount', label: 'Discount', numeric: true, render: fmt },
+                { key: 'total_amount', label: 'Total', numeric: true, render: fmt },
+                { key: 'seller_name', label: 'Staff' }
+            ],
+            rows: d.discounts || [],
+            exportFilename: 'okwesiwa-discounts.xlsx',
+            printTitle: 'Discounts'
+        });
+    }
+
+    function renderImport() {
+        dateHost.style.display = 'none';
+        const panel = document.getElementById('sell-panel');
+        const batch = [];
+        panel.innerHTML = `
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;">
+                <div>
+                    <h2 style="margin:0;font-size:18px;">Sales Import &amp; Batch Entry</h2>
+                    <p style="margin:4px 0 0;color:var(--color-text-muted);font-size:13px;">Add multiple past or external sales directly below, or optionally import from an Excel/CSV file.</p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+                    <input type="file" id="imp-sales-file" accept=".xlsx,.xls,.csv" style="display:none;">
+                    <button type="button" class="okw-btn okw-btn-outline" id="imp-pick-file">Import from Excel/CSV</button>
+                    <button type="button" class="okw-btn okw-btn-outline" id="imp-sample">Download Sample (.xlsx)</button>
+                </div>
+            </div>
+            <div class="okw-filter-bar" style="margin-bottom:14px;">
+                <input type="text" id="imp-cust" class="okw-input" placeholder="Customer (Walk-in)">
+                <input type="text" id="imp-q" class="okw-input" placeholder="Scan barcode or item name...">
+                <input type="number" step="any" id="imp-qty" class="okw-input" placeholder="Qty" value="1">
+                <select id="imp-method" class="okw-select"><option value="cash">Cash</option><option value="momo">MoMo</option><option value="card">Card</option><option value="credit">Credit</option></select>
+                <button type="button" class="okw-btn okw-btn-outline" id="imp-add-row">Add Row</button>
+                <button type="button" class="okw-btn okw-btn-accent" id="imp-run">Save All Sales</button>
+            </div>
+            <div id="imp-preview"></div>
+        `;
+        const drawBatch = () => OkwUI.dataTable('#imp-preview', {
+            columns: [
+                { key: 'name', label: 'Product' },
+                { key: 'barcode', label: 'Barcode' },
+                { key: 'qty', label: 'Qty', numeric: true },
+                { key: 'customer', label: 'Customer' },
+                { key: 'method', label: 'Payment Method' },
+                { key: 'total', label: 'Total', numeric: true, render: fmt }
+            ],
+            rows: batch,
+            exportFilename: 'okwesiwa-sales-import-batch.xlsx',
+            printTitle: 'Sales Import Batch'
+        });
+        drawBatch();
+
+        OkwUI.productTypeahead('#imp-q', (prod) => {
+            const qty = Math.max(0.01, Number(document.getElementById('imp-qty').value || 1));
+            const customer = document.getElementById('imp-cust').value.trim() || 'Walk-in';
+            const method = document.getElementById('imp-method').value || 'cash';
+            batch.push({
+                name: prod.name,
+                barcode: prod.barcode,
+                qty,
+                customer,
+                method,
+                total: Number((qty * Number(prod.price || 0)).toFixed(2))
+            });
+            document.getElementById('imp-q').value = '';
+            drawBatch();
+        });
+
+        document.getElementById('imp-add-row').onclick = async () => {
+            const q = document.getElementById('imp-q').value.trim();
+            const qty = Number(document.getElementById('imp-qty').value || 1);
+            if (!q || qty <= 0) return OkwUI.toast('Enter product and positive qty', 'warning');
+            const sr = await fetch(`/api/pos/search?q=${encodeURIComponent(q)}&limit=1`, { headers, credentials: 'include' });
+            const sd = await sr.json().catch(() => ({}));
+            const prod = (sd.products || [])[0];
+            if (!prod) return OkwUI.toast('Product not found', 'danger');
+            const customer = document.getElementById('imp-cust').value.trim() || 'Walk-in';
+            const method = document.getElementById('imp-method').value || 'cash';
+            batch.push({
+                name: prod.name,
+                barcode: prod.barcode,
+                qty,
+                customer,
+                method,
+                total: Number((qty * Number(prod.price || 0)).toFixed(2))
+            });
+            document.getElementById('imp-q').value = '';
+            drawBatch();
+        };
+
+        document.getElementById('imp-sample').onclick = () => {
+            const sample = [{ Barcode: 'TOOL-001', Qty: 2, 'Customer Name': 'Walk-in', 'Payment Method': 'cash' }];
+            if (window.XLSX) {
+                const ws = window.XLSX.utils.json_to_sheet(sample);
+                const wb = window.XLSX.utils.book_new();
+                window.XLSX.utils.book_append_sheet(wb, ws, 'Sales_Sample');
+                window.XLSX.writeFile(wb, 'okwesiwa-sales-import-sample.xlsx');
+            }
+        };
+        document.getElementById('imp-pick-file').onclick = () => document.getElementById('imp-sales-file').click();
+        document.getElementById('imp-sales-file').onchange = async (e) => {
+            const file = e.target.files[0];
+            if (!file || !window.XLSX) return;
+            const buf = await file.arrayBuffer();
+            const wb = window.XLSX.read(buf);
+            const parsed = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+            for (const row of parsed) {
+                const barcode = String(row.Barcode || row.barcode || '').trim();
+                const qty = Number(row.Qty || row.qty || 1);
+                if (!barcode || qty <= 0) continue;
+                batch.push({
+                    name: row['Product Name'] || barcode,
+                    barcode,
+                    qty,
+                    customer: row['Customer Name'] || 'Walk-in',
+                    method: String(row['Payment Method'] || 'cash').toLowerCase(),
+                    total: Number(row.Total || 0)
+                });
+            }
+            drawBatch();
+        };
+        document.getElementById('imp-run').onclick = async () => {
+            if (!batch.length) return OkwUI.toast('Add at least one sale row first', 'warning');
+            let okCount = 0;
+            for (const row of batch) {
+                const r = await fetch('/api/pos/checkout', {
+                    method: 'POST', headers, credentials: 'include',
+                    body: JSON.stringify({
+                        items: [{ barcode: String(row.barcode), qty: Number(row.qty) }],
+                        customer_name: row.customer || 'Walk-in',
+                        payment_method: String(row.method || 'cash').toLowerCase()
+                    })
+                });
+                if (r.ok) okCount++;
+            }
+            OkwUI.toast(`Saved ${okCount} of ${batch.length} sale(s)`, 'success');
+            if (okCount > 0) {
+                activeView = 'all';
+                viewSel.value = 'all';
+                render();
+            }
+        };
+    }
+
+    function render() {
+        if (activeView === 'all') return renderSalesTable(() => true, 'All Sales', 'okwesiwa-all-sales.xlsx');
+        if (activeView === 'list_pos') return renderSalesTable(t => !t.is_return, 'POS Sales List', 'okwesiwa-pos-sales.xlsx');
+        if (activeView === 'returns') return renderSalesTable(t => Boolean(t.is_return), 'Sell Returns', 'okwesiwa-sell-returns.xlsx');
+        if (['add', 'add_draft', 'add_quotation'].includes(activeView)) return renderItemBuilder(activeView);
+        if (activeView === 'drafts') return renderDrafts();
+        if (activeView === 'quotations') return renderQuotations();
+        if (activeView === 'shipments') return renderShipments();
+        if (activeView === 'discounts') return renderDiscounts();
+        if (activeView === 'import') return renderImport();
+    }
+
+    render();
+})();
+</script>
+</body>
+</html>
+

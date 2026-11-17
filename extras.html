@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extras: Reserved Orders (Part-Pay), Attendance & Accounts - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <style>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { padding: 24px; max-width: 1400px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        .tabs-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
+            <span class="sidebar-role-badge">Extras</span>
+        </div>
+        <nav class="nav-links">
+            <div class="nav-section">More Modules</div>
+            <a href="/ceo-live"><span>Live CEO Dashboard</span></a>
+            <a href="/extras" class="active"><span>Reserved Orders &amp; Attendance</span></a>
+            <a href="/settings"><span>Invoice &amp; Label Settings</span></a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap">
+            <h1 style="margin:0 0 6px;font-size:24px;">Reserved Orders (Part-Pay), Attendance &amp; Accounts</h1>
+            <p style="margin:0 0 18px;color:var(--color-text-muted);font-size:14px;">Manage reserved part-pay orders, staff clock-in/out, cash &amp; bank accounts, and read-only CEO questions.</p>
+
+            <div class="tabs-row" id="ex-tabs">
+                <button type="button" class="okw-btn okw-btn-primary" data-et="layaway">Reserved Orders (Part-Pay)</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-et="attendance">Staff Attendance</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-et="accounts">Account &amp; Cash Report</button>
+            </div>
+
+            <div class="okw-card" id="ex-host">Loading...</div>
+        </div>
+    </main>
+</div>
+
+<script>
+(function () {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const fmt = (n) => 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    async function renderLayaway() {
+        const res = await fetch('/api/layaways', { headers });
+        const d = await res.json().catch(() => ({}));
+        OkwUI.warnIfPartial(d);
+        const pickedItems = [];
+
+        document.getElementById('ex-host').innerHTML = `
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;">
+                <input type="text" id="la-cust" class="okw-input" placeholder="Customer name">
+                <input type="text" id="la-phone" class="okw-input" placeholder="Phone">
+                <input type="number" id="la-total" class="okw-input" placeholder="Total (GH₵)" step="0.01">
+                <input type="number" id="la-dep" class="okw-input" placeholder="Deposit (GH₵)" step="0.01">
+                <input type="date" id="la-due" class="okw-input">
+                <button type="button" class="okw-btn okw-btn-primary" id="la-add">+ New Reserved Order</button>
+            </div>
+            <div style="margin-bottom:14px;padding:10px 12px;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-surface-muted);">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <input type="text" id="la-item-q" class="okw-input" placeholder="Search product to hold stock (optional)..." style="flex:1;min-width:220px;">
+                    <span id="la-picked-summary" style="font-size:12px;color:var(--color-text-muted);">No items picked (stock not held)</span>
+                </div>
+                <div id="la-item-results" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"></div>
+                <div id="la-picked-list" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;"></div>
+            </div>
+            <div id="la-tbl"></div>
+        `;
+
+        const syncPickedUI = () => {
+            const sumEl = document.getElementById('la-picked-summary');
+            const listEl = document.getElementById('la-picked-list');
+            const totalEl = document.getElementById('la-total');
+            if (!pickedItems.length) {
+                sumEl.textContent = 'No items picked (stock not held)';
+                listEl.innerHTML = '';
+                totalEl.readOnly = false;
+                return;
+            }
+            const sum = pickedItems.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 1), 0);
+            totalEl.value = sum.toFixed(2);
+            totalEl.readOnly = true;
+            sumEl.textContent = `${pickedItems.length} item(s) held — Total ${fmt(sum)}`;
+            listEl.innerHTML = pickedItems.map((it, idx) => `
+                <span style="display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--color-border);border-radius:var(--radius-sm);background:var(--color-surface);font-size:12px;">
+                    <strong>${OkwUI.escapeHtml(it.name)}</strong> &times; ${it.qty} (${fmt(it.price * it.qty)})
+                    <button type="button" data-rm="${idx}" style="border:none;background:none;color:var(--color-danger);cursor:pointer;font-weight:700;">&times;</button>
+                </span>
+            `).join('');
+            listEl.querySelectorAll('[data-rm]').forEach(btn => {
+                btn.onclick = () => { pickedItems.splice(Number(btn.dataset.rm), 1); syncPickedUI(); };
+            });
+        };
+
+        let searchTimer = null;
+        document.getElementById('la-item-q').oninput = (e) => {
+            clearTimeout(searchTimer);
+            const q = e.target.value.trim();
+            const resBox = document.getElementById('la-item-results');
+            if (!q) { resBox.innerHTML = ''; return; }
+            searchTimer = setTimeout(async () => {
+                const r = await fetch(`/api/pos/search?q=${encodeURIComponent(q)}&limit=6`, { headers });
+                const data = await r.json().catch(() => ({}));
+                const prods = data.products || [];
+                resBox.innerHTML = prods.map((p, i) => `
+                    <button type="button" class="okw-btn okw-btn-outline" data-pick="${i}" style="font-size:12px;padding:4px 8px;">
+                        + ${OkwUI.escapeHtml(p.name)} (${fmt(p.price)}, Stock: ${Number(p.stock || 0)})
+                    </button>
+                `).join('');
+                resBox.querySelectorAll('[data-pick]').forEach(btn => {
+                    btn.onclick = () => {
+                        const prod = prods[Number(btn.dataset.pick)];
+                        const qty = parseFloat(prompt(`Quantity of ${prod.name} to hold:`, '1') || '0');
+                        if (!qty || qty <= 0) return;
+                        const existing = pickedItems.find(x => x.barcode === prod.barcode);
+                        if (existing) existing.qty += qty;
+                        else pickedItems.push({ barcode: prod.barcode, name: prod.name, price: Number(prod.price || 0), qty });
+                        document.getElementById('la-item-q').value = '';
+                        resBox.innerHTML = '';
+                        syncPickedUI();
+                    };
+                });
+            }, 220);
+        };
+
+        OkwUI.dataTable('#la-tbl', {
+            columns: [
+                { key: 'layaway_number', label: 'Order #' },
+                { key: 'customer_name', label: 'Customer' },
+                { key: 'total_amount', label: 'Total', numeric: true, render: fmt },
+                { key: 'amount_paid', label: 'Paid', numeric: true, render: fmt },
+                { key: 'balance', label: 'Balance', numeric: true, render: fmt },
+                { key: 'status', label: 'Status', render: v => OkwUI.badge(v, v === 'paid' ? 'success' : (v === 'cancelled' ? 'danger' : 'warning')) },
+                { key: 'id', label: 'Actions', render: (id, row) => row.status === 'cancelled' ? '<span style="font-size:12px;color:var(--color-text-muted);">Cancelled</span>' : `<div style="display:flex;gap:6px;"><button type="button" class="okw-btn okw-btn-outline" onclick="window.__payLayaway(${id})">Add Payment</button><button type="button" class="okw-btn okw-btn-outline" onclick="window.__cancelLayaway(${id})">Cancel</button></div>` }
+            ],
+            rows: d.layaways || []
+        });
+        document.getElementById('la-add').onclick = async () => {
+            const r = await fetch('/api/layaways', {
+                method: 'POST', headers,
+                body: JSON.stringify({
+                    customer_name: document.getElementById('la-cust').value,
+                    customer_phone: document.getElementById('la-phone').value,
+                    total_amount: document.getElementById('la-total').value,
+                    deposit: document.getElementById('la-dep').value,
+                    due_date: document.getElementById('la-due').value || null,
+                    items: pickedItems.map(i => ({ barcode: i.barcode, qty: i.qty }))
+                })
+            });
+            const out = await r.json().catch(() => ({}));
+            if (r.ok) { OkwUI.toast('Reserved order created', 'success'); renderLayaway(); }
+            else { OkwUI.toast(out.message || 'Failed to create reserved order', 'danger'); }
+        };
+    }
+
+    window.__payLayaway = async (id) => {
+        const amount = parseFloat(prompt('Instalment payment amount (GH₵):', '0') || 0);
+        if (!amount) return;
+        const r = await fetch(`/api/layaways/${id}/payment`, { method: 'POST', headers, body: JSON.stringify({ amount }) });
+        const out = await r.json().catch(() => ({}));
+        if (r.ok) { OkwUI.toast('Payment recorded', 'success'); renderLayaway(); }
+        else { OkwUI.toast(out.message || 'Failed to record payment', 'danger'); }
+    };
+
+    window.__cancelLayaway = async (id) => {
+        if (!confirm('Cancel this reserved order and return any held items back to stock?')) return;
+        const r = await fetch(`/api/layaways/${id}/cancel`, { method: 'POST', headers });
+        const out = await r.json().catch(() => ({}));
+        if (r.ok) {
+            OkwUI.toast(`Reserved order cancelled. Refund due: ${fmt(out.refund_due || 0)}`, 'warning');
+            renderLayaway();
+        } else {
+            OkwUI.toast(out.message || 'Failed to cancel reserved order', 'danger');
+        }
+    };
+
+    async function renderAttendance() {
+        const res = await fetch('/api/attendance', { headers });
+        const d = await res.json().catch(() => ({}));
+        OkwUI.warnIfPartial(d);
+        document.getElementById('ex-host').innerHTML = `
+            <div style="display:flex;gap:10px;margin-bottom:14px;">
+                <button type="button" class="okw-btn okw-btn-primary" id="att-in">Clock In Now</button>
+            </div>
+            <div id="att-tbl"></div>
+        `;
+        OkwUI.dataTable('#att-tbl', {
+            columns: [
+                { key: 'staff_name', label: 'Staff' },
+                { key: 'clock_in', label: 'Clock In', render: v => new Date(v).toLocaleString() },
+                { key: 'clock_out', label: 'Clock Out', render: v => v ? new Date(v).toLocaleString() : 'Active' },
+                { key: 'hours_worked', label: 'Hours', numeric: true },
+                { key: 'is_late', label: 'Status', render: v => v ? OkwUI.badge('Late', 'warning') : OkwUI.badge('On Time', 'success') },
+                { key: 'id', label: 'Action', render: (id, r) => r.clock_out ? '—' : `<button type="button" class="okw-btn okw-btn-outline" onclick="window.__clockOut(${id})">Clock Out</button>` }
+            ],
+            rows: d.attendance || []
+        });
+        document.getElementById('att-in').onclick = async () => {
+            const r = await fetch('/api/attendance/clock-in', { method: 'POST', headers, body: JSON.stringify({}) });
+            if (r.ok) { OkwUI.toast('Clocked in', 'success'); renderAttendance(); }
+        };
+    }
+
+    window.__clockOut = async (id) => {
+        const r = await fetch(`/api/attendance/${id}/clock-out`, { method: 'POST', headers });
+        if (r.ok) { OkwUI.toast('Clocked out', 'success'); renderAttendance(); }
+    };
+
+    async function renderAccounts() {
+        const host = document.getElementById('ex-host');
+        host.innerHTML = `
+            <div class="okw-filter-bar" style="margin-bottom:14px;flex-wrap:wrap;">
+                <select id="acc-type-filter" class="okw-select">
+                    <option value="">All Account Types</option>
+                    <option value="Cash">Cash</option>
+                    <option value="Mobile Money">Mobile Money (MoMo)</option>
+                    <option value="Bank / Card">Bank / Card</option>
+                    <option value="Credit">Credit Receivable</option>
+                </select>
+                <input type="date" id="acc-from" class="okw-input">
+                <input type="date" id="acc-to" class="okw-input">
+                <button type="button" class="okw-btn okw-btn-outline" id="acc-filter-go">Apply Filter</button>
+                <span style="flex:1;"></span>
+                <input type="text" id="acc-new-name" class="okw-input" placeholder="New account name..." style="min-width:160px;">
+                <select id="acc-new-type" class="okw-select">
+                    <option value="Cash">Cash</option>
+                    <option value="Mobile Money">Mobile Money</option>
+                    <option value="Bank / Card">Bank / Card</option>
+                </select>
+                <button type="button" class="okw-btn okw-btn-primary" id="acc-add-btn">+ Add Account</button>
+            </div>
+            <div id="acc-kpis" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px;"></div>
+            <div id="acc-tbl"></div>
+        `;
+
+        async function loadAccountsTable() {
+            const qs = new URLSearchParams();
+            const t = document.getElementById('acc-type-filter')?.value || '';
+            const f = document.getElementById('acc-from')?.value || '';
+            const to = document.getElementById('acc-to')?.value || '';
+            if (t) qs.set('type', t);
+            if (f && to) { qs.set('from', f); qs.set('to', to); }
+            const res = await fetch(`/api/accounts?${qs.toString()}`, { headers });
+            const d = await res.json().catch(() => ({}));
+            OkwUI.warnIfPartial(d);
+            const rows = d.accounts || [];
+            const totalBal = rows.reduce((s, r) => s + Number(r.balance || 0), 0);
+            document.getElementById('acc-kpis').innerHTML = [
+                OkwUI.kpiCard({ label: 'Total Accumulated Balance', value: fmt(totalBal), tone: 'primary' }),
+                OkwUI.kpiCard({ label: 'Active Accounts / Channels', value: String(rows.length), tone: 'info' })
+            ].join('');
+            OkwUI.dataTable('#acc-tbl', {
+                columns: [
+                    { key: 'name', label: 'Account Name' },
+                    { key: 'account_type', label: 'Account Type', render: v => OkwUI.badge(v, 'info') },
+                    { key: 'source', label: 'Source', render: v => v || 'POS / Sales' },
+                    { key: 'txn_count', label: 'Transactions', numeric: true, render: v => v === null || v === undefined ? '-' : String(v) },
+                    { key: 'balance', label: 'Accumulated Balance', numeric: true, render: fmt }
+                ],
+                rows,
+                exportFilename: 'okwesiwa-account-cash-report.xlsx',
+                printTitle: 'Account & Cash Report'
+            });
+        }
+
+        document.getElementById('acc-filter-go').onclick = loadAccountsTable;
+        document.getElementById('acc-type-filter').onchange = loadAccountsTable;
+        document.getElementById('acc-add-btn').onclick = async () => {
+            const name = document.getElementById('acc-new-name').value.trim();
+            const account_type = document.getElementById('acc-new-type').value;
+            if (!name) return OkwUI.toast('Enter an account name', 'warning');
+            const r = await fetch('/api/accounts', { method: 'POST', headers, body: JSON.stringify({ name, account_type, balance: 0 }) });
+            if (r.ok) {
+                document.getElementById('acc-new-name').value = '';
+                OkwUI.toast('Account added', 'success');
+                loadAccountsTable();
+            } else {
+                OkwUI.toast('Failed to add account', 'danger');
+            }
+        };
+        loadAccountsTable();
+    }
+
+    function switchTab(t) {
+        document.getElementById('ex-tabs').querySelectorAll('[data-et]').forEach(b => b.className = b.dataset.et === t ? 'okw-btn okw-btn-primary' : 'okw-btn okw-btn-outline');
+        if (t === 'attendance') renderAttendance();
+        else if (t === 'accounts') renderAccounts();
+        else renderLayaway();
+    }
+
+    document.getElementById('ex-tabs').querySelectorAll('[data-et]').forEach(b => b.onclick = () => switchTab(b.dataset.et));
+    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    switchTab(['layaway', 'attendance', 'accounts'].includes(urlTab) ? urlTab : 'layaway');
+})();
+</script>
+</body>
+</html>
+

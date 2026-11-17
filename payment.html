@@ -3,17 +3,17 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="auth-guard.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footprint | Payment</title>
-    <link rel="icon" type="image/png" href="logo.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>OKWESIWA LTD | Payment</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <style>
         :root {
             --primary-color: #273990; --accent-color: #f9a51a;
@@ -26,7 +26,7 @@
 
         /* Header */
         header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: #1F3A60;
             padding: 0 25px;
             height: 70px;
             display: flex;
@@ -98,7 +98,7 @@
 
         /* Footer */
         footer {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: #1F3A60;
             padding: 8px 25px;
             display: flex;
             justify-content: center;
@@ -196,11 +196,23 @@
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
     <link rel="stylesheet" href="sidebar.css">
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style id="pay-face">
+        #displayTotal, #displayGrandTotal { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+        .okw-topbar { position: sticky; top: 0; z-index: 50; }
+        /* the page's own header is kept only for its way back to the register */
+        body > header { display: block !important; background: transparent !important; box-shadow: none !important; padding: 12px 24px 0 !important; height: auto !important; border: 0 !important; }
+        body > header .brand { display: none !important; }
+        body > header .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--brand) !important; font-weight: 600; font-size: 14px; text-decoration: none; background: transparent !important; }
+        body > header .back-btn:hover { text-decoration: underline; }
+    </style>
 </head>
 <body>
 
     <header>
-        <div class="brand"><img src="logo.png" alt="FOOTPRINT" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;"><span style="font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; text-transform: uppercase;">FOOTPRINT</span></div>
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;"></div>
         <a href="pos" class="back-btn"><i class="fas fa-arrow-left"></i> Back to Register</a>
     </header>
 
@@ -344,7 +356,7 @@
     </div>
 
     <footer>
-        <div>&copy; 2026 Footprint. All rights reserved.</div>
+        <div>&copy; 2026 OKWESIWA LTD. All rights reserved.</div>
     </footer>
 
     <script>
@@ -393,7 +405,7 @@
                     if (data.taxBreakdown && data.taxBreakdown.length > 0) {
                         taxContainer.innerHTML = data.taxBreakdown.map(t => `
                             <div class="summary-row">
-                                <span>${t.name} (${t.rate}%)</span>
+                                <span>${OkwUI.escapeHtml(t.name)} (${t.rate}%)</span>
                                 <span>${formatCurrency(t.amount)}</span>
                             </div>
                         `).join('');
@@ -535,8 +547,8 @@
             
             list.innerHTML = matches.map(c => `
                 <div class="customer-item" onclick="selectCreditCustomer(${c.id})">
-                    <strong>${c.name}</strong>
-                    <span>${c.phone || ''}</span>
+                    <strong>${OkwUI.escapeHtml(c.name)}</strong>
+                    <span>${OkwUI.escapeHtml(c.phone || '')}</span>
                 </div>
             `).join('');
             

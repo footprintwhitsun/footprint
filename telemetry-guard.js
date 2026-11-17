@@ -1,6 +1,6 @@
 /**
  * TelemetryGuard - Enterprise Error Boundary & Toast Notification Engine
- * Footprint Enterprise POS
+ * OKWESIWA LTD Enterprise POS
  * 
  * Features:
  * - Centralized unhandled error and promise rejection telemetry

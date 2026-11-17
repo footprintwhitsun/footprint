@@ -1,6 +1,6 @@
 /**
  * International Currency & Financial Precision Monetary Engine
- * Footprint Enterprise POS & ERP
+ * OKWESIWA LTD Enterprise POS & ERP
  * 
  * Features:
  * - Dynamic international ISO-4217 currencies (USD, EUR, GBP, GHS, CAD, AUD, NGN, KES, JPY, KWD, etc.)

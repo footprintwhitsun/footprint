@@ -58,10 +58,10 @@ async function runInitialization() {
             CREATE TABLE IF NOT EXISTS system_settings (
                 id INT PRIMARY KEY,
                 branch_id INT UNIQUE DEFAULT 1,
-                store_name VARCHAR(255) DEFAULT 'FOOTPRINT',
+                store_name VARCHAR(255) DEFAULT 'OKWESIWA LTD',
                 currency_symbol VARCHAR(50) DEFAULT 'GH₵',
                 vat_rate DECIMAL(5,2) DEFAULT 0.00,
-                receipt_footer TEXT DEFAULT 'Thank you for your business with FOOTPRINT!',
+                receipt_footer TEXT DEFAULT 'Thank you for your business with OKWESIWA LTD!',
                 tax_id VARCHAR(50),
                 phone VARCHAR(50),
                 bank_name VARCHAR(255),
@@ -77,8 +77,8 @@ async function runInitialization() {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             INSERT INTO system_settings (id, branch_id, store_name, currency_symbol, vat_rate, monthly_target)
-            VALUES (1, 1, 'FOOTPRINT', 'GH₵', 0.00, 50000.00)
-            ON CONFLICT (id) DO UPDATE SET store_name = 'FOOTPRINT';
+            VALUES (1, 1, 'OKWESIWA LTD', 'GH₵', 0.00, 50000.00)
+            ON CONFLICT (id) DO UPDATE SET store_name = 'OKWESIWA LTD';
 
             -- Users Table
             CREATE TABLE IF NOT EXISTS users (
@@ -621,13 +621,18 @@ async function runInitialization() {
         console.log('✅ All Core & Corporate Schema tables verified successfully.');
 
         console.log('👤 Step 2: Creating the 4 User Profiles...');
+        const requirePass = (specificKey) => {
+            const val = process.env[specificKey] || process.env.SEED_DEFAULT_PASSWORD;
+            if (!val) throw new Error(`Missing required password env var: set ${specificKey} or SEED_DEFAULT_PASSWORD`);
+            return val;
+        };
 
         // 1. CEO
         const salt = await bcrypt.genSalt(10);
-        const ceoHash = await bcrypt.hash('Ceo2026!', salt);
+        const ceoHash = await bcrypt.hash(requirePass('DEFAULT_CEO_PASS'), salt);
         await client.query(`
             INSERT INTO users (username, name, email, password, role, store_location, status)
-            VALUES ('ceo_footprint', 'Executive CEO', 'ceo@footprint.com', $1, 'ceo', 'Headquarters', 'Active')
+            VALUES ('ceo_okwesiwa', 'Executive CEO', 'ceo@okwesiwaltd.com', $1, 'ceo', 'Headquarters', 'Active')
             ON CONFLICT (email) DO UPDATE SET
                 password = $1,
                 role = 'ceo',
@@ -635,13 +640,13 @@ async function runInitialization() {
                 store_location = 'Headquarters',
                 status = 'Active';
         `, [ceoHash]);
-        console.log('✅ Profile 1 (CEO): ceo@footprint.com / Ceo2026!');
+        console.log('✅ Profile 1 (CEO): ceo@okwesiwaltd.com');
 
         // 2. STORE MANAGER
-        const managerHash = await bcrypt.hash('Manager2026!', salt);
+        const managerHash = await bcrypt.hash(requirePass('DEFAULT_MANAGER_PASS'), salt);
         await client.query(`
             INSERT INTO users (username, name, email, password, role, store_location, status)
-            VALUES ('manager_footprint', 'Store Manager', 'manager@footprint.com', $1, 'manager', 'Amasaman', 'Active')
+            VALUES ('manager_okwesiwa', 'Store Manager', 'manager@okwesiwaltd.com', $1, 'manager', 'Amasaman', 'Active')
             ON CONFLICT (email) DO UPDATE SET
                 password = $1,
                 role = 'manager',
@@ -649,13 +654,13 @@ async function runInitialization() {
                 store_location = 'Amasaman',
                 status = 'Active';
         `, [managerHash]);
-        console.log('✅ Profile 2 (STORE MANAGER): manager@footprint.com / Manager2026!');
+        console.log('✅ Profile 2 (STORE MANAGER): manager@okwesiwaltd.com');
 
         // 3. TELLER (CASHIER)
-        const tellerHash = await bcrypt.hash('Teller2026!', salt);
+        const tellerHash = await bcrypt.hash(requirePass('DEFAULT_CASHIER_PASS'), salt);
         await client.query(`
             INSERT INTO users (username, name, email, password, role, store_location, status)
-            VALUES ('teller_footprint', 'Frontline Teller', 'teller@footprint.com', $1, 'cashier', 'Amasaman', 'Active')
+            VALUES ('teller_okwesiwa', 'Frontline Teller', 'teller@okwesiwaltd.com', $1, 'cashier', 'Amasaman', 'Active')
             ON CONFLICT (email) DO UPDATE SET
                 password = $1,
                 role = 'cashier',
@@ -663,36 +668,36 @@ async function runInitialization() {
                 store_location = 'Amasaman',
                 status = 'Active';
         `, [tellerHash]);
-        console.log('✅ Profile 3 (TELLER): teller@footprint.com / Teller2026!');
+        console.log('✅ Profile 3 (TELLER): teller@okwesiwaltd.com');
 
         // 4. COMPANY PORTAL (B2B CLIENT)
         // Ensure Company Record exists
         let companyId = 1;
-        const compRes = await client.query("SELECT id FROM companies WHERE name ILIKE '%Footprint%' LIMIT 1");
+        const compRes = await client.query("SELECT id FROM companies WHERE name ILIKE '%OKWESIWA LTD%' LIMIT 1");
         if (compRes.rows.length > 0) {
             companyId = compRes.rows[0].id;
         } else {
             const insComp = await client.query(`
                 INSERT INTO companies (name, email, contact_person, phone, status, credit_limit)
-                VALUES ('Footprint B2B Enterprise', 'company@footprint.com', 'Corporate Client Admin', '+233 20 000 0000', 'Active', 50000.00)
+                VALUES ('OKWESIWA LTD B2B Enterprise', 'company@okwesiwaltd.com', 'Corporate Client Admin', '+233 20 000 0000', 'Active', 50000.00)
                 RETURNING id;
             `);
             companyId = insComp.rows[0].id;
         }
 
-        const companyUserHash = await bcrypt.hash('Company2026!', salt);
+        const companyUserHash = await bcrypt.hash(requirePass('DEFAULT_COMPANY_PASS'), salt);
         await client.query(`
             INSERT INTO company_users (company_id, company_name, contact_person, email, password, role, status)
-            VALUES ($1, 'Footprint B2B Enterprise', 'Corporate Client Admin', 'company@footprint.com', $2, 'business_client', 'Active')
+            VALUES ($1, 'OKWESIWA LTD B2B Enterprise', 'Corporate Client Admin', 'company@okwesiwaltd.com', $2, 'business_client', 'Active')
             ON CONFLICT (email) DO UPDATE SET
                 company_id = $1,
                 password = $2,
                 role = 'business_client',
-                company_name = 'Footprint B2B Enterprise',
+                company_name = 'OKWESIWA LTD B2B Enterprise',
                 contact_person = 'Corporate Client Admin',
                 status = 'Active';
         `, [companyId, companyUserHash]);
-        console.log('✅ Profile 4 (COMPANY PORTAL): company@footprint.com / Company2026!');
+        console.log('✅ Profile 4 (COMPANY PORTAL): company@okwesiwaltd.com');
 
         // Verify count of tables in database
         const tablesRes = await client.query(`

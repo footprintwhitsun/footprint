@@ -3,17 +3,17 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="auth-guard.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footprint | Credit Clients</title>
-    <link rel="icon" type="image/png" href="logo.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>OKWESIWA LTD | Credit Clients</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer crossorigin="anonymous"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js" defer crossorigin="anonymous"></script>
     <style>
@@ -22,7 +22,7 @@
         body { background: var(--gray-light); display: flex; flex-direction: column; min-height: 100vh; }
         
         /* Sidebar */
-        .sidebar { width: var(--sidebar-width); background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; display: flex; flex-direction: column; position: fixed; height: 100vh; height: 100dvh; overflow-y: auto; z-index: 100; }
+        .sidebar { width: var(--sidebar-width); background: #1F3A60; color: white; display: flex; flex-direction: column; position: fixed; height: 100vh; height: 100dvh; overflow-y: auto; z-index: 100; }
         .brand { padding: 15px; font-size: 24px; font-weight: 700; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); font-family: 'Montserrat', sans-serif; display: flex; align-items: center; gap: 10px; }
         .nav-links { flex: 1; padding-top: 5px; }
         .nav-item { display: flex; align-items: center; padding: 8px 25px; color: rgba(255,255,255,0.7); text-decoration: none; transition: 0.3s; }
@@ -118,7 +118,7 @@
         .back-link { display: inline-flex; align-items: center; gap: 8px; color: #64748b; background: white; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: none; }
         .back-link:hover { color: var(--primary-color, #f59e0b); transform: translateX(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
 
-        footer { margin-left: var(--sidebar-width); padding: 15px; text-align: center; color: white; font-size: 12px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); }
+        footer { margin-left: var(--sidebar-width); padding: 15px; text-align: center; color: white; font-size: 12px; background: #1F3A60; }
 
         /* Mobile Responsive Styles */
         .mobile-menu-btn {
@@ -189,6 +189,13 @@
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
     <link rel="stylesheet" href="sidebar.css">
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style id="credit-face">
+        .btn-add { border-radius: 8px !important; height: 40px; box-shadow: none !important; margin: 16px 24px 0 auto !important; }
+        .status-badge { font-weight: 600; }
+    </style>
 </head>
 <body>
     <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
@@ -196,21 +203,10 @@
 
     <div class="sidebar">
         <div class="brand" style="display: flex; flex-direction: column; align-items: center;">
-            <img src="logo.png" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
             
         </div>
         <div class="nav-links">
-            <a href="dashboard" class="nav-item"><i class="fas fa-home"></i> Dashboard</a>
-            <div class="nav-section">Sales & Finance</div>
-            <a href="sales-dashboard" class="nav-item"><i class="fas fa-chart-pie"></i> Sales</a>
-            <a href="profitability" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Profitability</a>
-            <a href="promotions" class="nav-item"><i class="fas fa-tags"></i> Promotions</a>
-            <div class="nav-section">Operations</div>
-            <a href="pos-register" class="nav-item"><i class="fas fa-users"></i> Staff</a>
-            <a href="#" onclick="switchTab('overview'); return false;" class="nav-item active"><i class="fas fa-address-book"></i> Credit</a>
-            <a href="inventory" class="nav-item"><i class="fas fa-warehouse"></i> Inventory</a>
-            <a href="reports" class="nav-item"><i class="fas fa-chart-line"></i> Reports</a>
-            <a href="settings" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
         </div>
         <div class="user-profile">
             <div class="user-profile-row">
@@ -228,7 +224,7 @@
 
     <div class="main-content">
         <!-- 1. OVERVIEW TAB -->
-        <div id="tab-overview" class="tab-content active">
+        <div id="tab-overview" class="tab-content" style="display:none;">
             <div class="page-header">
                 <h2>Credit Management</h2>
             </div>
@@ -249,8 +245,7 @@
         <!-- 2. CLIENTS TAB -->
         <div id="tab-clients" class="tab-content">
         <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Menu</div>
-        <div class="page-header">
-            <h2>Credit Clients</h2>
+        <div class="page-header" style="justify-content:flex-end;">
             <button class="btn-add" onclick="openAddModal()"><i class="fas fa-user-plus"></i> Add Client</button>
         </div>
 
@@ -298,9 +293,6 @@
         <!-- 3. AUTHORIZATION TAB -->
         <div id="tab-auth" class="tab-content">
             <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Menu</div>
-            <div class="page-header">
-                <h2>Manager Authorization</h2>
-            </div>
             <div class="card" style="max-width: 500px; text-align: center; margin: 0 auto;">
                 <p style="margin-bottom: 20px; color: #666; font-size: 14px;">
                     Generate a temporary 6-digit code for tellers to authorize credit sales. This code expires in 24 hours.
@@ -411,28 +403,59 @@
 
     <!-- View Client Modal -->
     <div id="viewClientModal" class="modal">
-        <div class="modal-content" style="width: 600px;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                <h3 id="viewClientName">Client Details</h3>
-                <button onclick="closeModal('viewClientModal')" style="background:none; border:none; font-size:20px; cursor:pointer;">&times;</button>
-            </div>
-            
-            <!-- Client Info -->
-            <div style="margin-bottom: 25px; background: #f8fafc; padding: 20px; border-radius: 12px; border: 1px solid #eef2f6;">
-                 <div class="customer-detail-row" style="margin-bottom: 10px;"><span>Phone:</span> <span id="viewClientPhone" style="font-weight: 500;">-</span></div>
-                 <div class="customer-detail-row"><span>Email:</span> <span id="viewClientEmail" style="font-weight: 500;">-</span></div>
-                 <hr style="border:none; border-top: 1px dashed #e2e8f0; margin: 15px 0;">
-                 <div class="customer-detail-row"><span>Credit Limit:</span> <span id="viewClientLimit" style="font-weight: 600; color: #475569;">--</span></div>
-                 <div class="customer-detail-row"><span>Current Debt:</span> <span id="viewClientDebt" style="font-weight: 600; color: #dc2626;">--</span></div>
-                 <div class="customer-detail-row" style="font-weight: bold; margin-top: 10px; padding-top: 10px; border-top: 1px solid #e2e8f0;"><span>Available Credit:</span> <span id="viewClientAvailable" style="color: #16a34a;">--</span></div>
+        <div class="modal-content" style="width: 640px; max-width: 95vw; padding: 0; overflow: hidden; border-radius: 14px;">
+            <div style="background: linear-gradient(125deg, #1b2a6b 0%, #273990 100%); color: #fff; padding: 20px 24px; border-bottom: 2px solid #F9A51A; display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;">
+                <div>
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <h3 id="viewClientName" style="margin:0;color:#fff;font-size:19px;">Client Details</h3>
+                        <span id="viewClientStatusBadge" style="padding:3px 10px;border-radius:999px;font-size:11px;font-weight:700;background:rgba(255,255,255,0.18);color:#fff;">Active</span>
+                    </div>
+                    <div style="font-size:12.5px;opacity:0.85;margin-top:4px;">Account: <span id="viewClientAcct" style="font-family:monospace;">-</span></div>
+                </div>
+                <button onclick="closeModal('viewClientModal')" style="background:rgba(255,255,255,0.14); color:#fff; border:none; width:30px; height:30px; border-radius:8px; font-size:18px; cursor:pointer; line-height:1;">&times;</button>
             </div>
 
-            <!-- Action Buttons -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <button id="viewBtnPay" class="btn-icon btn-pay" style="width:100%; height:auto; padding: 15px; border-radius: 10px; justify-content: center; gap: 10px; font-size: 14px; font-weight: 600;"><i class="fas fa-money-bill-wave"></i> Record Payment</button>
-                <button id="viewBtnLimit" class="btn-icon btn-limit" style="width:100%; height:auto; padding: 15px; border-radius: 10px; justify-content: center; gap: 10px; font-size: 14px; font-weight: 600;"><i class="fas fa-sliders-h"></i> Adjust Limit</button>
-                <button id="viewBtnStmt" class="btn-icon btn-stmt" style="width:100%; height:auto; padding: 15px; border-radius: 10px; justify-content: center; gap: 10px; font-size: 14px; font-weight: 600;"><i class="fas fa-file-invoice"></i> Statement</button>
-                <button id="viewBtnDel" class="btn-icon btn-del" style="width:100%; height:auto; padding: 15px; border-radius: 10px; justify-content: center; gap: 10px; font-size: 14px; font-weight: 600;"><i class="fas fa-trash-alt"></i> Delete Client</button>
+            <div style="padding: 22px 24px;">
+                <!-- 3-Card Credit KPI Strip -->
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px;">
+                    <div style="padding:12px 14px;border-radius:10px;border:1px solid #e2e8f0;background:#f8fafc;">
+                        <div style="font-size:11px;color:#64748b;text-transform:uppercase;font-weight:600;">Credit Limit</div>
+                        <div id="viewClientLimit" style="font-size:17px;font-weight:700;color:#0f172a;margin-top:4px;">--</div>
+                    </div>
+                    <div style="padding:12px 14px;border-radius:10px;border:1px solid #fecaca;background:#fef2f2;">
+                        <div style="font-size:11px;color:#991b1b;text-transform:uppercase;font-weight:600;">Current Debt</div>
+                        <div id="viewClientDebt" style="font-size:17px;font-weight:700;color:#dc2626;margin-top:4px;">--</div>
+                    </div>
+                    <div style="padding:12px 14px;border-radius:10px;border:1px solid #bbf7d0;background:#f0fdf4;">
+                        <div style="font-size:11px;color:#166534;text-transform:uppercase;font-weight:600;">Available Credit</div>
+                        <div id="viewClientAvailable" style="font-size:17px;font-weight:700;color:#16a34a;margin-top:4px;">--</div>
+                    </div>
+                </div>
+
+                <!-- Credit Utilization Bar -->
+                <div style="margin-bottom:18px;">
+                    <div style="display:flex;justify-content:space-between;font-size:12px;color:#64748b;margin-bottom:5px;">
+                        <span>Credit Utilization</span>
+                        <span id="viewClientUtilPct" style="font-weight:600;color:#0f172a;">0%</span>
+                    </div>
+                    <div style="height:8px;border-radius:999px;background:#e2e8f0;overflow:hidden;">
+                        <div id="viewClientUtilBar" style="height:100%;width:0%;background:#273990;transition:width 200ms ease;"></div>
+                    </div>
+                </div>
+
+                <!-- Contact Metadata -->
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px;padding:12px 14px;border-radius:10px;border:1px solid #e2e8f0;background:#f8fafc;font-size:13px;">
+                    <div><span style="color:#64748b;font-size:11.5px;display:block;">Phone</span><strong id="viewClientPhone">-</strong></div>
+                    <div><span style="color:#64748b;font-size:11.5px;display:block;">Email</span><strong id="viewClientEmail">-</strong></div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <button id="viewBtnPay" class="btn-icon btn-pay" style="width:100%; height:40px; border-radius: 8px; justify-content: center; gap: 8px; font-size: 13px; font-weight: 600;"><i class="fas fa-money-bill-wave"></i> Record Payment</button>
+                    <button id="viewBtnLimit" class="btn-icon btn-limit" style="width:100%; height:40px; border-radius: 8px; justify-content: center; gap: 8px; font-size: 13px; font-weight: 600;"><i class="fas fa-sliders-h"></i> Adjust Limit</button>
+                    <button id="viewBtnStmt" class="btn-icon btn-stmt" style="width:100%; height:40px; border-radius: 8px; justify-content: center; gap: 8px; font-size: 13px; font-weight: 600;"><i class="fas fa-file-invoice"></i> Statement</button>
+                    <button id="viewBtnDel" class="btn-icon btn-del" style="width:100%; height:40px; border-radius: 8px; justify-content: center; gap: 8px; font-size: 13px; font-weight: 600;"><i class="fas fa-trash-alt"></i> Delete Client</button>
+                </div>
             </div>
         </div>
     </div>
@@ -450,7 +473,7 @@
         </div>
     </div>
 
-    <footer>© 2026 Footprint</footer>
+    <footer>© 2026 OKWESIWA LTD</footer>
 
     <script>
         function toggleSidebar() {
@@ -485,8 +508,12 @@
                 }
             } catch (e) { console.error(e); }
 
-            // Load clients if on clients tab (though default is overview)
-            if(document.getElementById('tab-clients').classList.contains('active')) loadCustomers();
+            // Hide overview tile hub and open requested tab directly
+            const ov = document.getElementById('tab-overview');
+            if (ov) ov.style.display = 'none';
+            document.querySelectorAll('.tab-content .back-link').forEach(el => { el.style.display = 'none'; });
+            const urlTab = new URLSearchParams(window.location.search).get('tab');
+            switchTab(urlTab === 'auth' ? 'auth' : 'clients');
         });
 
         function switchTab(tabId) {
@@ -568,20 +595,18 @@
                 return `
                     <tr>
                         <td data-label="Client">
-                            <div style="text-align:right;">
-                                <div style="font-weight: 600; color: #1e293b; font-size: 15px;">${c.name}</div>
-                                <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">${c.email || 'No email linked'}</div>
+                            <div style="text-align:left;">
+                                <div style="font-weight: 600; color: var(--ink); font-size: 15px;">${OkwUI.escapeHtml(c.name)}</div>
+                                <div style="font-size: 12px; color: var(--muted); margin-top: 2px;">${OkwUI.escapeHtml(c.email || 'No email on file')}</div>
                             </div>
                         </td>
-                        <td data-label="Contact" style="font-family: 'Courier New', monospace; letter-spacing: -0.5px;">${c.phone || '-'}</td>
-                        <td data-label="Credit Limit"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-weight: 600; color: #475569;">${formatCurrency(limit)}</span></td>
-                        <td data-label="Current Debt"><span class="${balanceClass}">${formatCurrency(balance)}</span></td>
-                        <td data-label="Available"><span style="color: #059669; font-weight: 700;">${formatCurrency(available)}</span></td>
+                        <td data-label="Contact" style="font-variant-numeric: tabular-nums;">${OkwUI.escapeHtml(c.phone || '-')}</td>
+                        <td data-label="Credit Limit" style="font-variant-numeric: tabular-nums;">${formatCurrency(limit)}</td>
+                        <td data-label="Current Debt" style="font-variant-numeric: tabular-nums; ${balance > 0 ? 'color: var(--warn); font-weight: 600;' : 'color: var(--muted);'}">${formatCurrency(balance)}</td>
+                        <td data-label="Available" style="font-variant-numeric: tabular-nums; font-weight: 600;">${formatCurrency(available)}</td>
                         <td data-label="Status"><span class="status-badge ${statusClass}">${status}</span></td>
                         <td data-label="Actions">
-                            <button onclick="openViewModal(${c.id})" class="btn-icon" style="background: #f1f5f9; color: #475569; width: auto; padding: 0 15px; font-weight: 600; font-size: 13px; height: 36px;">
-                                <i class="fas fa-eye" style="margin-right: 8px;"></i> View
-                            </button>
+                            <button onclick="openViewModal(${c.id})" class="btn-icon" style="background: var(--sheet); border: 1px solid var(--edge-strong); color: var(--ink); width: auto; padding: 0 14px; font-weight: 600; font-size: 13px; height: 34px; border-radius: 8px;">View</button>
                         </td>
                     </tr>
                 `;
@@ -624,11 +649,20 @@
 
             // Populate Modal
             document.getElementById('viewClientName').textContent = customer.name;
+            if (document.getElementById('viewClientStatusBadge')) document.getElementById('viewClientStatusBadge').textContent = status;
+            if (document.getElementById('viewClientAcct')) document.getElementById('viewClientAcct').textContent = customer.account_number || `CUST-${customer.id}`;
             document.getElementById('viewClientPhone').textContent = customer.phone || 'N/A';
             document.getElementById('viewClientEmail').textContent = customer.email || 'N/A';
             document.getElementById('viewClientLimit').textContent = formatCurrency(limit);
             document.getElementById('viewClientDebt').textContent = formatCurrency(balance);
             document.getElementById('viewClientAvailable').textContent = formatCurrency(available);
+            const utilPct = limit > 0 ? Math.min(100, Math.round((balance / limit) * 100)) : 0;
+            if (document.getElementById('viewClientUtilPct')) document.getElementById('viewClientUtilPct').textContent = `${utilPct}%`;
+            if (document.getElementById('viewClientUtilBar')) {
+                const bar = document.getElementById('viewClientUtilBar');
+                bar.style.width = `${utilPct}%`;
+                bar.style.background = utilPct >= 90 ? '#dc2626' : (utilPct >= 70 ? '#d97706' : '#273990');
+            }
 
             // Wire up buttons
             const payBtn = document.getElementById('viewBtnPay');
@@ -1020,7 +1054,7 @@
             } finally {
                 localStorage.clear();
                 sessionStorage.clear();
-                window.location.replace('/login?logout=true');
+                (window.top || window).location.replace('/login?logout=true');
             }
         }
     </script>

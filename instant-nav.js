@@ -1,6 +1,6 @@
 /**
  * InstantNav - Speculative Navigation Prefetch Engine
- * Footprint Enterprise POS
+ * OKWESIWA LTD Enterprise POS
  * 
  * Provides 0ms perceived page transitions across multi-page HTML architecture.
  * Speculatively prefetches destination pages on link hover / touchstart.

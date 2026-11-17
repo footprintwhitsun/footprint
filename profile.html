@@ -4,225 +4,490 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="auth-guard.js"></script>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FOOTPRINT | User Profile</title>
-    <link rel="icon" type="image/png" href="logo.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>OKWESIWA LTD | My Profile</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <script src="currency.js"></script>
+    <script src="telemetry-guard.js"></script>
+    <script src="instant-nav.js"></script>
+    <link rel="stylesheet" href="sidebar.css">
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style id="profile-face">
+        /* a plain identity header: no banner, no overlap, the name in ink */
+        .profile-hero { box-shadow: none !important; border-radius: 12px !important; }
+        .profile-hero-banner { display: none !important; }
+        .profile-hero-body { padding: 24px 28px !important; align-items: center !important; }
+        .profile-identity { margin-top: 0 !important; align-items: center !important; }
+        .avatar-monogram { background: #273990 !important; box-shadow: none !important; border: 0 !important; border-radius: 16px !important; }
+        .profile-identity h1, .profile-identity h2, .profile-hero h1, .profile-hero h2 { color: var(--ink) !important; font-family: var(--font-display); }
+        .profile-shell { box-sizing: border-box !important; max-width: 100% !important; }
+        footer.okw-sub-footer { background: transparent !important; color: var(--muted) !important; border-top: 1px solid var(--edge) !important; }
+        footer.okw-sub-footer * { color: var(--muted) !important; }
+        /* both columns stay inside the page */
+        [class*="profile-grid"], [class*="profile-layout"], [class*="profile-columns"] { max-width: 100%; }
+        [class*="profile-grid"] > *, [class*="profile-layout"] > *, [class*="profile-columns"] > * { min-width: 0; }
+    </style>
     <style>
-        :root {
-            --primary-color: #273990; --accent-color: #f9a51a;
-            --secondary-color: #1c2b70;
-            --gray-light: #f6f6f7;
-            --text-color: #202223; --text-secondary: #6d7175; --border-color: #e1e3e5; --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05);
+        .main-content {
+            display: flex !important;
+            flex-direction: column !important;
+            min-height: calc(100dvh - var(--topbar-height, 48px) - 8px) !important;
+            padding: 0 !important;
         }
 
-        * {
-            box-sizing: border-box;
-            margin: 0;
-            padding: 0;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased;
-        }
-
-        body {
-            background: var(--gray-light);
-            min-height: 100vh;
+        .profile-shell {
+            flex: 1 0 auto;
+            width: 100%;
+            max-width: 1080px;
+            margin: 0 auto;
+            padding: 28px 28px 36px;
             display: flex;
             flex-direction: column;
+            gap: 22px;
         }
 
-        /* Header */
-        header {
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-            padding: 0 25px;
-            height: 70px;
+        /* Signature Identity Hero */
+        .profile-hero {
+            position: relative;
+            border-radius: 14px;
+            overflow: hidden;
+            background: var(--sheet, #ffffff);
+            border: 1px solid var(--edge, #e2e8f0);
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
+        }
+
+        .profile-hero-banner {
+            height: 92px;
+            background: linear-gradient(125deg, #1b2a6b 0%, #273990 58%, #344ab3 100%);
+            position: relative;
+            border-bottom: 2px solid #F9A51A;
+        }
+
+        .profile-hero-banner::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at 88% 30%, rgba(249, 165, 26, 0.22), transparent 52%);
+            pointer-events: none;
+        }
+
+        .profile-hero-body {
+            padding: 0 28px 24px;
             display: flex;
-            align-items: center;
+            align-items: flex-end;
             justify-content: space-between;
-            color: white;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+            gap: 20px;
+            flex-wrap: wrap;
         }
 
-        .brand {
-            font-size: 24px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            font-family: 'Montserrat', sans-serif;
+        .profile-identity {
             display: flex;
-            align-items: center;
-            gap: 10px;
-            white-space: nowrap;
+            align-items: flex-end;
+            gap: 18px;
+            margin-top: -42px;
+            position: relative;
+            z-index: 2;
         }
 
-        .back-btn {
-            color: white;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 14px;
-            opacity: 0.9;
-            transition: 0.2s;
-        }
-
-        .back-btn:hover {
-            opacity: 1;
-            transform: translateX(-3px);
-        }
-
-        /* Main Container */
-        .container {
-            max-width: 900px;
-            margin: 40px auto;
-            width: 90%;
-            display: grid;
-            grid-template-columns: 1fr 1.5fr;
-            gap: 30px;
-        }
-
-        /* Cards */
-        .card {
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-        }
-
-        /* Profile Info Side */
-        .profile-header {
-            text-align: center;
-            margin-bottom: 20px;
-        }
-
-        .avatar-large {
-            width: 100px;
-            height: 100px;
-            background: #e3f2fd;
-            color: var(--primary-color);
-            border-radius: 50%;
+        .avatar-monogram {
+            width: 84px;
+            height: 84px;
+            border-radius: 18px;
+            background: linear-gradient(145deg, #273990, #16235e);
+            color: #ffffff;
+            border: 3px solid var(--sheet, #ffffff);
+            box-shadow: 0 8px 20px rgba(39, 57, 144, 0.22);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 40px;
-            margin: 0 auto 15px;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            position: relative;
+            flex-shrink: 0;
         }
 
-        .user-name {
-            font-size: 20px;
+        .avatar-status-dot {
+            position: absolute;
+            bottom: -3px;
+            right: -3px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: #16a34a;
+            border: 3px solid var(--sheet, #ffffff);
+        }
+
+        .identity-meta {
+            padding-bottom: 2px;
+        }
+
+        .identity-meta h2 {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--ink, #0f172a);
+            margin: 0 0 6px;
+            line-height: 1.2;
+        }
+
+        .identity-badges {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .role-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 11.5px;
             font-weight: 600;
-            color: var(--text-color);
-        }
-
-        .user-role {
-            color: #666;
-            font-size: 14px;
-            margin-top: 5px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.05em;
+            background: rgba(39, 57, 144, 0.1);
+            color: #273990;
+            border: 1px solid rgba(39, 57, 144, 0.2);
         }
 
-        .info-list {
-            margin-top: 30px;
+        [data-theme="dark"] .role-pill {
+            background: rgba(99, 125, 255, 0.16);
+            color: #a5b4fc;
+            border-color: rgba(129, 140, 248, 0.28);
         }
 
-        .info-item {
-            padding: 15px 0;
-            border-bottom: 1px solid #eee;
-        }
-
-        .info-item:last-child {
-            border-bottom: none;
-        }
-
-        .info-label {
+        .branch-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
             font-size: 12px;
-            color: #888;
-            display: block;
-            margin-bottom: 4px;
+            font-weight: 500;
+            background: var(--frame, #f8fafc);
+            color: var(--ink-2, #475569);
+            border: 1px solid var(--edge, #e2e8f0);
         }
 
-        .info-value {
-            font-size: 15px;
-            color: #333;
+        .hero-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding-top: 12px;
+        }
+
+        .btn-outline-soft {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            height: 36px;
+            padding: 0 14px;
+            border-radius: 8px;
+            border: 1px solid var(--edge, #cbd5e1);
+            background: var(--sheet, #ffffff);
+            color: var(--ink, #1e293b);
+            font-size: 13px;
             font-weight: 500;
+            cursor: pointer;
+            transition: background-color 140ms ease, border-color 140ms ease;
+        }
+
+        .btn-outline-soft:hover {
+            background: var(--frame-hover, #f1f5f9);
+            border-color: var(--ink-2, #94a3b8);
+        }
+
+        .btn-signout {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            height: 36px;
+            padding: 0 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(220, 38, 38, 0.28);
+            background: rgba(220, 38, 38, 0.06);
+            color: #dc2626;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 140ms ease, color 140ms ease;
+        }
+
+        .btn-signout:hover {
+            background: #dc2626;
+            color: #ffffff;
+        }
+
+        /* Two-column workspace grid */
+        .profile-grid {
+            display: grid;
+            grid-template-columns: 1.05fr 1.35fr;
+            gap: 22px;
+            align-items: start;
+        }
+
+        .panel-card {
+            background: var(--sheet, #ffffff);
+            border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 14px;
+            padding: 24px;
+            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+            border-bottom: 1px solid var(--edge, #e2e8f0);
+        }
+
+        .panel-head-title {
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        /* Security Side */
-        h3 {
-            color: var(--primary-color);
-            margin-bottom: 20px;
-            font-weight: 600;
+        .panel-head-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            background: rgba(39, 57, 144, 0.09);
+            color: #273990;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
         }
 
+        [data-theme="dark"] .panel-head-icon {
+            background: rgba(99, 125, 255, 0.16);
+            color: #a5b4fc;
+        }
+
+        .panel-head h3 {
+            margin: 0;
+            font-size: 15.5px;
+            font-weight: 600;
+            color: var(--ink, #0f172a);
+        }
+
+        .panel-head p {
+            margin: 2px 0 0;
+            font-size: 12px;
+            color: var(--muted, #64748b);
+        }
+
+        /* Account rows */
+        .detail-rows {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .detail-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: var(--frame, #f8fafc);
+            border: 1px solid var(--edge, #e2e8f0);
+        }
+
+        .detail-label {
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            font-size: 12.5px;
+            color: var(--muted, #64748b);
+            font-weight: 500;
+        }
+
+        .detail-label i {
+            width: 16px;
+            text-align: center;
+            color: #273990;
+        }
+
+        [data-theme="dark"] .detail-label i {
+            color: #93c5fd;
+        }
+
+        .detail-value {
+            font-size: 13.5px;
+            font-weight: 600;
+            color: var(--ink, #0f172a);
+            text-align: right;
+            word-break: break-word;
+        }
+
+        .status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 3px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(22, 163, 74, 0.12);
+            color: #15803d;
+        }
+
+        .scope-box {
+            margin-top: 16px;
+            padding: 14px;
+            border-radius: 10px;
+            border: 1px dashed var(--edge, #cbd5e1);
+            background: rgba(249, 165, 26, 0.05);
+        }
+
+        .scope-box-title {
+            font-size: 11.5px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--ink-2, #475569);
+            margin-bottom: 6px;
+        }
+
+        .scope-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .scope-tag {
+            font-size: 11.5px;
+            font-weight: 500;
+            padding: 3px 8px;
+            border-radius: 6px;
+            background: var(--sheet, #ffffff);
+            border: 1px solid var(--edge, #e2e8f0);
+            color: var(--ink-2, #334155);
+        }
+
+        /* Password Form */
         .form-group {
-            margin-bottom: 20px;
+            margin-bottom: 16px;
         }
 
         .form-group label {
             display: block;
-            font-size: 14px;
-            color: #555;
-            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--ink-2, #334155);
+            margin-bottom: 6px;
         }
 
-        .form-group input {
+        .input-wrap {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .input-wrap input {
             width: 100%;
-            padding: 12px;
-            border: 1px solid #ddd;
+            height: 40px;
+            padding: 0 40px 0 12px;
+            border: 1px solid var(--edge, #cbd5e1);
             border-radius: 8px;
+            background: var(--sheet, #ffffff);
+            color: var(--ink, #0f172a);
+            font-size: 13.5px;
             outline: none;
-            transition: 0.3s;
+            transition: border-color 140ms ease, box-shadow 140ms ease;
         }
 
-        .form-group input:focus {
-            border-color: var(--primary-color);
+        .input-wrap input:focus {
+            border-color: #273990;
+            box-shadow: 0 0 0 3px rgba(39, 57, 144, 0.12);
+        }
+
+        .toggle-vis {
+            position: absolute;
+            right: 8px;
+            width: 28px;
+            height: 28px;
+            border: 0;
+            background: transparent;
+            color: var(--muted, #64748b);
+            cursor: pointer;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .toggle-vis:hover {
+            background: var(--frame-hover, #f1f5f9);
+            color: var(--ink, #0f172a);
+        }
+
+        .strength-row {
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .strength-bars {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 4px;
+        }
+
+        .strength-bar {
+            height: 4px;
+            border-radius: 999px;
+            background: var(--edge, #e2e8f0);
+            transition: background-color 160ms ease;
+        }
+
+        .strength-label {
+            font-size: 11.5px;
+            font-weight: 600;
+            color: var(--muted, #64748b);
+            min-width: 58px;
+            text-align: right;
         }
 
         .btn-save {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 500;
             width: 100%;
-            transition: 0.3s;
+            height: 42px;
+            margin-top: 4px;
+            background: #273990;
+            color: #ffffff;
+            border: 0;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: background-color 140ms ease, transform 120ms ease;
         }
 
         .btn-save:hover {
-            opacity: 0.9;
+            background: #1c2b70;
         }
 
-        .logout-section {
-            margin-top: 30px;
-            text-align: center;
-            border-top: 1px solid #eee;
-            padding-top: 20px;
-        }
-
-        .btn-logout {
-            color: var(--secondary-color);
-            background: none;
-            border: 1px solid var(--secondary-color);
-            padding: 10px 20px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-
-        .btn-logout:hover {
-            background: var(--secondary-color);
-            color: white;
+        .btn-save:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
         }
 
         /* Notification Toast */
@@ -231,192 +496,331 @@
             top: 20px;
             left: 50%;
             transform: translateX(-50%) translateY(-20px);
-            background-color: #333;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 50px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            background-color: #1e293b;
+            color: #ffffff;
+            padding: 11px 22px;
+            border-radius: 999px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
             z-index: 2000;
             opacity: 0;
-            transition: all 0.3s ease;
+            transition: all 0.25s ease;
             pointer-events: none;
-            font-size: 14px;
+            font-size: 13.5px;
             font-weight: 500;
         }
 
         .notification.show {
             opacity: 1;
-            transform: translateX(-50%) translateY(10px);
+            transform: translateX(-50%) translateY(8px);
         }
 
-        .notification.success {
-            background-color: #27ae60;
+        .notification.success { background-color: #15803d; }
+        .notification.error { background-color: #c62828; }
+
+        /* Pinned Bottom Footer */
+        footer.okw-sub-footer {
+            margin-top: auto !important;
+            flex-shrink: 0;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            text-align: center !important;
+            width: 100% !important;
+            max-width: 100% !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            box-sizing: border-box !important;
+            background: #273990 !important;
+            color: #ffffff !important;
+            border-top: 2px solid #F9A51A !important;
+            padding: 12px 24px;
+            font-size: 12.5px;
+            font-weight: 500;
         }
 
-        .notification.error {
-            background-color: #c62828;
-        }
-
-        /* Footer */
-        footer {
-            margin-top: auto;
-            padding: 15px;
-            text-align: center;
-            color: white;
-            font-size: 12px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
-        }
-
-        /* Mobile Responsiveness */
-        @media (max-width: 768px) {
-            .container {
+        @media (max-width: 900px) {
+            .profile-grid {
                 grid-template-columns: 1fr;
-                margin: 20px auto;
-                gap: 20px;
             }
-
-            header {
-                padding: 0 15px;
-                height: 60px;
+            .profile-shell {
+                padding: 16px 16px 24px;
             }
-
-            .brand {
-                font-size: 16px;
-                gap: 5px;
-            }
-
-            .brand img {
-            width: auto;
-            max-width: 140px;
-            height: 36px;
-            aspect-ratio: auto;
-            border-radius: 6px;
-            object-fit: contain;
-            background: #ffffff;
-            padding: 3px 10px;
-            border: 1.5px solid rgba(249, 165, 26, 0.7);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-        }
-
-            .back-btn {
-                font-size: 0;
-            }
-
-            .back-btn i {
-                font-size: 18px;
-            }
-
-            .card {
-                padding: 20px;
+            .profile-hero-body {
+                padding: 0 18px 20px;
             }
         }
     </style>
-    <script src="currency.js"></script>
-    <script src="telemetry-guard.js"></script>
-    <script src="instant-nav.js"></script>
-    <link rel="stylesheet" href="sidebar.css">
 </head>
 
 <body>
     <div id="notification" class="notification"></div>
 
-    <header>
-        <div class="brand"><img src="logo.png" alt="FOOTPRINT" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;"><span style="font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; text-transform: uppercase;">FOOTPRINT</span></div>
-        <a href="#" onclick="goBack()" class="back-btn"><i class="fas fa-arrow-left"></i> Back to App</a>
-    </header>
+    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div class="overlay" onclick="toggleSidebar()"></div>
 
-    <div class="container">
-        <!-- Left: User Details -->
-        <div class="card">
-            <div class="profile-header">
-                <div class="avatar-large"><i class="fas fa-user"></i></div>
-                <div class="user-name" id="displayName">Loading...</div>
-                <div class="user-role" id="displayRole">...</div>
-            </div>
-            <div class="info-list">
-                <div class="info-item">
-                    <span class="info-label">Email Address</span>
-                    <div class="info-value" id="displayEmail">...</div>
-                </div>
-                <div class="info-item">
-                    <span class="info-label">Assigned Store</span>
-                    <div class="info-value">
-                        <i class="fas fa-map-marker-alt" style="color: var(--secondary-color);"></i>
-                        <span id="displayStore">...</span>
-                    </div>
-                </div>
-            </div>
-            <div class="logout-section">
-                <button class="btn-logout" onclick="logout()">Sign Out</button>
-            </div>
+    <div class="sidebar">
+        <div class="brand">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
         </div>
-
-        <!-- Right: Security Settings -->
-        <div class="card">
-            <h3>Security Settings</h3>
-            <form onsubmit="updatePassword(event)">
-                <div class="form-group">
-                    <label>Current Password</label>
-                    <input type="password" id="currentPass" placeholder="Enter current password" required>
-                </div>
-                <div class="form-group">
-                    <label>New Password</label>
-                    <input type="password" id="newPass" placeholder="Enter new password" required>
-                </div>
-                <div class="form-group">
-                    <label>Confirm New Password</label>
-                    <input type="password" id="confirmPass" placeholder="Confirm new password" required>
-                </div>
-                <button type="submit" class="btn-save">Update Password</button>
-            </form>
-        </div>
+        <div class="nav-links"></div>
     </div>
 
-    <footer>
-        © 2026 Footprint
-    </footer>
+    <div class="main-content">
+        <div class="profile-shell">
+            <!-- Signature Identity Hero -->
+            <section class="profile-hero">
+                <div class="profile-hero-banner"></div>
+                <div class="profile-hero-body">
+                    <div class="profile-identity">
+                        <div class="avatar-monogram" id="avatarInitials">
+                            <span id="avatarLetters">OK</span>
+                            <span class="avatar-status-dot" title="Active Session"></span>
+                        </div>
+                        <div class="identity-meta">
+                            <h2 id="displayName">Loading...</h2>
+                            <div class="identity-badges">
+                                <span class="role-pill"><i class="fas fa-shield-alt"></i> <span id="displayRole">...</span></span>
+                                <span class="branch-pill"><i class="fas fa-map-marker-alt"></i> <span id="displayStoreHero">...</span></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="hero-actions">
+                        <button type="button" class="btn-outline-soft" onclick="goBack()">
+                            <i class="fas fa-arrow-left"></i> Workspace
+                        </button>
+                        <button type="button" class="btn-signout" onclick="logout()">
+                            <i class="fas fa-sign-out-alt"></i> Sign Out
+                        </button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Two-Column Workspace -->
+            <div class="profile-grid">
+                <!-- Left: Account Details -->
+                <section class="panel-card">
+                    <div class="panel-head">
+                        <div class="panel-head-title">
+                            <span class="panel-head-icon"><i class="fas fa-id-badge"></i></span>
+                            <div>
+                                <h3>Account Identity</h3>
+                                <p>Your verified role, branch, and login details</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="detail-rows">
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-envelope"></i> Email Address</span>
+                            <span class="detail-value" id="displayEmail">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-user-tag"></i> Username</span>
+                            <span class="detail-value" id="displayUsername">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-store"></i> Assigned Branch</span>
+                            <span class="detail-value" id="displayStore">-</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label"><i class="fas fa-check-circle"></i> Account Status</span>
+                            <span class="status-chip"><i class="fas fa-circle" style="font-size:7px;"></i> Active</span>
+                        </div>
+                    </div>
+
+                    <div class="scope-box">
+                        <div class="scope-box-title">Portal Access Scope</div>
+                        <div class="scope-tags" id="scopeTags"></div>
+                    </div>
+                </section>
+
+                <!-- Right: Security Settings -->
+                <section class="panel-card">
+                    <div class="panel-head">
+                        <div class="panel-head-title">
+                            <span class="panel-head-icon"><i class="fas fa-lock"></i></span>
+                            <div>
+                                <h3>Security &amp; Password</h3>
+                                <p>Keep your account protected with a strong password</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <form onsubmit="updatePassword(event)">
+                        <div class="form-group">
+                            <label for="currentPass">Current Password</label>
+                            <div class="input-wrap">
+                                <input type="password" id="currentPass" placeholder="Enter current password" required>
+                                <button type="button" class="toggle-vis" onclick="togglePass('currentPass', this)" aria-label="Show password">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="newPass">New Password</label>
+                            <div class="input-wrap">
+                                <input type="password" id="newPass" placeholder="At least 6 characters" required oninput="updateStrength(this.value)">
+                                <button type="button" class="toggle-vis" onclick="togglePass('newPass', this)" aria-label="Show password">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                            <div class="strength-row">
+                                <div class="strength-bars" id="strengthBars">
+                                    <div class="strength-bar"></div>
+                                    <div class="strength-bar"></div>
+                                    <div class="strength-bar"></div>
+                                    <div class="strength-bar"></div>
+                                </div>
+                                <span class="strength-label" id="strengthLabel">Strength</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="confirmPass">Confirm New Password</label>
+                            <div class="input-wrap">
+                                <input type="password" id="confirmPass" placeholder="Re-enter new password" required>
+                                <button type="button" class="toggle-vis" onclick="togglePass('confirmPass', this)" aria-label="Show password">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-save">
+                            <i class="fas fa-key"></i> Update Password
+                        </button>
+                    </form>
+                </section>
+            </div>
+        </div>
+
+        <footer class="okw-sub-footer">
+            <div>&copy; 2026 OKWESIWA LTD &middot; Enterprise Retail &amp; Inventory Platform</div>
+        </footer>
+    </div>
 
     <script>
-        const userStr = localStorage.getItem('currentUser');
-        if (!userStr) window.location.href = '/';
-        const user = JSON.parse(userStr);
+        let user = null;
+        try { user = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('companyUser') || 'null'); } catch (e) { user = null; }
+        if (!user) { window.location.replace('/login'); throw new Error('Not signed in'); }
 
-        // Handle role-based redirection if needed
-        if (user.role === 'admin') {
-            // Admin can stay on profile page
-        } else if (user.role === 'cashier' || user.role === 'teller') {
-            // Cashiers/tellers can stay on profile page
-        } else {
-            // Unknown role, redirect to login
-            window.location.href = 'login';
+        const ROLE_LABELS = {
+            super_admin: 'Super Profile',
+            ceo: 'CEO',
+            admin: 'Administrator',
+            manager: 'Store Manager',
+            store_manager: 'Store Manager',
+            cashier: 'Teller',
+            teller: 'Teller',
+            storekeeper: 'Store Keeper',
+            driver: 'Driver',
+            company: 'Business Client',
+            business_client: 'Business Client'
+        };
+
+        const ROLE_SCOPES = {
+            super_admin: ['CEO Portal', 'Manager Portal', 'Company Portal', 'POS & Till', 'Inventory', 'Reports', 'Staff & Roles'],
+            ceo: ['CEO Overview', 'Live Dashboard', 'Approvals', 'Branches', 'Audit Trail', 'Manager Operations'],
+            admin: ['CEO Overview', 'Manager Operations', 'Inventory', 'Reports', 'Staff & Roles'],
+            manager: ['Dashboard', 'Sell & POS', 'Inventory', 'Credit Management', 'Reports', 'Expenses'],
+            store_manager: ['Dashboard', 'Sell & POS', 'Inventory', 'Credit Management', 'Reports', 'Expenses'],
+            cashier: ['POS Checkout', 'Open / Close Shift', 'Daily Close', 'Transactions', 'Customers'],
+            teller: ['POS Checkout', 'Open / Close Shift', 'Daily Close', 'Transactions', 'Customers'],
+            company: ['Company Dashboard', 'Proforma Invoices', 'Transactions', 'Quick Sale'],
+            business_client: ['Company Dashboard', 'Proforma Invoices', 'Transactions', 'Quick Sale']
+        };
+
+        function populateProfile(u) {
+            if (!u) return;
+            const fullName = u.name || u.company_name || u.username || 'Staff Member';
+            const normRole = String(u.role || '').toLowerCase().trim().replace(/[\s-]+/g, '_');
+            const initials = fullName.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('') || 'OK';
+            const storeText = u.store_location || 'All Branches';
+
+            document.getElementById('avatarLetters').textContent = initials;
+            document.getElementById('displayName').textContent = fullName;
+            document.getElementById('displayRole').textContent = ROLE_LABELS[normRole] || normRole.replace(/_/g, ' ');
+            document.getElementById('displayEmail').textContent = u.email || '-';
+            document.getElementById('displayUsername').textContent = u.username || u.email || '-';
+            document.getElementById('displayStore').textContent = storeText;
+            document.getElementById('displayStoreHero').textContent = storeText;
+
+            const scopes = ROLE_SCOPES[normRole] || ['Standard Workspace'];
+            document.getElementById('scopeTags').innerHTML = scopes.map(s => `<span class="scope-tag">${s}</span>`).join('');
         }
 
-        document.getElementById('displayName').textContent = user.name;
-        document.getElementById('displayRole').textContent = user.role;
-        document.getElementById('displayEmail').textContent = user.email;
-        document.getElementById('displayStore').textContent = user.store_location || 'Not Assigned';
+        populateProfile(user);
+
+        (async function syncSession() {
+            try {
+                const token = localStorage.getItem('authToken');
+                if (!token) return;
+                const r = await fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (r.ok) {
+                    const d = await r.json();
+                    if (d && d.user) {
+                        user = d.user;
+                        populateProfile(user);
+                    }
+                }
+            } catch (_) {}
+        })();
+
+        function togglePass(id, btn) {
+            const input = document.getElementById(id);
+            if (!input) return;
+            const show = input.type === 'password';
+            input.type = show ? 'text' : 'password';
+            const icon = btn.querySelector('i');
+            if (icon) icon.className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
+        }
+
+        function updateStrength(val) {
+            const bars = document.querySelectorAll('#strengthBars .strength-bar');
+            const label = document.getElementById('strengthLabel');
+            let score = 0;
+            if (val.length >= 6) score++;
+            if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
+            if (/\d/.test(val)) score++;
+            if (/[^A-Za-z0-9]/.test(val) && val.length >= 8) score++;
+            const colors = ['#dc2626', '#f59e0b', '#2563eb', '#16a34a'];
+            const labels = ['Weak', 'Fair', 'Good', 'Strong'];
+            bars.forEach((b, i) => {
+                b.style.backgroundColor = i < score ? colors[score - 1] : '';
+            });
+            label.textContent = val ? labels[Math.max(0, score - 1)] : 'Strength';
+            label.style.color = val ? colors[Math.max(0, score - 1)] : '';
+        }
 
         async function goBack() {
             const token = localStorage.getItem('authToken');
-            if (user.role === 'admin' || user.role === 'manager') {
-                window.location.href = 'dashboard';
+            const role = String(user.role || '').toLowerCase();
+            const home = {
+                super_admin: 'dashboard',
+                ceo: 'ceo-portal',
+                admin: 'dashboard',
+                manager: 'dashboard',
+                store_manager: 'dashboard',
+                company: 'company-portal',
+                business_client: 'company-portal'
+            }[role];
+            if (home) {
+                window.location.href = home;
             } else {
-                // For cashiers, check if a shift is active
                 try {
-                    const res = await fetch('/api/shifts/active', {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
+                    const res = await fetch('/api/shifts/active', { headers: { 'Authorization': `Bearer ${token}` } });
                     if (res.ok) {
                         const shiftData = await res.json();
                         window.location.href = shiftData.active ? 'pos' : 'open-shift';
                     } else {
-                        window.location.href = 'open-shift'; // Default
+                        window.location.href = 'open-shift';
                     }
                 } catch (e) {
-                    window.location.href = 'open-shift'; // Default on error
+                    window.location.href = 'open-shift';
                 }
             }
         }
+
         async function logout() {
             if (window.authGuard && typeof window.authGuard.logout === 'function') {
                 return window.authGuard.logout();
@@ -437,26 +841,27 @@
             const notif = document.getElementById('notification');
             notif.textContent = message;
             notif.className = `notification show ${type}`;
-            setTimeout(() => {
-                notif.className = 'notification';
-            }, 3000);
+            setTimeout(() => { notif.className = 'notification'; }, 3000);
         }
 
         async function updatePassword(e) {
             e.preventDefault();
-
             const currentPass = document.getElementById('currentPass').value;
             const newPass = document.getElementById('newPass').value;
             const confirmPass = document.getElementById('confirmPass').value;
             const btn = document.querySelector('.btn-save');
 
+            if (newPass.length < 6) {
+                showNotification("New password must be at least 6 characters.", "error");
+                return;
+            }
             if (newPass !== confirmPass) {
                 showNotification("New passwords do not match!", "error");
                 return;
             }
 
             btn.disabled = true;
-            btn.textContent = "Updating...";
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
 
             try {
                 const token = localStorage.getItem('authToken');
@@ -468,81 +873,22 @@
                     },
                     body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
                 });
-
                 const data = await res.json();
-
                 if (res.ok) {
-                    showNotification(data.message, "success");
+                    showNotification(data.message || "Password updated successfully.", "success");
                     e.target.reset();
+                    updateStrength('');
                 } else {
-                    showNotification(data.message, "error");
+                    showNotification(data.message || "Could not update password.", "error");
                 }
             } catch (err) {
                 showNotification("Connection error", "error");
             } finally {
                 btn.disabled = false;
-                btn.textContent = "Update Password";
+                btn.innerHTML = '<i class="fas fa-key"></i> Update Password';
             }
         }
     </script>
-
-<!-- ================== GLOBAL UX FIXES ================== -->
-<style>
-#custom-toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
-.custom-toast.show { opacity: 1; transform: translateY(0); }
-.custom-toast.error { background: #e74c3c; border-left: 4px solid #c0392b; }
-.custom-toast.success { background: #27ae60; border-left: 4px solid #2ecc71; }
-</style>
-<script>
-(function() {
-    // 1. Toast Notification Override
-    const container = document.createElement('div');
-    container.id = 'custom-toast-container';
-    document.body.appendChild(container);
-
-    window.alert = function(message) {
-        const toast = document.createElement('div');
-        toast.className = 'custom-toast';
-        if (typeof message === 'string') {
-            const msg = message.toLowerCase();
-            if (msg.includes('error') || msg.includes('fail')) toast.classList.add('error');
-            else if (msg.includes('success') || msg.includes('saved')) toast.classList.add('success');
-        }
-        toast.textContent = message;
-        container.appendChild(toast);
-        toast.offsetHeight; // trigger reflow
-        toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    };
-
-    // 2. Mobile Table Auto-Labeler
-    function applyTableDataLabels() {
-        document.querySelectorAll('.card-table').forEach(table => {
-            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-            if (headers.length === 0) return;
-            table.querySelectorAll('tbody tr').forEach(tr => {
-                tr.querySelectorAll('td').forEach((td, index) => {
-                    if (headers[index] && !td.hasAttribute('data-label')) {
-                        td.setAttribute('data-label', headers[index]);
-                    }
-                });
-            });
-        });
-    }
-    /* Optimized: Global MutationObserver removed to prevent DOM thrashing */
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', applyTableDataLabels);
-    } else {
-        applyTableDataLabels();
-    }
-})();
-</script>
-<!-- ====================================================== -->
 </body>
 
 </html>

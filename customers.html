@@ -3,22 +3,22 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="auth-guard.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footprint | Customers</title>
-    <link rel="icon" type="image/png" href="logo.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>OKWESIWA LTD | Customers</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <style>
         :root { --primary-color: #273990; --accent-color: #f9a51a; --secondary-color: #1c2b70; --accent-color: #f9a51a; --text-color: #202223; --text-secondary: #6d7175; --border-color: #e1e3e5; --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05); --gray-light: #f6f6f7; --sidebar-width: 260px; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
         body { background: var(--gray-light); display: flex; flex-direction: column; min-height: 100vh; }
-        .sidebar { width: var(--sidebar-width); background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; display: flex; flex-direction: column; position: fixed; height: 100vh; height: 100dvh; overflow-y: auto; }
+        .sidebar { width: var(--sidebar-width); background: #1F3A60; color: white; display: flex; flex-direction: column; position: fixed; height: 100vh; height: 100dvh; overflow-y: auto; }
         .brand { padding: 15px; font-size: 24px; font-weight: 700; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); font-family: 'Montserrat', sans-serif; display: flex; align-items: center; gap: 10px; }
         .nav-links { flex: 1; padding-top: 5px; }
         .nav-item { display: flex; align-items: center; padding: 8px 25px; color: rgba(255,255,255,0.7); text-decoration: none; transition: 0.3s; }
@@ -41,7 +41,7 @@
             text-align: center;
             color: white;
             font-size: 12px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: #1F3A60;
         }
 
         /* Mobile Responsive Styles */
@@ -77,27 +77,23 @@
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
     <link rel="stylesheet" href="sidebar.css">
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style id="cust-face">
+        #custSearch { height: 40px; min-width: 300px; padding: 0 14px; border: 1px solid var(--edge-strong); border-radius: 8px; background: var(--sheet); font: inherit; font-size: 14px; margin: 12px 0 4px; }
+        #custSearch:focus { outline: none; border-color: var(--brand); box-shadow: 0 0 0 3px rgba(39, 57, 144, 0.12); }
+        #custPrev, #custNext { height: 36px; padding: 0 14px; border: 1px solid var(--edge-strong); border-radius: 8px; background: var(--sheet); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; margin-left: 8px; }
+        #custPrev:disabled, #custNext:disabled { opacity: 0.45; cursor: default; }
+    </style>
 </head>
 <body>
     <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
     <div class="overlay" onclick="toggleSidebar()"></div>
 
     <div class="sidebar">
-        <div class="brand"><img src="logo.png" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;"></div>
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;"></div>
         <div class="nav-links">
-            <a href="dashboard" class="nav-item"><i class="fas fa-home"></i> Dashboard</a>
-            
-            <div class="nav-section">Sales & Finance</div>
-            <a href="sales-dashboard" class="nav-item"><i class="fas fa-chart-pie"></i> Sales</a>
-            <a href="profitability" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Profitability</a>
-            <a href="promotions" class="nav-item"><i class="fas fa-tags"></i> Promotions</a>
-
-            <div class="nav-section">Operations</div>
-            <a href="pos-register" class="nav-item"><i class="fas fa-user-plus"></i> Register Cashier</a>
-            <a href="credit-customers" class="nav-item"><i class="fas fa-address-book"></i> Credit</a>
-            <a href="inventory" class="nav-item"><i class="fas fa-warehouse"></i> Inventory</a>
-            <a href="reports" class="nav-item"><i class="fas fa-chart-line"></i> Reports</a>
-            <a href="settings" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
         </div>
         <div class="user-profile">
             <div class="user-profile-row">
@@ -112,33 +108,89 @@
     </div>
 
     <div class="main-content">
-        <h2 style="margin-bottom: 30px;">Customer Database</h2>
-        <div class="card">
+        <div class="header">
+            <div>
+                <h1>Customers</h1>
+                <p id="custSummary">Loading customers...</p>
+            </div>
+            <div class="header-controls">
+                <input type="search" id="custSearch" placeholder="Search name, phone or account" aria-label="Search customers" style="min-width:260px;">
+            </div>
+        </div>
+        <div class="card" style="padding:0; overflow-x:auto;">
             <table>
                 <thead>
                     <tr>
                         <th>Name</th>
                         <th>Phone</th>
-                        <th>Email</th>
-                        <th>Total Spent</th>
-                        <th>Last Visit</th>
+                        <th>Account</th>
+                        <th class="numeric">Credit limit</th>
+                        <th class="numeric">Balance owed</th>
+                        <th>Status</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr>
-                        <td>Walk-in Customer</td>
-                        <td>-</td>
-                        <td>-</td>
-                        <td>${formatCurrency(1250)}</td>
-                        <td>Today</td>
-                    </tr>
-                </tbody>
+                <tbody id="custBody"><tr><td colspan="6">Loading...</td></tr></tbody>
             </table>
+        </div>
+        <div id="custPager" style="display:flex; justify-content:space-between; align-items:center; gap:12px; margin-top:12px; font-size:13px; color:var(--muted);">
+            <span id="custRange"></span>
+            <span>
+                <button type="button" class="btn-white btn-control" id="custPrev" aria-label="Previous page">Previous</button>
+                <button type="button" class="btn-white btn-control" id="custNext" aria-label="Next page">Next</button>
+            </span>
         </div>
     </div>
 
+    <script>
+    (function () {
+        const PAGE = 50;
+        let all = [], view = [], page = 0;
+        const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const money = (n) => (typeof formatCurrency === 'function' ? formatCurrency(Number(n) || 0) : (Number(n) || 0).toFixed(2));
+
+        function render() {
+            const body = document.getElementById('custBody');
+            const start = page * PAGE, rows = view.slice(start, start + PAGE);
+            body.innerHTML = rows.length ? rows.map((c) => `
+                <tr>
+                    <td style="max-width:320px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${esc(c.name)}">${esc(c.name)}</td>
+                    <td>${esc(c.phone) || '-'}</td>
+                    <td>${esc(c.account_number) || '-'}</td>
+                    <td class="numeric">${money(c.credit_limit)}</td>
+                    <td class="numeric">${Number(c.current_balance) > 0 ? money(c.current_balance) : '-'}</td>
+                    <td>${esc(c.status) || '-'}</td>
+                </tr>`).join('') : '<tr><td colspan="6">No customers match.</td></tr>';
+            document.getElementById('custRange').textContent = view.length ? `${start + 1}-${Math.min(start + PAGE, view.length)} of ${view.length}` : '';
+            document.getElementById('custPrev').disabled = page === 0;
+            document.getElementById('custNext').disabled = start + PAGE >= view.length;
+        }
+        function filter() {
+            const q = document.getElementById('custSearch').value.trim().toLowerCase();
+            view = q ? all.filter((c) => [c.name, c.phone, c.account_number, c.email].some((v) => String(v || '').toLowerCase().includes(q))) : all;
+            page = 0; render();
+        }
+        async function load() {
+            try {
+                const res = await fetch('/api/customers', { headers: { Authorization: 'Bearer ' + localStorage.getItem('authToken') } });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                all = await res.json();
+                const owing = all.filter((c) => Number(c.current_balance) > 0).length;
+                document.getElementById('custSummary').textContent = `${all.length} customers, ${owing} with a balance owed`;
+                filter();
+            } catch (e) {
+                document.getElementById('custSummary').textContent = 'Could not load customers.';
+                document.getElementById('custBody').innerHTML = '<tr><td colspan="6">Could not load customers. Check your connection and refresh.</td></tr>';
+            }
+        }
+        document.getElementById('custSearch').addEventListener('input', filter);
+        document.getElementById('custPrev').addEventListener('click', () => { page = Math.max(0, page - 1); render(); });
+        document.getElementById('custNext').addEventListener('click', () => { page += 1; render(); });
+        document.addEventListener('DOMContentLoaded', load);
+    })();
+    </script>
+
     <footer>
-        © 2026 Footprint
+        © 2026 OKWESIWA LTD
     </footer>
     <script>
         function toggleSidebar() {
@@ -163,7 +215,7 @@
             } finally {
                 localStorage.clear();
                 sessionStorage.clear();
-                window.location.replace('/login?logout=true');
+                (window.top || window).location.replace('/login?logout=true');
             }
         }
     </script>

@@ -1,5 +1,5 @@
 /**
- * Footprint - Enterprise Role-Based Access Control (RBAC) Auth Guard
+ * OKWESIWA LTD - Enterprise Role-Based Access Control (RBAC) Auth Guard
  * Enforces strict client-side route protection before DOM rendering.
  * Provides cryptographic JWT role verification, instant redirect on breach attempt,
  * security alerts, and live server session heartbeat.
@@ -58,12 +58,12 @@
 
     // 4. Define Role Groups
     const ROLES = {
-        CEO: ['ceo', 'admin'],
-        LEADERSHIP: ['ceo', 'admin', 'manager', 'store_manager', 'company', 'business_client'],
-        MANAGERS: ['ceo', 'admin', 'manager', 'store_manager'],
-        STAFF_ALL: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'],
-        COMPANY: ['company', 'business_client'],
-        ALL_USERS: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller', 'company', 'business_client']
+        CEO: ['super_admin', 'ceo', 'admin'],
+        LEADERSHIP: ['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'company', 'business_client'],
+        MANAGERS: ['super_admin', 'ceo', 'admin', 'manager', 'store_manager'],
+        STAFF_ALL: ['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller', 'storekeeper', 'driver'],
+        COMPANY: ['super_admin', 'company', 'business_client'],
+        ALL_USERS: ['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller', 'storekeeper', 'driver', 'company', 'business_client']
     };
 
     // 5. Define Route Permissions Matrix
@@ -79,14 +79,27 @@
 
         // Executive & Management Leadership
         '/ceo-portal': ROLES.CEO,
+        '/ceo-live': ROLES.CEO,
+        '/roles': ROLES.MANAGERS,
+        '/backups': ROLES.CEO,
+        '/activity-log': ROLES.MANAGERS,
         '/tax-management': ROLES.LEADERSHIP,
         '/settings': ROLES.LEADERSHIP,
+        '/business-settings': ROLES.MANAGERS,
+        '/notification-templates': ROLES.MANAGERS,
         '/locations': ROLES.LEADERSHIP,
 
-        // Management & Branch Store Operations (Manager / Admin only - Blocked for CEO & Cashier)
+        // Management & Branch Store Operations
         '/dashboard': ROLES.MANAGERS,
+        '/sell': ROLES.MANAGERS,
+        '/expenses': ROLES.MANAGERS,
+        '/stock-adjustments': ROLES.MANAGERS,
+        '/stock-transfers': ROLES.MANAGERS,
         '/inventory': ROLES.MANAGERS,
+        '/catalog-ops': ROLES.MANAGERS,
         '/reports': ROLES.MANAGERS,
+        '/core-reports': ROLES.MANAGERS,
+        '/all-reports': ROLES.MANAGERS,
         '/sales-dashboard': ROLES.MANAGERS,
         '/profitability': ROLES.MANAGERS,
         '/bulk-upload': ROLES.MANAGERS,
@@ -99,8 +112,19 @@
         '/credit-customers': ROLES.MANAGERS,
         '/pos-register': ROLES.MANAGERS,
 
+        // Hubs (each section shows an existing page) and the pages they host
+        '/team': ROLES.MANAGERS,
+        '/stock': ROLES.MANAGERS,
+        '/sales': ROLES.MANAGERS,
+        '/money': ROLES.MANAGERS,
+        '/till': ROLES.STAFF_ALL,
+        '/customers-list': ROLES.STAFF_ALL,
+
         // POS & Staff Operations (Cashier / Manager / Admin only - Blocked for CEO & Company)
         '/pos': ROLES.STAFF_ALL,
+        '/daily-close': ROLES.STAFF_ALL,
+        '/operations': ROLES.STAFF_ALL,
+        '/extras': ROLES.STAFF_ALL,
         '/open-shift': ROLES.STAFF_ALL,
         '/close-shift': ROLES.STAFF_ALL,
         '/payment': ROLES.STAFF_ALL,
@@ -119,7 +143,7 @@
     function getHomeRoute(role) {
         const r = normalizeRole(role);
         if (r === 'ceo') return '/ceo-portal';
-        if (r === 'admin') return '/dashboard';
+        if (r === 'super_admin' || r === 'admin') return '/dashboard';
         if (r === 'manager' || r === 'store_manager') return '/dashboard';
         if (r === 'cashier' || r === 'teller') return '/pos';
         if (r === 'company' || r === 'business_client') return '/company-portal';
@@ -128,6 +152,7 @@
 
     // 7. Execute Immediate Synchronous Auth & RBAC Check
     const currentRoute = getCurrentRoute();
+    const currentTab = new URLSearchParams(window.location.search).get('tab') || '';
     const token = localStorage.getItem('authToken') || localStorage.getItem('companyToken');
     const userPayload = parseJwt(token);
 
@@ -142,7 +167,7 @@
             sessionStorage.removeItem('rbac_violation');
             if (currentRoute !== '/login') {
                 document.documentElement.style.display = 'none';
-                window.location.replace('/login');
+                (window.top || window).location.replace('/login');
                 return;
             }
         }
@@ -170,7 +195,7 @@
             const role = (userPayload.role || userPayload.type || (userPayload.company_id ? 'company' : '')).toLowerCase();
             const home = getHomeRoute(role);
             if (home !== '/login') {
-                window.location.replace(home);
+                (window.top || window).location.replace(home);
                 return;
             }
         }
@@ -183,12 +208,14 @@
         // Not authenticated - redirect cleanly without setting phantom violation alerts
         document.documentElement.style.display = 'none';
         sessionStorage.removeItem('rbac_violation');
-        window.location.replace('/login');
+        (window.top || window).location.replace('/login');
         return;
     }
 
     const userRole = normalizeRole(userPayload.role || userPayload.type || (userPayload.company_id ? 'company' : ''));
-    const allowedRoles = ROUTE_PERMISSIONS[currentRoute];
+    const allowedRoles = (currentRoute === '/ceo-portal' && currentTab === 'tax-management')
+        ? ROLES.MANAGERS
+        : ROUTE_PERMISSIONS[currentRoute];
 
     // If route is unknown or user role is not permitted:
     const isAuthorized = Array.isArray(allowedRoles) && allowedRoles.includes(userRole);
@@ -207,7 +234,7 @@
         }));
 
         console.warn(`RBAC GUARD: Unauthorized navigation to ${currentRoute} by role ${userRole}. Redirecting to ${homeRoute}`);
-        window.location.replace(homeRoute && homeRoute !== currentRoute ? homeRoute : '/login');
+        (window.top || window).location.replace(homeRoute && homeRoute !== currentRoute ? homeRoute : '/login');
         return;
     }
 
@@ -271,7 +298,7 @@
                     localStorage.removeItem('companyUser');
                     localStorage.clear();
                     sessionStorage.removeItem('rbac_violation');
-                    window.location.replace('/login');
+                    (window.top || window).location.replace('/login');
                 }
             }
         } catch (e) {
@@ -375,7 +402,7 @@
                     document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
                 });
             } catch(e) {}
-            window.location.replace('/login?logout=true');
+            (window.top || window).location.replace('/login?logout=true');
         }
     };
 

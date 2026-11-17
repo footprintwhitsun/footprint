@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Adjustments - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" defer crossorigin="anonymous"></script>
+    <script src="/auth-guard.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <style>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { flex: 1; padding: 24px; max-width: 1360px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px 18px; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field label { font-size: 13px; font-weight: 600; color: var(--color-text); }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD"></div>
+        <nav class="nav-links"></nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap">
+            <div style="margin-bottom:16px;">
+                <h1 style="margin:0;font-size:24px;">Stock Adjustments</h1>
+                <p style="margin:4px 0 0;color:var(--color-text-muted);font-size:14px;">Review adjustment history, add a single adjustment, or submit bulk stock adjustments.</p>
+            </div>
+
+            <div class="okw-card" style="margin-bottom:16px;padding:12px 16px;">
+                <div class="okw-filter-bar">
+                    <label for="sa-view">Section</label>
+                    <select id="sa-view" class="okw-select">
+                        <option value="list">List Stock Adjustments</option>
+                        <option value="add">Add Stock Adjustment</option>
+                        <option value="bulk">Bulk Adjustment</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="okw-card" id="sa-panel">Loading...</div>
+        </div>
+        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA LTD</footer>
+    </main>
+</div>
+
+<script>
+(function () {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    let activeView = ['list', 'add', 'bulk'].includes(urlTab) ? urlTab : 'list';
+    const viewSel = document.getElementById('sa-view');
+    viewSel.value = activeView;
+    viewSel.addEventListener('change', () => { activeView = viewSel.value; render(); });
+
+    const fmtQty = (v) => {
+        const n = Number(v || 0);
+        return Number.isInteger(n) ? String(n) : String(parseFloat(n.toFixed(3)));
+    };
+
+    async function renderList() {
+        const res = await fetch('/api/stock-adjustments', { headers, credentials: 'include' });
+        const rows = await res.json().catch(() => []);
+        const panel = document.getElementById('sa-panel');
+        panel.innerHTML = `<div id="sa-tbl"></div>`;
+        OkwUI.dataTable('#sa-tbl', {
+            columns: [
+                { key: 'created_at', label: 'Date', render: v => v ? new Date(v).toLocaleString() : '' },
+                { key: 'product_name', label: 'Product' },
+                { key: 'product_barcode', label: 'Barcode' },
+                { key: 'adjustment_type', label: 'Type' },
+                { key: 'quantity_adjusted', label: 'Qty Adjusted', numeric: true, render: fmtQty },
+                { key: 'reason', label: 'Reason' },
+                { key: 'approver_name', label: 'By' }
+            ],
+            rows: Array.isArray(rows) ? rows : [],
+            exportFilename: 'okwesiwa-stock-adjustments.xlsx',
+            printTitle: 'Stock Adjustments'
+        });
+    }
+
+    function renderAdd() {
+        const panel = document.getElementById('sa-panel');
+        panel.innerHTML = `
+            <h2 style="margin:0 0 16px;font-size:18px;">Add Stock Adjustment</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;align-items:end;">
+                <div class="field" style="margin:0;">
+                    <label style="display:block;margin-bottom:6px;">Product Barcode or Name:*</label>
+                    <input type="text" id="sa-q" class="okw-input" placeholder="Scan barcode or type name..." style="width:100%;height:38px;">
+                </div>
+                <div class="field" style="margin:0;">
+                    <label style="display:block;margin-bottom:6px;">Adjustment Type:</label>
+                    <select id="sa-type" class="okw-select" style="width:100%;height:38px;">
+                        <option value="Increase">Increase (+)</option>
+                        <option value="Decrease">Decrease (-)</option>
+                        <option value="Damage">Damage (-)</option>
+                        <option value="Correction">Correction (+/-)</option>
+                    </select>
+                </div>
+                <div class="field" style="margin:0;">
+                    <label style="display:block;margin-bottom:6px;">Quantity:*</label>
+                    <input type="number" step="any" id="sa-qty" class="okw-input" placeholder="0" style="width:100%;height:38px;">
+                </div>
+                <div class="field" style="margin:0;">
+                    <label style="display:block;margin-bottom:6px;">Reason:</label>
+                    <input type="text" id="sa-reason" class="okw-input" placeholder="Physical count / damage..." style="width:100%;height:38px;">
+                </div>
+            </div>
+            <div style="margin-top:18px;display:flex;justify-content:flex-end;">
+                <button type="button" class="okw-btn okw-btn-primary" id="sa-save" style="height:38px;padding:0 20px;">Save Adjustment</button>
+            </div>
+        `;
+        OkwUI.productTypeahead('#sa-q');
+        document.getElementById('sa-save').onclick = async () => {
+            const q = document.getElementById('sa-q').value.trim();
+            const type = document.getElementById('sa-type').value;
+            let qty = Number(document.getElementById('sa-qty').value);
+            const reason = document.getElementById('sa-reason').value.trim();
+            if (!q || !Number.isFinite(qty) || qty === 0) return OkwUI.toast('Enter product and non-zero quantity', 'warning');
+            const sr = await fetch(`/api/pos/search?q=${encodeURIComponent(q)}&limit=1`, { headers, credentials: 'include' });
+            const sd = await sr.json().catch(() => ({}));
+            const prod = (sd.products || [])[0];
+            if (!prod) return OkwUI.toast('Product not found', 'danger');
+            if ((type === 'Decrease' || type === 'Damage') && qty > 0) qty = -qty;
+            const r = await fetch('/api/stock-adjustments', {
+                method: 'POST', headers, credentials: 'include',
+                body: JSON.stringify({ product_barcode: prod.barcode, adjustment_type: type, quantity_adjusted: qty, reason })
+            });
+            if (r.ok) { OkwUI.toast('Stock adjustment saved', 'success'); activeView = 'list'; viewSel.value = 'list'; render(); }
+            else OkwUI.toast('Failed to save adjustment', 'danger');
+        };
+    }
+
+    function renderBulk() {
+        const staged = [];
+        const panel = document.getElementById('sa-panel');
+        panel.innerHTML = `
+            <h2 style="margin:0 0 12px;font-size:18px;">Bulk Adjustment</h2>
+            <div class="okw-filter-bar" style="margin-bottom:14px;">
+                <input type="text" id="ba-q" class="okw-input" placeholder="Scan barcode or item name...">
+                <select id="ba-type" class="okw-select"><option value="Increase">Increase (+)</option><option value="Decrease">Decrease (-)</option><option value="Correction">Correction</option></select>
+                <input type="number" step="any" id="ba-qty" class="okw-input" placeholder="Qty">
+                <input type="text" id="ba-reason" class="okw-input" placeholder="Reason">
+                <button type="button" class="okw-btn okw-btn-outline" id="ba-add">Add Row</button>
+                <button type="button" class="okw-btn okw-btn-accent" id="ba-submit">Submit Bulk Adjustments</button>
+            </div>
+            <div id="ba-tbl"></div>
+        `;
+        const drawTable = () => OkwUI.dataTable('#ba-tbl', {
+            columns: [
+                { key: 'name', label: 'Product' },
+                { key: 'product_barcode', label: 'Barcode' },
+                { key: 'adjustment_type', label: 'Type' },
+                { key: 'quantity_adjusted', label: 'Qty Adjusted', numeric: true, render: fmtQty },
+                { key: 'reason', label: 'Reason' }
+            ],
+            rows: staged,
+            exportFilename: 'okwesiwa-bulk-adjustment-draft.xlsx'
+        });
+        drawTable();
+        OkwUI.productTypeahead('#ba-q');
+
+        document.getElementById('ba-add').onclick = async () => {
+            const q = document.getElementById('ba-q').value.trim();
+            const type = document.getElementById('ba-type').value;
+            let qty = Number(document.getElementById('ba-qty').value);
+            const reason = document.getElementById('ba-reason').value.trim() || 'Bulk Adjustment';
+            if (!q || !Number.isFinite(qty) || qty === 0) return OkwUI.toast('Enter product and non-zero qty', 'warning');
+            const sr = await fetch(`/api/pos/search?q=${encodeURIComponent(q)}&limit=1`, { headers, credentials: 'include' });
+            const sd = await sr.json().catch(() => ({}));
+            const prod = (sd.products || [])[0];
+            if (!prod) return OkwUI.toast('Product not found', 'danger');
+            if (type === 'Decrease' && qty > 0) qty = -qty;
+            staged.push({ name: prod.name, product_barcode: prod.barcode, adjustment_type: type, quantity_adjusted: qty, reason });
+            document.getElementById('ba-q').value = '';
+            document.getElementById('ba-qty').value = '';
+            drawTable();
+        };
+
+        document.getElementById('ba-submit').onclick = async () => {
+            if (!staged.length) return OkwUI.toast('Add at least one item first', 'warning');
+            const r = await fetch('/api/stock-adjustments/bulk', {
+                method: 'POST', headers, credentials: 'include',
+                body: JSON.stringify({ adjustments: staged })
+            });
+            if (r.ok) {
+                OkwUI.toast(`Saved ${staged.length} adjustments`, 'success');
+                activeView = 'list';
+                viewSel.value = 'list';
+                render();
+            } else {
+                OkwUI.toast('Bulk adjustment failed', 'danger');
+            }
+        };
+    }
+
+    function render() {
+        if (activeView === 'add') renderAdd();
+        else if (activeView === 'bulk') renderBulk();
+        else renderList();
+    }
+    render();
+})();
+</script>
+</body>
+</html>
+

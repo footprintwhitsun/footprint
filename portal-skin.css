@@ -1,0 +1,2202 @@
+/* ==========================================================================
+   OKWESIWA LTD — Portal skin: "framed sheet"
+   Loaded LAST on every page that uses sidebar.css (CEO, company, manager,
+   teller). It re-skins the shared shell and the common components without
+   touching page logic.
+
+   The move: one stone-tinted frame holds the sidebar and a 48px top bar with
+   no rule between them; the work sits on a white sheet inset 8px from the
+   window's right and bottom edges, 1px edge, 16px corners, no shadow.
+   Colour budget: under 3% — the brand lives in the logo, the primary action
+   and a 2px marker; the data carries the chroma.
+
+   Grid arithmetic (1440 wide): sidebar 236 + sheet (1440-236-8 = 1196)
+   - 2*24 padding = 1148 content. KPI strip: one container, N equal cells
+   split by 1px dividers, so the cells always land on both content edges.
+   ========================================================================== */
+
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=Archivo:wght@500;600;700&display=swap');
+
+/* ---- 1. Tokens -------------------------------------------------------- */
+:root,
+[data-theme="light"] {
+    --frame: #F3F5FB;
+    /* crisp cool-white canvas (no cream tint) */
+    --frame-hover: rgba(39, 57, 144, 0.06);
+    --frame-active: rgba(39, 57, 144, 0.10);
+    --sheet: #FFFFFF;
+    --sheet-2: #EEF1F8;
+    /* clean light slate step under the white sheet */
+    --edge: #E3E7F1;
+    --edge-strong: #CBD5E1;
+    --ink: #0F172A;
+    --ink-2: #334155;
+    --muted: #64748B;
+    --brand: #273990;
+    /* favicon royal blue */
+    --brand-hover: #1C2B70;
+    --brick: #F9A51A;
+    /* favicon golden yellow */
+    --data: #273990;
+    /* primary chart hue */
+    --ok: #15803D;
+    --ok-bg: #E4F3E9;
+    --warn: #B45309;
+    --warn-bg: #FEF3C7;
+    --bad: #B91C1C;
+    --bad-bg: #FEE2E2;
+    --info: #1D4ED8;
+    --info-bg: #DBEAFE;
+    --radius: 8px;
+    --sheet-radius: 16px;
+    --gutter: 16px;
+    --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+    /* re-point the legacy variables every page already reads */
+    --sidebar-width: 236px;
+    --topbar-height: 48px;
+    --color-bg: var(--frame);
+    --color-surface: var(--sheet);
+    --color-surface-muted: var(--sheet-2);
+    --color-border: var(--edge);
+    --color-border-strong: var(--edge-strong);
+    --color-text: var(--ink);
+    --color-text-muted: var(--muted);
+    --color-primary: var(--brand);
+    --color-primary-hover: var(--brand-hover);
+    --color-accent: var(--brick);
+    --color-sidebar: var(--frame);
+    --color-sidebar-text: var(--ink-2);
+    --color-sidebar-muted: var(--muted);
+    --text-color: var(--ink);
+    --text-main: var(--ink);
+    --primary-color: var(--brand);
+    --p-background: var(--sheet);
+    --font-sans: var(--font-ui);
+    --p-font-family: var(--font-ui);
+    --p-sidebar-bg: var(--frame);
+    --p-sidebar-text: var(--ink-2);
+    --p-sidebar-border: transparent;
+}
+
+[data-theme="dark"] {
+    --frame: #0E131A;
+    --frame-hover: rgba(255, 255, 255, 0.06);
+    --frame-active: rgba(255, 255, 255, 0.10);
+    --sheet: #151C26;
+    --sheet-2: #19212C;
+    --edge: #263140;
+    --edge-strong: #36445A;
+    --ink: #E8ECF1;
+    --ink-2: #C3CBD6;
+    --muted: #97A3B3;
+    --brand: #7FA3D6;
+    --brand-hover: #9ABAE3;
+    --brick: #F29A5A;
+    --data: #7FA3D6;
+    --ok: #4ADE80;
+    --ok-bg: rgba(74, 222, 128, 0.14);
+    --warn: #F5B461;
+    --warn-bg: rgba(245, 180, 97, 0.14);
+    --bad: #F87171;
+    --bad-bg: rgba(248, 113, 113, 0.14);
+    --info: #7DC3EB;
+    --info-bg: rgba(125, 195, 235, 0.14);
+}
+
+/* ---- 2. Base ---------------------------------------------------------- */
+html {
+    color-scheme: light;
+}
+
+[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+body {
+    background: var(--frame) !important;
+    color: var(--ink) !important;
+    font-family: var(--font-ui) !important;
+    font-size: 14px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    font-variant-numeric: tabular-nums;
+}
+
+button,
+input,
+select,
+textarea {
+    font-family: var(--font-ui);
+}
+
+h1,
+h2,
+h3,
+h4 {
+    color: var(--ink);
+    letter-spacing: -0.01em;
+}
+
+h1,
+.header h1,
+.header-title h2,
+.header-title h1 {
+    font-size: 22px;
+    font-weight: 600;
+}
+
+.card-title,
+.section-title,
+.section-title-v3,
+.modal-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+p,
+.header p,
+.header-title p {
+    color: var(--muted);
+}
+
+a {
+    text-underline-offset: 2px;
+}
+
+:focus-visible {
+    outline: 2px solid var(--brick) !important;
+    outline-offset: 2px !important;
+}
+
+/* ---- 3. Frame: sidebar ------------------------------------------------ */
+.sidebar {
+    width: var(--sidebar-width) !important;
+    background: var(--frame) !important;
+    border-right: 0 !important;
+    box-shadow: none !important;
+    color: var(--ink-2) !important;
+}
+
+.sidebar .brand {
+    padding: 16px 16px 8px !important;
+    border-bottom: 0 !important;
+    align-items: flex-start !important;
+    gap: 6px !important;
+}
+
+.sidebar .brand img {
+    height: 32px !important;
+    max-width: 168px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.sidebar .brand img:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+body.sidebar-collapsed .sidebar .brand {
+    padding: 8px 0 !important;
+    min-height: 8px !important;
+    align-items: center !important;
+}
+
+body.sidebar-collapsed .sidebar .brand img,
+body.sidebar-collapsed .sidebar .brand span,
+body.sidebar-collapsed .sidebar .sidebar-role-badge {
+    display: none !important;
+}
+
+/* the role pill becomes one quiet line of text */
+.sidebar-role-badge {
+    padding: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--muted) !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+}
+
+.sidebar-role-badge::before {
+    display: none !important;
+}
+
+.sidebar .nav-links {
+    padding: 4px 8px !important;
+    gap: 0 !important;
+}
+
+.sidebar .nav-section {
+    padding: 20px 10px 6px !important;
+    margin: 0 !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    color: var(--muted) !important;
+}
+
+.sidebar .nav-section::after {
+    display: none !important;
+}
+
+.sidebar .nav-section-toggle {
+    width: 100%;
+    height: 36px !important;
+    background: transparent !important;
+    border: 0 !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    gap: 10px !important;
+    padding: 0 10px !important;
+    margin: 2px 0 !important;
+    cursor: pointer !important;
+    border-radius: var(--radius) !important;
+    color: var(--ink-2) !important;
+    font-family: inherit !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    transition: background-color 140ms ease, color 140ms ease !important;
+}
+
+.sidebar .nav-section-toggle svg:first-child {
+    width: 16px !important;
+    height: 16px !important;
+    color: var(--muted) !important;
+    flex-shrink: 0 !important;
+}
+
+.sidebar .nav-section-toggle .nav-group-text {
+    flex: 1;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar .nav-section-toggle:hover,
+.sidebar .nav-section-toggle.has-active {
+    background: var(--frame-hover) !important;
+    color: var(--ink) !important;
+}
+
+.sidebar .nav-section-toggle:hover svg:first-child,
+.sidebar .nav-section-toggle.has-active svg:first-child {
+    color: var(--ink) !important;
+}
+
+.sidebar .nav-section-toggle.has-active {
+    font-weight: 600 !important;
+}
+
+.sidebar .nav-chevron {
+    width: 14px;
+    height: 14px;
+    opacity: 0.7;
+    flex-shrink: 0;
+    transition: transform 180ms ease;
+    transform: rotate(-90deg);
+}
+
+.sidebar .nav-section-toggle[aria-expanded="true"] .nav-chevron {
+    transform: rotate(0deg);
+}
+
+.sidebar .nav-group-items {
+    padding: 2px 0 6px 12px;
+    gap: 2px;
+}
+
+body.sidebar-collapsed .sidebar .nav-section-toggle {
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    padding: 0 !important;
+    height: 38px !important;
+    gap: 0 !important;
+}
+
+body.sidebar-collapsed .sidebar .nav-section-toggle .nav-group-text,
+body.sidebar-collapsed .sidebar .nav-chevron,
+body.sidebar-collapsed .sidebar .nav-group-items {
+    display: none !important;
+}
+
+/* Uniform straight-line filter bar & controls */
+.okw-filter-bar,
+.okw-date-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: nowrap;
+}
+
+.okw-filter-bar {
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.okw-filter-bar .okw-select,
+.okw-filter-bar .okw-input,
+.okw-filter-bar .okw-btn,
+.okw-date-row .okw-select,
+.okw-date-row .okw-input {
+    height: 38px !important;
+    min-height: 38px !important;
+    padding: 0 12px !important;
+    font-size: 13px !important;
+    line-height: 36px !important;
+    border-radius: 8px !important;
+    box-sizing: border-box !important;
+    flex: 0 0 auto;
+    margin: 0 !important;
+}
+
+.okw-filter-bar .okw-select,
+.okw-filter-bar .okw-input[type="text"] {
+    width: 175px !important;
+    min-width: 150px !important;
+}
+
+.okw-date-row .okw-select {
+    width: 150px !important;
+}
+
+.okw-date-row .okw-input[type="date"] {
+    width: 142px !important;
+}
+
+.okw-filter-bar label {
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    color: var(--muted) !important;
+    white-space: nowrap;
+    flex: 0 0 auto;
+}
+
+@media (max-width: 900px) {
+
+    .okw-filter-bar,
+    .okw-date-row {
+        flex-wrap: wrap;
+    }
+}
+
+.sidebar .nav-item,
+.sidebar .nav-links a {
+    min-height: 34px;
+    padding: 6px 10px !important;
+    margin: 1px 0 !important;
+    gap: 10px !important;
+    color: var(--ink-2) !important;
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    line-height: 1.3 !important;
+    border-radius: var(--radius) !important;
+    transition: background-color 120ms ease-out, color 120ms ease-out !important;
+}
+
+.sidebar .nav-item i,
+.sidebar .nav-links a i,
+.sidebar .nav-item svg,
+.sidebar .nav-links a svg {
+    color: var(--muted) !important;
+    width: 16px !important;
+    height: 16px !important;
+    transform: none !important;
+}
+
+.sidebar .nav-item:hover,
+.sidebar .nav-links a:hover {
+    background: var(--frame-hover) !important;
+    color: var(--ink) !important;
+}
+
+.sidebar .nav-item:hover i,
+.sidebar .nav-item:hover svg,
+.sidebar .nav-links a:hover i,
+.sidebar .nav-links a:hover svg {
+    color: var(--ink) !important;
+    transform: none !important;
+}
+
+/* active: a neutral pill, label unchanged in size; no coloured bar, no glow */
+.sidebar .nav-item.active,
+.sidebar .nav-links a.active {
+    background: var(--frame-active) !important;
+    color: var(--ink) !important;
+    font-weight: 500 !important;
+    box-shadow: none !important;
+}
+
+.sidebar .nav-item.active i,
+.sidebar .nav-item.active svg,
+.sidebar .nav-links a.active i,
+.sidebar .nav-links a.active svg {
+    color: var(--ink) !important;
+    transform: none !important;
+}
+
+.nav-item.active::before {
+    display: none !important;
+}
+
+/* account row */
+.sidebar .user-profile,
+.sidebar>div:last-child {
+    margin: 8px !important;
+    padding: 8px !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-radius: var(--radius) !important;
+    box-shadow: none !important;
+}
+
+.sidebar .user-profile:hover,
+.sidebar>div:last-child:hover {
+    background: var(--frame-hover) !important;
+}
+
+.sidebar .user-avatar {
+    background: var(--sheet) !important;
+    border: 1px solid var(--edge) !important;
+    box-shadow: none !important;
+    color: var(--ink-2) !important;
+}
+
+.sidebar .user-avatar i {
+    color: var(--ink-2) !important;
+}
+
+.sidebar .user-info #userName,
+.sidebar .user-info div:first-child {
+    color: var(--ink) !important;
+    font-weight: 500 !important;
+}
+
+.sidebar .user-info #userRole,
+.sidebar .user-info div:last-child {
+    color: var(--muted) !important;
+    font-size: 12px !important;
+}
+
+.sidebar .sidebar-logout-btn,
+.sidebar .user-profile [onclick*="logout"] {
+    background: transparent !important;
+    border: 0 !important;
+    color: var(--muted) !important;
+    transform: none !important;
+    box-shadow: none !important;
+    transition: background-color 120ms ease-out, color 120ms ease-out !important;
+}
+
+.sidebar .sidebar-logout-btn:hover {
+    background: var(--frame-hover) !important;
+    color: var(--bad) !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Hide legacy tile grids and back-to-menu links immediately before first paint */
+.menu-grid,
+.back-link {
+    display: none !important;
+}
+
+/* ---- 4. Frame: top bar + the white sheet ------------------------------ */
+.okw-topbar {
+    position: fixed !important;
+    top: 0;
+    left: var(--sidebar-width);
+    right: 0;
+    height: var(--topbar-height) !important;
+    padding: 0 16px !important;
+    background: var(--frame) !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    z-index: 900;
+    display: grid !important;
+    grid-template-columns: 1fr auto 1fr !important;
+    align-items: center !important;
+    gap: 12px !important;
+}
+
+body.sidebar-collapsed .okw-topbar {
+    left: var(--sidebar-collapsed-width, 72px);
+}
+
+.okw-topbar-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    justify-self: start;
+}
+
+.okw-topbar-center {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    justify-self: center;
+}
+
+.okw-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    justify-self: end;
+}
+
+.okw-topbar-avatar {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #273990;
+    color: #ffffff !important;
+    border: 1.5px solid #F9A51A;
+    font-size: 11px;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    flex-shrink: 0;
+    margin-left: 2px;
+}
+
+.okw-topbar-avatar:hover {
+    opacity: 0.9;
+}
+
+.okw-icon-btn {
+    height: 32px !important;
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--ink-2) !important;
+    border-radius: var(--radius) !important;
+}
+
+.okw-icon-btn:hover {
+    background: var(--frame-hover) !important;
+    color: var(--ink) !important;
+    border: 0 !important;
+}
+
+.okw-topbar-heading {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.2;
+    margin: 0 4px;
+}
+
+.okw-topbar-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--ink);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.okw-topbar-sub {
+    font-size: 11px;
+    color: var(--muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 30vw;
+}
+
+/* A page names itself with its own title. Only a page shown inside a hub frame hides it, because the hub already names it. */
+.okw-embed .page-wrap>h1,
+.okw-embed .page-wrap>h1+p,
+.okw-embed .page-wrap>div:first-child h1,
+.okw-embed .page-wrap>div:first-child h1+p,
+.okw-embed .main-content>.page-header h1,
+.okw-embed .main-content>.page-header h2,
+.okw-embed .main-content>.page-header p,
+.okw-embed .tab-content>.page-header h1,
+.okw-embed .tab-content>.page-header h2,
+.okw-embed .tab-content>.page-header p,
+.okw-embed .main-content>.header .header-title,
+.okw-embed .page-wrap>.header .header-title,
+.okw-embed .main-content>div:first-of-type>h1,
+.okw-embed .main-content>div:first-of-type>h1+p {
+    display: none !important;
+}
+
+.okw-search-trigger {
+    margin: 0 !important;
+    width: 240px !important;
+    max-width: 100% !important;
+    min-width: 160px !important;
+    padding: 0 10px !important;
+    background: var(--sheet) !important;
+    border: 1px solid var(--edge) !important;
+    color: var(--muted) !important;
+    font-weight: 400 !important;
+}
+
+.okw-search-trigger .label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+}
+
+.okw-notif-wrap {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.okw-notif-badge {
+    position: absolute;
+    top: -4px;
+    right: -4px;
+    min-width: 16px;
+    height: 16px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #dc2626;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 16px;
+    text-align: center;
+    pointer-events: none;
+}
+
+.okw-notif-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 360px;
+    max-width: 92vw;
+    max-height: 440px;
+    display: none;
+    flex-direction: column;
+    background: var(--sheet, #ffffff);
+    color: var(--ink, #0f172a);
+    border: 1px solid var(--edge, #e2e8f0);
+    border-radius: 10px;
+    box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+    z-index: 10040;
+    overflow: hidden;
+}
+
+.okw-search-trigger:hover {
+    border-color: var(--edge-strong) !important;
+    background: var(--sheet) !important;
+}
+
+.okw-kbd {
+    font-family: var(--font-ui) !important;
+    font-size: 11px !important;
+    border: 1px solid var(--edge) !important;
+    background: var(--sheet-2) !important;
+}
+
+/* the branch switcher saved a value nothing reads (see UI_UX_AUDIT.md B-03) */
+#okw-branch-switcher {
+    display: none !important;
+}
+
+.main-content {
+    margin: var(--topbar-height) 8px 8px var(--sidebar-width) !important;
+    padding: 24px !important;
+    width: auto !important;
+    min-height: calc(100dvh - var(--topbar-height) - 8px) !important;
+    background: var(--sheet) !important;
+    border: 1px solid var(--edge);
+    border-radius: var(--sheet-radius);
+    box-shadow: none !important;
+}
+
+body.sidebar-collapsed .main-content {
+    margin-left: var(--sidebar-collapsed-width, 72px) !important;
+}
+
+.main-content>.okw-topbar~* {
+    max-width: 100%;
+}
+
+/* page title row: noun + one grey sentence, actions on the right */
+.header,
+header.header {
+    margin-bottom: 20px !important;
+    align-items: center !important;
+}
+
+.header h1,
+.header-title h2 {
+    margin: 0 0 2px !important;
+}
+
+.header p,
+.header-title p {
+    margin: 0;
+    font-size: 14px;
+}
+
+/* ---- 5. KPIs: type, not tiles ----------------------------------------- */
+/* One container split by 1px dividers; icon chips, shadows and hover lifts go. */
+.kpi-grid,
+.stats-grid,
+.analytic-grid {
+    display: flex !important;
+    flex-wrap: nowrap;
+    gap: 0 !important;
+    padding: 0 !important;
+    margin: 0 0 24px !important;
+    background: transparent !important;
+    border: 1px solid var(--edge);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.kpi-grid>.kpi-card,
+.stats-grid>.stat-card,
+.analytic-grid>.kpi-card {
+    flex: 1 1 0;
+    min-width: 0;
+    container-type: inline-size;
+    padding: 16px 20px !important;
+    background: transparent !important;
+    border: 0 !important;
+    border-right: 1px solid var(--edge) !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.kpi-grid> :last-child,
+.stats-grid> :last-child,
+.analytic-grid> :last-child {
+    border-right: 0 !important;
+}
+
+.kpi-card:hover,
+.stat-card:hover {
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+.kpi-icon,
+.stat-icon,
+.kpi-label i,
+.kpi-title i,
+.sparkline-svg,
+.header-title h2 i {
+    display: none !important;
+}
+
+.kpi-title,
+.kpi-label,
+.stat-info p,
+.stat-info span {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    color: var(--muted) !important;
+}
+
+.kpi-value,
+.stat-info h3,
+.stat-info h2 {
+    margin: 4px 0 2px !important;
+    font-size: 26px !important;
+    font-size: min(26px, 11.5cqw) !important;
+    /* a 13-character amount never wraps in a narrow cell */
+    white-space: nowrap;
+    font-weight: 400 !important;
+    line-height: 1.2 !important;
+    letter-spacing: -0.01em !important;
+    color: var(--ink) !important;
+    font-variant-numeric: tabular-nums;
+}
+
+.kpi-sub,
+.kpi-trend {
+    font-size: 12px !important;
+    font-weight: 400 !important;
+    color: var(--muted) !important;
+    background: transparent !important;
+    padding: 0 !important;
+}
+
+.stat-card {
+    display: block !important;
+}
+
+.stat-info {
+    display: block !important;
+}
+
+/* ---- 6. Cards, tables, controls --------------------------------------- */
+.card,
+.table-card,
+.chart-card,
+.menu-card,
+.panel,
+.form-card,
+.content-section,
+.analytic-section,
+.recent-section,
+.table-container,
+.goal-card,
+.stock-card {
+    background: var(--sheet) !important;
+    color: var(--ink) !important;
+    border: 1px solid var(--edge) !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+}
+
+.card:hover,
+.menu-card:hover,
+.chart-card:hover,
+.table-card:hover {
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.menu-card:hover {
+    border-color: var(--edge-strong) !important;
+    background: var(--sheet-2) !important;
+}
+
+.card-header,
+.section-header,
+.section-header-v3 {
+    border-bottom: 0 !important;
+    background: transparent !important;
+}
+
+/* the "AI insight" panel and the target card: flat, one ground each */
+.ai-panel {
+    background: var(--sheet-2) !important;
+    border: 1px solid var(--edge) !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+}
+
+.ai-panel h2,
+.ai-panel h3 {
+    color: var(--ink) !important;
+}
+
+.goal-tracker-card,
+.target-card,
+[class*="goal-"][class*="card"] {
+    background: #273990 !important;
+    box-shadow: none !important;
+}
+
+table {
+    border-collapse: collapse;
+    font-variant-numeric: tabular-nums;
+}
+
+thead,
+thead tr,
+thead th {
+    background: transparent !important;
+    background-image: none !important;
+}
+
+thead th,
+thead tr th {
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    color: var(--muted) !important;
+    padding: 10px 12px !important;
+    border-bottom: 1px solid var(--edge-strong) !important;
+    text-align: left;
+}
+
+tbody tr {
+    border-bottom: 1px solid var(--edge) !important;
+    background: transparent !important;
+}
+
+tbody tr:nth-child(even) {
+    background: transparent !important;
+}
+
+tbody tr:hover {
+    background: var(--sheet-2) !important;
+}
+
+tbody tr td {
+    padding: 10px 12px !important;
+    font-size: 14px;
+    color: var(--ink);
+}
+
+td.numeric,
+th.numeric,
+td.num,
+th.num,
+td[data-align="right"] {
+    text-align: right !important;
+    font-variant-numeric: tabular-nums;
+}
+
+.table-scroll-wrapper,
+.table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* buttons: flat, one fill, 8px */
+.btn,
+.btn-control,
+.btn-white,
+.btn-primary,
+.btn-sm,
+.okw-btn,
+button.btn {
+    border-radius: var(--radius) !important;
+    box-shadow: none !important;
+    font-family: var(--font-ui) !important;
+    font-weight: 500 !important;
+    min-height: 34px;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+    transition: background-color 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out, transform 90ms ease-out !important;
+}
+
+.btn:active,
+.btn-control:active,
+.btn-primary:active,
+.okw-btn:active {
+    transform: scale(0.98);
+}
+
+.btn-primary,
+.btn-pay-main,
+.btn-invoice {
+    background: var(--brand) !important;
+    background-image: none !important;
+    border: 1px solid var(--brand) !important;
+    color: #fff !important;
+}
+
+[data-theme="dark"] .btn-primary,
+[data-theme="dark"] .btn-pay-main,
+[data-theme="dark"] .btn-invoice {
+    color: #0E131A !important;
+}
+
+.btn-primary:hover,
+.btn-pay-main:hover,
+.btn-invoice:hover {
+    background: var(--brand-hover) !important;
+    border-color: var(--brand-hover) !important;
+}
+
+.btn-white,
+.btn-control.btn-white,
+.btn-proforma {
+    background: var(--sheet) !important;
+    background-image: none !important;
+    border: 1px solid var(--edge-strong) !important;
+    color: var(--ink) !important;
+}
+
+.btn-white:hover,
+.btn-proforma:hover {
+    background: var(--sheet-2) !important;
+    border-color: var(--ink-2) !important;
+}
+
+.btn-danger,
+.okw-btn-danger {
+    background: var(--bad) !important;
+    background-image: none !important;
+    border: 1px solid var(--bad) !important;
+    color: #fff !important;
+}
+
+.btn-success {
+    background: var(--ok) !important;
+    background-image: none !important;
+    border: 1px solid var(--ok) !important;
+    color: #fff !important;
+}
+
+.okw-btn-primary,
+.pos-btn-action.primary,
+.okw-btn-accent {
+    background: var(--brand) !important;
+    background-image: none !important;
+    border: 1px solid var(--brand) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .okw-btn-primary,
+[data-theme="dark"] .pos-btn-action.primary,
+[data-theme="dark"] .okw-btn-accent {
+    color: #0E131A !important;
+}
+
+.okw-btn-primary:hover,
+.pos-btn-action.primary:hover,
+.okw-btn-accent:hover {
+    background: var(--brand-hover) !important;
+    border-color: var(--brand-hover) !important;
+    color: #ffffff !important;
+}
+
+[data-theme="dark"] .okw-btn-primary:hover,
+[data-theme="dark"] .pos-btn-action.primary:hover,
+[data-theme="dark"] .okw-btn-accent:hover {
+    color: #0E131A !important;
+}
+
+.okw-btn-outline,
+.pos-btn-action:not(.primary) {
+    background: var(--sheet) !important;
+    background-image: none !important;
+    border: 1px solid var(--edge-strong) !important;
+    color: var(--ink) !important;
+}
+
+.okw-btn-outline:hover,
+.pos-btn-action:not(.primary):hover {
+    background: var(--sheet-2) !important;
+    border-color: var(--ink-2) !important;
+    color: var(--ink) !important;
+}
+
+input[type="text"],
+input[type="number"],
+input[type="email"],
+input[type="password"],
+input[type="search"],
+input[type="date"],
+input[type="tel"],
+select,
+textarea,
+.form-input,
+.control-select,
+.input-field {
+    min-height: 36px;
+    border: 1px solid var(--edge-strong) !important;
+    border-radius: var(--radius) !important;
+    background: var(--sheet) !important;
+    color: var(--ink) !important;
+    font-size: 14px;
+    box-shadow: none !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--brand) !important;
+}
+
+.form-label,
+label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--ink-2);
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+}
+
+/* status: pale tint with dark text of the same hue, never squeezed */
+.status-badge,
+.badge,
+.tag,
+table .tag,
+.okw-badge {
+    display: inline-flex;
+    align-items: center;
+    flex: none;
+    white-space: nowrap;
+    padding: 2px 8px !important;
+    border-radius: 999px !important;
+    border: 0 !important;
+    font-size: 12px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    box-shadow: none !important;
+    background-image: none !important;
+}
+
+.status-paid,
+.status-accepted,
+.status-active,
+.status-completed,
+.badge-instock {
+    background: var(--ok-bg) !important;
+    color: var(--ok) !important;
+}
+
+.status-sent,
+.status-processing {
+    background: var(--info-bg) !important;
+    color: var(--info) !important;
+}
+
+.status-unpaid,
+.status-pending,
+.badge-lowstock {
+    background: var(--warn-bg) !important;
+    color: var(--warn) !important;
+}
+
+.status-overdue,
+.status-inactive,
+.status-failed,
+.badge-outstock {
+    background: var(--bad-bg) !important;
+    color: var(--bad) !important;
+}
+
+.status-draft,
+.status-unknown {
+    background: var(--frame) !important;
+    color: var(--muted) !important;
+}
+
+.status-badge::before {
+    display: none !important;
+}
+
+/* floating things may carry a shadow; the page behind them doesn't blur */
+.modal,
+.modal-overlay,
+.overlay,
+.sidebar-overlay {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+    background: rgba(14, 19, 26, 0.5) !important;
+}
+
+.modal-content,
+.modal-container,
+.modal-box {
+    border-radius: 12px !important;
+    border: 1px solid var(--edge) !important;
+    background: var(--sheet) !important;
+    color: var(--ink);
+    box-shadow: 0 12px 32px rgba(14, 19, 26, 0.18) !important;
+}
+
+.modal-header {
+    background: var(--sheet) !important;
+    background-image: none !important;
+    color: var(--ink) !important;
+    border-bottom: 1px solid var(--edge) !important;
+}
+
+.modal-header,
+.modal-header * {
+    color: var(--ink) !important;
+}
+
+.modal-footer {
+    border-top: 1px solid var(--edge) !important;
+    background: transparent !important;
+}
+
+/* ---- 7. Footer + app chrome ------------------------------------------- */
+.app-footer,
+footer:not(.okw-sub-footer):not(.pos-live-footer) {
+    background: transparent !important;
+    border: 0 !important;
+    color: var(--muted) !important;
+    font-size: 12px !important;
+    box-shadow: none !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    margin-left: 0 !important;
+}
+
+body:has(.sidebar) footer:not(.okw-sub-footer):not(.pos-live-footer) {
+    margin-left: var(--sidebar-width) !important;
+}
+
+footer.pos-live-footer,
+footer.okw-sub-footer,
+.ticker-wrap.okw-sub-footer {
+    background: #273990 !important;
+    color: #ffffff !important;
+    border-top: 2px solid #F9A51A !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
+
+/* ---- 8. Phone: the frame disappears, the sheet is the screen ---------- */
+@media (max-width: 992px) {
+
+    :root,
+    [data-theme="light"],
+    [data-theme="dark"] {
+        --sidebar-width: 0px;
+    }
+
+    .sidebar {
+        width: min(288px, 86vw) !important;
+        background: var(--frame) !important;
+    }
+
+    .okw-topbar {
+        left: 0 !important;
+        padding: 0 8px !important;
+    }
+
+    .main-content,
+    body.sidebar-collapsed .main-content {
+        margin: var(--topbar-height) 0 0 0 !important;
+        padding: 16px !important;
+        border: 0;
+        border-radius: 0;
+        min-height: calc(100dvh - var(--topbar-height)) !important;
+        max-width: 100vw;
+    }
+
+    /* the pages' own floating hamburger duplicates the top bar's */
+    .mobile-menu-btn,
+    .menu-toggle,
+    #mobileMenuBtn {
+        display: none !important;
+    }
+
+    .okw-search-trigger {
+        width: auto;
+        margin: 0 !important;
+    }
+
+    .header,
+    header.header {
+        flex-direction: column;
+        align-items: stretch !important;
+        gap: 12px;
+    }
+
+    .header-controls,
+    .header-actions,
+    .actions {
+        flex-wrap: wrap;
+        width: 100%;
+    }
+
+    .header-controls>*,
+    .header-actions>* {
+        flex: 1 1 140px;
+        min-width: 0;
+    }
+
+    /* KPI strip becomes two columns; an odd last cell spans the row */
+    .kpi-grid,
+    .stats-grid,
+    .analytic-grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .kpi-grid>.kpi-card,
+    .stats-grid>.stat-card,
+    .analytic-grid>.kpi-card {
+        border-right: 0 !important;
+        border-bottom: 1px solid var(--edge) !important;
+    }
+
+    .kpi-grid>.kpi-card:nth-child(odd),
+    .stats-grid>.stat-card:nth-child(odd),
+    .analytic-grid>.kpi-card:nth-child(odd) {
+        border-right: 1px solid var(--edge) !important;
+    }
+
+    .kpi-grid> :last-child,
+    .stats-grid> :last-child,
+    .analytic-grid> :last-child {
+        border-bottom: 0 !important;
+    }
+
+    .kpi-grid> :last-child:nth-child(odd),
+    .stats-grid> :last-child:nth-child(odd),
+    .analytic-grid> :last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+        border-right: 0 !important;
+    }
+
+    .kpi-value,
+    .stat-info h3 {
+        font-size: 22px !important;
+    }
+
+    .charts-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    input[type="date"] {
+        min-width: 0;
+        width: 100%;
+    }
+}
+
+@media (min-width: 993px) and (max-width: 1180px) {
+
+    .kpi-grid,
+    .stats-grid,
+    .analytic-grid {
+        display: grid !important;
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .kpi-grid>.kpi-card,
+    .stats-grid>.stat-card,
+    .analytic-grid>.kpi-card {
+        border-right: 0 !important;
+        border-bottom: 1px solid var(--edge) !important;
+    }
+
+    .kpi-grid>.kpi-card:nth-child(odd),
+    .stats-grid>.stat-card:nth-child(odd),
+    .analytic-grid>.kpi-card:nth-child(odd) {
+        border-right: 1px solid var(--edge) !important;
+    }
+
+    .kpi-grid> :last-child,
+    .stats-grid> :last-child,
+    .analytic-grid> :last-child {
+        border-bottom: 0 !important;
+    }
+
+    .kpi-grid> :last-child:nth-child(odd),
+    .stats-grid> :last-child:nth-child(odd),
+    .analytic-grid> :last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+        border-right: 0 !important;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}
+
+/* ---- 9. Page parts -------------------------------------------------------- */
+/* inline notice (replaces the blocking low-stock pop-up on the manager dashboard) */
+.stock-notice {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 16px;
+    margin: 0 0 16px;
+    padding: 10px 14px;
+    background: var(--warn-bg);
+    color: var(--warn);
+    border-radius: var(--radius);
+    font-size: 14px;
+}
+
+.stock-notice[hidden] {
+    display: none;
+}
+
+.stock-notice strong {
+    font-weight: 600;
+}
+
+.stock-notice-actions {
+    display: inline-flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.stock-notice a {
+    color: var(--warn);
+    font-weight: 500;
+}
+
+.stock-notice button {
+    background: transparent;
+    border: 0;
+    color: var(--warn);
+    font: inherit;
+    font-weight: 500;
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+}
+
+.stock-notice button:hover {
+    background: rgba(0, 0, 0, 0.06);
+}
+
+/* till: the second register is a closed panel, not a layout stacked above the header */
+.okw-pos-advanced {
+    margin: 0 0 12px;
+    border: 1px solid var(--edge);
+    border-radius: 12px;
+    background: var(--sheet);
+    overflow: hidden;
+}
+
+.okw-pos-advanced>summary {
+    cursor: pointer;
+    list-style: none;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink-2);
+}
+
+.okw-pos-advanced>summary::-webkit-details-marker {
+    display: none;
+}
+
+.okw-pos-advanced>summary::after {
+    content: "Open";
+    float: right;
+    font-weight: 400;
+    color: var(--muted);
+}
+
+.okw-pos-advanced[open]>summary {
+    border-bottom: 1px solid var(--edge);
+}
+
+.okw-pos-advanced[open]>summary::after {
+    content: "Close";
+}
+
+#okw-pos-upgrade-shell {
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+}
+
+/* company portal + CEO: sentence case, flat pieces */
+.main-content [style*="text-transform: uppercase"],
+.main-content [style*="text-transform:uppercase"],
+.section-title-v3,
+.kpi-label,
+.dock-btn,
+.goal-card [style*="uppercase"] {
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+}
+
+.header-title h2 {
+    font-size: 22px !important;
+    font-weight: 600 !important;
+}
+
+.header-title p {
+    font-size: 14px !important;
+    font-weight: 400 !important;
+    color: var(--muted) !important;
+}
+
+.quick-dock {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 0 0 20px;
+}
+
+.dock-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 34px;
+    padding: 6px 12px;
+    background: var(--sheet) !important;
+    background-image: none !important;
+    color: var(--ink) !important;
+    border: 1px solid var(--edge-strong) !important;
+    border-radius: var(--radius) !important;
+    font: 500 14px var(--font-ui) !important;
+    box-shadow: none !important;
+    cursor: pointer;
+}
+
+.dock-btn:hover {
+    background: var(--sheet-2) !important;
+    border-color: var(--ink-2) !important;
+}
+
+.analytic-table th,
+.analytic-table td {
+    text-align: left;
+}
+
+.goal-card {
+    border-radius: 12px !important;
+}
+
+.goal-card::after {
+    display: none !important;
+}
+
+.progress-container,
+.progress-fill {
+    box-shadow: none !important;
+    background-image: none !important;
+}
+
+/* ---- 10. Teller (till, open shift, close shift): the same stone frame ---------- */
+body>header:not(.okw-sub-header) {
+    background: var(--frame) !important;
+    color: var(--ink) !important;
+    border-bottom: 0 !important;
+    height: 52px !important;
+    padding: 0 16px !important;
+    box-shadow: none !important;
+}
+
+body>header:not(.okw-sub-header) .brand img {
+    height: 28px !important;
+    padding: 0 !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+body>header:not(.okw-sub-header) .brand>span:not(.pos-badge) {
+    display: none !important;
+    color: var(--ink) !important;
+}
+
+/* the logo already carries the name */
+body>header:not(.okw-sub-header) .notif-icon,
+body>header:not(.okw-sub-header) .user-info,
+body>header:not(.okw-sub-header) #userName,
+body>header:not(.okw-sub-header) .user-pill,
+body>header:not(.okw-sub-header) .user-pill span,
+body>header:not(.okw-sub-header) .user-pill>i {
+    color: var(--ink) !important;
+    opacity: 1 !important;
+}
+
+.pos-badge {
+    background: transparent !important;
+    border: 0 !important;
+    color: var(--muted) !important;
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    letter-spacing: 0 !important;
+    text-transform: none !important;
+    padding: 0 !important;
+}
+
+#dateTime {
+    color: var(--muted) !important;
+}
+
+.user-pill {
+    background: transparent !important;
+    border: 0 !important;
+    color: var(--ink) !important;
+}
+
+.user-pill:hover {
+    background: var(--frame-hover) !important;
+}
+
+body>header:not(.okw-sub-header) .user-pill .user-avatar,
+body>header:not(.okw-sub-header) .user-avatar {
+    background: var(--brand) !important;
+    color: #ffffff !important;
+    border: 1px solid var(--brand) !important;
+}
+
+body>header:not(.okw-sub-header) .user-avatar i {
+    color: #ffffff !important;
+}
+
+.container {
+    background: transparent !important;
+}
+
+.user-dropdown .header {
+    margin: 0 !important;
+}
+
+.analytic-grid>.kpi-card {
+    justify-content: flex-start !important;
+    gap: 4px;
+}
+
+.analytic-grid .progress-container {
+    height: 4px !important;
+    border-radius: 2px;
+    background: var(--frame) !important;
+}
+
+.analytic-grid .progress-fill {
+    background: var(--data) !important;
+}
+
+@media (max-width: 992px) {
+
+    /* wide tables scroll inside themselves instead of pushing the page sideways */
+    .main-content table {
+        display: block;
+        max-width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+/* till search: the icon sits inside the field, so the text must start after it */
+#barcodeInput {
+    padding-left: 44px !important;
+}
+
+/* ui-components.js cards (live CEO, reports, backups) */
+.okw-card {
+    background: var(--sheet) !important;
+    color: var(--ink) !important;
+    border: 1px solid var(--edge) !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+}
+
+.okw-kpi {
+    padding: 16px 20px;
+    container-type: inline-size;
+    min-width: 0;
+    overflow: hidden;
+}
+
+.okw-kpi-label {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 4px;
+}
+
+.okw-kpi-value {
+    font-size: clamp(16px, 2vw, 22px);
+    font-weight: 500;
+    line-height: 1.25;
+    color: var(--ink);
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.okw-kpi-sub {
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+code,
+pre,
+kbd,
+samp,
+.mono {
+    font-family: ui-monospace, Menlo, monospace;
+}
+
+/* every page gets the same nav pitch and a full-width sheet */
+.sidebar .nav-links a,
+.sidebar .nav-item {
+    height: auto !important;
+    min-height: 34px !important;
+    box-sizing: border-box;
+}
+
+.sidebar .nav-links a>span,
+.sidebar .nav-item>span {
+    margin: 0 !important;
+    padding: 0 !important;
+    line-height: 1.3;
+}
+
+.main-content {
+    max-width: none !important;
+}
+
+/* ---- 11. Standalone pages (no sidebar): transactions, negative stock, bulk upload ---- */
+body>header:not(.okw-sub-header) a,
+body>header:not(.okw-sub-header) .back-btn {
+    color: var(--ink) !important;
+    opacity: 1 !important;
+}
+
+body>.container:not(:has(.pos-layout)),
+.summary-grid .stat-card {
+    background: var(--sheet);
+    border: 1px solid var(--edge);
+    border-radius: 12px;
+    box-shadow: none !important;
+}
+
+.summary-grid .stat-card,
+.summary-grid .stat-card.debt {
+    border-left: 1px solid var(--edge) !important;
+}
+
+.summary-grid .stat-card h3 {
+    font-size: 13px !important;
+    font-weight: 500 !important;
+    color: var(--muted) !important;
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+}
+
+.summary-grid .stat-card p,
+.summary-grid .stat-card .value {
+    font-weight: 400;
+    color: var(--ink) !important;
+}
+
+th {
+    text-transform: none !important;
+    letter-spacing: 0 !important;
+}
+
+body>.container:not(:has(.pos-layout))>button:not(.back-btn),
+#uploadBtn {
+    background: var(--brand) !important;
+    color: #fff !important;
+    border-radius: var(--radius) !important;
+    box-shadow: none !important;
+}
+
+body>.container:not(:has(.pos-layout)) input[type="file"] {
+    box-sizing: border-box;
+    max-width: 100%;
+    width: 100%;
+}
+
+body>.container:not(:has(.pos-layout)) .back-btn {
+    margin-top: 12px;
+    color: var(--ink) !important;
+    background: transparent !important;
+}
+
+/* ---- 12. Dark mode corrections ---- */
+[data-theme="dark"] .sidebar .brand img {
+    background: #FFFFFF !important;
+    padding: 4px 8px !important;
+    border-radius: 8px !important;
+}
+
+[data-theme="dark"] body>header .brand img {
+    background: #FFFFFF !important;
+    padding: 3px 6px !important;
+    border-radius: 6px !important;
+}
+
+.ai-insight {
+    background: var(--sheet) !important;
+    border-top: 0;
+    border-right: 0;
+    border-bottom: 0;
+    box-shadow: none !important;
+}
+
+.ai-insight h4 {
+    color: var(--ink) !important;
+}
+
+.ai-insight p {
+    color: var(--ink-2) !important;
+}
+
+.ai-insight i {
+    color: var(--brick) !important;
+}
+
+.goal-card,
+.goal-tracker-card {
+    background: #273990 !important;
+    color: #fff !important;
+}
+
+.goal-card * {
+    color: inherit;
+}
+
+.header-controls>div,
+.date-range,
+.date-filter {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+}
+
+[data-theme="dark"] .status-badge,
+[data-theme="dark"] .status {
+    color: inherit;
+}
+
+[data-theme="dark"] .status.completed {
+    background: var(--ok-bg) !important;
+    color: var(--ok) !important;
+}
+
+[data-theme="dark"] input[type="date"] {
+    color-scheme: dark;
+}
+
+/* ---- 13. Print: documents print as documents, not as the app frame ---- */
+@media print {
+    body {
+        background: #fff !important;
+    }
+
+    .sidebar,
+    .okw-topbar,
+    .overlay,
+    .sidebar-overlay,
+    .app-footer,
+    #okw-pos-advanced {
+        display: none !important;
+    }
+
+    .main-content {
+        margin: 0 !important;
+        padding: 0 !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        min-height: 0 !important;
+        background: #fff !important;
+    }
+}
+
+/* ---- 14. Dark mode: panels that hard-code white ---- */
+.settings-card,
+.location-card,
+.add-form,
+.inventory-card,
+.chart-container,
+.chart-card,
+.back-link {
+    background: var(--sheet) !important;
+    border: 1px solid var(--edge) !important;
+    border-radius: 12px !important;
+    box-shadow: none !important;
+    color: var(--ink);
+}
+
+.back-link {
+    border: 0 !important;
+    background: transparent !important;
+    color: var(--ink-2) !important;
+}
+
+[data-theme="dark"] .control-select,
+[data-theme="dark"] select.control-select,
+[data-theme="dark"] .ai-panel,
+[data-theme="dark"] .main-content .main-content {
+    background: var(--sheet) !important;
+    color: var(--ink) !important;
+}
+
+/* ---- 15. Tables in narrow cards scroll instead of clipping ---- */
+.table-card,
+.card-table,
+.table-scroll-wrapper {
+    overflow-x: auto !important;
+    max-width: 100%;
+}
+
+.table-card th,
+.table-card td,
+.card-table th,
+.card-table td {
+    padding: 10px 8px !important;
+    white-space: nowrap;
+}
+
+.sr-only {
+    position: absolute !important;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* till: the footer ticker must never widen the page */
+body:has(.pos-live-footer) {
+    overflow-x: hidden;
+}
+
+.pos-live-footer,
+footer.pos-live-footer {
+    overflow: hidden !important;
+    max-width: 100vw;
+}
+
+html:has(.pos-live-footer) {
+    overflow-x: hidden;
+}
+
+.pos-live-footer {
+    width: 100% !important;
+    box-sizing: border-box;
+}
+
+.message.error,
+#errorMessage {
+    background: var(--bad-bg) !important;
+    color: var(--bad) !important;
+    border: 0 !important;
+    border-radius: var(--radius) !important;
+    padding: 10px 14px !important;
+    margin: 0 0 16px !important;
+    font-size: 14px;
+}
+
+/* skip link: hidden until it takes keyboard focus */
+.skip-link {
+    position: absolute;
+    left: 8px;
+    top: -48px;
+    z-index: 3000;
+    background: var(--sheet);
+    color: var(--ink);
+    border: 1px solid var(--edge-strong);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.skip-link:focus {
+    top: 8px;
+}
+
+/* ---- Embedded in a hub section (?embed=1): the hub already shows the menu and the page title ---- */
+.okw-embed .sidebar,
+.okw-embed .okw-topbar,
+.okw-embed .overlay,
+.okw-embed .mobile-menu-btn,
+.okw-embed footer,
+.okw-embed .app-footer {
+    display: none !important;
+}
+
+.okw-embed .main-content {
+    margin-left: 0 !important;
+    padding-top: 0 !important;
+}
+
+.okw-embed .page-wrap {
+    padding: 16px !important;
+    max-width: none !important;
+}
+
+.okw-embed body {
+    background: transparent !important;
+    min-height: 0 !important;
+}
+
+.okw-embed .back-link {
+    display: none !important;
+}
+.okw-embed .back-btn { display: none !important; }
+/* the hub's own Section picker replaces the page's */
+.okw-embed label[for$="-view"],
+.okw-embed label[for$="-view"] + select { display: none !important; }
+
+/* ==========================================================================
+   Okwesiwa face
+   Brand blue is the action and the active place; brand gold marks only what is
+   current (this month's figure, today's bar). Archivo gives headings and figures
+   a sturdy, workmanlike voice; IBM Plex carries the reading text.
+   ========================================================================== */
+:root { --font-display: "Archivo", "IBM Plex Sans", system-ui, sans-serif; }
+
+h1,
+.kpi-value,
+.okw-kpi-value,
+.stat-value,
+.card-value {
+    font-family: var(--font-display);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.01em;
+}
+h1 { font-weight: 700; }
+
+/* navigation: a tinted pill in the brand blue, never a bar */
+.sidebar .nav-item { border-radius: 8px; font-weight: 500; }
+.sidebar .nav-item:hover:not(.active) { background: rgba(39, 57, 144, 0.05); }
+.sidebar .nav-item.active { background: rgba(39, 57, 144, 0.10); color: var(--brand); font-weight: 600; }
+.sidebar .nav-item.active svg { color: var(--brand); }
+
+/* the page names itself once: the top bar is a quiet breadcrumb */
+.okw-topbar-sub { display: none; }
+.okw-topbar-title { font-size: 13px; font-weight: 600; color: var(--muted); }
+
+/* the assistant is an icon, out of the way of tables and totals */
+#okw-ai-chat-fab {
+    width: 40px !important;
+    height: 40px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    font-size: 0 !important;
+    right: 16px !important;
+    bottom: 16px !important;
+    box-shadow: 0 4px 14px rgba(39, 57, 144, 0.25);
+}
+#okw-ai-chat-fab svg { width: 18px; height: 18px; }
+
+/* tables: rules and alignment, no header band */
+thead, thead tr, table thead, table thead tr, table th, table thead th, .card-table th, .card-table thead th { background: transparent !important; }
+thead th {
+    background: transparent !important;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: none;
+    letter-spacing: 0;
+    border-bottom: 1px solid var(--edge);
+}
+tbody td { font-variant-numeric: tabular-nums; }
+
+/* native date and select controls sit on the same 36px line as every other control */
+input[type="date"], .filter-select, .form-input { min-height: 36px; border-radius: 8px; font-family: inherit; }
+
+/* one Export menu instead of a row of six buttons */
+.okw-menu { position: relative; }
+.okw-menu > summary { list-style: none; cursor: pointer; height: 34px; display: inline-flex; align-items: center; padding: 0 14px; font-size: 13px; }
+.okw-menu > summary::-webkit-details-marker { display: none; }
+.okw-menu > summary::after { content: ""; margin-left: 8px; border: 4px solid transparent; border-top-color: var(--muted); border-bottom-width: 0; }
+.okw-menu-list {
+    position: absolute; right: 0; top: 38px; z-index: 40; min-width: 190px; padding: 6px;
+    background: var(--sheet); border: 1px solid var(--edge); border-radius: 10px;
+    box-shadow: 0 12px 28px rgba(15, 23, 42, 0.14);
+}
+.okw-menu-item {
+    display: block; width: 100%; height: 34px; padding: 0 10px; text-align: left;
+    border: 0; border-radius: 6px; background: none; color: var(--ink); font: inherit; font-size: 13px; cursor: pointer;
+}
+.okw-menu-item:hover { background: var(--sheet-2); }
+.okw-menu-row { display: flex; gap: 6px; align-items: center; margin-top: 4px; padding-top: 4px; border-top: 1px solid var(--edge); }
+.okw-menu-row .okw-menu-item { width: auto; flex: 1; }
+.okw-menu-row .okw-select { height: 30px; padding: 0 6px; font-size: 12px; }
+
+/* the small footer line some pages end with: quiet, not a blue bar */
+.okw-sub-footer { background: transparent !important; color: var(--muted) !important; border-top: 1px solid var(--edge) !important; font-size: 12px; box-shadow: none !important; }
+.okw-sub-footer * { color: var(--muted) !important; }
+
+/* a hosted page sits flush inside its hub: no second sheet, no grey strip, no double card */
+html.okw-embed, .okw-embed body { background: var(--sheet) !important; }
+.okw-embed .main-content,
+.okw-embed .app-shell > .main-content {
+    border: 0 !important; border-radius: 0 !important; margin: 0 !important;
+    background: transparent !important; box-shadow: none !important; min-height: 0 !important;
+}
+.okw-embed .main-content > .page-wrap,
+.okw-embed .main-content > .container,
+.okw-embed .page-wrap > .okw-card:first-child { box-shadow: none !important; }
+.okw-embed [class*="footer"], .okw-embed body > footer { display: none !important; }
+
+/* a hosted page that has its own tab strip: the hub's Section picker already does that job */
+.okw-embed #ex-tabs { display: none !important; }
+
+/* a destructive button repeated on every row is an outline; a solid red one is for the final confirm */
+td .okw-btn-danger, tbody .okw-btn-danger, .okw-table .okw-btn-danger {
+    background: transparent !important; color: var(--bad) !important; border: 1px solid #F0C9C9 !important;
+}
+td .okw-btn-danger:hover, tbody .okw-btn-danger:hover { background: #FDE8E8 !important; }
+
+/* ---- Dark mode polish: eliminate stray white cards, inputs & hover highlights ---- */
+[data-theme="dark"] .okw-card,
+[data-theme="dark"] .okw-hub-bar,
+[data-theme="dark"] .okw-hub-panel,
+[data-theme="dark"] .okw-kpi,
+[data-theme="dark"] .kpi-card,
+[data-theme="dark"] .kpi-grid,
+[data-theme="dark"] .table-card,
+[data-theme="dark"] .card,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .modal-box,
+[data-theme="dark"] .token-content {
+    background: var(--sheet) !important;
+    color: var(--ink) !important;
+    border-color: var(--edge) !important;
+}
+
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]):not([type="color"]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    background: var(--sheet-2) !important;
+    color: var(--ink) !important;
+    border-color: var(--edge-strong) !important;
+}
+
+[data-theme="dark"] .okw-btn-outline,
+[data-theme="dark"] .okw-btn-secondary,
+[data-theme="dark"] .pos-btn-action {
+    background: var(--sheet-2) !important;
+    color: var(--ink) !important;
+    border-color: var(--edge-strong) !important;
+}
+
+[data-theme="dark"] .okw-table th,
+[data-theme="dark"] .okw-table td,
+[data-theme="dark"] table th,
+[data-theme="dark"] table td {
+    border-color: var(--edge) !important;
+    color: var(--ink);
+}
+
+[data-theme="dark"] .okw-table tbody tr:hover,
+[data-theme="dark"] table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+
+[data-theme="dark"] td .okw-btn-danger:hover,
+[data-theme="dark"] tbody .okw-btn-danger:hover {
+    background: var(--bad-bg) !important;
+}
+
+/* ---- Phone: use the width, never break a figure, let wide tables scroll ---- */
+@media (max-width: 700px) {
+    .page-wrap { padding: 12px !important; }
+    .okw-hub-panel, .okw-card { padding: 12px; }
+    .okw-hub-panel.okw-hub-panel-embed { padding: 0; }
+    .okw-hub-bar { padding: 10px 12px; }
+    .okw-embed .page-wrap { padding: 8px !important; }
+    table { display: block; max-width: 100%; overflow-x: auto; }
+    .kpi-figure { font-size: clamp(16px, 4.8vw, 22px) !important; white-space: nowrap; overflow-wrap: normal; }
+    .kpi-cell.lead .kpi-figure { font-size: clamp(24px, 8vw, 34px) !important; }
+    .okw-kpi-value, .kpi-value, .okw-kpi .kpi-value { font-size: clamp(16px, 4.6vw, 22px) !important; white-space: normal !important; overflow-wrap: anywhere; line-height: 1.15; }
+    .okw-kpi-row { grid-template-columns: 1fr 1fr !important; }
+    .okw-kpi, .okw-card { min-width: 0; }
+    .okw-kpi-row > .okw-kpi:first-child, .okw-kpi-row > :first-child { grid-column: 1 / -1; }
+    .okw-kpi:first-child .okw-kpi-value, .okw-kpi:first-child .kpi-value { font-size: clamp(22px, 6.6vw, 28px) !important; white-space: nowrap !important; overflow-wrap: normal; }
+}

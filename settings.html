@@ -1,575 +1,984 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-    <script src="auth-guard.js"></script>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footprint | Settings</title>
-    <link rel="icon" type="image/png" href="logo.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="sidebar.css">
+    <title>Settings - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" defer crossorigin="anonymous"></script>
+    <script src="/auth-guard.js"></script>
+    <script src="/currency.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
     <style>
-        :root {
-            --primary-color: #273990; --accent-color: #f9a51a;
-            --secondary-color: #1c2b70;
-            --accent-color: #f9a51a;
-            --text-color: #202223;
-            --text-secondary: #6d7175;
-            --gray-light: #f6f6f7;
-            --sidebar-width: 260px;
-            --border-color: #e1e3e5;
-            --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            -webkit-font-smoothing: antialiased;
-        }
-
-        body {
-            background: var(--gray-light);
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-            color: var(--text-color);
-        }
-
-        .main-content {
-            margin-left: var(--sidebar-width);
-            flex: 1;
-            padding: 28px 36px;
-            max-width: 900px;
-        }
-
-        .page-header {
-            margin-bottom: 24px;
-        }
-
-        .page-header h1 {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--text-color);
-            letter-spacing: -0.01em;
-            margin-bottom: 4px;
-        }
-
-        .page-header p {
-            color: var(--text-secondary);
-            font-size: 13.5px;
-        }
-
-        .settings-card {
-            background: white;
-            padding: 24px 28px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            box-shadow: var(--shadow-card);
-            margin-bottom: 20px;
-        }
-
-        .card-header {
-            margin-bottom: 18px;
-            padding-bottom: 12px;
-            border-bottom: 1px solid #f1f2f3;
-        }
-
-        .card-header h2 {
-            font-size: 15.5px;
-            font-weight: 600;
-            color: var(--text-color);
-            margin-bottom: 2px;
-        }
-
-        .card-header p {
-            font-size: 12.5px;
-            color: var(--text-secondary);
-        }
-
-        .form-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 16px;
-        }
-
-        .form-grid.full {
-            grid-template-columns: 1fr;
-        }
-
-        .form-group {
-            margin-bottom: 16px;
-        }
-
-        .form-group label {
-            display: block;
-            margin-bottom: 6px;
-            font-weight: 500;
-            font-size: 13px;
-            color: var(--text-color);
-        }
-
-        .form-group input,
-        .form-group select {
-            width: 100%;
-            height: 40px;
-            padding: 0 12px;
-            border: 1px solid #c9cccf;
-            border-radius: 6px;
-            font-size: 13.5px;
-            color: var(--text-color);
-            background: #ffffff;
-            outline: none;
-            transition: border-color 0.15s ease, box-shadow 0.15s ease;
-        }
-
-        .form-group input:focus,
-        .form-group select:focus {
-            border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(39, 57, 144, 0.12);
-        }
-
-        .action-bar {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            gap: 12px;
-            margin-top: 24px;
-            margin-bottom: 40px;
-        }
-
-        .btn-save {
-            background: var(--primary-color);
-            color: white;
-            border: none;
-            padding: 10px 22px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 13.5px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            transition: background 0.15s ease, transform 0.1s ease;
-            box-shadow: 0 1px 0 rgba(0, 0, 0, 0.05);
-        }
-
-        .btn-save:hover {
-            background: var(--secondary-color);
-        }
-
-        .btn-save:active {
-            transform: translateY(1px);
-        }
-
-        .btn-save:disabled {
-            opacity: 0.65;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-spinner {
-            display: none;
-            width: 14px;
-            height: 14px;
-            border: 2px solid rgba(255, 255, 255, 0.35);
-            border-top-color: #ffffff;
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Notification Toast */
-        .notification {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background-color: #202223;
-            color: white;
-            padding: 12px 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-            z-index: 2000;
-            opacity: 0;
-            transform: translateY(-8px);
-            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
-            pointer-events: none;
-            font-size: 13.5px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .notification.show {
-            opacity: 1;
-            transform: translateY(0);
-            pointer-events: auto;
-        }
-
-        .notification.success {
-            background-color: #108043;
-            border-left: 4px solid #149a4f;
-        }
-
-        .notification.error {
-            background-color: #c42b1c;
-            border-left: 4px solid #f59e0b;
-        }
-
-        /* Mobile Responsive Styles */
-        .mobile-menu-btn {
-            display: none;
-            position: fixed;
-            top: 14px;
-            left: 14px;
-            z-index: 1001;
-            background: #1a1a1a;
-            color: white;
-            border: 1px solid #333;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-            font-size: 14px;
-        }
-
-        .overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 999;
-        }
-
-        @media (max-width: 992px) {
-            .main-content {
-                margin-left: 0;
-                padding: 20px 16px;
-                padding-top: 64px;
-            }
-
-            .form-grid {
-                grid-template-columns: 1fr;
-            }
-
-            .mobile-menu-btn {
-                display: block;
-            }
-
-            .overlay.active {
-                display: block;
-            }
-        }
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { flex: 1; padding: 24px; max-width: 1360px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 18px; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field label { font-size: 13px; font-weight: 600; color: var(--color-text); }
+        .check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 18px; margin-top: 14px; }
+        .check-item { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 500; cursor: pointer; }
+        .hint { font-size: 12px; color: var(--color-text-muted); margin-top: 4px; }
+        .tag-bar { display: flex; flex-wrap: wrap; gap: 6px; padding: 10px; border: 1px solid var(--color-border); border-radius: 8px; background: var(--color-surface-muted); margin-bottom: 14px; }
+        .tag-pill { font-size: 11px; font-family: monospace; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--color-border); background: var(--color-surface); cursor: pointer; color: var(--color-primary); }
+        .tag-pill:hover { border-color: var(--color-primary); }
+        .checks-row { display: flex; flex-wrap: wrap; gap: 18px; margin-top: 8px; }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
     </style>
-    <script src="currency.js"></script>
-    <script src="telemetry-guard.js"></script>
-    <script src="instant-nav.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
 </head>
-
 <body>
-    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-    <div class="overlay" onclick="toggleSidebar()"></div>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD"></div>
+        <nav class="nav-links"></nav>
+    </aside>
 
-    <div id="notification" class="notification"></div>
+    <main class="main-content">
+        <div class="page-wrap" id="hub"></div>
+        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA LTD</footer>
+    </main>
+</div>
 
-    <!-- Sidebar -->
-    <div class="sidebar">
-        <div class="brand">
-            <img src="logo.png" alt="Footprint">
-        </div>
-        <div class="nav-links">
-            <a href="dashboard" class="nav-item"><i class="fas fa-home"></i> Dashboard</a>
+<script>
+(function () {
+    const esc = OkwUI.escapeHtml;
+    const authToken = () => localStorage.getItem('authToken') || localStorage.getItem('companyToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken()}` };
+    const fmt = (n) => (typeof formatCurrency === 'function' ? formatCurrency(n) : 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+    const MANAGERS = ['super_admin', 'ceo', 'admin', 'manager', 'store_manager'];
+    const CEO_ADMIN = ['super_admin', 'ceo', 'admin'];
+    const me = (() => {
+        try { return JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('companyUser') || localStorage.getItem('user') || '{}') || {}; }
+        catch (_) { return {}; }
+    })();
+    const myRole = String(me.role || '').toLowerCase();
 
-            <div class="nav-section">Sales & Finance</div>
-            <a href="sales-dashboard" class="nav-item"><i class="fas fa-chart-pie"></i> Sales</a>
-            <a href="profitability" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Profitability</a>
-            <a href="promotions" class="nav-item"><i class="fas fa-tags"></i> Promotions</a>
+    // A network failure comes back as { ok: false, status: 0 } so every caller can show its own message.
+    async function api(url, opts = {}) {
+        try {
+            const res = await fetch(url, { headers, credentials: 'include', ...opts });
+            const data = await res.json().catch(() => ({}));
+            return { ok: res.ok, status: res.status, data };
+        } catch (err) {
+            return { ok: false, status: 0, data: { message: 'Could not reach the server. Check the connection and try again.' } };
+        }
+    }
 
-            <div class="nav-section">Operations</div>
-            <a href="pos-register" class="nav-item"><i class="fas fa-users"></i> Staff</a>
-            <a href="credit-customers" class="nav-item"><i class="fas fa-address-book"></i> Credit</a>
-            <a href="inventory" class="nav-item"><i class="fas fa-warehouse"></i> Inventory</a>
-            <a href="reports" class="nav-item"><i class="fas fa-chart-line"></i> Reports</a>
-            <a href="settings" class="nav-item active"><i class="fas fa-cog"></i> Settings</a>
-        </div>
-        <div class="user-profile">
-            <div class="user-profile-row">
-                <div class="user-avatar"><i class="fas fa-user"></i></div>
-                <div class="user-info">
-                    <div id="userName">Manager</div>
-                    <div id="userRole">Store Management</div>
-                </div>
-            </div>
-            <button class="sidebar-logout-btn" onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
-        </div>
-    </div>
+    /* ====================================================================
+       Store profile (was Settings): saved to /api/settings
+       ==================================================================== */
+    async function mountStore(panel, ctx) {
+        ctx.toolbar.innerHTML = '<button type="button" class="okw-btn okw-btn-primary" id="st-save">Save</button>';
+        const r = await api('/api/settings');
+        if (!r.ok) { panel.innerHTML = '<div class="okw-empty">Store details could not be loaded.</div>'; OkwUI.toast('Could not load store details', 'danger'); return; }
+        const s = r.data || {};
+        const canTarget = ['ceo', 'admin', 'company', 'super_admin'].includes(myRole);
+        panel.innerHTML = `
+            <h2 class="okw-chart-title">Store profile</h2>
+            <p class="hint" style="margin:0 0 16px;">Identification used on receipts and customer messages.</p>
+            <div class="form-grid">
+                <div class="field"><label for="st-name">Store name</label><input type="text" id="st-name" class="okw-input" value="${esc(s.store_name || '')}" placeholder="OKWESIWA LTD"></div>
+                <div class="field"><label for="st-phone">Support phone</label><input type="text" id="st-phone" class="okw-input" value="${esc(s.phone || '')}" placeholder="+233 24 000 0000"></div>
+                <div class="field"><label for="st-tin">Tax identification number (TIN)</label><input type="text" id="st-tin" class="okw-input" value="${esc(s.tax_id || '')}" placeholder="TIN-00000000"></div>
+                <div class="field"><label for="st-email">Company email</label><input type="email" id="st-email" class="okw-input" value="${esc(s.email || '')}" placeholder="info@company.com"></div>
+                <div class="field"><label for="st-address">Company address</label><input type="text" id="st-address" class="okw-input" value="${esc(s.address || '')}"></div>
+                ${canTarget ? `<div class="field"><label for="st-target">Monthly sales target</label><input type="number" id="st-target" class="okw-input" step="100" min="0" value="${esc(s.monthly_target || '')}" placeholder="50000"></div>` : ''}
+            </div>`;
+        ctx.toolbar.querySelector('#st-save').addEventListener('click', async () => {
+            const name = panel.querySelector('#st-name').value.trim();
+            if (!name) return OkwUI.toast('Store name is required', 'warning');
+            // Fields this form does not edit are kept from the freshly loaded settings, never from a browser copy.
+            const body = {
+                storeName: name,
+                phone: panel.querySelector('#st-phone').value.trim(),
+                taxId: panel.querySelector('#st-tin').value.trim(),
+                email: panel.querySelector('#st-email').value.trim(),
+                address: panel.querySelector('#st-address').value.trim(),
+                logoUrl: s.logo_url || '',
+                currencySymbol: s.currency_symbol || '₵',
+                vatRate: s.vat_rate ?? 0,
+                monthlyTarget: canTarget ? (parseFloat((panel.querySelector('#st-target') || {}).value) || 0) : (s.monthly_target || 0),
+                receiptFooter: s.receipt_footer || ''
+            };
+            try {
+                const res = await api('/api/settings', { method: 'POST', body: JSON.stringify(body) });
+                if (!res.ok) throw new Error(res.data.message || 'Failed to update settings');
+                Object.assign(s, { store_name: body.storeName, phone: body.phone, tax_id: body.taxId, email: body.email, address: body.address, monthly_target: body.monthlyTarget });
+                try { localStorage.setItem('posSettings', JSON.stringify(s)); } catch (_) { }
+                OkwUI.toast('Store profile saved', 'success');
+            } catch (err) {
+                OkwUI.toast(err.message || 'Connection error while saving', 'danger');
+            }
+        });
+    }
 
-    <div class="main-content">
-        <div class="page-header">
-            <h1>System Settings</h1>
-            <p>Manage your store details, financial options, and receipt configuration</p>
-        </div>
-
-        <form id="settingsForm" onsubmit="event.preventDefault(); saveSettings();">
-            <!-- Store Profile Card -->
-            <div class="settings-card">
-                <div class="card-header">
-                    <h2>Store Profile</h2>
-                    <p>Basic identification for receipts and customer communications</p>
-                </div>
+    /* ====================================================================
+       Business configuration (was Business Settings): one saved record,
+       edited section by section. Edits in a section you leave are kept
+       until you press Save.
+       ==================================================================== */
+    const bs = { cfg: null, panel: null };
+    async function bsEnsure() {
+        if (bs.cfg) return;
+        const r = await api('/api/business-settings');
+        if (!r.ok) throw new Error(r.data.message || 'Could not load business settings');
+        bs.cfg = r.data.config || {};
+    }
+    function v(key, fallback = '') { return bs.cfg[key] ?? fallback; }
+    function chk(key) { return bs.cfg[key] ? 'checked' : ''; }
+    function bsCollect() {
+        if (!bs.panel || !bs.cfg) return;
+        bs.panel.querySelectorAll('[data-cfg]').forEach(el => {
+            const k = el.getAttribute('data-cfg');
+            if (el.type === 'checkbox') bs.cfg[k] = el.checked;
+            else if (el.type === 'number') bs.cfg[k] = el.value === '' ? 0 : Number(el.value);
+            else bs.cfg[k] = el.value;
+        });
+    }
+    function bsRender(panel, tab) {
+        if (tab === 'business') {
+            panel.innerHTML = `
+                <h2 class="okw-chart-title">Business</h2>
                 <div class="form-grid">
-                    <div class="form-group">
-                        <label for="storeName">Store Name</label>
-                        <input type="text" id="storeName" placeholder="Footprint" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="phone">Support Phone</label>
-                        <input type="text" id="phone" placeholder="+233 24 000 0000">
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="taxId">Tax Identification Number (TIN)</label>
-                    <input type="text" id="taxId" placeholder="TIN-00000000">
-                </div>
-            </div>
-
-            <!-- Financial Configuration Card -->
-            <div class="settings-card">
-                <div class="card-header">
-                    <h2>Financial & Tax Configuration</h2>
-                    <p>Currency presentation and taxation rates</p>
-                </div>
-                <div class="form-grid">
-                    <div class="form-group">
-                        <label for="currencySymbol">Currency Symbol</label>
-                        <select id="currencySymbol">
-                            <option value="₵">₵ (GHS - Ghana Cedi)</option>
-                            <option value="$">$ (USD - US Dollar)</option>
-                            <option value="£">£ (GBP - British Pound)</option>
-                            <option value="€">€ (EUR - Euro)</option>
+                    <div class="field"><label>Business Name:*</label><input type="text" class="okw-input" data-cfg="business_name" value="${OkwUI.escapeHtml(v('business_name', 'OKWESIWA LTD'))}"></div>
+                    <div class="field"><label>Start Date:</label><input type="date" class="okw-input" data-cfg="start_date" value="${OkwUI.escapeHtml(v('start_date'))}"></div>
+                    <div class="field"><label>Default profit percent:*</label><input type="number" step="0.01" class="okw-input" data-cfg="default_profit_percent" value="${OkwUI.escapeHtml(v('default_profit_percent', 25))}"></div>
+                    <div class="field"><label>Currency:</label>
+                        <select class="okw-select" data-cfg="currency">
+                            ${['GHS (₵)', 'USD ($)', 'EUR (€)', 'GBP (£)', 'NGN (₦)'].map(o => `<option${v('currency') === o ? ' selected' : ''}>${o}</option>`).join('')}
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="vatRate">VAT Rate (%)</label>
-                        <input type="number" id="vatRate" step="0.01" min="0" max="100" placeholder="0.00">
+                    <div class="field"><label>Currency Symbol Placement:</label>
+                        <select class="okw-select" data-cfg="currency_symbol_placement">
+                            ${['Before amount', 'After amount'].map(o => `<option${v('currency_symbol_placement') === o ? ' selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field"><label>Time zone:</label>
+                        <select class="okw-select" data-cfg="timezone">
+                            ${['Africa/Accra', 'UTC', 'Africa/Lagos', 'Europe/London', 'America/New_York'].map(o => `<option${v('timezone') === o ? ' selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label>Upload Logo:</label>
+                        <input type="file" id="bs-logo-file" accept="image/*" class="okw-input" style="padding:6px;">
+                        <input type="hidden" data-cfg="logo_url" id="bs-logo-url" value="${OkwUI.escapeHtml(v('logo_url', '/okwesiwa-logo.svg'))}">
+                        <span class="hint">Previous logo (if exists) will be replaced</span>
+                    </div>
+                    <div class="field"><label>Financial year start month:</label>
+                        <select class="okw-select" data-cfg="financial_year_start_month">
+                            ${['January','February','March','April','May','June','July','August','September','October','November','December'].map(o => `<option${v('financial_year_start_month') === o ? ' selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field"><label>Stock Accounting Method:*</label>
+                        <select class="okw-select" data-cfg="stock_accounting_method">
+                            ${['FIFO', 'LIFO', 'AVCO'].map(o => `<option${v('stock_accounting_method') === o ? ' selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field"><label>Transaction Edit Days:*</label><input type="number" class="okw-input" data-cfg="transaction_edit_days" value="${OkwUI.escapeHtml(v('transaction_edit_days', 30))}"></div>
+                    <div class="field"><label>Date Format:*</label>
+                        <select class="okw-select" data-cfg="date_format">
+                            ${['dd/mm/yyyy', 'mm/dd/yyyy', 'yyyy-mm-dd'].map(o => `<option${v('date_format') === o ? ' selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field"><label>Time Format:*</label>
+                        <select class="okw-select" data-cfg="time_format">
+                            ${['24 Hour', '12 Hour'].map(o => `<option${v('time_format') === o ? ' selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field"><label>Currency precision:*</label>
+                        <select class="okw-select" data-cfg="currency_precision">
+                            ${[0, 1, 2, 3, 4].map(o => `<option value="${o}"${Number(v('currency_precision', 2)) === o ? ' selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field"><label>Quantity precision:*</label>
+                        <select class="okw-select" data-cfg="quantity_precision">
+                            ${[0, 1, 2, 3, 4].map(o => `<option value="${o}"${Number(v('quantity_precision', 2)) === o ? ' selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field"><label>Second currency:</label>
+                        <select class="okw-select" data-cfg="second_currency">
+                            ${['USD ($)', 'EUR (€)', 'GBP (£)', 'NGN (₦)'].map(o => `<option${v('second_currency') === o ? ' selected' : ''}>${o}</option>`).join('')}
+                        </select>
                     </div>
                 </div>
-                <div class="form-group" id="monthlyTargetGroup">
-                    <label for="monthlyTarget">Monthly Sales Target</label>
-                    <input type="number" id="monthlyTarget" step="100" min="0" placeholder="50000">
+                <div style="margin-top:16px;">
+                    <label class="check-item"><input type="checkbox" data-cfg="accept_second_currency" ${chk('accept_second_currency')}> <span>Accept payments in a second currency</span></label>
+                    <p class="hint">The base currency above stays the one prices, stock and reports use. Rates are typed in by hand, under Sell &gt; Exchange rate.</p>
                 </div>
-            </div>
-
-            <!-- Receipt & POS Card -->
-            <div class="settings-card">
-                <div class="card-header">
-                    <h2>Receipt Configuration</h2>
-                    <p>Printed customer receipts message</p>
-                </div>
-                <div class="form-group">
-                    <label for="receiptFooter">Receipt Footer Message</label>
-                    <input type="text" id="receiptFooter" placeholder="Thank you for shopping with us!" value="Thank you for shopping with us!">
-                </div>
-            </div>
-
-            <!-- Action Bar with Save Button -->
-            <div class="action-bar">
-                <button type="submit" class="btn-save" id="btnSaveSettings">
-                    <span class="btn-spinner" id="btnSpinner"></span>
-                    <span id="btnText"><i class="fas fa-check"></i> Save Settings</span>
-                </button>
-            </div>
-        </form>
-    </div>
-
-    <footer>
-        <span>&copy; 2026 Footprint</span>
-        <span>&bull;</span>
-        <a href="#">Support</a>
-    </footer>
-
-    <script>
-        function toggleSidebar() {
-            document.querySelector('.sidebar')?.classList.toggle('active');
-            document.querySelector('.overlay')?.classList.toggle('active');
-        }
-
-        function populateForm(settings) {
-            if (!settings) return;
-            if (settings.store_name !== undefined) document.getElementById('storeName').value = settings.store_name || '';
-            if (settings.currency_symbol) document.getElementById('currencySymbol').value = settings.currency_symbol;
-            if (settings.vat_rate !== undefined) document.getElementById('vatRate').value = settings.vat_rate || 0;
-            if (settings.receipt_footer !== undefined) document.getElementById('receiptFooter').value = settings.receipt_footer || '';
-            if (settings.tax_id !== undefined && document.getElementById('taxId')) document.getElementById('taxId').value = settings.tax_id || '';
-            if (settings.phone !== undefined && document.getElementById('phone')) document.getElementById('phone').value = settings.phone || '';
-            if (settings.monthly_target !== undefined && document.getElementById('monthlyTarget')) document.getElementById('monthlyTarget').value = settings.monthly_target || '';
-        }
-
-        let currentUserRole = '';
-
-        document.addEventListener('DOMContentLoaded', () => {
-            // Populate user info from localStorage safely
-            try {
-                const userStr = localStorage.getItem('currentUser') || localStorage.getItem('companyUser');
-                if (userStr) {
-                    const user = JSON.parse(userStr);
-                    currentUserRole = (user.role || '').toLowerCase();
-                    if (document.getElementById('userName')) document.getElementById('userName').textContent = user.name || user.fullName || 'User';
-                    if (document.getElementById('userRole')) {
-                        const _roleLabel = user.role === 'manager' ? 'Store Manager' : (user.role === 'admin' ? 'Administrator' : (user.role || 'Staff'));
-                        const _branchLabel = user.store_location ? ` · ${user.store_location}` : '';
-                        document.getElementById('userRole').textContent = _roleLabel + _branchLabel;
-                    }
-                }
-            } catch (e) { console.error('User parse error:', e); }
-
-            // Monthly Sales Target is strictly for CEO / Admin; hidden in manager profile
-            const isCeoOrAdmin = currentUserRole === 'ceo' || currentUserRole === 'admin' || currentUserRole === 'company';
-            const targetGroup = document.getElementById('monthlyTargetGroup');
-            if (targetGroup) {
-                if (!isCeoOrAdmin) {
-                    targetGroup.style.display = 'none';
-                } else {
-                    targetGroup.style.display = 'block';
-                }
+            `;
+            const logoIn = document.getElementById('bs-logo-file');
+            if (logoIn) {
+                logoIn.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const raw = String(reader.result || '');
+                        if (file.type === 'image/svg+xml') {
+                            document.getElementById('bs-logo-url').value = raw;
+                            OkwUI.toast('Logo ready — click Save settings to apply', 'success');
+                            return;
+                        }
+                        const img = new Image();
+                        img.onload = () => {
+                            const maxW = 420, maxH = 160;
+                            const scale = Math.min(1, maxW / img.width, maxH / img.height);
+                            const canvas = document.createElement('canvas');
+                            canvas.width = Math.max(1, Math.round(img.width * scale));
+                            canvas.height = Math.max(1, Math.round(img.height * scale));
+                            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                            document.getElementById('bs-logo-url').value = canvas.toDataURL('image/png', 0.9);
+                            OkwUI.toast('Logo ready — click Save settings to apply', 'success');
+                        };
+                        img.src = raw;
+                    };
+                    reader.readAsDataURL(file);
+                });
             }
+        } else if (tab === 'tax') {
+            panel.innerHTML = `
+                <h2 class="okw-chart-title">Tax</h2>
+                <div class="form-grid">
+                    <div class="field"><label>Tax 1 Name:</label><input type="text" class="okw-input" data-cfg="tax_1_name" value="${OkwUI.escapeHtml(v('tax_1_name'))}"></div>
+                    <div class="field"><label>Tax 1 No.:</label><input type="text" class="okw-input" data-cfg="tax_1_no" value="${OkwUI.escapeHtml(v('tax_1_no'))}"></div>
+                    <div class="field"><label>Tax 2 Name:</label><input type="text" class="okw-input" data-cfg="tax_2_name" value="${OkwUI.escapeHtml(v('tax_2_name'))}"></div>
+                    <div class="field"><label>Tax 2 No.:</label><input type="text" class="okw-input" data-cfg="tax_2_no" value="${OkwUI.escapeHtml(v('tax_2_no'))}"></div>
+                </div>
+                <div style="margin-top:16px;">
+                    <label class="check-item"><input type="checkbox" data-cfg="enable_inline_tax" ${chk('enable_inline_tax')}> <span>Enable inline tax in purchase and sell</span></label>
+                </div>
+            `;
+        } else if (tab === 'product') {
+            panel.innerHTML = `
+                <h2 class="okw-chart-title">Product</h2>
+                <div class="form-grid">
+                    <div class="field"><label>SKU prefix:</label><input type="text" class="okw-input" data-cfg="sku_prefix" value="${OkwUI.escapeHtml(v('sku_prefix'))}"></div>
+                    <div class="field"><label>Default Unit:</label><input type="text" class="okw-input" data-cfg="default_unit" value="${OkwUI.escapeHtml(v('default_unit', 'Unit'))}"></div>
+                </div>
+                <div class="check-grid">
+                    <label class="check-item"><input type="checkbox" data-cfg="enable_product_expiry" ${chk('enable_product_expiry')}> <span>Enable Product Expiry</span></label>
+                    <label class="check-item"><input type="checkbox" data-cfg="enable_brands" ${chk('enable_brands')}> <span>Enable Brands</span></label>
+                    <label class="check-item"><input type="checkbox" data-cfg="enable_categories" ${chk('enable_categories')}> <span>Enable Categories</span></label>
+                    <label class="check-item"><input type="checkbox" data-cfg="enable_sub_categories" ${chk('enable_sub_categories')}> <span>Enable Sub-Categories</span></label>
+                    <label class="check-item"><input type="checkbox" data-cfg="enable_price_tax_info" ${chk('enable_price_tax_info')}> <span>Enable Price &amp; Tax info</span></label>
+                    <label class="check-item"><input type="checkbox" data-cfg="enable_sub_units" ${chk('enable_sub_units')}> <span>Enable Sub Units</span></label>
+                    <label class="check-item"><input type="checkbox" data-cfg="enable_racks" ${chk('enable_racks')}> <span>Enable Racks</span></label>
+                    <label class="check-item"><input type="checkbox" data-cfg="enable_row" ${chk('enable_row')}> <span>Enable Row</span></label>
+                    <label class="check-item"><input type="checkbox" data-cfg="enable_position" ${chk('enable_position')}> <span>Enable Position</span></label>
+                    <label class="check-item"><input type="checkbox" data-cfg="enable_warranty" ${chk('enable_warranty')}> <span>Enable Warranty</span></label>
+                    <label class="check-item"><input type="checkbox" data-cfg="product_image_required" ${chk('product_image_required')}> <span>Is product image required?</span></label>
+                </div>
+            `;
+        } else if (tab === 'invoice') {
+            panel.innerHTML = `
+                <h2 class="okw-chart-title">Invoice Settings</h2>
+                <div class="form-grid">
+                    <div class="field"><label>Invoice Prefix:</label><input type="text" class="okw-input" data-cfg="invoice_prefix" value="${OkwUI.escapeHtml(v('invoice_prefix', 'INV'))}"></div>
+                    <div class="field"><label>Invoice Numbering Scheme:</label><input type="text" class="okw-input" data-cfg="invoice_scheme" value="${OkwUI.escapeHtml(v('invoice_scheme', 'YYYY-0001'))}"></div>
+                    <div class="field"><label>Invoice Layout:</label><input type="text" class="okw-input" data-cfg="invoice_layout" value="${OkwUI.escapeHtml(v('invoice_layout', 'Default A4 / Thermal'))}"></div>
+                    <div class="field"><label>Invoice Footer Note:</label><input type="text" class="okw-input" data-cfg="invoice_footer_text" value="${OkwUI.escapeHtml(v('invoice_footer_text'))}"></div>
+                </div>
+                <div style="margin-top:14px;">
+                    <label class="check-item"><input type="checkbox" data-cfg="show_logo_on_invoice" ${chk('show_logo_on_invoice')}> <span>Show business logo on invoices</span></label>
+                </div>
+            `;
+        } else if (tab === 'barcode') {
+            panel.innerHTML = `
+                <h2 class="okw-chart-title">Barcode Settings</h2>
+                <div class="form-grid">
+                    <div class="field"><label>Barcode Format:</label>
+                        <select class="okw-select" data-cfg="barcode_type">
+                            ${['Code 128', 'EAN-13', 'Code 39'].map(o => `<option${v('barcode_type') === o ? ' selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field"><label>Bar Width:</label><input type="number" class="okw-input" data-cfg="barcode_width" value="${OkwUI.escapeHtml(v('barcode_width', 2))}"></div>
+                    <div class="field"><label>Bar Height (px):</label><input type="number" class="okw-input" data-cfg="barcode_height" value="${OkwUI.escapeHtml(v('barcode_height', 40))}"></div>
+                </div>
+                <div class="check-grid">
+                    <label class="check-item"><input type="checkbox" data-cfg="show_price_on_barcode" ${chk('show_price_on_barcode')}> <span>Show price on barcode label</span></label>
+                    <label class="check-item"><input type="checkbox" data-cfg="show_business_name_on_barcode" ${chk('show_business_name_on_barcode')}> <span>Show business name on barcode label</span></label>
+                </div>
+            `;
+        } else if (tab === 'printers') {
+            panel.innerHTML = `
+                <h2 class="okw-chart-title">Receipt Printers</h2>
+                <div class="form-grid">
+                    <div class="field"><label>Printer Name:</label><input type="text" class="okw-input" data-cfg="printer_name" value="${OkwUI.escapeHtml(v('printer_name'))}"></div>
+                    <div class="field"><label>Connection / Driver:</label>
+                        <select class="okw-select" data-cfg="printer_type">
+                            ${['Browser / ESC-POS', 'USB Thermal', 'Network TCP/IP'].map(o => `<option${v('printer_type') === o ? ' selected' : ''}>${o}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field"><label>Paper Width (mm):</label><input type="number" class="okw-input" data-cfg="paper_width_mm" value="${OkwUI.escapeHtml(v('paper_width_mm', 80))}"></div>
+                    <div class="field"><label>Characters Per Line:</label><input type="number" class="okw-input" data-cfg="char_per_line" value="${OkwUI.escapeHtml(v('char_per_line', 42))}"></div>
+                </div>
+                <div style="margin-top:14px;">
+                    <label class="check-item"><input type="checkbox" data-cfg="auto_print_receipt" ${chk('auto_print_receipt')}> <span>Auto-print receipt after checkout</span></label>
+                </div>
+            `;
+        }
+    }
+    async function bsSave() {
+        bsCollect();
+        const r = await api('/api/business-settings', { method: 'PUT', body: JSON.stringify({ config: bs.cfg }) });
+        if (r.ok) {
+            bs.cfg = r.data.config || bs.cfg;
+            if (bs.cfg.logo_url) {
+                try {
+                    const cached = JSON.parse(localStorage.getItem('posSettings') || '{}');
+                    cached.logo_url = bs.cfg.logo_url;
+                    if (bs.cfg.business_name) cached.store_name = bs.cfg.business_name;
+                    localStorage.setItem('posSettings', JSON.stringify(cached));
+                } catch (_) {}
+                document.querySelectorAll('.sidebar .brand img, img[src*="okwesiwa-logo"], img[alt="Store Logo"], .brand-logo').forEach(el => {
+                    el.src = bs.cfg.logo_url;
+                });
+            }
+            OkwUI.toast('Business settings saved', 'success');
+        }
+        else OkwUI.toast(r.data.message || 'Failed to save settings', 'danger');
+    }
+    function businessSection(id, label) {
+        return {
+            id, label, group: 'Business', roles: MANAGERS,
+            leave: bsCollect,
+            render: async (panel, ctx) => {
+                ctx.toolbar.innerHTML = '<button type="button" class="okw-btn okw-btn-primary" id="bs-save">Save settings</button>';
+                ctx.toolbar.querySelector('#bs-save').addEventListener('click', bsSave);
+                try { await bsEnsure(); } catch (err) { panel.innerHTML = '<div class="okw-empty">Business settings could not be loaded.</div>'; OkwUI.toast(err.message, 'danger'); return; }
+                bs.panel = panel;
+                bsRender(panel, id);
+            }
+        };
+    }
 
-            // Pre-load from cached posSettings first to eliminate blank flash
+    /* ====================================================================
+       Locations (branches): stored in the database through /api/branches
+       ==================================================================== */
+    function mountLocations(panel, ctx) {
+        ctx.toolbar.innerHTML = '<button type="button" class="okw-btn okw-btn-primary" id="loc-add">Add location</button>';
+        panel.innerHTML = '<div id="loc-form"></div><div id="loc-table">Loading...</div>';
+        const formHost = panel.querySelector('#loc-form');
+        const tableHost = panel.querySelector('#loc-table');
+        let rows = [];
+
+        async function load() {
+            const r = await api('/api/branches');
+            if (!r.ok) { tableHost.innerHTML = '<div class="okw-empty">Locations could not be loaded.</div>'; OkwUI.toast(r.data.message || 'Could not load locations', 'danger'); return; }
+            rows = (Array.isArray(r.data) ? r.data : []).map(b => ({ id: b.id, name: b.name, address: b.location || '', phone: b.phone || '', manager: b.manager || '', status: b.status || 'Active', is_main: !!b.is_main }));
+            if (!rows.length) { tableHost.innerHTML = '<div class="okw-empty">No locations yet. Use "Add location" to create your first one.</div>'; return; }
+            OkwUI.dataTable('#loc-table', {
+                columns: [
+                    { key: 'name', label: 'Location', render: (val, row) => esc(val) + (row.is_main ? ' ' + OkwUI.badge('Main', 'info') : '') },
+                    { key: 'address', label: 'Address' },
+                    { key: 'phone', label: 'Phone' },
+                    { key: 'manager', label: 'Manager' },
+                    { key: 'status', label: 'Status', render: (val) => OkwUI.badge(val, val === 'Active' ? 'success' : (val === 'Maintenance' ? 'warning' : 'danger')) },
+                    {
+                        key: 'id', label: 'Actions', render: (id) => `<div class="okw-filter-bar">
+                            <button type="button" class="okw-btn okw-btn-outline" data-loc-edit="${Number(id)}">Edit</button>
+                            <button type="button" class="okw-btn okw-btn-danger" data-loc-del="${Number(id)}">Delete</button></div>`
+                    }
+                ],
+                rows, exportFilename: 'okwesiwa-locations.xlsx', printTitle: 'Locations'
+            });
+        }
+
+        function showForm(loc) {
+            const l = loc || { id: '', name: '', address: '', phone: '', manager: '', status: 'Active' };
+            formHost.innerHTML = `
+                <h2 class="okw-chart-title">${l.id ? 'Edit location' : 'Add location'}</h2>
+                <div class="form-grid">
+                    <div class="field"><label for="lc-name">Store name</label><input type="text" id="lc-name" class="okw-input" value="${esc(l.name)}"></div>
+                    <div class="field"><label for="lc-address">Address</label><input type="text" id="lc-address" class="okw-input" value="${esc(l.address)}"></div>
+                    <div class="field"><label for="lc-phone">Phone</label><input type="text" id="lc-phone" class="okw-input" value="${esc(l.phone)}"></div>
+                    <div class="field"><label for="lc-manager">Manager</label><input type="text" id="lc-manager" class="okw-input" value="${esc(l.manager)}"></div>
+                    <div class="field"><label for="lc-status">Status</label>
+                        <select id="lc-status" class="okw-select">${['Active', 'Maintenance', 'Closed'].map(o => `<option${l.status === o ? ' selected' : ''}>${o}</option>`).join('')}</select>
+                    </div>
+                </div>
+                <div class="okw-filter-bar" style="margin:16px 0 20px;justify-content:flex-end;">
+                    <button type="button" class="okw-btn okw-btn-outline" id="lc-cancel">Cancel</button>
+                    <button type="button" class="okw-btn okw-btn-primary" id="lc-save">Save location</button>
+                </div>`;
+            formHost.querySelector('#lc-name').focus();
+            formHost.querySelector('#lc-cancel').onclick = () => { formHost.innerHTML = ''; };
+            formHost.querySelector('#lc-save').onclick = async () => {
+                const body = {
+                    name: formHost.querySelector('#lc-name').value.trim(),
+                    location: formHost.querySelector('#lc-address').value.trim(),
+                    phone: formHost.querySelector('#lc-phone').value.trim(),
+                    manager: formHost.querySelector('#lc-manager').value.trim(),
+                    status: formHost.querySelector('#lc-status').value
+                };
+                if (!body.name) return OkwUI.toast('Give the location a name', 'warning');
+                try {
+                    const r = await api(l.id ? '/api/branches/' + encodeURIComponent(l.id) : '/api/branches', { method: l.id ? 'PUT' : 'POST', body: JSON.stringify(body) });
+                    if (!r.ok) throw new Error(r.data.message || 'Could not save the location');
+                    OkwUI.toast(l.id ? 'Location updated' : 'Location added', 'success');
+                    formHost.innerHTML = '';
+                    load();
+                } catch (err) { OkwUI.toast(err.message, 'danger'); }
+            };
+        }
+
+        ctx.toolbar.querySelector('#loc-add').onclick = () => showForm(null);
+        tableHost.addEventListener('click', async (e) => {
+            const edit = e.target.closest('[data-loc-edit]');
+            const del = e.target.closest('[data-loc-del]');
+            if (edit) { showForm(rows.find(x => x.id === Number(edit.dataset.locEdit))); return; }
+            if (del) {
+                const loc = rows.find(x => x.id === Number(del.dataset.locDel));
+                if (!loc) return;
+                const ok = await OkwUI.confirm('Delete location', `Delete "${loc.name}"? Past sales and stock records keep the branch name, but the location is removed from every list.`, { confirmText: 'Delete' });
+                if (!ok) return;
+                try {
+                    const r = await api('/api/branches/' + encodeURIComponent(loc.id), { method: 'DELETE' });
+                    if (!r.ok) throw new Error(r.data.message || 'Could not delete the location');
+                    OkwUI.toast('Location deleted', 'success');
+                    load();
+                } catch (err) { OkwUI.toast(err.message, 'danger'); }
+            }
+        });
+        load();
+    }
+
+    /* ====================================================================
+       Tax rates and liability report (was Tax Management)
+       ==================================================================== */
+    function mountTax(panel, ctx) {
+        const monthStart = new Date().toISOString().slice(0, 8) + '01';
+        let range = { from: monthStart, to: new Date().toISOString().slice(0, 10) };
+        let branch = 'All Branches';
+
+        ctx.toolbar.innerHTML = `
+            <select id="tx-branch" class="okw-select" aria-label="Branch"><option value="All Branches">All Branches</option></select>
+            <div id="tx-date-picker"></div>`;
+        panel.innerHTML = `
+            <div class="form-grid" style="margin-bottom:24px;align-items:start;">
+                <div>
+                    <h2 class="okw-chart-title">Add tax rule</h2>
+                    <div class="form-grid">
+                        <div class="field"><label for="tx-name">Tax name</label><input type="text" id="tx-name" class="okw-input" placeholder="e.g. NHIS levy"></div>
+                        <div class="field"><label for="tx-rate">Rate (%)</label><input type="number" id="tx-rate" class="okw-input" step="0.01" placeholder="2.5"></div>
+                    </div>
+                    <div class="okw-filter-bar" style="margin-top:12px;"><button type="button" class="okw-btn okw-btn-primary" id="tx-add">Add rule</button></div>
+                </div>
+                <div>
+                    <h2 class="okw-chart-title">Active tax rules</h2>
+                    <div id="tx-rules">Loading...</div>
+                </div>
+            </div>
+            <h2 class="okw-chart-title">Tax liability report</h2>
+            <p class="hint" id="tx-note" style="margin:0 0 12px;"></p>
+            <div class="okw-kpi-row" id="tx-kpis"></div>
+            <div id="tx-report">Loading report...</div>`;
+
+        api('/api/branches').then(r => {
+            (Array.isArray(r.data) ? r.data : []).forEach(b => {
+                if (!b.name) return;
+                const o = document.createElement('option'); o.value = b.name; o.textContent = b.name;
+                ctx.toolbar.querySelector('#tx-branch').appendChild(o);
+            });
+        }).catch(() => { });
+        ctx.toolbar.querySelector('#tx-branch').addEventListener('change', (e) => { branch = e.target.value; report(); });
+        OkwUI.dateRangePicker('#tx-date-picker', (r) => { range = r; report(); });
+
+        async function rules() {
+            const host = panel.querySelector('#tx-rules');
             try {
-                const cached = localStorage.getItem('posSettings');
-                if (cached) populateForm(JSON.parse(cached));
-            } catch (e) {}
+                const [t, s] = await Promise.all([api('/api/taxes'), api('/api/settings')]);
+                if (!t.ok) throw new Error(t.data.message || 'Could not load tax rules');
+                const vat = s.data && s.data.vat_rate !== undefined && s.data.vat_rate !== null ? parseFloat(s.data.vat_rate) : 15;
+                const list = (Array.isArray(t.data) ? t.data : []);
+                const rows = [];
+                if (vat > 0) rows.push({ name: 'VAT (system)', rate: vat, del: 'vat' });
+                list.forEach(x => rows.push({ name: x.name, rate: x.rate, del: String(x.id) }));
+                if (!rows.length) { host.innerHTML = '<div class="okw-empty">No active tax rules.</div>'; return; }
+                OkwUI.dataTable('#tx-rules', {
+                    columns: [
+                        { key: 'name', label: 'Tax' },
+                        { key: 'rate', label: 'Rate', numeric: true, render: (val) => esc(val) + '%' },
+                        { key: 'del', label: '', render: (id) => `<button type="button" class="okw-btn okw-btn-danger" data-tax-del="${esc(id)}">Remove</button>` }
+                    ],
+                    rows, exportFilename: 'okwesiwa-tax-rules.xlsx', printTitle: 'Tax rules'
+                });
+            } catch (err) {
+                host.innerHTML = '<div class="okw-empty">Tax rules could not be loaded.</div>';
+                OkwUI.toast(err.message, 'danger');
+            }
+        }
 
-            // Load fresh settings from API
-            const token = localStorage.getItem('authToken') || localStorage.getItem('companyToken');
-            fetch('/api/settings', { 
-                headers: token ? { 'Authorization': `Bearer ${token}` } : {},
-                credentials: 'include'
-            })
-            .then(res => {
-                if (res.ok) return res.json();
-                console.warn('Unable to fetch live settings, using local cache');
-                return null;
-            })
-            .then(settings => {
-                if (settings) {
-                    populateForm(settings);
-                    localStorage.setItem('posSettings', JSON.stringify(settings));
-                }
-            })
-            .catch(err => console.error('Error loading settings:', err));
+        panel.querySelector('#tx-add').addEventListener('click', async () => {
+            const name = panel.querySelector('#tx-name').value.trim();
+            const rate = panel.querySelector('#tx-rate').value;
+            if (!name || rate === '') return OkwUI.toast('Enter a tax name and rate', 'warning');
+            try {
+                const r = await api('/api/taxes', { method: 'POST', body: JSON.stringify({ name, rate }) });
+                if (!r.ok) throw new Error(r.data.message || 'Failed to add tax rule');
+                panel.querySelector('#tx-name').value = ''; panel.querySelector('#tx-rate').value = '';
+                OkwUI.toast('Tax rule added', 'success');
+                rules(); report();
+            } catch (err) { OkwUI.toast(err.message, 'danger'); }
+        });
+        panel.querySelector('#tx-rules').addEventListener('click', async (e) => {
+            const b = e.target.closest('[data-tax-del]');
+            if (!b) return;
+            const id = b.dataset.taxDel;
+            const isVat = id === 'vat';
+            const ok = await OkwUI.confirm(isVat ? 'Remove system VAT?' : 'Remove tax rule?', isVat ? 'This sets the global VAT rate to 0.00%.' : 'This removes the tax rule permanently.', { confirmText: 'Remove' });
+            if (!ok) return;
+            try {
+                const r = await api(isVat ? '/api/settings/vat' : '/api/taxes/' + encodeURIComponent(id), { method: 'DELETE' });
+                if (!r.ok) throw new Error(r.data.message || 'Could not remove the tax rule');
+                OkwUI.toast(isVat ? 'System VAT removed' : 'Tax rule removed', 'success');
+                rules(); report();
+            } catch (err) { OkwUI.toast(err.message, 'danger'); }
         });
 
-        function showNotification(message, type) {
-            const notif = document.getElementById('notification');
-            if (!notif) return;
-            notif.innerHTML = `<span>${message}</span>`;
-            notif.className = `notification show ${type || 'success'}`;
-            setTimeout(() => { notif.className = 'notification'; }, 3500);
-        }
-
-        async function saveSettings() {
-            const btn = document.getElementById('btnSaveSettings');
-            const btnText = document.getElementById('btnText');
-            const btnSpinner = document.getElementById('btnSpinner');
-
-            const isCeoOrAdmin = currentUserRole === 'ceo' || currentUserRole === 'admin' || currentUserRole === 'company';
-            const targetGroup = document.getElementById('monthlyTargetGroup');
-            const isTargetVisible = isCeoOrAdmin && targetGroup && targetGroup.style.display !== 'none';
-
-            // Get existing cached target if user is manager so it isn't overwritten
-            let existingTarget = 0;
+        async function report() {
+            const host = panel.querySelector('#tx-report');
+            if (!host) return;
+            host.textContent = 'Generating report...';
             try {
-                const cached = JSON.parse(localStorage.getItem('posSettings') || '{}');
-                existingTarget = cached.monthly_target || 0;
-            } catch (e) {}
-
-            const settings = {
-                storeName: document.getElementById('storeName').value.trim(),
-                phone: document.getElementById('phone')?.value.trim() || '',
-                taxId: document.getElementById('taxId')?.value.trim() || '',
-                currencySymbol: document.getElementById('currencySymbol').value,
-                vatRate: parseFloat(document.getElementById('vatRate').value) || 0,
-                monthlyTarget: isTargetVisible ? (parseFloat(document.getElementById('monthlyTarget')?.value) || 0) : existingTarget,
-                receiptFooter: document.getElementById('receiptFooter').value.trim()
-            };
-
-            if (btn) btn.disabled = true;
-            if (btnSpinner) btnSpinner.style.display = 'inline-block';
-            if (btnText) btnText.innerHTML = 'Saving...';
-
-            try {
-                const token = localStorage.getItem('authToken') || localStorage.getItem('companyToken');
-                const res = await fetch('/api/settings', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json', 
-                        ...(token ? { 'Authorization': `Bearer ${token}` } : {}) 
-                    },
-                    credentials: 'include',
-                    body: JSON.stringify(settings)
+                const qs = new URLSearchParams({ startDate: range.from, endDate: range.to, branch });
+                const r = await api('/api/ceo/tax-report?' + qs);
+                if (r.status === 403) { host.innerHTML = '<div class="okw-empty">The tax liability report is for CEO and admin users.</div>'; panel.querySelector('#tx-kpis').innerHTML = ''; return; }
+                if (!r.ok) throw new Error(r.data.message || 'Failed to generate the report');
+                const ruleList = r.data.rules || [];
+                const data = r.data.report || [];
+                panel.querySelector('#tx-note').textContent = r.data.reportNote || '';
+                const label = (x) => (x.rate != null && x.rate !== '' && Number.isFinite(Number(x.rate)) ? `${x.name} (${Number(x.rate)}%)` : (x.historical ? `${x.name} (recorded on sale)` : x.name));
+                const sum = (f) => data.reduce((s, row) => s + Number(f(row) || 0), 0);
+                panel.querySelector('#tx-kpis').innerHTML = [
+                    OkwUI.kpiCard({ label: 'Gross sales', value: fmt(sum(x => x.grossRevenue)), tone: 'primary' }),
+                    OkwUI.kpiCard({ label: 'Net sales', value: fmt(sum(x => x.netRevenue)), tone: 'info' }),
+                    OkwUI.kpiCard({ label: 'Total tax', value: fmt(sum(x => x.totalTax)), tone: 'warning' })
+                ].join('');
+                if (!data.length) { host.innerHTML = '<div class="okw-empty">No sales data found for this period.</div>'; return; }
+                const amountFor = (row, rule) => { const b = (row.breakdown || []).find(z => z.name === rule.name); return b ? b.amount : 0; };
+                const tableRows = data.map(row => {
+                    const o = { branch: row.branch, gross: row.grossRevenue, net: row.netRevenue, tax: row.totalTax };
+                    ruleList.forEach((rule, i) => { o['r' + i] = amountFor(row, rule); });
+                    return o;
                 });
-
-                const data = await res.json();
-
-                if (res.ok) {
-                    localStorage.setItem('posSettings', JSON.stringify({
-                        store_name: settings.storeName,
-                        phone: settings.phone,
-                        tax_id: settings.taxId,
-                        currency_symbol: settings.currencySymbol,
-                        vat_rate: settings.vatRate,
-                        monthly_target: settings.monthlyTarget,
-                        receipt_footer: settings.receiptFooter
-                    }));
-                    showNotification('Settings updated successfully!', 'success');
-                } else {
-                    showNotification(data.message || 'Failed to update settings.', 'error');
-                }
-            } catch (e) {
-                console.error('Save settings error:', e);
-                showNotification('Connection error while saving settings.', 'error');
-            } finally {
-                if (btn) btn.disabled = false;
-                if (btnSpinner) btnSpinner.style.display = 'none';
-                if (btnText) btnText.innerHTML = '<i class="fas fa-check"></i> Save Settings';
+                const total = { branch: 'TOTAL', gross: sum(x => x.grossRevenue), net: sum(x => x.netRevenue), tax: sum(x => x.totalTax) };
+                ruleList.forEach((rule, i) => { total['r' + i] = data.reduce((s, row) => s + Number(amountFor(row, rule) || 0), 0); });
+                tableRows.push(total);
+                OkwUI.dataTable('#tx-report', {
+                    columns: [
+                        { key: 'branch', label: 'Branch' },
+                        { key: 'gross', label: 'Gross sales', numeric: true, render: fmt },
+                        { key: 'net', label: 'Net sales', numeric: true, render: fmt },
+                        { key: 'tax', label: 'Total tax', numeric: true, render: fmt },
+                        ...ruleList.map((rule, i) => ({ key: 'r' + i, label: label(rule), numeric: true, render: fmt }))
+                    ],
+                    rows: tableRows, exportFilename: 'okwesiwa-tax-liability.xlsx', printTitle: 'Tax liability report'
+                });
+            } catch (err) {
+                host.innerHTML = '<div class="okw-empty">The report could not be generated.</div>';
+                OkwUI.toast(err.message, 'danger');
             }
         }
+        rules();
+        report();
+    }
 
-        async function logout() {
-            if (window.authGuard && typeof window.authGuard.logout === 'function') {
-                return window.authGuard.logout();
-            }
-            try {
-                const token = localStorage.getItem('authToken') || localStorage.getItem('companyToken');
-                if (token) {
-                    await fetch('/api/logout', {
+    /* ====================================================================
+       Notification templates (engine moved from the old page)
+       ==================================================================== */
+    function mountNotifications(panelEl, ctx) {
+        ctx.toolbar.innerHTML = `
+            <label for="nt-group">Group</label>
+            <select id="nt-group" class="okw-select">
+                <option value="general">Notifications</option>
+                <option value="customer">Customer notifications</option>
+                <option value="supplier">Supplier notifications</option>
+            </select>
+            <label for="nt-template">Template</label>
+            <select id="nt-template" class="okw-select"></select>
+            <button type="button" class="okw-btn okw-btn-primary" id="nt-save">Save template</button>`;
+    const TEMPLATE_META = {
+        general: [
+            { key: 'send_ledger', label: 'Send Ledger', tags: ['{business_name}', '{business_logo}', '{balance_due}', '{contact_name}', '{contact_custom_field_1}', '{contact_custom_field_2}', '{contact_custom_field_3}', '{contact_custom_field_4}', '{contact_custom_field_5}', '{contact_custom_field_6}', '{contact_custom_field_7}', '{contact_custom_field_8}', '{contact_custom_field_9}', '{contact_custom_field_10}'], hasSms: false }
+        ],
+        customer: [
+            { key: 'new_sale', label: 'New Sale' },
+            { key: 'payment_received', label: 'Payment Received' },
+            { key: 'payment_reminder', label: 'Payment Reminder' },
+            { key: 'new_booking', label: 'New Booking' },
+            { key: 'new_quotation', label: 'New Quotation' }
+        ].map(t => ({
+            ...t,
+            hasSms: true,
+            tags: ['{business_name}', '{business_logo}', '{invoice_number}', '{invoice_url}', '{total_amount}', '{paid_amount}', '{due_amount}', '{cumulative_due_amount}', '{due_date}', '{location_name}', '{location_address}', '{location_email}', '{location_phone}', '{location_custom_field_1}', '{location_custom_field_2}', '{location_custom_field_3}', '{location_custom_field_4}', '{contact_name}', '{contact_custom_field_1}', '{contact_custom_field_2}', '{contact_custom_field_3}', '{contact_custom_field_4}', '{contact_custom_field_5}', '{sell_custom_field_1}', '{sell_custom_field_2}', '{shipping_custom_field_1}', '{shipping_custom_field_2}']
+        })),
+        supplier: [
+            { key: 'new_order', label: 'New Order' },
+            { key: 'payment_paid', label: 'Payment Paid' },
+            { key: 'items_received', label: 'Items Received' },
+            { key: 'items_pending', label: 'Items Pending' },
+            { key: 'purchase_order', label: 'Purchase Order' }
+        ].map(t => ({
+            ...t,
+            hasSms: true,
+            tags: ['{business_name}', '{business_logo}', '{order_ref_number}', '{total_amount}', '{received_amount}', '{due_amount}', '{location_name}', '{location_address}', '{location_email}', '{location_phone}', '{purchase_custom_field_1}', '{purchase_custom_field_2}', '{contact_business_name}', '{contact_name}', '{contact_custom_field_1}', '{contact_custom_field_2}', '{shipping_custom_field_1}', '{shipping_custom_field_2}']
+        }))
+    };
+
+    let templates = [];
+    let activeGroup = 'general';
+    let activeKey = 'send_ledger';
+    let lastFocusedInput = null;
+
+    const grpSel = document.getElementById('nt-group');
+    const tplSel = document.getElementById('nt-template');
+
+    function populateTemplateDropdown() {
+        const list = TEMPLATE_META[activeGroup] || [];
+        tplSel.innerHTML = list.map(t => `<option value="${t.key}">${OkwUI.escapeHtml(t.label)}</option>`).join('');
+        if (!list.some(t => t.key === activeKey)) activeKey = list[0]?.key || '';
+        tplSel.value = activeKey;
+    }
+
+    grpSel.addEventListener('change', () => {
+        activeGroup = grpSel.value;
+        populateTemplateDropdown();
+        renderEditor();
+    });
+    tplSel.addEventListener('change', () => {
+        activeKey = tplSel.value;
+        renderEditor();
+    });
+
+    async function load() {
+        const res = await fetch('/api/notification-templates', { headers, credentials: 'include' });
+        const d = await res.json().catch(() => ({}));
+        templates = d.templates || [];
+        populateTemplateDropdown();
+        renderEditor();
+    }
+
+    function countWords(str) {
+        const s = String(str || '').trim();
+        return s ? s.split(/\s+/).length : 0;
+    }
+
+    function renderEditor() {
+        const meta = (TEMPLATE_META[activeGroup] || []).find(t => t.key === activeKey) || { label: activeKey, tags: [], hasSms: true };
+        const tpl = templates.find(t => t.template_key === activeKey) || {};
+        const panel = panelEl;
+
+        panel.innerHTML = `
+            <h2 style="margin:0 0 12px;font-size:18px;">${OkwUI.escapeHtml(meta.label)}</h2>
+            <div style="font-size:12px;font-weight:600;color:var(--color-text-muted);margin-bottom:6px;">Available Tags (click to insert):</div>
+            <div class="tag-bar">
+                ${meta.tags.map(tag => `<button type="button" class="tag-pill" data-tag="${OkwUI.escapeHtml(tag)}">${OkwUI.escapeHtml(tag)}</button>`).join('')}
+            </div>
+
+            <div class="form-grid">
+                <div class="field"><label>Email Subject:</label><input type="text" class="okw-input nt-field" id="nt-subject" value="${OkwUI.escapeHtml(tpl.email_subject || '')}"></div>
+                <div class="field"><label>CC:</label><input type="text" class="okw-input nt-field" id="nt-cc" value="${OkwUI.escapeHtml(tpl.cc || '')}" placeholder="cc@example.com"></div>
+                <div class="field"><label>BCC:</label><input type="text" class="okw-input nt-field" id="nt-bcc" value="${OkwUI.escapeHtml(tpl.bcc || '')}" placeholder="bcc@example.com"></div>
+            </div>
+
+            <div class="field">
+                <div style="display:flex;justify-content:space-between;align-items:center;">
+                    <label>Email Body:</label>
+                    <span id="nt-word-count" style="font-size:11px;color:var(--color-text-muted);">${countWords(tpl.email_body)} WORDS</span>
+                </div>
+                <textarea id="nt-email-body" class="okw-input nt-field" rows="6" style="padding:10px;resize:vertical;">${OkwUI.escapeHtml(tpl.email_body || '')}</textarea>
+            </div>
+
+            ${meta.hasSms ? `
+                <div class="field"><label>SMS Body:</label><textarea id="nt-sms" class="okw-input nt-field" rows="3" style="padding:10px;resize:vertical;">${OkwUI.escapeHtml(tpl.sms_body || '')}</textarea></div>
+                <div class="checks-row">
+                    <label class="check-item"><input type="checkbox" id="nt-auto-email" ${tpl.auto_send_email ? 'checked' : ''}> <span>Auto Send Email</span></label>
+                    <label class="check-item"><input type="checkbox" id="nt-auto-sms" ${tpl.auto_send_sms ? 'checked' : ''}> <span>Auto Send SMS</span></label>
+                </div>
+                ${activeGroup === 'customer' ? '<p style="margin:8px 0 0;font-size:12px;color:var(--color-text-muted);">If enabled, sell notification will be automatically sent to customer on creating new sales for them.</p>' : ''}
+            ` : ''}
+
+            <div style="margin-top:20px;padding:16px;border-radius:10px;border:1px solid var(--edge,#cbd5e1);background:var(--frame,#f8fafc);">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:10px;">
+                    <strong style="font-size:13.5px;color:var(--ink,#0f172a);">Live Message Preview</strong>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <input type="email" id="nt-test-to" class="okw-input" placeholder="Test email recipient..." style="height:32px;width:210px;font-size:12.5px;">
+                        <button type="button" id="nt-send-test" class="okw-btn okw-btn-outline" style="height:32px;font-size:12px;">Send Test Email (SMTP)</button>
+                    </div>
+                </div>
+                <div style="background:var(--sheet,#ffffff);border:1px solid var(--edge,#e2e8f0);border-radius:8px;padding:12px 14px;">
+                    <div style="font-size:12px;color:var(--muted,#64748b);margin-bottom:4px;">Subject: <strong id="nt-prev-subj" style="color:var(--ink,#0f172a);"></strong></div>
+                    <div id="nt-prev-body" style="font-size:13px;line-height:1.55;white-space:pre-wrap;color:var(--ink,#0f172a);"></div>
+                    ${meta.hasSms ? '<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--edge,#cbd5e1);font-size:12px;color:var(--muted,#64748b);">SMS Preview: <span id="nt-prev-sms" style="color:var(--ink,#0f172a);"></span></div>' : ''}
+                </div>
+            </div>
+        `;
+
+        const SAMPLE_DATA = {
+            '{business_name}': 'OKWESIWA LTD',
+            '{business_logo}': '[Company Logo]',
+            '{customer_name}': 'Kwesi Appiah Construction',
+            '{supplier_name}': 'Ghana Hardware Distributors',
+            '{invoice_number}': 'INV-2026-0142',
+            '{total_amount}': 'GH₵ 1,250.00',
+            '{paid_amount}': 'GH₵ 1,000.00',
+            '{due_amount}': 'GH₵ 250.00',
+            '{payment_ref_number}': 'PAY-88421',
+            '{received_amount}': 'GH₵ 500.00',
+            '{invoice_url}': 'https://okwesiwa.local/receipt/142',
+            '{quote_url}': 'https://okwesiwa.local/quote/142',
+            '{booking_code}': 'BK-901',
+            '{start_time}': '10:00 AM',
+            '{end_time}': '11:30 AM',
+            '{location}': 'TEMA MAIN',
+            '{order_ref_number}': 'PO-2026-009',
+            '{status}': 'Completed'
+        };
+        const renderSample = (str) => {
+            let out = String(str || '');
+            for (const [k, v] of Object.entries(SAMPLE_DATA)) out = out.split(k).join(v);
+            return out;
+        };
+        const updatePreview = () => {
+            const subj = document.getElementById('nt-prev-subj');
+            const body = document.getElementById('nt-prev-body');
+            const sms = document.getElementById('nt-prev-sms');
+            if (subj) subj.textContent = renderSample(document.getElementById('nt-subject')?.value || '(No subject)');
+            if (body) body.textContent = renderSample(document.getElementById('nt-email-body')?.value || '(Empty message body)');
+            if (sms) sms.textContent = renderSample(document.getElementById('nt-sms')?.value || '(No SMS text)');
+        };
+        updatePreview();
+
+        lastFocusedInput = document.getElementById('nt-email-body');
+        panel.querySelectorAll('.nt-field').forEach(el => {
+            el.addEventListener('focus', () => { lastFocusedInput = el; });
+            el.addEventListener('input', updatePreview);
+        });
+        const sendTestBtn = document.getElementById('nt-send-test');
+        if (sendTestBtn) {
+            sendTestBtn.addEventListener('click', async () => {
+                const to = document.getElementById('nt-test-to')?.value.trim();
+                if (!to) return OkwUI.toast('Enter a recipient email address first', 'warning');
+                sendTestBtn.disabled = true;
+                try {
+                    const res = await fetch('/api/notification-templates/test-email', {
                         method: 'POST',
-                        headers: { 'Authorization': `Bearer ${token}` },
-                        credentials: 'include'
-                    }).catch(() => {});
+                        headers,
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            to,
+                            subject: renderSample(document.getElementById('nt-subject')?.value || ''),
+                            body: renderSample(document.getElementById('nt-email-body')?.value || '')
+                        })
+                    });
+                    const d = await res.json().catch(() => ({}));
+                    OkwUI.toast(d.message || (res.ok ? 'Test email sent' : 'Failed to send'), res.ok ? 'success' : 'danger');
+                } finally {
+                    sendTestBtn.disabled = false;
                 }
-            } catch (e) {
-                console.error(e);
-            } finally {
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.replace('/login?logout=true');
-            }
+            });
         }
-    </script>
+        const emailArea = document.getElementById('nt-email-body');
+        if (emailArea) {
+            emailArea.addEventListener('input', () => {
+                const wc = document.getElementById('nt-word-count');
+                if (wc) wc.textContent = `${countWords(emailArea.value)} WORDS`;
+            });
+        }
+        panel.querySelectorAll('.tag-pill').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = lastFocusedInput || document.getElementById('nt-email-body');
+                if (!target) return;
+                const tag = btn.getAttribute('data-tag') || '';
+                const start = target.selectionStart ?? target.value.length;
+                const end = target.selectionEnd ?? target.value.length;
+                target.value = target.value.slice(0, start) + tag + target.value.slice(end);
+                target.focus();
+                target.selectionStart = target.selectionEnd = start + tag.length;
+                target.dispatchEvent(new Event('input'));
+            });
+        });
+    }
+
+    document.getElementById('nt-save').addEventListener('click', async () => {
+        const payload = {
+            email_subject: document.getElementById('nt-subject')?.value || '',
+            cc: document.getElementById('nt-cc')?.value || '',
+            bcc: document.getElementById('nt-bcc')?.value || '',
+            email_body: document.getElementById('nt-email-body')?.value || '',
+            sms_body: document.getElementById('nt-sms')?.value || '',
+            whatsapp_text: '',
+            auto_send_email: Boolean(document.getElementById('nt-auto-email')?.checked),
+            auto_send_sms: Boolean(document.getElementById('nt-auto-sms')?.checked),
+            auto_send_whatsapp: false
+        };
+        const res = await fetch(`/api/notification-templates/${encodeURIComponent(activeKey)}`, {
+            method: 'PUT',
+            headers,
+            credentials: 'include',
+            body: JSON.stringify(payload)
+        });
+        const d = await res.json().catch(() => ({}));
+        if (res.ok) {
+            const idx = templates.findIndex(t => t.template_key === activeKey);
+            if (idx >= 0) templates[idx] = { ...templates[idx], ...payload };
+            else templates.push({ template_key: activeKey, ...payload });
+            OkwUI.toast('Notification template saved', 'success');
+        } else {
+            OkwUI.toast(d.message || 'Failed to save template', 'danger');
+        }
+    });
+
+    load();
+    }
+
+    /* ====================================================================
+       Activity log (audit trail)
+       ==================================================================== */
+    function mountActivity(panel, ctx) {
+        ctx.toolbar.innerHTML = '<button type="button" class="okw-btn okw-btn-outline" id="al-refresh">Refresh</button>';
+        panel.innerHTML = '<div id="audit-table-host">Loading activity log...</div>';
+        async function load() {
+            const host = panel.querySelector('#audit-table-host');
+            const r = await api('/api/audit-logs?limit=250');
+            if (!r.ok) { host.innerHTML = '<div class="okw-empty">Unable to load the activity log (CEO or manager access required).</div>'; if (r.status === 0) OkwUI.toast(r.data.message, 'danger'); return; }
+            const list = Array.isArray(r.data) ? r.data : (r.data.logs || []);
+            const rows = list.map(l => ({
+                time: new Date(l.created_at).toLocaleString(),
+                user: l.user_name || l.user_email || 'System',
+                role: (l.user_role || 'system').toUpperCase(),
+                action: l.action,
+                details: typeof l.details === 'object' ? JSON.stringify(l.details) : (l.details || ''),
+                ip: l.ip_address || ''
+            }));
+            OkwUI.dataTable('#audit-table-host', {
+                columns: [
+                    { key: 'time', label: 'Timestamp' },
+                    { key: 'user', label: 'Staff' },
+                    { key: 'role', label: 'Role', render: (val) => OkwUI.badge(val, 'info') },
+                    { key: 'action', label: 'Action' },
+                    { key: 'details', label: 'Details' },
+                    { key: 'ip', label: 'IP' }
+                ],
+                rows, searchPlaceholder: 'Search user, action, or details...', exportFilename: 'okwesiwa-activity-log.xlsx', printTitle: 'Activity log', pageSize: 25
+            });
+        }
+        ctx.toolbar.querySelector('#al-refresh').onclick = load;
+        load();
+    }
+
+    /* ====================================================================
+       Backups and data export (CEO and admin only)
+       ==================================================================== */
+    function mountBackups(panel, ctx) {
+        ctx.toolbar.innerHTML = `
+            <button type="button" class="okw-btn okw-btn-outline" id="bk-excel">Export all data to Excel</button>
+            <button type="button" class="okw-btn okw-btn-outline" id="bk-pdf">Export all data to PDF</button>
+            <button type="button" class="okw-btn okw-btn-primary" id="bk-create">Create backup now</button>`;
+        panel.innerHTML = `
+            <div class="okw-kpi-row" id="bk-kpis"></div>
+            <h2 class="okw-chart-title">Backup history (30-day retention)</h2>
+            <div id="bk-table">Loading backups...</div>`;
+
+        const download = async (url, filename, okMsg, failMsg) => {
+            try {
+                const res = await fetch(url, { headers, credentials: 'include' });
+                if (!res.ok) throw new Error(failMsg);
+                const blob = await res.blob();
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob); a.download = filename; a.click();
+                if (okMsg) OkwUI.toast(okMsg, 'success');
+            } catch (err) { OkwUI.toast(err.message || failMsg, 'danger'); }
+        };
+
+        async function load() {
+            const host = panel.querySelector('#bk-table');
+            const r = await api('/api/backups');
+            if (!r.ok) { host.innerHTML = '<div class="okw-empty">CEO or admin access is required to manage backups.</div>'; if (r.status === 0) OkwUI.toast(r.data.message, 'danger'); return; }
+            const list = r.data.backups || [];
+            const latest = list[0];
+            panel.querySelector('#bk-kpis').innerHTML = [
+                OkwUI.kpiCard({ label: 'Stored backups', value: String(list.length), subtext: '30-day rolling retention', tone: 'primary' }),
+                OkwUI.kpiCard({ label: 'Latest backup', value: latest ? new Date(latest.created_at).toLocaleDateString() : 'None', subtext: latest ? String(latest.backup_type || '').toUpperCase() : 'Run one manually', tone: latest ? 'success' : 'warning' }),
+                OkwUI.kpiCard({ label: 'Auto schedule', value: 'Nightly', subtext: 'Runs automatically every night', tone: 'info' })
+            ].join('');
+            if (!list.length) { host.innerHTML = '<div class="okw-empty">No backups yet.</div>'; return; }
+            OkwUI.dataTable('#bk-table', {
+                columns: [
+                    { key: 'created', label: 'Created at' },
+                    { key: 'type', label: 'Type', render: (val) => OkwUI.badge(val, val === 'auto' ? 'info' : 'success') },
+                    { key: 'filename', label: 'Snapshot file' },
+                    { key: 'summary', label: 'Contents' },
+                    { key: 'size', label: 'Size', numeric: true },
+                    {
+                        key: 'id', label: 'Actions', render: (id) => `<div class="okw-filter-bar">
+                            <button type="button" class="okw-btn okw-btn-outline" data-bk-dl="${Number(id)}" data-fmt="json">JSON</button>
+                            <button type="button" class="okw-btn okw-btn-outline" data-bk-dl="${Number(id)}" data-fmt="docx">DOCX</button>
+                            <button type="button" class="okw-btn okw-btn-accent" data-bk-restore="${Number(id)}">Restore</button></div>`
+                    }
+                ],
+                rows: list.map(b => ({
+                    id: b.id,
+                    created: new Date(b.created_at).toLocaleString(),
+                    type: b.backup_type,
+                    filename: b.filename,
+                    summary: b.summary ? `${b.summary.products || 0} products · ${b.summary.customers || 0} customers · ${b.summary.transactions || 0} sales` : '',
+                    size: `${Math.max(1, Math.round((b.size_bytes || 0) / 1024))} KB`
+                })),
+                searchPlaceholder: 'Filter backups...', exportFilename: 'okwesiwa-backup-log.xlsx', printTitle: 'Backup log'
+            });
+        }
+
+        panel.querySelector('#bk-table').addEventListener('click', async (e) => {
+            const dl = e.target.closest('[data-bk-dl]');
+            const rs = e.target.closest('[data-bk-restore]');
+            if (dl) {
+                const id = dl.dataset.bkDl, f = dl.dataset.fmt;
+                download(`/api/backups/${id}/download${f === 'docx' ? '?format=docx' : ''}`, `okwesiwa-backup-${id}.${f === 'docx' ? 'docx' : 'json'}`, '', 'Download failed');
+            } else if (rs) {
+                const ok = await OkwUI.confirm('Restore backup', 'Verify and stage this backup snapshot for restore?', { confirmText: 'Restore' });
+                if (!ok) return;
+                const r = await api(`/api/backups/${rs.dataset.bkRestore}/restore`, { method: 'POST' });
+                OkwUI.toast(r.data.message || (r.ok ? 'Restore completed' : 'Restore failed'), r.ok ? 'success' : 'danger');
+            }
+        });
+        ctx.toolbar.querySelector('#bk-create').onclick = async () => {
+            const r = await api('/api/backups/create', { method: 'POST' });
+            if (r.ok) { OkwUI.toast('Manual backup created successfully', 'success'); load(); }
+            else OkwUI.toast(r.data.message || 'Backup failed', 'danger');
+        };
+        const day = new Date().toISOString().slice(0, 10);
+        ctx.toolbar.querySelector('#bk-excel').onclick = () => download('/api/backups/export-excel', `OKWESIWA-LTD-Full-Export-${day}.xlsx`, 'Full Excel workbook downloaded', 'Excel export failed');
+        ctx.toolbar.querySelector('#bk-pdf').onclick = () => download('/api/backups/export-pdf', `OKWESIWA-LTD-Full-Export-${day}.pdf`, 'Full PDF report downloaded', 'PDF export failed');
+        load();
+    }
+
+    OkwUI.sectionPage({
+        mount: '#hub',
+        title: 'Settings',
+        subtitle: 'Store profile, business configuration, locations, taxes, messages and security.',
+        defaultId: 'store',
+        sections: [
+            { id: 'store', label: 'Store profile', group: 'Business', render: mountStore },
+            businessSection('business', 'Business'),
+            businessSection('tax', 'Tax defaults'),
+            businessSection('product', 'Product'),
+            businessSection('invoice', 'Invoice'),
+            businessSection('barcode', 'Barcode'),
+            businessSection('printers', 'Receipt printers'),
+            { id: 'locations', label: 'Locations', group: 'Locations and tax', roles: MANAGERS, render: mountLocations },
+            { id: 'taxrates', label: 'Tax rates and report', group: 'Locations and tax', roles: MANAGERS, render: mountTax },
+            { id: 'notifications', label: 'Notification templates', group: 'Messages', roles: MANAGERS, render: mountNotifications },
+            { id: 'activity', label: 'Activity log', group: 'Security', roles: MANAGERS, render: mountActivity },
+            { id: 'backups', label: 'Backups and export', group: 'Security', roles: CEO_ADMIN, render: mountBackups }
+        ]
+    });
+})();
+</script>
 </body>
 </html>

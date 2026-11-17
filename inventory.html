@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footprint | Inventory</title>
-    <link rel="icon" type="image/png" href="logo.png">
+    <title>OKWESIWA LTD | Inventory</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="sidebar.css">
     <script src="currency.js"></script>
     <script src="telemetry-guard.js"></script>
@@ -33,7 +33,7 @@
         }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
         body { background: var(--gray-light); display: flex; flex-direction: column; min-height: 100vh; color: var(--text-color); }
-        .sidebar { width: var(--sidebar-width); background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; display: flex; flex-direction: column; position: fixed; height: 100vh; height: 100dvh; overflow-y: auto; }
+        .sidebar { width: var(--sidebar-width); background: var(--primary-color); color: white; display: flex; flex-direction: column; position: fixed; height: 100vh; height: 100dvh; overflow-y: auto; }
         .brand { padding: 15px; font-size: 24px; font-weight: 700; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); font-family: 'Montserrat', sans-serif; display: flex; align-items: center; gap: 10px; }
         .nav-links { flex: 1; padding-top: 20px; overflow-y: auto; }
         .nav-item { display: flex; align-items: center; padding: 8px 25px; color: rgba(255,255,255,0.7); text-decoration: none; transition: 0.3s; }
@@ -49,7 +49,7 @@
         .page-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
         .btn-add { background: var(--primary-color); color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; border: none; cursor: pointer; display: flex; align-items: center; gap: 10px; }
         
-        .inventory-card { background: white; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .inventory-card { background: white; padding: 25px; border-radius: 12px; }
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; padding: 15px; color: #888; font-weight: 500; border-bottom: 1px solid #eee; }
         td { padding: 15px; border-bottom: 1px solid #eee; color: var(--text-color); font-size: 14px; }
@@ -76,7 +76,7 @@
             text-align: center;
             color: white;
             font-size: 12px;
-            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            background: var(--primary-color);
         }
 
         .tab-content { display: none; animation: fadeIn 0.3s; }
@@ -88,7 +88,7 @@
             position: fixed; top: 20px; left: 50%; transform: translateX(-50%) translateY(-20px);
             background-color: #333; color: white; padding: 12px 24px; border-radius: 50px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2); z-index: 2000; opacity: 0;
-            transition: all 0.3s ease; pointer-events: none; font-size: 14px; font-weight: 500;
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease; pointer-events: none; font-size: 14px; font-weight: 500;
         }
         .notification.show { opacity: 1; transform: translateX(-50%) translateY(10px); }
         .notification.success { background-color: #27ae60; }
@@ -98,9 +98,9 @@
         .action-btn {
             width: 32px; height: 32px; border-radius: 6px; border: none; cursor: pointer;
             display: inline-flex; align-items: center; justify-content: center;
-            font-size: 14px; transition: all 0.2s; margin-right: 5px;
+            font-size: 14px; transition: background-color 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out, opacity 0.2s ease-out, transform 0.2s ease-out; margin-right: 5px;
         }
-        .action-btn:hover { transform: translateY(-2px); box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .action-btn:hover { transform: translateY(-2px); }
         .btn-edit { background: #e3f2fd; color: #1565c0; }
         .btn-delete { background: #ffebee; color: #c62828; }
         .btn-print { background: #f3e5f5; color: #7b1fa2; }
@@ -120,15 +120,13 @@
             gap: 8px;
             font-weight: 600;
             font-size: 14px;
-            transition: all 0.2s;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: background-color 0.2s ease-out, border-color 0.2s ease-out, color 0.2s ease-out, opacity 0.2s ease-out, transform 0.2s ease-out;
         }
         .btn-header-secondary:hover {
             background: #f5f7fa;
             border-color: #b0bec5;
             color: #263238;
             transform: translateY(-1px);
-            box-shadow: 0 3px 6px rgba(0,0,0,0.08);
         }
         
         .btn-export-pdf {
@@ -148,7 +146,7 @@
         }
         .menu-card {
             background: white; padding: 20px 15px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
-            text-align: center; cursor: pointer; transition: all 0.3s ease; border: 1px solid transparent;
+            text-align: center; cursor: pointer; transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease; border: 1px solid transparent;
             display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%;
         }
         .menu-card:hover {
@@ -159,8 +157,8 @@
         .menu-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 5px; color: #333; }
         .menu-card p { font-size: 12px; color: #777; line-height: 1.4; }
         
-        .back-link { display: inline-flex; align-items: center; gap: 8px; color: #64748b; background: white; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: none; }
-        .back-link:hover { color: var(--primary-color, #f59e0b); transform: translateX(-5px); box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        .back-link { display: inline-flex; align-items: center; gap: 8px; color: #64748b; background: white; padding: 10px 20px; border-radius: 50px; text-decoration: none; font-size: 14px; font-weight: 600; margin-bottom: 20px; cursor: pointer; transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, opacity 0.2s ease, transform 0.2s ease; border: none; }
+        .back-link:hover { color: var(--primary-color, #f59e0b); transform: translateX(-5px); }
 
         /* Analytics KPI Cards */
         .kpi-grid { 
@@ -173,7 +171,6 @@
             background: white; 
             padding: 15px; 
             border-radius: 16px; 
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05); 
             display: flex; 
             flex-direction: column; 
             justify-content: space-between; 
@@ -184,7 +181,6 @@
         }
         .kpi-card:hover {
             transform: translateY(-5px);
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
         }
         .kpi-header {
             display: flex;
@@ -224,7 +220,7 @@
         .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
 
         @media (max-width: 992px) {
-            .sidebar { transform: translateX(-100%); z-index: 1000; transition: transform 0.3s ease; box-shadow: 5px 0 15px rgba(0,0,0,0.1); }
+            .sidebar { transform: translateX(-100%); z-index: 1000; transition: transform 0.3s ease; }
             .sidebar.active { transform: translateX(0); }
             .main-content { margin-left: 0; padding: 20px; padding-top: 70px; }
             .mobile-menu-btn { display: block; }
@@ -240,7 +236,6 @@
                 border: 1px solid #e2e8f0;
                 border-radius: 10px;
                 margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
                 background: white;
             }
             .category-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
@@ -272,7 +267,6 @@
                 border: 1px solid #e2e8f0;
                 border-radius: 10px;
                 margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
                 background: white;
             }
             .supplier-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
@@ -306,7 +300,6 @@
                 border: 1px solid #e2e8f0;
                 border-radius: 10px;
                 margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
                 background: white;
             }
             .stock-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
@@ -348,7 +341,6 @@
                 border: 1px solid #e2e8f0;
                 border-radius: 10px;
                 margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
                 background: white;
             }
             .po-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
@@ -380,7 +372,6 @@
                 border: 1px solid #e2e8f0;
                 border-radius: 10px;
                 margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
                 background: white;
             }
             .receiving-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
@@ -413,7 +404,6 @@
                 border: 1px solid #e2e8f0;
                 border-radius: 10px;
                 margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
                 background: white;
             }
             .shelf-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
@@ -445,7 +435,6 @@
                 border: 1px solid #e2e8f0;
                 border-radius: 10px;
                 margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
                 background: white;
             }
             .transfer-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
@@ -477,7 +466,6 @@
                 border: 1px solid #e2e8f0;
                 border-radius: 10px;
                 margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
                 background: white;
             }
             .stocktake-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
@@ -534,7 +522,6 @@
                 border: 1px solid #e2e8f0;
                 border-radius: 10px;
                 margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
                 background: white !important;
             }
             .analytics-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
@@ -581,7 +568,6 @@
                 border: 1px solid #e2e8f0;
                 border-radius: 10px;
                 margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
                 background: white;
             }
             .returns-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
@@ -615,7 +601,6 @@
                 border: 1px solid #e2e8f0;
                 border-radius: 10px;
                 margin-bottom: 12px;
-                box-shadow: 0 2px 6px rgba(0,0,0,0.05);
                 background: white;
             }
             .negative-table tbody tr:last-child { border-bottom: 1px solid #e2e8f0; }
@@ -660,6 +645,9 @@
         
         .sidebar-logout-btn { margin-left: auto; flex-shrink: 0; background: none; border: none; color: rgba(255,255,255,0.65); cursor: pointer; padding: 7px; border-radius: 6px; font-size: 16px; line-height: 1; transition: color 0.2s ease, background 0.2s ease; } .sidebar-logout-btn:hover { color: white; background: rgba(220,53,69,0.6); }
         </style>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
 </head>
 <body>
     <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
@@ -669,23 +657,10 @@
 
     <div class="sidebar">
         <div class="brand" style="display: flex; flex-direction: column; align-items: center;">
-            <img src="logo.png" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
             
         </div>
         <div class="nav-links">
-            <a href="dashboard" class="nav-item"><i class="fas fa-home"></i> Dashboard</a>
-            
-            <div class="nav-section">Sales & Finance</div>
-            <a href="sales-dashboard" class="nav-item"><i class="fas fa-chart-pie"></i> Sales</a>
-            <a href="profitability" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Profitability</a>
-            <a href="promotions" class="nav-item"><i class="fas fa-tags"></i> Promotions</a>
-
-            <div class="nav-section">Operations</div>
-            <a href="pos-register" class="nav-item"><i class="fas fa-users"></i> Staff</a>
-            <a href="credit-customers" class="nav-item"><i class="fas fa-address-book"></i> Credit</a>
-            <a href="#" onclick="switchTab('overview'); return false;" class="nav-item active"><i class="fas fa-warehouse"></i> Inventory</a>
-            <a href="reports" class="nav-item"><i class="fas fa-chart-line"></i> Reports</a>
-            <a href="settings" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
         </div>
         <div class="user-profile">
             <div class="user-profile-row">
@@ -701,7 +676,7 @@
 
     <div class="main-content">
         <!-- 0. OVERVIEW TAB (New Landing Page) -->
-        <div id="tab-overview" class="tab-content active">
+        <div id="tab-overview" class="tab-content" style="display:none;">
             <div class="page-header">
                 <h2>Inventory Management</h2>
             </div>
@@ -1109,14 +1084,14 @@
                 
                 <div style="background: #fff; padding: 20px; border: 1px solid #eee; border-radius: 8px; margin-bottom: 20px; min-height: 120px; display: flex; align-items: center; justify-content: center; flex-direction: column;">
                     <svg id="bvBarcodeSvg"></svg>
-                    <div id="bvBarcodeText" style="font-family: monospace; font-size: 18px; margin-top: 10px; font-weight: bold; letter-spacing: 2px;"></div>
+                    <div id="bvBarcodeText" style="font-family: inherit; font-variant-numeric: tabular-nums; font-size: 18px; margin-top: 10px; font-weight: bold; letter-spacing: 2px;"></div>
                 </div>
 
                 <!-- Edit Barcode Section -->
                 <div id="barcodeEditSection" style="margin-bottom: 20px; display: none;">
                     <label style="display: block; text-align: left; margin-bottom: 5px; font-weight: 600; color: #333;">Edit Barcode:</label>
                     <div style="display: flex; gap: 8px;">
-                        <input type="text" id="bvBarcodeInput" placeholder="Enter new barcode" maxlength="20" style="flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; font-size: 14px;">
+                        <input type="text" id="bvBarcodeInput" placeholder="Enter new barcode" maxlength="20" style="flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-variant-numeric: tabular-nums; font-size: 14px;">
                         <button type="button" class="btn-save" onclick="saveEditedBarcode()" style="background: var(--primary-color);"><i class="fas fa-save"></i> Save</button>
                         <button type="button" class="btn-cancel" onclick="cancelBarcodeEdit()">Cancel</button>
                     </div>
@@ -1945,9 +1920,9 @@
     </div>
 
     <footer>
-        © 2025 Footprint
+        © 2025 OKWESIWA LTD
     </footer>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" crossorigin="anonymous" defer></script>
 
     <script>
         // redirect https->http for local dev to avoid SSL errors
@@ -2139,6 +2114,7 @@
             } else if (tabId === 'shelf') {
                 loadShelfData(); 
             } else if (tabId === 'analytics') {
+                if (!products || !products.length) await loadInventory();
                 loadYTDStats();
                 loadAnalyticsKPIs();
             } else if (tabId === 'barcodes') {
@@ -2152,8 +2128,12 @@
 
         document.addEventListener('DOMContentLoaded', () => {
             // Handle tabs and preserve query parameters
+            const invOv = document.getElementById('tab-overview');
+            if (invOv) invOv.style.display = 'none';
+            document.querySelectorAll('.tab-content .back-link').forEach(el => { el.style.display = 'none'; });
             const urlParams = new URLSearchParams(window.location.search);
-            let tab = urlParams.get('tab') || localStorage.getItem('activeInventoryTab') || 'overview';
+            let tab = urlParams.get('tab') || 'stock';
+            if (tab === 'overview') tab = 'stock';
             const isLowStockParam = urlParams.get('lowStock') === 'true';
             const isOutOfStockParam = urlParams.get('outOfStock') === 'true';
 
@@ -2161,7 +2141,8 @@
             if (isLowStockParam) {
                 const cb = document.getElementById('lowStockFilter');
                 if (cb) cb.checked = true;
-            } else if (isOutOfStockParam) {
+            }
+            if (isOutOfStockParam) {
                 const cb = document.getElementById('outOfStockFilter');
                 if (cb) cb.checked = true;
             }
@@ -2218,7 +2199,7 @@
                     // 1. Update Dropdowns & Data
                     window.allCategories = categories;
                     filteredCategories = [...categories];
-                    const options = categories.map(c => `<option value="${c.name}">${c.name}</option>`).join('');
+                    const options = categories.map(c => `<option value="${OkwUI.escapeHtml(c.name)}">${OkwUI.escapeHtml(c.name)}</option>`).join('');
                     
                     // Update Filter
                     const filter = document.getElementById('categoryFilter');
@@ -2247,8 +2228,8 @@
             } else {
                 tbody.innerHTML = pageData.map(c => `
                     <tr>
-                        <td data-label="Category" style="font-weight:600; color:var(--primary-color);">${c.name}</td>
-                        <td data-label="Description">${c.description || '-'}</td>
+                        <td data-label="Category" style="font-weight:600; color:var(--primary-color);">${OkwUI.escapeHtml(c.name)}</td>
+                        <td data-label="Description">${OkwUI.escapeHtml(c.description || '-')}</td>
                         <td data-label="Created At">${new Date(c.created_at).toLocaleDateString()}</td>
                         <td data-label="Actions">
                             <button class="action-btn btn-delete" onclick="deleteCategory(${c.id})" title="Delete"><i class="fas fa-trash"></i></button>
@@ -2425,10 +2406,10 @@
                 
                 rowsHtml += `
                     <tr>
-                        <td data-label="Select" style="text-align: center;"><input type="checkbox" class="stock-check" value="${p.barcode}"></td>
-                        <td data-label="Barcode">${p.barcode}</td>
-                        <td data-label="Product Name" style="font-weight:600;">${p.name}</td>
-                        <td data-label="Category">${p.category || 'General'}</td>
+                        <td data-label="Select" style="text-align: center;"><input type="checkbox" class="stock-check" value="${OkwUI.escapeHtml(p.barcode)}"></td>
+                        <td data-label="Barcode">${OkwUI.escapeHtml(p.barcode)}</td>
+                        <td data-label="Product Name" style="font-weight:600;">${OkwUI.escapeHtml(p.name)}</td>
+                        <td data-label="Category">${OkwUI.escapeHtml(p.category || 'General')}</td>
                         <td data-label="Price">${formatCurrency(p.price)}</td>
                         <td data-label="Quantity" data-stock="${branchStock}">
                             <span class="stock-badge ${stockClass}">${branchStock}</span>
@@ -2437,7 +2418,7 @@
                         <td data-label="Expiry Date">${expiryDate}</td>
                         <td data-label="Actions">
                             <button class="action-btn btn-edit" onclick="editProduct(${p.id})" title="Edit Product"><i class="fas fa-edit"></i></button>
-                            <button class="action-btn btn-print" onclick="printLabel('${p.barcode}')" title="Print Label"><i class="fas fa-print"></i></button>
+                            <button class="action-btn btn-print" onclick="printLabel('${OkwUI.escapeHtml(p.barcode)}')" title="Print Label"><i class="fas fa-print"></i></button>
                             <button class="action-btn btn-delete" onclick="deleteProduct(${p.id})" title="Delete"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
@@ -2522,7 +2503,7 @@
             
             let html = '<option value="">All Products (Store-wide)</option>';
             products.forEach(p => {
-                html += `<option value="${p.barcode}">${p.name} (${p.barcode})</option>`;
+                html += `<option value="${OkwUI.escapeHtml(p.barcode)}">${OkwUI.escapeHtml(p.name)} (${OkwUI.escapeHtml(p.barcode)})</option>`;
             });
             select.innerHTML = html;
         }
@@ -2812,12 +2793,12 @@
                 </head>
                 <body>
                     <div class="label">
-                        <h2>${name}</h2>
+                        <h2>${OkwUI.escapeHtml(name)}</h2>
                         <svg id="barcode"></svg>
                     </div>
                     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
                     <script>
-                        JsBarcode("#barcode", "${barcode}", {
+                        JsBarcode("#barcode", "${OkwUI.escapeHtml(barcode)}", {
                             format: "CODE128", width: 2, height: 40, displayValue: true
                         });
                         window.onload = function() { window.print(); window.close(); }
@@ -2996,7 +2977,7 @@
                 
                 if (data.success) {
                     status.innerHTML = `<div style="color:green; background:#e8f5e9; padding:10px; border-radius:6px;">
-                        ✅ Success! Added: ${data.results.success}, Failed: ${data.results.failed}
+                        Done. Added: ${data.results.success}, Failed: ${data.results.failed}
                     </div>`;
                     // refresh data views
                     loadInventory();
@@ -3006,13 +2987,13 @@
                     }, 2000);
                 } else {
                     status.innerHTML = `<div style="color:red; background:#ffebee; padding:10px; border-radius:6px;">
-                        ❌ Error: ${data.message}
+                        Error: ${OkwUI.escapeHtml(data.message)}
                     </div>`;
                 }
             } catch (e) {
                 console.error(e);
                 status.style.display = 'block';
-                status.innerHTML = `<div style="color:red;">❌ Connection Error</div>`;
+                status.innerHTML = `<div style="color:red;">Connection error</div>`;
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Upload Now';
@@ -3036,7 +3017,7 @@
             
             // Populate PO dropdown
             const poSelect = document.getElementById('poSupplier');
-            if(poSelect) poSelect.innerHTML = suppliers.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+            if(poSelect) poSelect.innerHTML = suppliers.map(s => `<option value="${s.id}">${OkwUI.escapeHtml(s.name)}</option>`).join('');
         }
 
         function renderSupplierTable() {
@@ -3047,10 +3028,10 @@
 
             tbody.innerHTML = pageData.length ? pageData.map(s => `
                 <tr>
-                    <td data-label="Supplier">${s.name}</td>
-                    <td data-label="Contact">${s.contact_person || s.contact || '-'}</td>
-                    <td data-label="Phone/Email">${s.phone || '-'}</td>
-                    <td data-label="Address">${s.address || '-'}</td>
+                    <td data-label="Supplier">${OkwUI.escapeHtml(s.name)}</td>
+                    <td data-label="Contact">${OkwUI.escapeHtml(s.contact_person || s.contact || '-')}</td>
+                    <td data-label="Phone/Email">${OkwUI.escapeHtml(s.phone || '-')}</td>
+                    <td data-label="Address">${OkwUI.escapeHtml(s.address || '-')}</td>
                     <td data-label="Status"><span class="stock-badge stock-ok">${s.status || 'Active'}</span></td>
                     <td data-label="Actions">
                         <button class="action-btn btn-edit" onclick="editSupplier(${s.id})" title="Edit"><i class="fas fa-edit"></i></button>
@@ -3228,7 +3209,7 @@
                 return `
                     <tr>
                         <td data-label="PO #">#${id}</td>
-                        <td data-label="Supplier">${supplierName}</td>
+                        <td data-label="Supplier">${OkwUI.escapeHtml(supplierName)}</td>
                         <td data-label="Total">${formatCurrency(total)}</td>
                         <td data-label="Status"><span class="stock-badge ${status === 'Received' ? 'stock-ok' : 'stock-low'}">${status}</span></td>
                         <td data-label="Action"><button onclick="viewPO(${id})" title="View Details" style="padding: 5px 15px; background: #f0f7ff; color: var(--primary-color); border: 1px solid #b3e5fc; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px;">View</button></td>
@@ -3272,7 +3253,7 @@
                     <tr>
                         <td data-label=""><input type="checkbox" class="receiving-check" value="${id}" ${!isPending ? 'disabled' : ''}></td>
                         <td data-label="PO #">#${id}</td>
-                        <td data-label="Supplier">${supplierName}</td>
+                        <td data-label="Supplier">${OkwUI.escapeHtml(supplierName)}</td>
                         <td data-label="Total">${formatCurrency(total)}</td>
                         <td data-label="Status"><span class="stock-badge ${statusClass}">${status}</span></td>
                         <td data-label="Actions">
@@ -3295,7 +3276,7 @@
 
             // Populate products dropdown
             const prodSelect = document.getElementById('poProduct');
-            prodSelect.innerHTML = '<option value="">-- Select Product --</option>' + products.map(p => `<option value="${p.barcode}" data-price="${p.price}">${p.name}</option>`).join('');
+            prodSelect.innerHTML = '<option value="">-- Select Product --</option>' + products.map(p => `<option value="${OkwUI.escapeHtml(p.barcode)}" data-price="${p.price}">${OkwUI.escapeHtml(p.name)}</option>`).join('');
             
             
             document.getElementById('poModal').classList.add('active');
@@ -3373,7 +3354,7 @@
                     total += lineTotal;
                     return `
                         <tr>
-                            <td style="padding:8px; border-bottom:1px solid #eee;">${item.name}</td>
+                            <td style="padding:8px; border-bottom:1px solid #eee;">${OkwUI.escapeHtml(item.name)}</td>
                             <td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">${item.qty}</td>
                             <td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">${formatCurrency(item.cost)}</td>
                             <td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">${formatCurrency(lineTotal)}</td>
@@ -3458,7 +3439,7 @@
                 tbody.innerHTML = po.items.map(item => `
                     <tr data-barcode="${item.product_barcode}">
                         <td style="padding:10px; border-bottom:1px solid #eee;">
-                            ${item.name}<br><small style="color:#666;">${item.product_barcode}</small>
+                            ${OkwUI.escapeHtml(item.name)}<br><small style="color:#666;">${item.product_barcode}</small>
                         </td>
                         <td style="padding:10px; text-align:center; border-bottom:1px solid #eee;">
                             ${item.quantity}
@@ -3682,8 +3663,8 @@
 
             if (matches.length > 0) {
                 box.innerHTML = matches.map(p => `
-                    <div class="suggestion-item" onclick="selectTransferProduct('${p.barcode}', '${p.name.replace(/'/g, "\\'")}', ${p.id})">
-                        <div><strong>${p.name}</strong><div style="font-size:10px; color:#888;">${p.barcode}</div></div>
+                    <div class="suggestion-item" onclick="selectTransferProduct('${OkwUI.escapeHtml(p.barcode)}', '${p.name.replace(/'/g, "\\'")}', ${p.id})">
+                        <div><strong>${OkwUI.escapeHtml(p.name)}</strong><div style="font-size:10px; color:#888;">${OkwUI.escapeHtml(p.barcode)}</div></div>
                         <div style="font-weight:bold; color:var(--primary-color); font-size:12px;">${formatCurrency(p.price)}</div>
                     </div>`).join('');
                 box.style.display = 'block';
@@ -3758,11 +3739,11 @@
                 }
                 
                 if (available > 0) {
-                    stockSummaryDisplay.innerHTML = `<i class="fas fa-check-circle"></i> <span><strong>${product.name}</strong>: ${available} units available at ${fromLoc}</span>`;
+                    stockSummaryDisplay.innerHTML = `<i class="fas fa-check-circle"></i> <span><strong>${OkwUI.escapeHtml(product.name)}</strong>: ${available} units available at ${fromLoc}</span>`;
                     stockSummaryDisplay.style.background = '#e8f5e9';
                     stockSummaryDisplay.style.color = '#27ae60';
                 } else {
-                    stockSummaryDisplay.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span><strong>${product.name}</strong>: 0 units available at ${fromLoc}. Cannot transfer.</span>`;
+                    stockSummaryDisplay.innerHTML = `<i class="fas fa-exclamation-triangle"></i> <span><strong>${OkwUI.escapeHtml(product.name)}</strong>: 0 units available at ${fromLoc}. Cannot transfer.</span>`;
                     stockSummaryDisplay.style.background = '#ffebee';
                     stockSummaryDisplay.style.color = '#c62828';
                 }
@@ -3886,7 +3867,7 @@
                 if(emptyState) emptyState.style.display = 'none';
                 tbody.innerHTML = transferItems.map((item, i) => `
                     <tr>
-                        <td style="padding:8px;">${item.name}</td>
+                        <td style="padding:8px;">${OkwUI.escapeHtml(item.name)}</td>
                         <td style="padding:8px; color:#666; font-size:12px;">${item.batch || 'Auto'}</td>
                         <td style="padding:8px; text-align:center;">${item.qty}</td>
                         <td style="padding:8px; text-align:center;">
@@ -4058,7 +4039,7 @@
                 const items = typeof t.items === 'string' ? JSON.parse(t.items) : t.items;
                 document.getElementById('viewTrItems').innerHTML = items.map(i => `
                     <tr>
-                        <td style="padding:12px 15px; border-bottom:1px solid #eee;">${i.name}</td>
+                        <td style="padding:12px 15px; border-bottom:1px solid #eee;">${OkwUI.escapeHtml(i.name)}</td>
                         <td style="padding:12px 15px; text-align:center; border-bottom:1px solid #eee; font-weight: 500;">${i.qty}</td>
                     </tr>
                 `).join('');
@@ -4085,9 +4066,9 @@
             const tbody = document.getElementById('stockTakeTable');
             tbody.innerHTML = products.map((p, i) => `
                 <tr>
-                    <td>${p.name} <br><small>${p.barcode}</small></td>
+                    <td>${OkwUI.escapeHtml(p.name)} <br><small>${OkwUI.escapeHtml(p.barcode)}</small></td>
                     <td>${p.stock}</td>
-                    <td><input type="number" class="phys-qty" data-barcode="${p.barcode}" data-system="${p.stock}" value="${p.stock}" style="width:80px; padding:5px;" onchange="calcVariance(this)"></td>
+                    <td><input type="number" class="phys-qty" data-barcode="${OkwUI.escapeHtml(p.barcode)}" data-system="${p.stock}" value="${p.stock}" style="width:80px; padding:5px;" onchange="calcVariance(this)"></td>
                     <td class="variance">0</td>
                 </tr>
             `).join('');
@@ -4154,16 +4135,18 @@
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (res.status === 401 || res.status === 403) {
-                    window.location.href = '/login';
+                    (window.top || window).location.href = '/login';
                     return;
                 }
                 if (!res.ok) throw new Error("Failed to fetch data");
                 
                 const data = await res.json();
                 
-                // Merge sales data with full product list to show everything
+                // Merge sales data with full product list (and any sold items not in current page)
                 const breakdown = data.breakdown || [];
+                const seenBarcodes = new Set();
                 ytdDataCache = products.map(p => {
+                    seenBarcodes.add(p.barcode);
                     const sales = breakdown.find(b => b.barcode === p.barcode);
                     return {
                         id: p.id,
@@ -4173,6 +4156,18 @@
                         qty: sales ? sales.qty : 0,
                         revenue: sales ? sales.revenue : 0
                     };
+                });
+                breakdown.forEach((b, idx) => {
+                    if (!seenBarcodes.has(b.barcode)) {
+                        ytdDataCache.push({
+                            id: 'ytd-' + idx,
+                            name: b.name,
+                            barcode: b.barcode,
+                            category: 'General',
+                            qty: b.qty || 0,
+                            revenue: b.revenue || 0
+                        });
+                    }
                 });
 
                 filteredAnalytics = [...ytdDataCache];
@@ -4232,9 +4227,9 @@
             tbody.innerHTML = pageData.map(item => {
                 return `<tr style="border-bottom: 1px solid #eee; transition: background 0.2s;">
                     <td data-label="" style="text-align: center; padding: 12px;"><input type="checkbox" class="analytics-check" value="${item.id}"></td>
-                    <td data-label="Product Name" style="padding: 12px; font-weight: 500;">${item.name}</td>
-                    <td data-label="Barcode" style="padding: 12px; color: #666; font-family: monospace;">${item.barcode}</td>
-                    <td data-label="Category" style="padding: 12px; color: #666;">${item.category}</td>
+                    <td data-label="Product Name" style="padding: 12px; font-weight: 500;">${OkwUI.escapeHtml(item.name)}</td>
+                    <td data-label="Barcode" style="padding: 12px; color: #666; font-family: inherit; font-variant-numeric: tabular-nums;">${OkwUI.escapeHtml(item.barcode)}</td>
+                    <td data-label="Category" style="padding: 12px; color: #666;">${OkwUI.escapeHtml(item.category)}</td>
                     <td data-label="Units Sold" style="padding: 12px; text-align: center;">${item.qty}</td>
                     <td data-label="Revenue" style="padding: 12px; text-align: right; font-weight: 600; color: var(--primary-color);">${formatCurrency(item.revenue)}</td>
                 </tr>
@@ -4386,12 +4381,12 @@
                 const sysCount = inventoryDisplayStock(p);
                 return `
                 <tr>
-                    <td data-label="Product">${p.name}<br><small style="color:#888;">${p.barcode}</small></td>
-                    <td data-label="Category">${p.category || '-'}</td>
+                    <td data-label="Product">${OkwUI.escapeHtml(p.name)}<br><small style="color:#888;">${OkwUI.escapeHtml(p.barcode)}</small></td>
+                    <td data-label="Category">${OkwUI.escapeHtml(p.category || '-')}</td>
                     <td data-label="System Stock">${sysCount}</td>
                     <td data-label="Physical Count">
                         <input type="number" class="stock-count-input" 
-                            data-barcode="${p.barcode}" 
+                            data-barcode="${OkwUI.escapeHtml(p.barcode)}" 
                             data-system="${sysCount}" 
                             value="${sysCount}" 
                             style="width:100px; padding:8px; border:1px solid #ddd; border-radius:4px; text-align:center;"
@@ -4449,7 +4444,7 @@
                 <table><thead><tr><th>Product</th><th>Barcode</th><th>Category</th><th class="text-right">System Stock</th><th style="width:150px;">Physical Count</th></tr></thead><tbody>`;
             
             products.forEach(p => {
-                html += `<tr><td>${p.name}</td><td>${p.barcode}</td><td>${p.category || ''}</td><td class="text-right">${p.stock}</td><td></td></tr>`;
+                html += `<tr><td>${OkwUI.escapeHtml(p.name)}</td><td>${OkwUI.escapeHtml(p.barcode)}</td><td>${OkwUI.escapeHtml(p.category || '')}</td><td class="text-right">${p.stock}</td><td></td></tr>`;
             });
             
             html += `</tbody></table><script>window.print();<\/script></body></html>`;
@@ -4501,11 +4496,12 @@
 
         // --- SHELF & BATCH FUNCTIONS ---
         async function loadShelfData() {
+            if (!document.getElementById('shelfProduct')) return; // section not on this page
             // Populate Product Dropdown
             const select = document.getElementById('shelfProduct');
             if (select && select.options.length <= 1) {
                 select.innerHTML = '<option value="">Select Product</option>' + 
-                    products.map(p => `<option value="${p.barcode}" data-track="${p.track_batch}">${p.name}</option>`).join('');
+                    products.map(p => `<option value="${OkwUI.escapeHtml(p.barcode)}" data-track="${p.track_batch}">${OkwUI.escapeHtml(p.name)}</option>`).join('');
             }
 
             // Load Shelf Inventory
@@ -4587,17 +4583,18 @@
 
                 return `
                 <tr>
-                    <td data-label="Product">${i.name}</td>
-                    <td data-label="Batch" style="font-family:monospace; color:#555;">${i.batch_number || '-'}</td>
+                    <td data-label="Product">${OkwUI.escapeHtml(i.name)}</td>
+                    <td data-label="Batch" style="font-family: inherit; font-variant-numeric: tabular-nums; color:#555;">${i.batch_number || '-'}</td>
                     <td data-label="Expiry" style="${getExpiryColor(i.expiry_date)}">${i.expiry_date ? new Date(i.expiry_date).toLocaleDateString() : 'N/A'}</td>
                     <td data-label="Stock" style="font-weight:600;">${currentStock}</td>
-                    <td data-label="Quantity" style="font-weight:bold; color:var(--primary-color);">${i.quantity} ${i.selling_unit || 'Units'}</td>
+                    <td data-label="Quantity" style="font-weight:bold; color:var(--primary-color);">${i.quantity} ${OkwUI.escapeHtml(i.selling_unit || 'Units')}</td>
                     <td data-label="Status"><span class="stock-badge ${statusClass}">${status}</span></td>
                 </tr>
             `}).join('') : '<tr><td colspan="6" style="text-align:center; padding:20px;">No matching items found.</td></tr>';
         }
 
         async function checkBatchRequirement() {
+            if (!document.getElementById('shelfProduct')) return; // section not on this page
             const barcode = document.getElementById('shelfProduct').value;
             const batchSelect = document.getElementById('shelfBatch');
             
@@ -4711,9 +4708,9 @@
 
             tbody.innerHTML = pageData.length ? pageData.map(item => `
                 <tr>
-                    <td data-label="Product Name" style="font-weight:600; color:var(--secondary-color);">${item.name}</td>
-                    <td data-label="Barcode" style="font-family:monospace;">${item.barcode}</td>
-                    <td data-label="Category">${item.category || 'General'}</td>
+                    <td data-label="Product Name" style="font-weight:600; color:var(--secondary-color);">${OkwUI.escapeHtml(item.name)}</td>
+                    <td data-label="Barcode" style="font-family: inherit; font-variant-numeric: tabular-nums;">${OkwUI.escapeHtml(item.barcode)}</td>
+                    <td data-label="Category">${OkwUI.escapeHtml(item.category || 'General')}</td>
                     <td data-label="Current Stock" style="text-align:center;"><span class="stock-badge stock-negative">${item.stock}</span></td>
                     <td data-label="Units Owed" style="text-align:center; font-weight:bold;">${item.units_owed}</td>
                     <td data-label="Debt Value" style="text-align:right; font-weight:600; color:var(--primary-color);">${formatCurrency(item.debt_value)}</td>
@@ -4756,7 +4753,7 @@
                 const hasBarcode = p.barcode && p.barcode.trim() !== '';
                 return `
                     <tr id="barcode-row-${p.id}">
-                        <td>${p.name}</td>
+                        <td>${OkwUI.escapeHtml(p.name)}</td>
                         <td class="barcode-value">${hasBarcode ? p.barcode : '<span style="color:#999;">N/A</span>'}</td>
                         <td>
                             <button class="action-btn btn-edit" onclick="viewBarcodeDetails(${p.id})" title="View Details" style="width: auto; padding: 0 10px;"><i class="fas fa-eye"></i> View</button>
@@ -5038,7 +5035,7 @@
             } finally {
                 localStorage.clear();
                 sessionStorage.clear();
-                window.location.replace('/login?logout=true');
+                (window.top || window).location.replace('/login?logout=true');
             }
         }
 
@@ -5157,11 +5154,11 @@
                 return `
                     <tr>
                         <td data-label="Receipt #" style="padding: 15px;">
-                            <strong style="color: #f44336;">${r.receipt_number}</strong>
+                            <strong style="color: #f44336;">${OkwUI.escapeHtml(r.receipt_number)}</strong>
                         </td>
                         <td data-label="Date" style="padding: 15px;">${date}</td>
-                        <td data-label="Customer" style="padding: 15px;">${r.customer_name || 'Walk-in'}</td>
-                        <td data-label="Cashier" style="padding: 15px;">${r.cashier_name || 'Staff'}</td>
+                        <td data-label="Customer" style="padding: 15px;">${OkwUI.escapeHtml(r.customer_name || 'Walk-in')}</td>
+                        <td data-label="Cashier" style="padding: 15px;">${OkwUI.escapeHtml(r.cashier_name || 'Staff')}</td>
                         <td data-label="Items Returned" style="padding: 15px; max-width: 300px;">
                             <div style="font-size: 12px; line-height: 1.4;" title="${itemsList}">
                                 ${itemsList.length > 100 ? itemsList.substring(0, 100) + '...' : itemsList}
@@ -5174,7 +5171,7 @@
                             <span style="color: #666; font-size: 12px;">RCP${r.original_transaction_id || 'N/A'}</span>
                         </td>
                         <td data-label="Actions" style="padding: 15px; text-align: center;">
-                            <button class="action-btn btn-print" onclick="viewReturnReceipt('${r.receipt_number}')" title="View Receipt">
+                            <button class="action-btn btn-print" onclick="viewReturnReceipt('${OkwUI.escapeHtml(r.receipt_number)}')" title="View Receipt">
                                 <i class="fas fa-receipt"></i>
                             </button>
                         </td>
@@ -5298,7 +5295,7 @@
 <!-- ================== GLOBAL UX FIXES ================== -->
 <style>
 #custom-toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
+.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
 .custom-toast.show { opacity: 1; transform: translateY(0); }
 .custom-toast.error { background: #e74c3c; border-left: 4px solid #c0392b; }
 .custom-toast.success { background: #27ae60; border-left: 4px solid #2ecc71; }

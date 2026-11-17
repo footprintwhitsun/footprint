@@ -4,23 +4,27 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="auth-guard.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footprint | Promotions</title>
-    <link rel="icon" type="image/png" href="logo.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>OKWESIWA LTD | Promotions</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link rel="stylesheet" href="/portal-skin.css">
     <style>
         :root { --primary-color: #273990; --accent-color: #f9a51a; --secondary-color: #1c2b70; --accent-color: #f9a51a; --text-color: #202223; --text-secondary: #6d7175; --border-color: #e1e3e5; --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05); --gray-light: #f6f6f7; --sidebar-width: 260px; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
         body { background: var(--gray-light); display: flex; flex-direction: column; min-height: 100vh; }
         
         /* Sidebar */
-        .sidebar { width: var(--sidebar-width); background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); color: white; display: flex; flex-direction: column; position: fixed; height: 100vh; height: 100dvh; overflow-y: auto; }
+        .sidebar { width: var(--sidebar-width); background: #1F3A60; color: white; display: flex; flex-direction: column; position: fixed; height: 100vh; height: 100dvh; overflow-y: auto; }
         .brand { padding: 15px; font-size: 24px; font-weight: 700; letter-spacing: 1px; border-bottom: 1px solid rgba(255,255,255,0.1); font-family: 'Montserrat', sans-serif; display: flex; align-items: center; gap: 10px; }
         .nav-links { flex: 1; padding-top: 5px; }
         .nav-item { display: flex; align-items: center; padding: 8px 25px; color: rgba(255,255,255,0.7); text-decoration: none; transition: 0.3s; }
@@ -51,7 +55,7 @@
         .btn-delete { color: #c62828; background: none; border: none; cursor: pointer; font-size: 16px; transition: 0.2s; }
         .btn-delete:hover { transform: scale(1.1); }
 
-        footer { margin-left: var(--sidebar-width); padding: 10px; text-align: center; color: white; font-size: 12px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); }
+        footer { margin-left: var(--sidebar-width); padding: 10px; text-align: center; color: white; font-size: 12px; background: #1F3A60; }
 
         /* Mobile Responsive Styles */
         .mobile-menu-btn {
@@ -142,6 +146,9 @@
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
     <link rel="stylesheet" href="sidebar.css">
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
 </head>
 <body>
     <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
@@ -164,21 +171,10 @@
 
     <div class="sidebar">
         <div class="brand" style="display: flex; flex-direction: column; align-items: center;">
-            <img src="logo.png" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
             
         </div>
         <div class="nav-links">
-            <a href="dashboard" class="nav-item"><i class="fas fa-home"></i> Dashboard</a>
-            <div class="nav-section">Sales & Finance</div>
-            <a href="sales-dashboard" class="nav-item"><i class="fas fa-chart-pie"></i> Sales</a>
-            <a href="profitability" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Profitability</a>
-            <a href="promotions" class="nav-item active"><i class="fas fa-tags"></i> Promotions</a>
-            <div class="nav-section">Operations</div>
-            <a href="pos-register" class="nav-item"><i class="fas fa-users"></i> Staff</a>
-            <a href="credit-customers" class="nav-item"><i class="fas fa-address-book"></i> Credit</a>
-            <a href="inventory" class="nav-item"><i class="fas fa-warehouse"></i> Inventory</a>
-            <a href="reports" class="nav-item"><i class="fas fa-chart-line"></i> Reports</a>
-            <a href="settings" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
         </div>
         <div class="user-profile">
             <div class="user-profile-row">
@@ -235,13 +231,13 @@
                     <option value="100">100</option>
                 </select>
                 <span id="promoPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changePromoPage(-1)" id="btnPromoPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changePromoPage(1)" id="btnPromoNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button onclick="changePromoPage(-1)" id="btnPromoPrev" aria-label="Previous page" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button onclick="changePromoPage(1)" id="btnPromoNext" aria-label="Next page" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
     </div>
 
-    <footer>© 2025 Footprint</footer>
+    <footer>© 2025 OKWESIWA LTD</footer>
 
     <script>
         function toggleSidebar() {

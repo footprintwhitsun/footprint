@@ -53,7 +53,7 @@ async function setupDatabase() {
             CREATE TABLE IF NOT EXISTS system_settings (
                 id INT PRIMARY KEY,
                 branch_id INT UNIQUE DEFAULT 1,
-                store_name VARCHAR(255) DEFAULT 'FOOTPRINT',
+                store_name VARCHAR(255) DEFAULT 'OKWESIWA LTD',
                 currency_symbol VARCHAR(50) DEFAULT 'GH₵',
                 vat_rate DECIMAL(5,2) DEFAULT 0.00,
                 receipt_footer TEXT DEFAULT 'Thank you for your business!',
@@ -72,7 +72,7 @@ async function setupDatabase() {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             INSERT INTO system_settings (id, branch_id, store_name, currency_symbol, vat_rate, monthly_target)
-            VALUES (1, 1, 'FOOTPRINT', 'GH₵', 0.00, 50000.00)
+            VALUES (1, 1, 'OKWESIWA LTD', 'GH₵', 0.00, 50000.00)
             ON CONFLICT (id) DO NOTHING;
 
             -- Users Table
@@ -649,46 +649,52 @@ async function setupDatabase() {
         console.log('✅ Hardware categories seeded.');
 
         console.log('--- Step 3: Seeding Default Users ---');
+        const requirePass = (specificKey) => {
+            const val = process.env[specificKey] || process.env.SEED_DEFAULT_PASSWORD;
+            if (!val) throw new Error(`Missing required password env var: set ${specificKey} or SEED_DEFAULT_PASSWORD`);
+            return val;
+        };
+
         const defaultUsers = [
             {
-                name: 'Footprint Admin',
+                name: 'OKWESIWA LTD Admin',
                 email: 'admin@footprintpos.com',
-                password: process.env.DEFAULT_ADMIN_PASS || 'Admin2026',
+                password: requirePass('DEFAULT_ADMIN_PASS'),
                 role: 'admin',
                 location: 'Amasaman'
             },
             {
-                name: 'Footprint Cashier',
+                name: 'OKWESIWA LTD Cashier',
                 email: 'cashier@footprintpos.com',
-                password: process.env.DEFAULT_CASHIER_PASS || 'Cashier2026',
+                password: requirePass('DEFAULT_CASHIER_PASS'),
                 role: 'cashier',
                 location: 'Amasaman'
             },
             {
-                name: 'Footprint Manager',
+                name: 'OKWESIWA LTD Manager',
                 email: 'manager@footprintpos.com',
-                password: 'Manager2026',
+                password: requirePass('DEFAULT_MANAGER_PASS'),
                 role: 'manager',
                 location: 'Amasaman'
             },
             {
                 name: 'CEO',
                 email: 'ceo@faithway.com',
-                password: 'Faith2026',
+                password: requirePass('DEFAULT_CEO_PASS'),
                 role: 'ceo',
                 location: 'Amasaman'
             },
             {
                 name: 'Store Cashier',
-                email: 'cashier@footprint.com',
-                password: 'cashier123',
+                email: 'cashier@okwesiwaltd.com',
+                password: requirePass('DEFAULT_CASHIER_PASS'),
                 role: 'cashier',
                 location: 'Amasaman'
             },
             {
-                name: 'Footprint Admin',
-                email: 'admin@footprint.com',
-                password: 'password123',
+                name: 'OKWESIWA LTD Admin',
+                email: 'admin@okwesiwaltd.com',
+                password: requirePass('DEFAULT_ADMIN_PASS'),
                 role: 'admin',
                 location: 'Amasaman'
             }

@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deliveries, Phone Stock Count & Reorder - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <style>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { padding: 24px; max-width: 1400px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        .tabs-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px; }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
+            <span class="sidebar-role-badge">Operations</span>
+        </div>
+        <nav class="nav-links">
+            <div class="nav-section">Operations</div>
+            <a href="/pos"><span>POS Till</span></a>
+            <a href="/catalog-ops"><span>Brands, Units & Prices</span></a>
+            <a href="/operations" class="active"><span>Deliveries, Counts & Reorder</span></a>
+            <a href="/purchase-orders"><span>Purchase Orders</span></a>
+            <a href="/daily-close"><span>Daily Close</span></a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap">
+            <h1 style="margin:0 0 6px;font-size:24px;">Site Deliveries, Phone Stock Count & Reordering</h1>
+            <p style="margin:0 0 18px;color:var(--color-text-muted);font-size:14px;">Track site deliveries, run mobile stock counts in the yard or shop, and generate 1-click purchase orders from low stock.</p>
+
+            <div class="tabs-row" id="op-tabs">
+                <button type="button" class="okw-btn okw-btn-primary" data-otab="deliveries">Site Deliveries</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-otab="count">Phone Stock Count</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-otab="reorder">Automatic Reordering</button>
+            </div>
+
+            <div class="okw-card" id="op-panel">Loading...</div>
+        </div>
+    </main>
+</div>
+
+<script>
+(function () {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+
+    async function renderDeliveries() {
+        const res = await fetch('/api/deliveries', { headers });
+        const d = await res.json().catch(() => ({}));
+        const list = d.deliveries || [];
+        document.getElementById('op-panel').innerHTML = `<div id="del-tbl"></div>`;
+        OkwUI.dataTable('#del-tbl', {
+            columns: [
+                { key: 'delivery_number', label: 'Waybill #', render: v => `<span class="mono">${OkwUI.escapeHtml(v)}</span>` },
+                { key: 'customer_name', label: 'Customer' },
+                { key: 'site_address', label: 'Site Address' },
+                { key: 'truck_number', label: 'Truck' },
+                { key: 'driver_name', label: 'Driver' },
+                { key: 'status', label: 'Status', render: v => OkwUI.badge(v, v === 'Delivered' ? 'success' : (v === 'On the way' ? 'info' : 'warning')) },
+                {
+                    key: 'id', label: 'Update',
+                    render: (id, row) => `
+                        <div style="display:flex;gap:6px;">
+                            <button type="button" class="okw-btn okw-btn-outline" onclick="window.__delStatus(${id}, 'On the way')">On the way</button>
+                            <button type="button" class="okw-btn okw-btn-primary" onclick="window.__delStatus(${id}, 'Delivered')">Mark Delivered</button>
+                        </div>
+                    `
+                }
+            ],
+            rows: list,
+            exportFilename: 'okwesiwa-deliveries.xlsx'
+        });
+    }
+
+    window.__delStatus = async (id, status) => {
+        let receiver_name = '';
+        if (status === 'Delivered') receiver_name = prompt('Signed / received by (name):', '') || '';
+        const res = await fetch(`/api/deliveries/${id}/status`, { method: 'PATCH', headers, body: JSON.stringify({ status, receiver_name }) });
+        if (res.ok) { OkwUI.toast(`Delivery marked ${status}`, 'success'); renderDeliveries(); }
+    };
+
+    function renderPhoneCount() {
+        const panel = document.getElementById('op-panel');
+        const scanned = [];
+        panel.innerHTML = `
+            <h3 style="margin:0 0 10px;">Quick Stock Count (Phone / Scanner)</h3>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                <input type="text" id="sc-query" class="okw-input" placeholder="Scan barcode or type item name..." style="flex:1;min-width:220px;">
+                <input type="number" id="sc-qty" class="okw-input" placeholder="Counted Qty" step="any" style="width:140px;">
+                <button type="button" class="okw-btn okw-btn-primary" id="sc-add">Record Count</button>
+                <button type="button" class="okw-btn okw-btn-accent" id="sc-submit">Apply All Adjustments</button>
+            </div>
+            <div id="sc-list"></div>
+        `;
+        OkwUI.productTypeahead('#sc-query');
+
+        document.getElementById('sc-add').onclick = async () => {
+            const q = document.getElementById('sc-query').value.trim();
+            const qty = document.getElementById('sc-qty').value;
+            if (!q || qty === '') return OkwUI.toast('Enter item/barcode and counted qty', 'warning');
+            const r = await fetch(`/api/pos/search?q=${encodeURIComponent(q)}&limit=1`, { headers });
+            const d = await r.json().catch(() => ({}));
+            const prod = (d.products || [])[0];
+            if (!prod) return OkwUI.toast('Product not found', 'danger');
+            scanned.push({ barcode: prod.barcode, name: prod.name, closing_stock: prod.stock, physical_count: Number(qty) });
+            document.getElementById('sc-query').value = '';
+            document.getElementById('sc-qty').value = '';
+            document.getElementById('sc-query').focus();
+            OkwUI.dataTable('#sc-list', {
+                columns: [
+                    { key: 'name', label: 'Item' },
+                    { key: 'closing_stock', label: 'System Qty', numeric: true },
+                    { key: 'physical_count', label: 'Counted Qty', numeric: true }
+                ],
+                rows: scanned
+            });
+        };
+
+        document.getElementById('sc-submit').onclick = async () => {
+            if (!scanned.length) return;
+            const r = await fetch('/api/daily-close/submit-counts', { method: 'POST', headers, body: JSON.stringify({ counts: scanned }) });
+            const d = await r.json().catch(() => ({}));
+            if (r.ok) { OkwUI.toast(`Applied ${d.adjusted} stock adjustments`, 'success'); scanned.length = 0; }
+        };
+    }
+
+    async function renderReorder() {
+        const res = await fetch('/api/reorder/suggestions', { headers });
+        const d = await res.json().catch(() => ({}));
+        const items = d.suggestions || [];
+        const totalUnits = items.reduce((s, it) => s + Number(it.suggested_qty || 0), 0);
+        const totalEstCost = items.reduce((s, it) => s + Number(it.estimated_cost ?? (Number(it.cost_price || 0) * Number(it.suggested_qty || 0))), 0);
+        const fmt = (n) => 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        document.getElementById('op-panel').innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:12px;">
+                <h3 style="margin:0;">Items Below Reorder Level</h3>
+                <button type="button" class="okw-btn okw-btn-accent" id="btn-draft-po">1-Click Draft Purchase Order</button>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px;">
+                ${OkwUI.kpiCard({ label: 'Items Below Reorder', value: items.length, tone: 'warning' })}
+                ${OkwUI.kpiCard({ label: 'Total Suggested Units', value: totalUnits.toLocaleString(), tone: 'info' })}
+                ${OkwUI.kpiCard({ label: 'Estimated PO Cost', value: fmt(totalEstCost), tone: 'primary' })}
+            </div>
+            <div id="ro-tbl"></div>
+        `;
+        OkwUI.dataTable('#ro-tbl', {
+            columns: [
+                { key: 'name', label: 'Item' },
+                { key: 'brand', label: 'Brand' },
+                { key: 'stock', label: 'On Hand', numeric: true },
+                { key: 'reorder_level', label: 'Reorder Level', numeric: true },
+                { key: 'suggested_qty', label: 'Suggested Order', numeric: true, render: v => `<strong>${v}</strong>` },
+                { key: 'estimated_cost', label: 'Est. Cost', numeric: true, render: (v, r) => fmt(v ?? (Number(r.cost_price || 0) * Number(r.suggested_qty || 0))) }
+            ],
+            rows: items,
+            exportFilename: 'okwesiwa-reorder-suggestions.xlsx'
+        });
+        document.getElementById('btn-draft-po').onclick = async () => {
+            if (!items.length) return OkwUI.toast('No items need reordering', 'info');
+            const supplier = prompt('Supplier name for draft PO:', 'Primary Supplier') || 'Primary Supplier';
+            const r = await fetch('/api/reorder/draft-po', { method: 'POST', headers, body: JSON.stringify({ items, supplier_name: supplier }) });
+            const resData = await r.json().catch(() => ({}));
+            if (r.ok) OkwUI.toast(`Draft PO ${resData.purchase_order?.po_number || ''} created`, 'success');
+        };
+    }
+
+    function switchTab(tab) {
+        document.getElementById('op-tabs').querySelectorAll('[data-otab]').forEach(b => {
+            b.className = b.dataset.otab === tab ? 'okw-btn okw-btn-primary' : 'okw-btn okw-btn-outline';
+        });
+        if (tab === 'deliveries') renderDeliveries();
+        else if (tab === 'count') renderPhoneCount();
+        else renderReorder();
+    }
+
+    document.getElementById('op-tabs').querySelectorAll('[data-otab]').forEach(b => b.onclick = () => switchTab(b.dataset.otab));
+    switchTab('deliveries');
+})();
+</script>
+</body>
+</html>
+

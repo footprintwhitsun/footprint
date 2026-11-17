@@ -5,12 +5,12 @@
 
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Company Portal | Footprint</title>
-    <link rel="icon" type="image/png" href="logo.png">
+<title>Company Portal | OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Times+New+Roman:wght@400;600&family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Montserrat:wght@600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
 <link rel="stylesheet" href="sidebar.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" defer crossorigin="anonymous"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js" defer crossorigin="anonymous"></script>
@@ -71,7 +71,7 @@
     --shadow-card: 0 0 0 1px rgba(0, 0, 0, 0.05), 0 1px 3px 0 rgba(0, 0, 0, 0.04);
     --shadow-hover: 0 4px 16px -2px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(0, 0, 0, 0.06);
     --shadow-modal: 0 20px 40px -8px rgba(0, 0, 0, 0.22), 0 0 0 1px rgba(0, 0, 0, 0.08);
-    --transition: all 0.18s cubic-bezier(0.2, 0, 0, 1);
+    --transition: background-color 0.18s cubic-bezier(0.2, 0, 0, 1), border-color 0.18s cubic-bezier(0.2, 0, 0, 1), color 0.18s cubic-bezier(0.2, 0, 0, 1), opacity 0.18s cubic-bezier(0.2, 0, 0, 1), transform 0.18s cubic-bezier(0.2, 0, 0, 1);
 }
 
 /* Reset & Base */
@@ -121,7 +121,6 @@ body { background: var(--p-background); color: var(--p-text); display: flex; fle
     background: #ffffff;
     padding: 3px 10px;
     border: 1.5px solid rgba(249, 165, 26, 0.8);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
 .sidebar-role-badge {
@@ -145,7 +144,6 @@ body { background: var(--p-background); color: var(--p-text); display: flex; fle
     height: 6px;
     background: #10b981;
     border-radius: 50%;
-    box-shadow: 0 0 6px #10b981;
 }
 
 .nav-links { 
@@ -230,7 +228,7 @@ body { background: var(--p-background); color: var(--p-text); display: flex; fle
 .user-avatar {
     width: 34px;
     height: 34px;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    background: var(--primary-color);
     border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 8px;
     display: flex;
@@ -353,7 +351,6 @@ header {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    box-shadow: var(--shadow-sm);
     transition: var(--transition);
     text-transform: uppercase;
     letter-spacing: 0.5px;
@@ -383,12 +380,10 @@ header {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    box-shadow: var(--shadow-card);
     transition: var(--transition);
 }
 
 .kpi-card:hover {
-    box-shadow: var(--shadow-hover);
     border-color: #cbd5e1;
 }
 
@@ -456,7 +451,7 @@ header {
 
 .progress-fill {
     height: 100%;
-    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+    background: var(--primary-color);
     transition: width 0.5s ease-out;
     border-radius: 10px;
 }
@@ -466,7 +461,6 @@ header {
     background: var(--p-surface);
     padding: 24px;
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-card);
     margin-bottom: 24px;
     border: 1px solid var(--p-border);
 }
@@ -554,7 +548,6 @@ tr:last-child td {
 
 .per-page-select:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(39, 57, 144, 0.15);
 }
 
 /* Status Badges - Shopify Polaris Pill Style */
@@ -642,7 +635,6 @@ tr:last-child td {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    box-shadow: var(--shadow-sm);
 }
 
 .pagination-btn:hover:not(:disabled) {
@@ -671,7 +663,6 @@ tr:last-child td {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    box-shadow: var(--shadow-sm);
 }
 
 .btn-primary {
@@ -682,7 +673,6 @@ tr:last-child td {
 
 .btn-primary:hover {
     background: var(--primary-hover);
-    box-shadow: 0 4px 12px rgba(39, 57, 144, 0.25);
 }
 
 .btn-success {
@@ -729,7 +719,6 @@ tr:last-child td {
     background: var(--p-surface);
     padding: 20px;
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-card);
     border: 1px solid var(--p-border);
     flex: 2;
 }
@@ -761,7 +750,6 @@ tr:last-child td {
 
 .search-bar input:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(39, 57, 144, 0.15);
 }
 
 .search-bar button {
@@ -775,7 +763,6 @@ tr:last-child td {
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: var(--shadow-sm);
 }
 
 .search-bar button:hover {
@@ -840,7 +827,6 @@ tr:last-child td {
     background: var(--p-surface);
     padding: 20px;
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-card);
     border: 1px solid var(--p-border);
     flex: 1;
     min-width: 280px;
@@ -863,7 +849,6 @@ tr:last-child td {
 
 .customer-form input:focus {
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(39, 57, 144, 0.15);
 }
 
 /* POS Cart Section (Shopify Drawer Style) */
@@ -1028,7 +1013,6 @@ tr:last-child td {
     margin-bottom: 14px;
     font-size: 15px;
     font-weight: 700;
-    box-shadow: var(--shadow-sm);
 }
 
 .summary-row.total span:last-child {
@@ -1053,7 +1037,7 @@ tr:last-child td {
 .btn-pay-main {
     flex: 1.4;
     height: 46px;
-    background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+    background: var(--primary-color);
     color: white;
     border: none;
     border-radius: var(--radius-sm);
@@ -1066,19 +1050,17 @@ tr:last-child td {
     align-items: center;
     justify-content: center;
     gap: 8px;
-    box-shadow: 0 4px 12px rgba(39, 57, 144, 0.3);
     transition: var(--transition);
 }
 
 .btn-pay-main:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 18px rgba(39, 57, 144, 0.4);
 }
 
 .btn-credit-main {
     flex: 1;
     height: 46px;
-    background: linear-gradient(135deg, #f59e0b, #d97706);
+    background: #f59e0b;
     color: white;
     border: none;
     border-radius: var(--radius-sm);
@@ -1091,13 +1073,11 @@ tr:last-child td {
     align-items: center;
     justify-content: center;
     gap: 6px;
-    box-shadow: 0 2px 8px rgba(245, 158, 11, 0.3);
     transition: var(--transition);
 }
 
 .btn-credit-main:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 14px rgba(245, 158, 11, 0.4);
 }
 
 .btn-proforma, .btn-invoice {
@@ -1150,7 +1130,6 @@ tr:last-child td {
     z-index: 1000;
     align-items: center;
     justify-content: center;
-    backdrop-filter: blur(4px);
 }
 
 .modal.active { display: flex; }
@@ -1242,7 +1221,6 @@ tr:last-child td {
 .form-group textarea:focus {
     outline: none;
     border-color: var(--primary-color);
-    box-shadow: 0 0 0 2px rgba(39, 57, 144, 0.15);
 }
 
 /* Tab Content Animation */
@@ -1286,6 +1264,28 @@ tr:last-child td {
 .toast-error { background: var(--danger-color) !important; }
 .toast-warning { background: var(--warning-color) !important; }
 
+.action-toast {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1F3A60;
+    color: #ffffff;
+    padding: 12px 20px;
+    border-radius: 10px;
+    z-index: 3100;
+    align-items: center;
+    gap: 16px;
+    font-size: 13.5px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.action-toast.show { display: flex; }
+.action-toast-buttons { display: flex; gap: 8px; align-items: center; }
+.at-btn { padding: 6px 14px; border-radius: 6px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.at-btn-cancel { background: rgba(255, 255, 255, 0.15); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.3); }
+.at-btn-confirm { background: #E8772E; color: #ffffff; border: none; }
+
 /* Mobile Overlay & Responsiveness */
 .sidebar-overlay { 
     display: none; 
@@ -1295,7 +1295,6 @@ tr:last-child td {
     width: 100%; 
     height: 100%; 
     background: rgba(0,0,0,0.4);
-    backdrop-filter: blur(2px);
     z-index: 900;
 }
 
@@ -1338,6 +1337,48 @@ tr:last-child td {
     <script src="currency.js"></script>
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style id="company-face">
+        .header-title h1 { margin: 0; font-size: 26px; }
+        .header-title p { margin: 4px 0 0; font-size: 14px; color: var(--muted); font-weight: 400; }
+        .dock-btn { border-radius: 8px; border: 1px solid var(--edge-strong); background: var(--sheet); color: var(--ink); font-weight: 600; padding: 8px 14px; }
+        .dock-btn.primary { background: var(--brand) !important; border-color: var(--brand) !important; color: #fff !important; }
+        .dock-btn i { display: none; }
+        .analytic-grid { display: grid !important; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 0 !important; background: var(--sheet); border: 1px solid var(--edge); border-radius: 12px; overflow: hidden; }
+        .analytic-grid .kpi-card { border: 0 !important; border-left: 1px solid var(--edge) !important; border-radius: 0 !important; box-shadow: none !important; background: transparent !important; padding: 20px 22px !important; }
+        .analytic-grid .kpi-card:first-child { border-left: 0 !important; }
+        .kpi-label { font-size: 13px !important; font-weight: 500 !important; color: var(--muted) !important; text-transform: none !important; letter-spacing: 0 !important; margin-bottom: 8px; }
+        .kpi-label i { display: none; }
+        .kpi-value { font-family: var(--font-display); font-size: 26px !important; font-weight: 600 !important; font-variant-numeric: tabular-nums; }
+        .kpi-card.lead .kpi-value { font-size: 36px !important; font-weight: 700 !important; color: var(--brand); }
+        .kpi-note { margin-top: 10px; font-size: 13px; color: var(--muted); }
+        .credit-meter { margin-top: 16px; }
+        .progress-container { position: relative; height: 10px; background: var(--sheet-2); border-radius: 3px; overflow: visible; }
+        .progress-container .progress-fill { background: var(--brick); height: 100%; border-radius: 3px; }
+        .aim-tick { position: absolute; top: -4px; width: 2px; height: 18px; background: var(--ink); border-radius: 1px; }
+        .credit-meter-text { display: flex; justify-content: space-between; margin-top: 8px; font-size: 13px; color: var(--muted); }
+        .credit-meter-text b { color: var(--ink); font-weight: 600; }
+        .analytic-section { border: 1px solid var(--edge) !important; border-radius: 12px !important; box-shadow: none !important; background: var(--sheet); margin-top: 16px; }
+        /* profile: section titles are words, not icon tiles; changing a password is a normal action */
+        #company-profile .section-title > span:first-child { display: none !important; }
+        #company-profile .content-section { border-radius: 12px; box-shadow: none; }
+        #company-profile button.btn[style*="e74c3c"] { background: var(--brand) !important; }
+        /* quick sale: the total leads, Pay now is the one filled action */
+        .summary-row.total { background: transparent !important; border: 0 !important; border-top: 1px solid var(--edge) !important; border-radius: 0 !important; padding: 14px 0 8px !important; align-items: flex-end; }
+        .summary-row.total span:first-child { font-size: 14px; font-weight: 600; color: var(--muted); }
+        #quickTotal { font-family: var(--font-display); font-size: 36px !important; font-weight: 700; color: var(--brand) !important; line-height: 1; font-variant-numeric: tabular-nums; }
+        .btn-pay-main { height: 56px !important; border-radius: 10px !important; background: var(--brand) !important; color: #fff !important; border-color: var(--brand) !important; font-size: 16px !important; }
+        .btn-credit-main, .btn-proforma, .btn-invoice { height: 48px !important; border-radius: 10px !important; background: var(--sheet) !important; color: var(--ink) !important; border: 1px solid var(--edge-strong) !important; font-weight: 600 !important; }
+        .btn-credit-main:hover, .btn-proforma:hover, .btn-invoice:hover { border-color: var(--brand) !important; }
+        @media (max-width: 900px) { .analytic-grid { grid-template-columns: 1fr 1fr; } .analytic-grid .kpi-card { border-left: 0 !important; border-top: 1px solid var(--edge) !important; } .analytic-grid .kpi-card.lead { grid-column: 1 / -1; border-top: 0 !important; } }
+    </style>
+    <style id="co-phone">
+        @media (max-width: 700px) {
+            .okw-kpi .okw-kpi-value, .kpi-value { font-size: clamp(18px, 5.2vw, 22px) !important; white-space: nowrap !important; overflow-wrap: normal !important; }
+        }
+    </style>
 </head>
 
 <body>
@@ -1346,34 +1387,10 @@ tr:last-child td {
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="brand">
-            <img src="logo.png" alt="Footprint">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
             <span class="sidebar-role-badge">Business Portal</span>
         </div>
         <div class="nav-links">
-            <a href="#" class="nav-item active" data-tab="dashboard">
-                <i class="fas fa-home"></i> Dashboard
-            </a>
-
-            <a href="#" class="nav-item" data-tab="proforma">
-                <i class="fas fa-file-invoice"></i> Proforma Invoices
-            </a>
-            <a href="#" class="nav-item" data-tab="transactions">
-                <i class="fas fa-exchange-alt"></i> Transactions
-            </a>
-            <a href="#" class="nav-item" data-tab="quick-sale">
-                <i class="fas fa-shopping-cart"></i> Quick Sale
-            </a>
-            
-            <div class="nav-section">Management</div>
-            <a href="#" class="nav-item" data-tab="tax-management">
-                <i class="fas fa-percentage"></i> Tax Management
-            </a>
-            <a href="#" class="nav-item" data-tab="company-profile">
-                <i class="fas fa-building"></i> Company Profile
-            </a>
-            <a href="#" class="nav-item" data-tab="settings">
-                <i class="fas fa-cog"></i> Settings
-            </a>
         </div>
         <div class="user-profile">
             <div class="user-profile-row">
@@ -1396,97 +1413,61 @@ tr:last-child td {
                 <div style="display: flex; align-items: center;">
                     <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
                     <div class="header-title">
-                    <h2 style="display: flex; align-items: center; gap: 8px; font-size: 24px; font-weight: 800;">
-                        Operational Intelligence 
-                        <i class="fas fa-chart-network" style="font-size: 14px; color: var(--primary-color); opacity: 0.5;"></i>
-                    </h2>
-                    <p style="font-size: 12px; font-weight: 500; color: #64748b;">Enterprise Financial Health & Credit Risk Analytics</p>
+                    <h1>Overview</h1>
+                    <p>Your trade account with OKWESIWA LTD: credit, invoices and recent activity.</p>
                     </div>
                 </div>
             </header>
 
             <div class="quick-dock">
-                <button class="dock-btn" onclick="document.querySelector('[data-tab=\'quick-sale\']').click()">
-                    <i class="fas fa-plus"></i> NEW SALE
+                <button class="dock-btn primary" onclick="activateCompanyTab('quick-sale')">
+                    <i class="fas fa-plus"></i> New sale
                 </button>
-                <button class="dock-btn" onclick="document.querySelector('[data-tab=\'proforma\']').click()">
-                    <i class="fas fa-file-invoice"></i> INVOICES
+                <button class="dock-btn" onclick="activateCompanyTab('proforma')">
+                    <i class="fas fa-file-invoice"></i> Invoices
                 </button>
                 <button class="dock-btn" onclick="loadDashboard()">
-                    <i class="fas fa-sync"></i> REFRESH
+                    <i class="fas fa-sync"></i> Refresh
                 </button>
             </div>
 
             <div class="analytic-grid">
-                <!-- KPI Card 1: Revenue -->
-                <div class="kpi-card">
-                    <div class="kpi-label">
-                        REVENUE 
-                        <i class="fas fa-sack-dollar"></i>
-                    </div>
-                    <div class="kpi-value" id="totalRevenue">--</div>
-                    <svg class="sparkline-svg" viewBox="0 0 100 30">
-                        <path d="M0 25 L 10 20 L 20 28 L 30 15 L 40 22 L 50 10 L 60 18 L 70 5 L 80 12 L 90 2 L 100 8" />
-                    </svg>
-                    <div class="kpi-trend trend-up">
-                        <i class="fas fa-arrow-up"></i> 14.2% <span style="color:#64748b; font-weight:400; margin-left:4px;">vs last month</span>
-                    </div>
-                </div>
-
-                <!-- KPI Card 2: Credit Owed -->
-                <div class="kpi-card">
-                    <div class="kpi-label">
-                        CREDIT EXPOSURE
-                        <i class="fas fa-hand-holding-dollar"></i>
-                    </div>
+                <div class="kpi-card lead">
+                    <div class="kpi-label">Outstanding credit</div>
                     <div class="kpi-value" id="totalCreditOwed">--</div>
-                    <svg class="sparkline-svg" viewBox="0 0 100 30" style="stroke: var(--danger-color);">
-                        <path d="M0 10 L 20 15 L 40 12 L 60 25 L 80 20 L 100 28" />
-                    </svg>
-                    <div class="kpi-trend trend-down">
-                        <i class="fas fa-arrow-down"></i> 2.1% <span style="color:#64748b; font-weight:400; margin-left:4px;">improvement</span>
-                    </div>
-                </div>
-
-                <!-- KPI Card 3: Debtors -->
-                <div class="kpi-card">
-                    <div class="kpi-label">
-                        ACTIVE DEBTORS
-                        <i class="fas fa-user-tag"></i>
-                    </div>
-                    <div class="kpi-value" id="activeDebtors">0</div>
-                    <div style="margin-top: 15px; font-size: 11px; font-weight: 600; color: #64748b;">
-                        CURRENT UTILIZATION
+                    <div class="credit-meter">
                         <div class="progress-container">
                             <div class="progress-fill" id="creditUsageBar" style="width: 0%"></div>
+                            <span class="aim-tick" style="left: 30%" title="Aim: keep credit use under 30%"></span>
                         </div>
-                        <div style="display: flex; justify-content: space-between; margin-top: 4px;">
-                            <span id="creditUsageLabel">0%</span>
-                            <span>Target: < 30%</span>
+                        <div class="credit-meter-text">
+                            <span><b id="creditUsageLabel">0%</b> of your credit limit used</span>
+                            <span>Aim: under 30%</span>
                         </div>
                     </div>
                 </div>
-
-                <!-- KPI Card 4: Proformas -->
                 <div class="kpi-card">
-                    <div class="kpi-label">
-                        PENDING INVOICES
-                        <i class="fas fa-file-invoice"></i>
-                    </div>
+                    <div class="kpi-label">Revenue</div>
+                    <div class="kpi-value" id="totalRevenue">--</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Pending invoices</div>
                     <div class="kpi-value" id="totalProforma">0</div>
-                    <div style="margin-top: 15px; display: flex; gap: 4px; flex-wrap: wrap;">
-                        <span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;">PAYMENTS: <span id="pendingPayments" style="color:var(--primary-color)">0</span></span>
-                    </div>
+                    <div class="kpi-note">Payments awaiting confirmation: <b id="pendingPayments">0</b></div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-label">Accounts owing</div>
+                    <div class="kpi-value" id="activeDebtors">0</div>
                 </div>
             </div>
 
             <div class="analytic-section">
                 <div class="section-header-v3">
                     <div class="section-title-v3">
-                        TRANSACTION ACTIVITY LOG
+                        Recent activity
                     </div>
-                    <button class="dock-btn" style="font-size: 10px; padding: 4px 10px;" onclick="document.querySelector('[data-tab=\'transactions\']').click()">
-                        FULL REPORT <i class="fas fa-external-link-alt"></i>
+                    <button class="dock-btn" style="font-size: 10px; padding: 4px 10px;" onclick="activateCompanyTab('transactions')">
+                        Full report <i class="fas fa-external-link-alt"></i>
                     </button>
                 </div>
                 <div style="overflow-x: auto;">
@@ -1863,19 +1844,17 @@ tr:last-child td {
             </header>
 
             <!-- Profile Header Card -->
-            <div class="content-section" style="background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 60%, var(--accent-color) 100%); color: white; position: relative; overflow: hidden;">
-                <div style="position: absolute; top: -30px; right: -30px; width: 180px; height: 180px; border-radius: 50%; background: rgba(255,255,255,0.06);"></div>
-                <div style="position: absolute; bottom: -50px; right: 60px; width: 120px; height: 120px; border-radius: 50%; background: rgba(255,255,255,0.04);"></div>
+            <div class="content-section" style="position: relative; overflow: hidden;">
                 <div style="display: flex; align-items: center; gap: 24px; position: relative; z-index: 1;">
-                    <div style="width: 80px; height: 80px; border-radius: 16px; background: rgba(255,255,255,0.15); display: flex; align-items: center; justify-content: center; font-size: 36px; backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.2);">
+                    <div style="width: 80px; height: 80px; border-radius: 16px; background: rgba(31, 58, 96, 0.1); color: #1F3A60; display: flex; align-items: center; justify-content: center; font-size: 36px; border: 1px solid rgba(31, 58, 96, 0.2);">
                         <i class="fas fa-building"></i>
                     </div>
                     <div style="flex: 1;">
-                        <h2 id="profileCompanyName" style="font-size: 28px; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.5px;">Loading...</h2>
-                        <p style="opacity: 0.85; font-size: 14px; margin-bottom: 8px;"><i class="fas fa-envelope" style="margin-right: 6px;"></i> <span id="profileEmail">—</span></p>
+                        <h2 id="profileCompanyName" style="font-size: 28px; font-weight: 800; margin-bottom: 4px; letter-spacing: -0.5px; color: var(--ink, #17202A);">Loading...</h2>
+                        <p style="color: var(--muted, #5F6B7A); font-size: 14px; margin-bottom: 8px;"><i class="fas fa-envelope" style="margin-right: 6px;"></i> <span id="profileEmail">—</span></p>
                         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                            <span id="profileStatusBadge" style="background: rgba(39,174,96,0.2); border: 1px solid rgba(39,174,96,0.4); color: #2ecc71; padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">Active</span>
-                            <span style="background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;"><i class="fas fa-briefcase" style="margin-right: 4px;"></i> Business Client</span>
+                            <span id="profileStatusBadge" style="background: rgba(39,174,96,0.14); border: 1px solid rgba(39,174,96,0.35); color: #15803D; padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;">Active</span>
+                            <span style="background: rgba(31, 58, 96, 0.08); border: 1px solid rgba(31, 58, 96, 0.2); color: #1F3A60; padding: 3px 12px; border-radius: 20px; font-size: 12px; font-weight: 600;"><i class="fas fa-briefcase" style="margin-right: 4px;"></i> Business Client</span>
                         </div>
                     </div>
                 </div>
@@ -1888,7 +1867,7 @@ tr:last-child td {
                 <div class="content-section">
                     <div class="section-header" style="border-bottom-color: #f0f0f0;">
                         <h3 class="section-title" style="display: flex; align-items: center; gap: 10px;">
-                            <span style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, var(--primary-color), #3d5af1); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;"><i class="fas fa-address-card"></i></span>
+                            <span style="width: 36px; height: 36px; border-radius: 10px; background: var(--primary-color); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;"><i class="fas fa-address-card"></i></span>
                             Contact Information
                         </h3>
                     </div>
@@ -1904,7 +1883,7 @@ tr:last-child td {
                             </div>
                             <div class="form-group">
                                 <label style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Email Address</label>
-                                <input type="email" id="profileEmailInput" placeholder="company@example.com" disabled style="background: #f8fafc; cursor: not-allowed;">
+                                <input type="email" id="profileEmailInput" placeholder="Email address" disabled style="background: #f8fafc; cursor: not-allowed;">
                             </div>
                             <div class="form-group">
                                 <label style="font-size: 12px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Business Address</label>
@@ -1918,7 +1897,7 @@ tr:last-child td {
                 <div class="content-section">
                     <div class="section-header" style="border-bottom-color: #f0f0f0;">
                         <h3 class="section-title" style="display: flex; align-items: center; gap: 10px;">
-                            <span style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #f39c12, #e67e22); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;"><i class="fas fa-id-badge"></i></span>
+                            <span style="width: 36px; height: 36px; border-radius: 10px; background: #f39c12; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;"><i class="fas fa-id-badge"></i></span>
                             Business Details
                         </h3>
                     </div>
@@ -1951,7 +1930,7 @@ tr:last-child td {
             <div class="content-section" style="margin-top: 24px;">
                 <div class="section-header" style="border-bottom-color: #f0f0f0;">
                     <h3 class="section-title" style="display: flex; align-items: center; gap: 10px;">
-                        <span style="width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(135deg, #e74c3c, #c0392b); display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;"><i class="fas fa-lock"></i></span>
+                        <span style="width: 36px; height: 36px; border-radius: 10px; background: #e74c3c; display: flex; align-items: center; justify-content: center; color: white; font-size: 14px;"><i class="fas fa-lock"></i></span>
                         Security — Change Password
                     </h3>
                 </div>
@@ -1970,7 +1949,7 @@ tr:last-child td {
                             <input type="password" id="profileConfirmPassword" placeholder="Re-enter new password" required minlength="6">
                         </div>
                     </div>
-                    <button type="submit" class="btn" style="background: linear-gradient(135deg, #e74c3c, #c0392b); color: white; margin-top: 10px;"><i class="fas fa-key"></i> Update Password</button>
+                    <button type="submit" class="btn" style="background: #e74c3c; color: white; margin-top: 10px;"><i class="fas fa-key"></i> Update Password</button>
                 </form>
             </div>
 
@@ -2001,7 +1980,7 @@ tr:last-child td {
                     <div class="form-grid">
                         <div class="form-group">
                             <label>Company Name</label>
-                            <input type="text" id="settingCompanyName" placeholder="FOOTPRINT">
+                            <input type="text" id="settingCompanyName" placeholder="OKWESIWA LTD">
                         </div>
                         <div class="form-group">
                             <label>Tax ID / TIN</label>
@@ -2029,7 +2008,7 @@ tr:last-child td {
                         </div>
                         <div class="form-group">
                             <label>Account Name</label>
-                            <input type="text" id="settingBankAccountName" placeholder="e.g. FOOTPRINT">
+                            <input type="text" id="settingBankAccountName" placeholder="e.g. OKWESIWA LTD">
                         </div>
                         <div class="form-group">
                             <label>Account Number</label>
@@ -2049,7 +2028,7 @@ tr:last-child td {
                         </div>
                         <div class="form-group">
                             <label>MoMo Name</label>
-                            <input type="text" id="settingMomoName" placeholder="e.g. FOOTPRINT">
+                            <input type="text" id="settingMomoName" placeholder="e.g. OKWESIWA LTD">
                         </div>
                     </div>
 
@@ -2270,7 +2249,7 @@ tr:last-child td {
 
                 <div style="margin-top: 25px; display: flex; gap: 10px;">
                     <button class="btn" style="flex: 1; background: #f1f5f9; color: #475569;" onclick="closeQuickCreditModal()">Cancel</button>
-                    <button id="btnConfirmQuickCredit" class="btn" style="flex: 2; background: linear-gradient(135deg, #f59e0b, #d97706); color: white;" disabled onclick="processQuickCreditSale()">
+                    <button id="btnConfirmQuickCredit" class="btn" style="flex: 2; background: #f59e0b; color: white;" disabled onclick="processQuickCreditSale()">
                         Select Client to Confirm
                     </button>
                 </div>
@@ -2452,36 +2431,52 @@ function toggleSidebar() {
 }
 
 // Tab Navigation
-document.querySelectorAll('.nav-item').forEach(item => {
+function activateCompanyTab(tabId) {
+    const target = document.getElementById(tabId);
+    if (!target || !target.classList.contains('tab-content')) return;
+
+    // Update active states
+    document.querySelectorAll('.nav-item[data-tab]').forEach(i => i.classList.toggle('active', i.dataset.tab === tabId));
+
+    // Show corresponding tab
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    target.classList.add('active');
+
+    // Close sidebar on mobile when a tab is selected
+    if (window.innerWidth <= 992) {
+        document.querySelector('.sidebar').classList.remove('active');
+        document.querySelector('.sidebar-overlay').classList.remove('active');
+    }
+
+    // Trigger data loading for specific tabs
+    if (tabId === 'tax-management') {
+        loadTaxes();
+        generateCompanyTaxReport();
+    }
+    if (tabId === 'dashboard') loadDashboard();
+    if (tabId === 'quick-sale') loadTaxes();
+    if (tabId === 'proforma') loadProformaInvoices();
+    if (tabId === 'transactions') loadCompanyTransactions();
+    if (tabId === 'settings') loadCompanySettings();
+    if (tabId === 'company-profile') loadCompanyProfile();
+
+    // Keep the shared sidebar highlight and URL in sync with the active tab
+    document.querySelectorAll('.sidebar .nav-item').forEach(a => {
+        const href = a.getAttribute('href') || '';
+        a.classList.toggle('active', href === '/company-portal?tab=' + tabId || (tabId === 'dashboard' && href === '/company-portal'));
+    });
+    if (window.history && history.replaceState) {
+        const u = new URL(window.location.href);
+        u.searchParams.set('tab', tabId);
+        history.replaceState(null, '', u);
+    }
+}
+window.activateCompanyTab = activateCompanyTab;
+
+document.querySelectorAll('.nav-item[data-tab]').forEach(item => {
     item.addEventListener('click', (e) => {
         e.preventDefault();
-        const tabId = item.dataset.tab;
-        
-        // Update active states
-        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-        item.classList.add('active');
-        
-        // Show corresponding tab
-        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-        document.getElementById(tabId).classList.add('active');
-
-        // Close sidebar on mobile when a tab is selected
-        if (window.innerWidth <= 992) {
-            document.querySelector('.sidebar').classList.remove('active');
-            document.querySelector('.sidebar-overlay').classList.remove('active');
-        }
-
-        // Trigger data loading for specific tabs
-        if (tabId === 'tax-management') { 
-            loadTaxes();
-            generateCompanyTaxReport();
-        }
-        if (tabId === 'dashboard') loadDashboard();
-        if (tabId === 'quick-sale') loadTaxes();
-        if (tabId === 'proforma') loadProformaInvoices();
-        if (tabId === 'transactions') loadCompanyTransactions();
-        if (tabId === 'settings') loadCompanySettings();
-        if (tabId === 'company-profile') loadCompanyProfile();
+        activateCompanyTab(item.dataset.tab);
     });
 });
 
@@ -2561,10 +2556,10 @@ async function loadDashboard() {
                     analyticBody.innerHTML = data.recentActivity.map(act => `
                         <tr>
                             <td data-label="Timestamp" style="color: #64748b;">
-                                ${new Date(act.date).toLocaleDateString()}
-                                <span style="font-size:10px; opacity:0.6; display:block;">${new Date(act.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}</span>
+                                ${act.date ? new Date(act.date).toLocaleDateString('en-GB') : '—'}
+                                <span style="font-size:10px; opacity:0.6; display:block;">${act.date ? new Date(act.date).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : ''}</span>
                             </td>
-                            <td data-label="Reference" style="font-family: 'Inter', monospace; font-size:12px; font-weight:600;">#${act.invoice_number}</td>
+                            <td data-label="Reference" style="font-family: inherit; font-variant-numeric: tabular-nums; font-size:12px; font-weight:600;">${act.invoice_number ? '#' + act.invoice_number : '—'}</td>
                             <td data-label="Type"><span style="font-weight:700; color:var(--primary-color);">${act.type}</span></td>
                             <td data-label="Amount" style="font-weight:800;">${formatCurrency(act.amount || 0)}</td>
                             <td data-label="Status"><span class="status-badge status-paid" style="font-size:10px; padding:1px 8px;">Completed</span></td>
@@ -2575,7 +2570,7 @@ async function loadDashboard() {
                         <tr>
                             <td colspan="5" style="text-align: center; padding: 60px; color: #94a3b8;">
                                 <i class="fas fa-history" style="font-size: 32px; opacity: 0.2; margin-bottom: 15px; display: block;"></i>
-                                <h4 style="font-size: 14px; color: #64748b;">No recent operational data available</h4>
+                                <h4 style="font-size: 14px; color: #64748b;">No activity yet. New sales and invoices will appear here.</h4>
                             </td>
                         </tr>
                     `;
@@ -2649,8 +2644,8 @@ function searchQuickCreditCustomers() {
     if (matches.length > 0) {
         results.innerHTML = matches.map(c => `
             <div class="customer-search-item" onclick="selectQuickCreditCustomer(${c.id})">
-                <strong>${c.name}</strong>
-                <span>${c.phone || 'No phone'} | Limit: ${formatCurrency(c.credit_limit)}</span>
+                <strong>${OkwUI.escapeHtml(c.name)}</strong>
+                <span>${OkwUI.escapeHtml(c.phone || 'No phone')} | Limit: ${formatCurrency(c.credit_limit)}</span>
             </div>
         `).join('');
         results.style.display = 'block';
@@ -2693,7 +2688,7 @@ function selectQuickCreditCustomer(id) {
     } else {
         alert.style.display = 'none';
         btn.disabled = false;
-        btn.style.background = 'linear-gradient(135deg, #f59e0b, #d97706)'; // brand gradient
+        btn.style.background = '#f59e0b'; // brand gradient
         btn.textContent = "Confirm & Bill to Credit";
     }
 }
@@ -2702,7 +2697,7 @@ async function processQuickCreditSale() {
     if (!selectedQuickCreditCustomer) return;
     
     const totalText = document.getElementById('quickTotal').textContent;
-    const message = `Bill <strong style="color:white; border-bottom: 2px solid rgba(255,255,255,0.4);">${totalText}</strong> to <strong>${selectedQuickCreditCustomer.name}</strong>'s credit account?`;
+    const message = `Bill <strong style="color:white; border-bottom: 2px solid rgba(255,255,255,0.4);">${totalText}</strong> to <strong>${OkwUI.escapeHtml(selectedQuickCreditCustomer.name)}</strong>'s credit account?`;
     
     showActionToast(message, async () => {
         await processQuickPayment('credit', false, selectedQuickCreditCustomer.id);
@@ -2800,6 +2795,7 @@ function calculateProformaTotals() {
 }
 
 function calculateSalesTotals() {
+    if (!document.getElementById('salesSubtotal')) return; // section not on this page
     const items = document.querySelectorAll('#salesItems .item-row');
     let subtotal = 0;
     
@@ -2981,7 +2977,7 @@ async function transferToQuickCart(id) {
             document.getElementById('customerName').value = data.client_name || (data.notes && data.notes.includes('Quick Document for') ? data.notes.split('for ')[1] : '');
 
             // Switch to Quick Sale tab
-            document.querySelector('[data-tab="quick-sale"]').click();
+            activateCompanyTab('quick-sale');
             
             // Update Cart UI and Totals
             updateQuickCart();
@@ -3058,16 +3054,29 @@ async function printDocument(data, type, terms = '..............................
     // Dynamically build the tax label from Tax Management rules
     const taxLabel = activeTaxes.map(t => `${t.name} (${t.rate}%)`).join(' & ') || 'Tax / VAT';
 
-    // Add logo and company info
+    // Add logo (if present) and company info
     const img = new Image();
-    img.src = 'logo.png';
-    await new Promise(resolve => img.onload = resolve); // Ensure image is loaded before adding to PDF
+    const logoLoaded = await new Promise(resolve => {
+        img.onload = () => resolve(true);
+        img.onerror = () => resolve(false);
+        img.src = 'okwesiwa-logo.svg';
+    });
 
-    doc.addImage(img, 'PNG', 14, 10, 15, 15); // Circular logo aspect ratio
+    let logoData = null;
+    if (logoLoaded) {
+        // jsPDF needs a raster image: draw the SVG logo onto a canvas first
+        try {
+            const cv = document.createElement('canvas');
+            cv.width = 420; cv.height = 88;
+            cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+            logoData = cv.toDataURL('image/png');
+            doc.addImage(logoData, 'PNG', 14, 8, 42, 8.8);
+        } catch (e) { logoData = null; }
+    }
     doc.setFont('times', 'bold'); // Use standard font name
-    const compName = (systemSettings && systemSettings.store_name) ? systemSettings.store_name.toUpperCase() : 'FOOTPRINT';
+    const compName = (systemSettings && systemSettings.store_name) ? systemSettings.store_name.toUpperCase() : 'OKWESIWA LTD';
     const compPhone = (systemSettings && systemSettings.phone) ? systemSettings.phone : '+233 24 512 2959';
-    doc.text(compName, 34, 19); // Same line as logo
+    doc.text(compName, 14, logoData ? 24 : 19); // Same line as logo if present
 
     doc.setFont('times', 'normal');
     doc.setFontSize(9.5);
@@ -3184,12 +3193,12 @@ async function printDocument(data, type, terms = '..............................
     
     // Use system settings or fallback to defaults
     const bankName = systemSettings.bank_name || 'ECOBANK';
-    const accName = systemSettings.bank_account_name || 'FOOTPRINT';
+    const accName = systemSettings.bank_account_name || 'OKWESIWA LTD';
     const accNo = systemSettings.bank_account_number || '1441002424950';
     const bankBranch = systemSettings.bank_branch || 'ROMAN RIDGE';
     
     const momoNo = systemSettings.momo_number || '0248166711';
-    const momoName = systemSettings.momo_name || 'FOOTPRINT';
+    const momoName = systemSettings.momo_name || 'OKWESIWA LTD';
 
     doc.setFont('times', 'bold');
     doc.text('BANK ACCOUNT DETAILS', 14, finalY + 46);
@@ -3250,6 +3259,7 @@ async function loadQuickSaleProducts() {
 
 // Display products in grid
 function displayProductsGrid() {
+    if (!document.getElementById('productGrid')) return; // section not on this page
     const grid = document.getElementById('productGrid');
     if (!grid) return;
     
@@ -3257,7 +3267,7 @@ function displayProductsGrid() {
     
     grid.innerHTML = popularProducts.map(product => `
         <div class="product-card" onclick="addToQuickCart(${JSON.stringify(product).replace(/"/g, '&quot;')})">
-            <h4>${product.name}</h4>
+            <h4>${OkwUI.escapeHtml(product.name)}</h4>
             <div class="price">${formatCurrency(product.price)}</div>
             <div class="stock">Stock: ${product.stock || 0}</div>
         </div>
@@ -3278,7 +3288,7 @@ function manualScan() {
     if (!query) return;
     
     const scanResult = document.getElementById('scanResult');
-    scanResult.innerHTML = `🔍 Searching for: <strong>${query}</strong>`;
+    scanResult.innerHTML = `Searching for: <strong>${query}</strong>`;
     
     // Find product by barcode or name
     const product = products.find(p => 
@@ -3288,14 +3298,14 @@ function manualScan() {
     
     if (product) {
         addToQuickCart(product);
-        scanResult.innerHTML = `✅ Added: <strong>${product.name}</strong>`;
+        scanResult.innerHTML = `Added: <strong>${OkwUI.escapeHtml(product.name)}</strong>`;
         document.getElementById('barcodeInput').value = '';
         closeSuggestions();
         setTimeout(() => {
             scanResult.innerHTML = '';
         }, 2000);
     } else {
-        scanResult.innerHTML = `❌ Product not found: <strong>${query}</strong>`;
+        scanResult.innerHTML = `Product not found: <strong>${query}</strong>`;
         setTimeout(() => {
             scanResult.innerHTML = '';
         }, 3000);
@@ -3327,7 +3337,7 @@ function showSuggestions(query) {
         <div class="suggestion-item" data-index="${i}" data-id="${product.id}" onclick="selectSuggestionById(this.dataset.id)">
             <div>
                 <div><strong>${product.name.replace(/</g, '&lt;')}</strong></div>
-                <div class="product-details">Barcode: ${product.barcode || 'N/A'} | Stock: ${product.stock || 0}</div>
+                <div class="product-details">Barcode: ${OkwUI.escapeHtml(product.barcode || 'N/A')} | Stock: ${product.stock || 0}</div>
             </div>
             <div class="product-price">${formatCurrency(product.price)}</div>
         </div>
@@ -3354,7 +3364,7 @@ function selectSuggestion(product) {
     closeSuggestions();
     
     const scanResult = document.getElementById('scanResult');
-    scanResult.innerHTML = `✅ Added: <strong>${product.name}</strong>`;
+    scanResult.innerHTML = `Added: <strong>${OkwUI.escapeHtml(product.name)}</strong>`;
     setTimeout(() => {
         scanResult.innerHTML = '';
     }, 2000);
@@ -3463,10 +3473,10 @@ function updateQuickCart() {
             </div>
         ` + quickCart.map((item, index) => `
             <div class="cart-item">
-                <div class="cart-item-name" title="${item.name}">
-                    ${item.name}
+                <div class="cart-item-name" title="${OkwUI.escapeHtml(item.name)}">
+                    ${OkwUI.escapeHtml(item.name)}
                 </div>
-                <div class="cart-item-details">${item.barcode || 'N/A'}</div>
+                <div class="cart-item-details">${OkwUI.escapeHtml(item.barcode || 'N/A')}</div>
                 <div class="cart-item-price">
                     ${formatCurrency(item.price)}
                     ${item.discount ? `<div class="item-discount-badge">-${formatCurrency(item.discount)}</div>` : ''}
@@ -3688,7 +3698,7 @@ function updateQuickTotals() {
             const amount = discountedSubtotal * (parseFloat(tax.rate) / (100 + totalTaxRate));
             return `
                 <div class="summary-row" style="font-size: 13px; color: #666; margin-bottom: 4px;">
-                    <span>${tax.name} (${tax.rate}%)</span>
+                    <span>${OkwUI.escapeHtml(tax.name)} (${tax.rate}%)</span>
                     <span>${formatCurrency(amount)}</span>
                 </div>
             `;
@@ -3852,6 +3862,10 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Automatically generate tax report
     generateCompanyTaxReport();
+
+    // Deep link support: /company-portal?tab=<tab-id> (used by the shared sidebar)
+    const initialTab = new URLSearchParams(window.location.search).get('tab');
+    if (initialTab) activateCompanyTab(initialTab);
 });
 
 // Hotkey Bindings (F1-F6)
@@ -3938,7 +3952,7 @@ async function loadTaxes() {
                     modalList.innerHTML = taxes.map(tax => `
                         <div class="tax-item">
                             <div style="flex: 1;">
-                                <strong style="font-size: 14px;">${tax.name}</strong>
+                                <strong style="font-size: 14px;">${OkwUI.escapeHtml(tax.name)}</strong>
                                 <span class="tax-badge">${tax.rate}%</span>
                                 <span class="status-badge ${tax.status === 'Active' ? 'status-active' : 'status-inactive'}" style="margin-left: 10px;">
                                     ${tax.status}
@@ -3946,7 +3960,7 @@ async function loadTaxes() {
                             </div>
                             <div style="display: flex; gap: 5px;">
                                 <button class="btn-sm" onclick="toggleTaxStatus(${tax.id}, ${tax.status === 'Active'})" 
-                                        style="background: ${tax.status === 'Active' ? '#ffc107' : '#28a745'}; color: white; padding: 4px 8px; font-size: 12px;">
+                                        style="background: ${tax.status === 'Active' ? '#ffc107' : '#28a745'}; color: ${tax.status === 'Active' ? '#17202A' : '#ffffff'}; padding: 4px 8px; font-size: 12px;">
                                     <i class="fas ${tax.status === 'Active' ? 'fa-pause' : 'fa-play'}"></i>
                                 </button>
                                 <button class="btn-sm" onclick="deleteTax(${tax.id})" 
@@ -4064,7 +4078,7 @@ async function generateCompanyTaxReport() {
         });
         if (response.ok) {
             const data = await response.json();
-            tbody.innerHTML = data.map(row => `
+            tbody.innerHTML = (Array.isArray(data) ? data : []).map(row => `
                 <tr>
                     <td data-label="Period">${row.period}</td>
                     <td data-label="Gross Sales" style="text-align:right;">${formatCurrency(row.gross_sales)}</td>
@@ -4318,7 +4332,7 @@ function viewTransaction(trx) {
                 <span style="color: #666;">Status:</span>
                 <span class="status-badge status-paid">Completed</span>
             </div>
-            ${trx.notes ? `<div style="margin-top: 10px;"><p style="color: #666; font-size: 13px;">Notes: ${trx.notes}</p></div>` : ''}
+            ${trx.notes ? `<div style="margin-top: 10px;"><p style="color: #666; font-size: 13px;">Notes: ${OkwUI.escapeHtml(trx.notes)}</p></div>` : ''}
         </div>
     `;
     
@@ -4361,14 +4375,14 @@ function filterTransactionsTable() {
 
 </script>
 
-<footer>© 2026 Footprint
+<footer>© 2026 OKWESIWA LTD
 </footer>
 
 
 <!-- ================== GLOBAL UX FIXES ================== -->
 <style>
 #custom-toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
+.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
 .custom-toast.show { opacity: 1; transform: translateY(0); }
 .custom-toast.error { background: #e74c3c; border-left: 4px solid #c0392b; }
 .custom-toast.success { background: #27ae60; border-left: 4px solid #2ecc71; }

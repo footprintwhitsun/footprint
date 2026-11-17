@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roles & Permissions - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <style>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { padding: 24px; max-width: 1400px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        .roles-grid { display: grid; grid-template-columns: 320px 1fr; gap: 20px; align-items: start; }
+        .role-item { padding: 12px 14px; border: 1px solid var(--color-border); border-radius: var(--radius-sm); cursor: pointer; margin-bottom: 8px; background: var(--color-surface); transition: border-color .15s, background .15s; }
+        .role-item:hover { border-color: var(--color-primary); }
+        .role-item.active { border-color: var(--color-accent); background: var(--color-accent-soft); }
+        .perm-table th, .perm-table td { text-align: center !important; }
+        .perm-table th:first-child, .perm-table td:first-child { text-align: left !important; }
+        .perm-check { width: 18px; height: 18px; accent-color: var(--color-primary); cursor: pointer; }
+        @media (max-width: 900px) {
+            .main-content { margin-left: 0; }
+            .roles-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
+            <span class="sidebar-role-badge">CEO / Admin</span>
+        </div>
+        <nav class="nav-links">
+            <div class="nav-section">Executive</div>
+            <a href="/ceo-portal"><span>CEO Portal</span></a>
+            <a href="/dashboard"><span>Dashboard</span></a>
+            <a href="/pos"><span>POS Till</span></a>
+            <div class="nav-section">Foundation & Security</div>
+            <a href="/roles" class="active"><span>Roles & Permissions</span></a>
+            <a href="/activity-log"><span>Activity Log</span></a>
+            <a href="/backups"><span>Backups & Export</span></a>
+            <a href="/settings"><span>Business Settings</span></a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap">
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:20px;">
+                <div>
+                    <h1 style="margin:0;font-size:24px;">Roles & Permissions</h1>
+                    <p style="margin:4px 0 0;color:var(--color-text-muted);font-size:14px;">Configure tick-box permissions per module and action, or create custom roles such as Storekeeper or Driver.</p>
+                </div>
+                <div style="display:flex;gap:10px;">
+                    <button type="button" class="okw-btn okw-btn-outline" id="btn-copy-role">Copy Selected Role</button>
+                    <button type="button" class="okw-btn okw-btn-primary" id="btn-new-role">+ New Custom Role</button>
+                </div>
+            </div>
+
+            <div class="roles-grid">
+                <div class="okw-card">
+                    <h3 style="margin:0 0 12px;font-size:16px;">All Roles</h3>
+                    <div id="roles-list">Loading roles...</div>
+                </div>
+
+                <div class="okw-card">
+                    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;">
+                        <div style="flex:1;min-width:220px;">
+                            <label for="role-name-input" style="display:block;font-size:12px;font-weight:600;color:var(--color-text-muted);margin-bottom:4px;">Role Name:*</label>
+                            <input type="text" id="role-name-input" class="okw-input" style="max-width:340px;width:100%;font-weight:600;" placeholder="Role Name">
+                            <p id="selected-role-desc" style="margin:6px 0 0;color:var(--color-text-muted);font-size:13px;"></p>
+                        </div>
+                        <div style="display:flex;gap:8px;align-items:center;">
+                            <button type="button" class="okw-btn okw-btn-danger" id="btn-delete-role" style="display:none;">Delete Role</button>
+                            <button type="button" class="okw-btn okw-btn-accent" id="btn-save-perms">Save Permissions</button>
+                        </div>
+                    </div>
+
+                    <div style="font-size:13px;font-weight:700;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Permissions</div>
+                    <div id="perm-groups-host" style="display:flex;flex-direction:column;gap:12px;"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+(function () {
+    const ACTIONS = ['view', 'create', 'edit', 'delete', 'approve', 'export'];
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+
+    let roles = [];
+    let modules = [];
+    let groups = [];
+    let selectedRole = null;
+
+    async function loadData() {
+        const res = await fetch('/api/roles', { headers });
+        if (!res.ok) {
+            OkwUI.toast('Failed to load roles', 'danger');
+            return;
+        }
+        const data = await res.json();
+        roles = data.roles || [];
+        modules = data.modules || [];
+        groups = data.groups || [];
+        if (!selectedRole && roles.length) selectedRole = roles[0];
+        else if (selectedRole) selectedRole = roles.find(r => r.id === selectedRole.id) || roles[0];
+        renderRolesList();
+        renderMatrix();
+    }
+
+    function renderRolesList() {
+        const el = document.getElementById('roles-list');
+        el.innerHTML = roles.map(r => `
+            <div class="role-item ${selectedRole && selectedRole.id === r.id ? 'active' : ''}" data-id="${r.id}">
+                <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+                    <strong>${OkwUI.escapeHtml(r.name)}</strong>
+                    ${r.is_system ? '<span class="okw-badge okw-badge-info">System</span>' : '<span class="okw-badge okw-badge-neutral">Custom</span>'}
+                </div>
+                <div style="font-size:12px;color:var(--color-text-muted);margin-top:4px;">${OkwUI.escapeHtml(r.description || '')}</div>
+            </div>
+        `).join('');
+        el.querySelectorAll('.role-item').forEach(item => {
+            item.onclick = () => {
+                selectedRole = roles.find(r => String(r.id) === item.dataset.id);
+                renderRolesList();
+                renderMatrix();
+            };
+        });
+    }
+
+    function renderMatrix() {
+        if (!selectedRole) return;
+        const nameInput = document.getElementById('role-name-input');
+        if (nameInput) {
+            nameInput.value = selectedRole.name || '';
+            nameInput.disabled = Boolean(selectedRole.is_system);
+        }
+        document.getElementById('selected-role-desc').textContent = selectedRole.description || '';
+        document.getElementById('btn-delete-role').style.display = selectedRole.is_system ? 'none' : 'inline-flex';
+
+        const perms = selectedRole.permissions || {};
+        const slug = String(selectedRole.slug || '').toLowerCase();
+        const isFullRole = slug === 'super_admin' || slug === 'ceo' || slug === 'admin';
+        const hasSavedGranular = Array.isArray(perms._granular);
+        const granularSet = new Set(hasSavedGranular ? perms._granular : []);
+        const legacyKeys = Object.keys(perms).filter(k => k !== '_granular' && Array.isArray(perms[k]) && perms[k].length > 0);
+        const DEFAULT_GROUP_PREFIXES = {
+            manager: ['user', 'role', 'supplier', 'customer', 'product', 'purchase', 'sell', 'pos', 'stock', 'expense', 'report', 'tax', 'brand', 'category', 'unit', 'setting', 'shift', 'credit', 'promotion'],
+            store_manager: ['user', 'supplier', 'customer', 'product', 'purchase', 'sell', 'pos', 'stock', 'expense', 'report', 'tax', 'brand', 'category', 'unit', 'shift', 'credit', 'promotion'],
+            teller: ['sell', 'pos', 'customer', 'shift', 'transaction', 'receipt'],
+            cashier: ['sell', 'pos', 'customer', 'shift', 'transaction', 'receipt'],
+            storekeeper: ['product', 'stock', 'purchase', 'supplier', 'category', 'brand', 'unit', 'receiving'],
+            driver: ['transfer', 'delivery', 'stock'],
+            company: ['company', 'proforma', 'sell', 'customer', 'tax']
+        };
+        const isItemChecked = (grp, it) => {
+            if (isFullRole) return true;
+            if (hasSavedGranular) return granularSet.has(it.key);
+            const hay = `${grp.key} ${it.key} ${it.label}`.toLowerCase();
+            if (legacyKeys.some(lk => hay.includes(lk.toLowerCase()))) return true;
+            const prefixes = DEFAULT_GROUP_PREFIXES[slug] || [];
+            return prefixes.some(p => hay.includes(p));
+        };
+        const host = document.getElementById('perm-groups-host');
+        if (!host) return;
+
+        host.innerHTML = groups.map(grp => {
+            const allChecked = grp.items.length > 0 && grp.items.every(it => isItemChecked(grp, it));
+            return `
+                <div class="perm-group-card" data-grp="${OkwUI.escapeHtml(grp.key)}" style="border:1px solid var(--color-border,#e2e8f0);border-radius:10px;padding:12px 14px;background:var(--color-surface-subtle,transparent);">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;padding-bottom:8px;margin-bottom:10px;border-bottom:1px solid var(--color-border,#e2e8f0);">
+                        <strong style="font-size:14px;">${OkwUI.escapeHtml(grp.label)}</strong>
+                        ${grp.selectAll ? `<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;cursor:pointer;color:var(--color-primary,#273990);">
+                            <input type="checkbox" class="grp-select-all" data-grp="${OkwUI.escapeHtml(grp.key)}" ${allChecked ? 'checked' : ''}>
+                            <span>Select all</span>
+                        </label>` : ''}
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:8px 14px;">
+                        ${grp.items.map(it => {
+                            const checked = isItemChecked(grp, it) ? 'checked' : '';
+                            return `<label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer;">
+                                <input type="checkbox" class="perm-check" data-grp="${OkwUI.escapeHtml(grp.key)}" data-key="${OkwUI.escapeHtml(it.key)}" ${checked} style="margin-top:2px;">
+                                <span>${OkwUI.escapeHtml(it.label)}</span>
+                            </label>`;
+                        }).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        host.querySelectorAll('.grp-select-all').forEach(sa => {
+            sa.addEventListener('change', () => {
+                const gk = sa.dataset.grp;
+                host.querySelectorAll(`.perm-check[data-grp="${gk}"]`).forEach(cb => { cb.checked = sa.checked; });
+            });
+        });
+
+        host.querySelectorAll('.perm-check').forEach(cb => {
+            cb.addEventListener('change', () => {
+                const gk = cb.dataset.grp;
+                const sa = host.querySelector(`.grp-select-all[data-grp="${gk}"]`);
+                if (!sa) return;
+                const all = Array.from(host.querySelectorAll(`.perm-check[data-grp="${gk}"]`));
+                sa.checked = all.length > 0 && all.every(x => x.checked);
+            });
+        });
+    }
+
+    function collectMatrixPermissions() {
+        const next = { ...(selectedRole && selectedRole.permissions ? selectedRole.permissions : {}) };
+        const granular = [];
+        document.querySelectorAll('.perm-check:checked').forEach(cb => {
+            granular.push(cb.dataset.key);
+        });
+        next._granular = granular;
+        return next;
+    }
+
+    document.getElementById('btn-save-perms').onclick = async () => {
+        if (!selectedRole) return;
+        const permissions = collectMatrixPermissions();
+        const roleName = document.getElementById('role-name-input')?.value.trim();
+        const res = await fetch(`/api/roles/${selectedRole.id}`, {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({ name: roleName || selectedRole.name, permissions })
+        });
+        if (res.ok) {
+            OkwUI.toast(`Permissions saved for ${selectedRole.name}`, 'success');
+            await loadData();
+        } else {
+            const err = await res.json().catch(() => ({}));
+            OkwUI.toast(err.message || 'Could not save permissions', 'danger');
+        }
+    };
+
+    document.getElementById('btn-new-role').onclick = async () => {
+        const name = prompt('New role name (e.g., Storekeeper, Driver, Yard Supervisor):');
+        if (!name || !name.trim()) return;
+        const description = prompt('Short description for this role:', '') || '';
+        const res = await fetch('/api/roles', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ name: name.trim(), description, permissions: { home: ['view'] } })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+            selectedRole = data.role;
+            OkwUI.toast(`Role "${name}" created`, 'success');
+            await loadData();
+        } else {
+            OkwUI.toast(data.message || 'Failed to create role', 'danger');
+        }
+    };
+
+    document.getElementById('btn-copy-role').onclick = async () => {
+        if (!selectedRole) return;
+        const name = prompt(`Copy "${selectedRole.name}" as:`, `${selectedRole.name} Copy`);
+        if (!name || !name.trim()) return;
+        const res = await fetch(`/api/roles/${selectedRole.id}/copy`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ name: name.trim() })
+        });
+        const data = await res.json().catch(() => ({}));
+        if (res.ok) {
+            selectedRole = data.role;
+            OkwUI.toast(`Copied to "${name}"`, 'success');
+            await loadData();
+        } else {
+            OkwUI.toast(data.message || 'Failed to copy role', 'danger');
+        }
+    };
+
+    document.getElementById('btn-delete-role').onclick = async () => {
+        if (!selectedRole || selectedRole.is_system) return;
+        const ok = await OkwUI.confirm('Delete Role', `Delete custom role "${selectedRole.name}"?`, { danger: true, confirmText: 'Delete' });
+        if (!ok) return;
+        const res = await fetch(`/api/roles/${selectedRole.id}`, { method: 'DELETE', headers });
+        if (res.ok) {
+            selectedRole = null;
+            OkwUI.toast('Role deleted', 'success');
+            await loadData();
+        } else {
+            const err = await res.json().catch(() => ({}));
+            OkwUI.toast(err.message || 'Failed to delete role', 'danger');
+        }
+    };
+
+    loadData();
+})();
+</script>
+</body>
+</html>
+

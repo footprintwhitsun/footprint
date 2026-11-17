@@ -1,29 +1,29 @@
+@import url('/tokens.css');
+
 /* ==========================================================================
-   FOOTPRINT - EXECUTIVE DESIGN SYSTEM (SIDEBAR & FOOTER)
-   Applies premium Whitsun Blue (#273990) & Vibrant Gold/Orange (#f9a51a)
-   aesthetics: deep slate navy (#0d121f), subtle borders (#1e273e),
-   Inter typography, signature blue & gold accents, and responsive brand badge.
+   OKWESIWA LTD - UNIFIED DESIGN SYSTEM (SIDEBAR, TOPBAR & TABLES)
+   Uses Steel Navy (#1F3A60) & Brick Orange (#E8772E) from tokens.css
    ========================================================================== */
 
 :root {
     --sidebar-width: 260px;
-    --p-sidebar-bg: #0d121f;
-    --p-sidebar-surface: #141b2d;
-    --p-sidebar-active: #1d263e;
-    --p-sidebar-border: #1e273e;
-    --p-sidebar-text: #f3f4f6;
-    --p-sidebar-text-muted: #94a3b8;
-    --p-sidebar-text-subdued: #64748b;
-    --p-sidebar-hover: rgba(39, 57, 144, 0.22);
-    --p-color-primary: #273990;
-    --p-color-primary-hover: #1e2c73;
-    --p-color-primary-subdued: rgba(39, 57, 144, 0.15);
-    --p-color-accent: #f9a51a;
-    --p-color-accent-hover: #e08f0e;
-    --p-color-accent-subdued: rgba(249, 165, 26, 0.18);
-    --p-color-bg: #f6f7fb;
-    --p-color-border: #e2e8f0;
-    --p-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --p-sidebar-bg: var(--color-sidebar);
+    --p-sidebar-surface: var(--color-sidebar-hover);
+    --p-sidebar-active: var(--color-sidebar-active);
+    --p-sidebar-border: rgba(255, 255, 255, 0.08);
+    --p-sidebar-text: var(--color-sidebar-text);
+    --p-sidebar-text-muted: var(--color-sidebar-muted);
+    --p-sidebar-text-subdued: var(--color-sidebar-muted);
+    --p-sidebar-hover: var(--color-sidebar-hover);
+    --p-color-primary: var(--color-primary);
+    --p-color-primary-hover: var(--color-primary-hover);
+    --p-color-primary-subdued: var(--color-primary-soft);
+    --p-color-accent: var(--color-accent);
+    --p-color-accent-hover: var(--color-accent-hover);
+    --p-color-accent-subdued: var(--color-accent-soft);
+    --p-color-bg: var(--color-bg);
+    --p-color-border: var(--color-border);
+    --p-font-family: var(--font-sans);
 }
 
 /* Custom Scrollbar - Shopify Polaris Minimal */
@@ -38,7 +38,7 @@
     border-radius: 4px;
 }
 .sidebar::-webkit-scrollbar-thumb:hover {
-    background: rgba(249, 165, 26, 0.4);
+    background: rgba(232, 119, 46, 0.4);
 }
 
 /* Base Sidebar Container */
@@ -64,7 +64,7 @@
     -webkit-font-smoothing: antialiased !important;
 }
 
-/* Brand Header Area - Footprint Aesthetic */
+/* Brand Header Area - OKWESIWA LTD Aesthetic */
 .sidebar .brand {
     padding: 20px 16px 16px !important;
     border-bottom: 1px solid var(--p-sidebar-border) !important;
@@ -87,14 +87,14 @@
     filter: none !important;
     background: #ffffff !important;
     padding: 4px 10px !important;
-    border: 1.5px solid rgba(249, 165, 26, 0.7) !important;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 0 10px rgba(39, 57, 144, 0.3) !important;
+    border: 1.5px solid rgba(232, 119, 46, 0.7) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35), 0 0 10px rgba(31, 58, 96, 0.3) !important;
     transition: transform 0.2s cubic-bezier(0.2, 0, 0, 1), box-shadow 0.2s ease !important;
 }
 
 .sidebar .brand img:hover {
     transform: scale(1.04) !important;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), 0 0 12px rgba(249, 165, 26, 0.5) !important;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), 0 0 12px rgba(232, 119, 46, 0.5) !important;
 }
 
 /* Portal Role Badge - Polaris Pill */
@@ -106,9 +106,9 @@
     font-weight: 600 !important;
     letter-spacing: 0.05em !important;
     text-transform: uppercase !important;
-    color: #f9a51a !important;
+    color: #E8772E !important;
     background: var(--p-color-accent-subdued) !important;
-    border: 1px solid rgba(249, 165, 26, 0.35) !important;
+    border: 1px solid rgba(232, 119, 46, 0.35) !important;
     display: inline-flex !important;
     align-items: center !important;
     gap: 6px !important;
@@ -160,7 +160,8 @@
 }
 
 /* Navigation Item Pills - Authentic Shopify Polaris Style */
-.sidebar .nav-item {
+.sidebar .nav-item,
+.sidebar .nav-links a {
     display: flex !important;
     align-items: center !important;
     padding: 9px 12px !important;
@@ -178,8 +179,9 @@
     position: relative !important;
 }
 
-.sidebar .nav-item i {
-    width: 20px !important;
+.sidebar .nav-item i,
+.sidebar .nav-links a i {
+    width: 18px !important;
     font-size: 14px !important;
     text-align: center !important;
     color: #9ca3af !important;
@@ -188,32 +190,49 @@
     flex-shrink: 0 !important;
 }
 
+.sidebar .nav-item svg,
+.sidebar .nav-links a svg {
+    width: 18px !important;
+    height: 18px !important;
+    color: #9ca3af !important;
+    flex-shrink: 0 !important;
+    transition: color 0.15s ease, transform 0.15s ease !important;
+}
+
 /* Nav Item Hover State - Soft Tint */
-.sidebar .nav-item:hover {
+.sidebar .nav-item:hover,
+.sidebar .nav-links a:hover {
     color: #ffffff !important;
-    background-color: rgba(39, 57, 144, 0.25) !important;
+    background-color: rgba(31, 58, 96, 0.25) !important;
     transform: none !important;
 }
 
-.sidebar .nav-item:hover i {
+.sidebar .nav-item:hover i,
+.sidebar .nav-item:hover svg,
+.sidebar .nav-links a:hover i,
+.sidebar .nav-links a:hover svg {
     color: #ffffff !important;
-    transform: scale(1.08) !important;
+    transform: scale(1.06) !important;
 }
 
 /* Nav Item Active State - Selected Item with Signature Accent Inset Indicator */
-.sidebar .nav-item.active {
+.sidebar .nav-item.active,
+.sidebar .nav-links a.active {
     color: #ffffff !important;
-    background-color: #1d263e !important;
+    background-color: #172C49 !important;
     border: none !important;
     font-weight: 600 !important;
     box-shadow: inset 3.5px 0 0 var(--p-color-accent) !important;
     transform: none !important;
 }
 
-.sidebar .nav-item.active i {
+.sidebar .nav-item.active i,
+.sidebar .nav-item.active svg,
+.sidebar .nav-links a.active i,
+.sidebar .nav-links a.active svg {
     color: var(--p-color-accent) !important;
     opacity: 1 !important;
-    transform: scale(1.06) !important;
+    transform: scale(1.04) !important;
 }
 
 /* User Profile Footer Card */
@@ -221,8 +240,8 @@
 .sidebar > div:last-child {
     margin: 10px 10px 14px !important;
     padding: 10px 12px !important;
-    background: #141b2d !important;
-    border: 1px solid #1e273e !important;
+    background: #121821 !important;
+    border: 1px solid #1C2533 !important;
     border-radius: 10px !important;
     display: flex !important;
     align-items: center !important;
@@ -235,7 +254,7 @@
 
 .sidebar .user-profile:hover,
 .sidebar > div:last-child:hover {
-    border-color: rgba(249, 165, 26, 0.45) !important;
+    border-color: rgba(232, 119, 46, 0.45) !important;
 }
 
 .sidebar .user-profile-row {
@@ -251,8 +270,8 @@
     height: 34px !important;
     min-width: 34px !important;
     border-radius: 50% !important;
-    background: linear-gradient(135deg, #273990 0%, #1e2c73 100%) !important;
-    border: 1px solid rgba(249, 165, 26, 0.6) !important;
+    background: #1F3A60 !important;
+    border: 1px solid rgba(232, 119, 46, 0.6) !important;
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
@@ -260,7 +279,7 @@
     font-weight: 700 !important;
     color: #ffffff !important;
     margin-right: 0 !important;
-    box-shadow: 0 2px 6px rgba(39, 57, 144, 0.35) !important;
+    box-shadow: 0 2px 6px rgba(31, 58, 96, 0.35) !important;
 }
 
 .sidebar .user-avatar i {
@@ -312,7 +331,7 @@
     align-items: center !important;
     justify-content: center !important;
     cursor: pointer !important;
-    transition: all 0.15s ease !important;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease !important;
     margin-left: auto !important;
     flex-shrink: 0 !important;
     padding: 0 !important;
@@ -320,9 +339,9 @@
 }
 
 .sidebar .sidebar-logout-btn:hover {
-    background: rgba(39, 57, 144, 0.25) !important;
-    border-color: rgba(249, 165, 26, 0.5) !important;
-    color: #f9a51a !important;
+    background: rgba(31, 58, 96, 0.25) !important;
+    border-color: rgba(232, 119, 46, 0.5) !important;
+    color: #E8772E !important;
     transform: scale(1.05) !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2) !important;
 }
@@ -335,7 +354,6 @@
 .sidebar-overlay,
 .overlay {
     background: rgba(0, 0, 0, 0.5) !important;
-    backdrop-filter: blur(2px) !important;
 }
 
 @media (max-width: 992px) {
@@ -355,7 +373,8 @@
 
 footer,
 .app-footer {
-    margin-left: var(--sidebar-width) !important;
+    margin-left: 0 !important;
+    width: 100% !important;
     padding: 14px 24px !important;
     text-align: center !important;
     font-size: 12px !important;
@@ -372,6 +391,19 @@ footer,
     font-family: var(--p-font-family) !important;
     margin-top: auto !important;
     box-sizing: border-box !important;
+}
+
+body:has(.sidebar) > footer:not(.okw-sub-footer):not(.pos-live-footer),
+body:has(.sidebar) > .app-footer:not(.okw-sub-footer) {
+    margin-left: var(--sidebar-width) !important;
+    width: auto !important;
+}
+
+/* A footer nested inside .main-content already sits beside the sidebar */
+.main-content footer,
+.main-content .app-footer {
+    margin-left: 0 !important;
+    width: auto !important;
 }
 
 footer a,
@@ -397,7 +429,7 @@ footer a:hover,
 
 /* ==========================================================================
    SHOPIFY POLARIS DATATABLE & INDEXTABLE DESIGN SYSTEM
-   Standardizes all tables across Footprint to match authentic
+   Standardizes all tables across OKWESIWA LTD to match authentic
    Shopify admin table aesthetics: crisp border-bottoms, subdued uppercase
    headers, Polaris 13.5px body text, subtle row hover, and pill badges.
    ========================================================================== */
@@ -418,37 +450,37 @@ table,
     border-collapse: collapse !important;
     font-family: var(--p-font-family) !important;
     font-size: 13.5px !important;
-    color: #202223 !important;
+    color: var(--color-text) !important;
     text-align: left !important;
-    background-color: #ffffff !important;
+    background-color: var(--color-surface) !important;
 }
 
-/* Shopify Table Card Wrapper */
+/* Table Card Wrapper */
 .table-card,
 .table-wrapper,
 .table-container,
 .table-scroll-wrapper,
 .card:has(table),
 .stock-card:has(table) {
-    background: #ffffff !important;
-    border: 1px solid #e1e3e5 !important;
-    border-radius: 8px !important;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04) !important;
+    background: var(--color-surface) !important;
+    border: 1px solid var(--color-border) !important;
+    border-radius: 10px !important;
+    box-shadow: var(--shadow-xs) !important;
     overflow-x: auto !important;
 }
 
-/* Table Header (Polaris subdued column headers) */
+/* Table Header */
 table thead,
 thead {
-    background-color: #fafbfb !important;
-    border-bottom: 1px solid #e1e3e5 !important;
+    background-color: var(--color-surface-muted) !important;
+    border-bottom: 1px solid var(--color-border) !important;
 }
 
 table thead th,
 table th,
 thead tr th {
-    background-color: #fafbfb !important;
-    color: #5c5f62 !important;
+    background-color: var(--color-surface-muted) !important;
+    color: var(--color-text-muted) !important;
     font-size: 12px !important;
     font-weight: 600 !important;
     text-transform: uppercase !important;
@@ -457,23 +489,23 @@ thead tr th {
     border-top: none !important;
     border-left: none !important;
     border-right: none !important;
-    border-bottom: 1px solid #e1e3e5 !important;
+    border-bottom: 1px solid var(--color-border) !important;
     white-space: nowrap !important;
     vertical-align: middle !important;
-    font-family: var(--p-font-family) !important;
+    font-family: var(--font-sans) !important;
 }
 
 /* Table Body Cells */
 table tbody tr,
 tbody tr {
-    background-color: #ffffff !important;
-    border-bottom: 1px solid #f1f2f3 !important;
+    background-color: var(--color-surface) !important;
+    border-bottom: 1px solid var(--color-border) !important;
     transition: background-color 0.12s ease-in-out !important;
 }
 
 table tbody tr:hover,
 tbody tr:hover {
-    background-color: #f7f8f9 !important;
+    background-color: var(--color-surface-muted) !important;
 }
 
 table tbody tr:last-child,
@@ -488,27 +520,28 @@ tbody tr td {
     border-top: none !important;
     border-left: none !important;
     border-right: none !important;
-    border-bottom: 1px solid #f1f2f3 !important;
+    border-bottom: 1px solid var(--color-border) !important;
     font-size: 13.5px !important;
     font-weight: 400 !important;
     line-height: 1.45 !important;
-    color: #202223 !important;
+    color: var(--color-text) !important;
     vertical-align: middle !important;
-    font-family: var(--p-font-family) !important;
+    font-family: var(--font-sans) !important;
+    font-variant-numeric: tabular-nums !important;
 }
 
-/* Shopify Table Text Utilities */
+/* Table Text Utilities */
 table td strong,
 table td b {
     font-weight: 600 !important;
-    color: #202223 !important;
+    color: var(--color-text) !important;
 }
 
 table td small,
 table td .subtext,
 table td .text-muted {
     font-size: 12px !important;
-    color: #6d7175 !important;
+    color: var(--color-text-muted) !important;
     display: block !important;
     margin-top: 2px !important;
 }
@@ -522,7 +555,7 @@ table td.numeric {
     font-variant-numeric: tabular-nums !important;
 }
 
-/* Shopify Polaris Badges inside Tables */
+/* Badges inside Tables */
 table .badge,
 table .status,
 table .status-badge,
@@ -545,8 +578,8 @@ table .status-paid,
 table .status-completed,
 table .status-instock,
 table .badge-instock {
-    background-color: #e3f1df !important;
-    color: #108043 !important;
+    background-color: var(--color-success-soft) !important;
+    color: var(--color-success) !important;
     border: 1px solid transparent !important;
 }
 
@@ -555,8 +588,8 @@ table .badge-warning,
 table .status-pending,
 table .status-lowstock,
 table .badge-lowstock {
-    background-color: #fff5ea !important;
-    color: #b45309 !important;
+    background-color: var(--color-warning-soft) !important;
+    color: var(--color-warning) !important;
     border: 1px solid transparent !important;
 }
 
@@ -566,8 +599,8 @@ table .status-cancelled,
 table .status-outstock,
 table .status-failed,
 table .badge-outstock {
-    background-color: #fde8e8 !important;
-    color: #d72c0d !important;
+    background-color: var(--color-danger-soft) !important;
+    color: var(--color-danger) !important;
     border: 1px solid transparent !important;
 }
 
@@ -576,15 +609,127 @@ table .badge-secondary,
 table .badge-neutral,
 table .status-draft,
 table .badge-draft {
-    background-color: #e4e5e7 !important;
-    color: #4a4c4e !important;
-    border: 1px solid transparent !important;
+    background-color: var(--color-surface-muted) !important;
+    color: var(--color-text-muted) !important;
+    border: 1px solid var(--color-border) !important;
 }
 
 /* Info / Blue Badge */
 table .badge-info,
 table .status-processing {
-    background-color: #e0f2fe !important;
-    color: #0284c7 !important;
+    background-color: var(--color-info-soft) !important;
+    color: var(--color-info) !important;
     border: 1px solid transparent !important;
+}
+
+/* ==========================================================================
+   COLLAPSIBLE SIDEBAR & UNIFIED TOP BAR (OKWESIWA LTD)
+   ========================================================================== */
+.sidebar.collapsed {
+    width: var(--sidebar-collapsed-width) !important;
+}
+.sidebar.collapsed .brand-text,
+.sidebar.collapsed .sidebar-role-badge,
+.sidebar.collapsed .nav-section,
+.sidebar.collapsed .nav-links a span,
+.sidebar.collapsed .nav-links button span,
+.sidebar.collapsed .sidebar-footer .user-meta {
+    display: none !important;
+}
+.sidebar.collapsed .nav-links a,
+.sidebar.collapsed .nav-links button {
+    justify-content: center !important;
+    padding: 12px 0 !important;
+}
+
+.okw-topbar {
+    position: sticky;
+    top: 0;
+    z-index: 900;
+    height: var(--topbar-height);
+    background: var(--color-surface);
+    border-bottom: 1px solid var(--color-border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    gap: 12px;
+    color: var(--color-text);
+}
+.okw-topbar-left,
+.okw-topbar-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.okw-icon-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 36px;
+    min-width: 36px;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--color-border);
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+    cursor: pointer;
+    font-size: var(--text-sm);
+    font-weight: 500;
+    transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.okw-icon-btn:hover {
+    background: var(--color-primary-soft);
+    border-color: var(--color-primary);
+}
+.okw-search-trigger {
+    min-width: 210px;
+    justify-content: space-between;
+    color: var(--color-text-muted);
+}
+.okw-kbd {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    color: var(--color-text-muted);
+}
+
+/* Dark mode surface overrides for existing pages */
+[data-theme="dark"] body {
+    background-color: var(--color-bg) !important;
+    color: var(--color-text) !important;
+}
+[data-theme="dark"] .card,
+[data-theme="dark"] .kpi-card,
+[data-theme="dark"] .stat-card,
+[data-theme="dark"] .panel,
+[data-theme="dark"] .modal-content,
+[data-theme="dark"] .modal-card,
+[data-theme="dark"] .form-card {
+    background-color: var(--color-surface) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text) !important;
+}
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+    background-color: var(--color-surface-muted) !important;
+    border-color: var(--color-border) !important;
+    color: var(--color-text) !important;
+}
+[data-theme="dark"] h1,
+[data-theme="dark"] h2,
+[data-theme="dark"] h3,
+[data-theme="dark"] h4,
+[data-theme="dark"] label {
+    color: var(--color-text) !important;
+}
+
+@media (max-width: 768px) {
+    .okw-search-trigger span.label { display: none; }
+    .okw-search-trigger { min-width: auto; }
 }

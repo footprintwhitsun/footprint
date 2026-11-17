@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Transfers - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" defer crossorigin="anonymous"></script>
+    <script src="/auth-guard.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <style>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { flex: 1; padding: 24px; max-width: 1360px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD"></div>
+        <nav class="nav-links"></nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap">
+            <div style="margin-bottom:16px;">
+                <h1 style="margin:0;font-size:24px;">Stock Transfers</h1>
+                <p style="margin:4px 0 0;color:var(--color-text-muted);font-size:14px;">Transfer stock between warehouse and branches, and track transfer status.</p>
+            </div>
+
+            <div class="okw-card" style="margin-bottom:16px;padding:12px 16px;">
+                <div class="okw-filter-bar">
+                    <label for="st-view">Section</label>
+                    <select id="st-view" class="okw-select">
+                        <option value="list">List Stock Transfers</option>
+                        <option value="add">Add Stock Transfer</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="okw-card" id="st-panel">Loading...</div>
+        </div>
+        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA LTD</footer>
+    </main>
+</div>
+
+<script>
+(function () {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    let activeView = ['list', 'add'].includes(urlTab) ? urlTab : 'list';
+    const viewSel = document.getElementById('st-view');
+    viewSel.value = activeView;
+    viewSel.addEventListener('change', () => { activeView = viewSel.value; render(); });
+
+    async function renderList() {
+        const res = await fetch('/api/transfers', { headers, credentials: 'include' });
+        const rows = await res.json().catch(() => []);
+        const panel = document.getElementById('st-panel');
+        panel.innerHTML = `<div id="st-tbl"></div>`;
+        OkwUI.dataTable('#st-tbl', {
+            columns: [
+                { key: 'transfer_date', label: 'Date', render: v => v ? new Date(v).toLocaleString() : '' },
+                { key: 'id', label: 'Transfer #', render: v => `TR-${v}` },
+                { key: 'from_location', label: 'From' },
+                { key: 'to_location', label: 'To' },
+                { key: 'status', label: 'Status', render: v => OkwUI.badge(v || 'Pending', String(v || '').toLowerCase() === 'received' ? 'success' : 'warning') },
+                { key: 'items', label: 'Items', exportValue: r => Array.isArray(r.items) ? r.items.map(i => `${i.name || i.barcode} (${i.qty})`).join(', ') : '', render: v => Array.isArray(v) ? `${v.length} item(s)` : '—' }
+            ],
+            rows: Array.isArray(rows) ? rows : [],
+            exportFilename: 'okwesiwa-stock-transfers.xlsx',
+            printTitle: 'Stock Transfers'
+        });
+    }
+
+    async function renderAdd() {
+        const locRes = await fetch('/api/branches', { headers, credentials: 'include' });
+        const locData = await locRes.json().catch(() => ({}));
+        const locs = (Array.isArray(locData) ? locData : (locData.locations || [])).map(l => l.name || l.location_name).filter(Boolean);
+        const branchOptions = locs;
+        if (branchOptions.length < 2) {
+            OkwUI.toast('At least two branches are needed to transfer stock. Add branches under Settings > Locations.', 'warning');
+        }
+        const staged = [];
+
+        const panel = document.getElementById('st-panel');
+        panel.innerHTML = `
+            <h2 style="margin:0 0 12px;font-size:18px;">Add Stock Transfer</h2>
+            <div class="okw-filter-bar" style="margin-bottom:14px;">
+                <label>From</label>
+                <select id="tr-from" class="okw-select">${branchOptions.map(b => `<option>${OkwUI.escapeHtml(b)}</option>`).join('')}</select>
+                <label>To</label>
+                <select id="tr-to" class="okw-select">${branchOptions.map((b, i) => `<option${i === 1 ? ' selected' : ''}>${OkwUI.escapeHtml(b)}</option>`).join('')}</select>
+                <input type="text" id="tr-q" class="okw-input" placeholder="Scan barcode or item name...">
+                <input type="number" step="any" id="tr-qty" class="okw-input" placeholder="Qty">
+                <button type="button" class="okw-btn okw-btn-outline" id="tr-add">Add Item</button>
+                <button type="button" class="okw-btn okw-btn-accent" id="tr-submit">Create Transfer</button>
+            </div>
+            <div id="tr-tbl"></div>
+        `;
+
+        const drawTable = () => OkwUI.dataTable('#tr-tbl', {
+            columns: [
+                { key: 'name', label: 'Product' },
+                { key: 'barcode', label: 'Barcode' },
+                { key: 'qty', label: 'Transfer Qty', numeric: true }
+            ],
+            rows: staged,
+            exportFilename: 'okwesiwa-transfer-draft.xlsx'
+        });
+        drawTable();
+        OkwUI.productTypeahead('#tr-q');
+
+        document.getElementById('tr-add').onclick = async () => {
+            const q = document.getElementById('tr-q').value.trim();
+            const qty = Number(document.getElementById('tr-qty').value);
+            if (!q || !Number.isFinite(qty) || qty <= 0) return OkwUI.toast('Enter item and positive quantity', 'warning');
+            const sr = await fetch(`/api/pos/search?q=${encodeURIComponent(q)}&limit=1`, { headers, credentials: 'include' });
+            const sd = await sr.json().catch(() => ({}));
+            const prod = (sd.products || [])[0];
+            if (!prod) return OkwUI.toast('Product not found', 'danger');
+            staged.push({ product_id: prod.id, name: prod.name, barcode: prod.barcode, qty });
+            document.getElementById('tr-q').value = '';
+            document.getElementById('tr-qty').value = '';
+            drawTable();
+        };
+
+        document.getElementById('tr-submit').onclick = async () => {
+            if (!staged.length) return OkwUI.toast('Add at least one item', 'warning');
+            const from = document.getElementById('tr-from').value;
+            const to = document.getElementById('tr-to').value;
+            if (from === to) return OkwUI.toast('From and To locations must be different', 'warning');
+            const r = await fetch('/api/transfers', {
+                method: 'POST', headers, credentials: 'include',
+                body: JSON.stringify({ from, to, items: staged })
+            });
+            const d = await r.json().catch(() => ({}));
+            if (r.ok) {
+                OkwUI.toast('Stock transfer created', 'success');
+                activeView = 'list';
+                viewSel.value = 'list';
+                render();
+            } else {
+                OkwUI.toast(d.message || 'Transfer failed', 'danger');
+            }
+        };
+    }
+
+    function render() {
+        if (activeView === 'add') renderAdd();
+        else renderList();
+    }
+    render();
+})();
+</script>
+</body>
+</html>
+

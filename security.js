@@ -12,7 +12,6 @@ exports.securityHeaders = helmet({
             scriptSrc: [
                 "'self'", 
                 "'unsafe-inline'", 
-                "'unsafe-eval'", 
                 'https://cdn.jsdelivr.net', 
                 'https://cdnjs.cloudflare.com', 
                 'https://unpkg.com', 

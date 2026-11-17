@@ -250,7 +250,7 @@ SMTP_PORT=587
 SMTP_SECURE=false
 SMTP_USER=your-email@gmail.com
 SMTP_PASS=your-app-password
-ADMIN_EMAIL=noreply@footprint.com
+ADMIN_EMAIL=noreply@okwesiwaltd.com
 
 # Optional
 NODE_ENV=production

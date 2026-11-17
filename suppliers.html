@@ -3,11 +3,12 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="auth-guard.js"></script>
     <meta charset="UTF-8">
     <meta http-equiv="refresh" content="0;url=/inventory?tab=suppliers">
     <title>Redirecting to Suppliers...</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <script>
         window.location.replace('/inventory?tab=suppliers');
     </script>
@@ -15,6 +16,9 @@
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
     <link rel="stylesheet" href="sidebar.css">
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
 </head>
 <body style="font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; background: #f5f7fa; color: #555;">
     <p>Redirecting to Suppliers management...</p>

@@ -1,6 +1,6 @@
 /**
  * OfflineQueue - IndexedDB Transaction & Catalog Resilience Engine
- * Footprint Enterprise POS
+ * OKWESIWA LTD Enterprise POS
  * 
  * Features:
  * - Persistent IndexedDB store for offline checkouts
@@ -69,14 +69,16 @@
     /**
      * Store transaction locally in IndexedDB when offline
      */
-    async function enqueueTransaction(transactionData) {
+    async function enqueueTransaction(transactionData, options = {}) {
         const db = await openDb();
-        const idempotencyKey = transactionData.idempotencyKey || generateUUID();
+        const idempotencyKey = transactionData.idempotencyKey || transactionData.idempotency_key || generateUUID();
         const offlineReceipt = 'OFF-' + Date.now();
 
         const record = {
             idempotencyKey,
             receiptNumber: offlineReceipt,
+            url: options.url || '/api/transactions',
+            method: options.method || 'POST',
             data: transactionData,
             createdAt: new Date().toISOString(),
             status: 'pending',
@@ -168,8 +170,8 @@
 
             for (const record of pending) {
                 try {
-                    const res = await fetch('/api/transactions', {
-                        method: 'POST',
+                    const res = await fetch(record.url || '/api/transactions', {
+                        method: record.method || 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${token}`,
@@ -177,7 +179,8 @@
                         },
                         body: JSON.stringify({
                             ...record.data,
-                            idempotencyKey: record.idempotencyKey
+                            idempotencyKey: record.idempotencyKey,
+                            idempotency_key: record.idempotencyKey
                         })
                     });
 
@@ -284,8 +287,13 @@
         window.addEventListener('load', () => setTimeout(() => syncOfflineQueue(), 1500));
     }
 
+    function enqueue(url, method, payload) {
+        return enqueueTransaction(payload || {}, { url: url || '/api/transactions', method: method || 'POST' });
+    }
+
     // Expose API
     window.OfflineQueue = {
+        enqueue,
         enqueueTransaction,
         getPendingTransactions,
         syncOfflineQueue,

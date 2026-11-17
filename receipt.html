@@ -3,17 +3,17 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="auth-guard.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FOOTPRINT | Receipt</title>
-    <link rel="icon" type="image/png" href="logo.png">
+    <title>OKWESIWA LTD | Receipt</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <!-- Add JsBarcode library -->
-    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js" defer></script>
     <style>
         body {
             font-family: 'Courier New', Courier, monospace;
@@ -247,9 +247,9 @@
     <div class="receipt-container">
         <div class="header">
             <div class="store-logo">
-                <img src="logo.png" alt="Store Logo" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
+                <img src="/okwesiwa-logo.svg" alt="Store Logo" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
             </div>
-            <div class="store-name" id="rStoreName">FOOTPRINT</div>
+            <div class="store-name" id="rStoreName">OKWESIWA LTD</div>
             <div class="store-info" id="rAddress" style="display:none;"></div>
             <div class="store-info" id="rPhone" style="display:none;"></div>
         </div>
@@ -312,6 +312,8 @@
                 <span>TOTAL</span>
                 <span id="rTotal">0.00</span>
             </div>
+            <div id="rPaymentSplits" style="margin-top:8px;font-size:11.5px;"></div>
+            <div id="rDeliveryBox" style="display:none;margin-top:8px;padding-top:6px;border-top:1px dashed #ccc;font-size:11.5px;"></div>
         </div>
 
         <!-- Barcode Section -->
@@ -323,7 +325,7 @@
 
         <div class="footer">
             <p id="rFooter">Thank you for shopping with us</p>
-            <p style="font-size:9px; margin-top:5px;">Kindly check receipt & items purchased before exit<br>Developed by Whitsun (030 701 0806)</p>
+            <p style="font-size:9px; margin-top:5px;">Kindly check receipt & items purchased before exit<br>Designed by Footprint (030 701 0806)</p>
         </div>
     </div>
 
@@ -395,7 +397,8 @@
                 const date = new Date(data.created_at);
                 document.getElementById('rDate').textContent = date.toLocaleString();
                 const receiptNumber = data.receipt_number || data.id;
-                let cashierName = data.cashier_name || 'Staff';
+                const rawCashier = String(data.cashier_name || 'Staff').replace(/\s*\(@[^)]*\)\s*/g, '').trim();
+                const cashierName = rawCashier.split(/\s+/)[0] || 'Staff';
                 document.getElementById('rCashier').textContent = cashierName;
                 
                 // Set branch address dynamically from transaction data
@@ -436,6 +439,15 @@
                     document.getElementById('rCustomerRow').style.display = 'flex';
                 }
 
+                function escHtml(v) {
+                    return String(v == null ? '' : v)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                }
+
                 // Items with better formatting
                 const tbody = document.getElementById('rItems');
                 let items = data.items;
@@ -457,10 +469,10 @@
                     return `
                         <tr>
                             <td class="item-name">
-                                <div>${item.name}</div>
+                                <div>${escHtml(item.name)}</div>
                                 ${itemDiscount > 0 ? `<div style="font-size:10px; color:#e74c3c;">Discount: ${formatCurrency(itemDiscount)}</div>` : ''}
                             </td>
-                            <td class="qty-col">${item.qty}</td>
+                            <td class="qty-col">${escHtml(item.qty)}</td>
                             <td class="price-col">${formatCurrency(netTotal)}</td>
                         </tr>
                     `;
@@ -502,7 +514,7 @@
                 if(data.taxBreakdown && data.taxBreakdown.length > 0) {
                     taxContainer.innerHTML = data.taxBreakdown.map(t => `
                         <div class="total-row">
-                            <span>${t.name} (${t.rate}%)</span>
+                            <span>${escHtml(t.name)} (${escHtml(t.rate)}%)</span>
                             <span>${formatCurrency(t.amount)}</span>
                         </div>
                     `).join('');
@@ -512,6 +524,30 @@
                             <span>VAT</span>
                             <span>${formatCurrency(data.tax)}</span>
                         </div>
+                    `;
+                }
+
+                // Render split payments, change, and delivery info
+                const splitsEl = document.getElementById('rPaymentSplits');
+                const splits = Array.isArray(data.payment_splits) ? data.payment_splits : [];
+                if (splitsEl && splits.length) {
+                    splitsEl.innerHTML = splits.map(s => `
+                        <div class="total-row">
+                            <span>${escHtml(String(s.method || '').replace(/_/g, ' ').toUpperCase())}${s.reference ? ' (' + escHtml(s.reference) + ')' : ''}</span>
+                            <span>${formatCurrency(s.amount || 0)}</span>
+                        </div>
+                    `).join('')
+                    + (Number(data.change_amount) > 0 ? `<div class="total-row"><span>Change (Cash)</span><span>${formatCurrency(data.change_amount)}</span></div>` : '')
+                    + (Number(data.balance_due) > 0 ? `<div class="total-row"><span>Balance Due</span><span>${formatCurrency(data.balance_due)}</span></div>` : '');
+                }
+                const delBox = document.getElementById('rDeliveryBox');
+                if (delBox && data.delivery_info && data.delivery_info.enabled) {
+                    delBox.style.display = 'block';
+                    delBox.innerHTML = `
+                        <div><strong>DELIVERY NOTE</strong></div>
+                        <div>Site: ${escHtml(data.delivery_info.site_address || '')}</div>
+                        ${data.delivery_info.truck ? `<div>Truck: ${escHtml(data.delivery_info.truck)}</div>` : ''}
+                        ${data.delivery_info.driver ? `<div>Driver: ${escHtml(data.delivery_info.driver)}</div>` : ''}
                     `;
                 }
 

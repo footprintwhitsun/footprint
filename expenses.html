@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expenses - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js" defer crossorigin="anonymous"></script>
+    <script src="/auth-guard.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <style>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { flex: 1; padding: 24px; max-width: 1360px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px 18px; }
+        .field { display: flex; flex-direction: column; gap: 6px; }
+        .field label { font-size: 13px; font-weight: 600; color: var(--color-text); }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD"></div>
+        <nav class="nav-links"></nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap">
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;">
+                <div>
+                    <h1 style="margin:0;font-size:24px;">Expenses</h1>
+                    <p style="margin:4px 0 0;color:var(--color-text-muted);font-size:14px;">Track business expenses, add new expense entries, and manage expense categories.</p>
+                </div>
+            </div>
+
+            <div class="okw-card" style="margin-bottom:16px;padding:12px 16px;">
+                <div class="okw-filter-bar">
+                    <label for="exp-view">Section</label>
+                    <select id="exp-view" class="okw-select">
+                        <option value="list">List Expenses</option>
+                        <option value="add">Add Expense</option>
+                        <option value="categories">Expense Categories</option>
+                    </select>
+                    <select id="exp-cat-filter" class="okw-select" style="display:none;">
+                        <option value="">All Categories</option>
+                    </select>
+                    <div id="exp-date-picker"></div>
+                </div>
+            </div>
+
+            <div class="okw-card" id="exp-panel">Loading...</div>
+        </div>
+        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA LTD</footer>
+    </main>
+</div>
+
+<script>
+(function () {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const fmt = (n) => 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const urlTab = new URLSearchParams(window.location.search).get('tab');
+    let activeView = ['list', 'add', 'categories'].includes(urlTab) ? urlTab : 'list';
+    let dateRange = { from: new Date().toISOString().slice(0, 8) + '01', to: new Date().toISOString().slice(0, 10) };
+    let categories = [];
+
+    const viewSel = document.getElementById('exp-view');
+    const catFilter = document.getElementById('exp-cat-filter');
+    const dateHost = document.getElementById('exp-date-picker');
+    viewSel.value = activeView;
+
+    OkwUI.dateRangePicker('#exp-date-picker', (r) => {
+        dateRange = r;
+        if (activeView === 'list') renderList();
+    });
+
+    viewSel.addEventListener('change', () => {
+        activeView = viewSel.value;
+        renderCurrent();
+    });
+    catFilter.addEventListener('change', () => {
+        if (activeView === 'list') renderList();
+    });
+
+    async function loadCategories() {
+        const res = await fetch('/api/expense-categories', { headers, credentials: 'include' });
+        const d = await res.json().catch(() => ({}));
+        categories = d.categories || [];
+        catFilter.innerHTML = `<option value="">All Categories</option>` +
+            categories.map(c => `<option value="${OkwUI.escapeHtml(c.name)}">${OkwUI.escapeHtml(c.name)}</option>`).join('');
+    }
+
+    async function renderList() {
+        catFilter.style.display = 'inline-block';
+        dateHost.style.display = 'block';
+        const qs = new URLSearchParams({ from: dateRange.from, to: dateRange.to, category: catFilter.value || '' }).toString();
+        const res = await fetch(`/api/expenses?${qs}`, { headers, credentials: 'include' });
+        const d = await res.json().catch(() => ({}));
+        const rows = d.expenses || [];
+        const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
+
+        const panel = document.getElementById('exp-panel');
+        panel.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px;">
+                ${OkwUI.kpiCard({ label: 'Total Expenses', value: fmt(total), tone: 'danger' })}
+                ${OkwUI.kpiCard({ label: 'Expense Entries', value: rows.length, tone: 'info' })}
+            </div>
+            <div id="exp-tbl"></div>
+        `;
+        OkwUI.dataTable('#exp-tbl', {
+            columns: [
+                { key: 'expense_date', label: 'Date', render: (v, r) => new Date(v || r.created_at).toLocaleDateString() },
+                { key: 'reference_no', label: 'Reference' },
+                { key: 'category', label: 'Category' },
+                { key: 'description', label: 'Description' },
+                { key: 'store_location', label: 'Branch' },
+                { key: 'amount', label: 'Amount', numeric: true, render: fmt },
+                { key: 'created_by_name', label: 'Added By' }
+            ],
+            rows,
+            exportFilename: 'okwesiwa-expenses.xlsx',
+            printTitle: 'Expenses Report'
+        });
+    }
+
+    function generateExpenseRef() {
+        const d = new Date();
+        const ymd = d.toISOString().slice(0, 10).replace(/-/g, '');
+        const rand = String(Math.floor(1000 + Math.random() * 9000));
+        return `EXP-${ymd}-${rand}`;
+    }
+
+    function renderAdd() {
+        catFilter.style.display = 'none';
+        dateHost.style.display = 'none';
+        const today = new Date().toISOString().slice(0, 10);
+        const autoRef = generateExpenseRef();
+        const userLoc = (() => {
+            try { return JSON.parse(localStorage.getItem('currentUser') || '{}').store_location || 'TEMA MAIN'; }
+            catch (_) { return 'TEMA MAIN'; }
+        })();
+        const panel = document.getElementById('exp-panel');
+        panel.innerHTML = `
+            <div style="max-width:860px;margin:0 auto;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px;padding-bottom:12px;border-bottom:1px solid var(--edge,#e2e8f0);">
+                    <div>
+                        <h2 style="margin:0;font-size:18px;">Record New Expense</h2>
+                        <p style="margin:3px 0 0;font-size:12.5px;color:var(--muted,#64748b);">Reference number is automatically generated for audit tracking.</p>
+                    </div>
+                    <span class="okw-badge okw-badge-info" style="font-family:monospace;">${autoRef}</span>
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;">
+                    <div class="field" style="margin:0;">
+                        <label style="display:block;margin-bottom:6px;font-weight:500;">Expense Category:*</label>
+                        <select id="ae-cat" class="okw-select" style="width:100%;height:38px;">
+                            ${categories.map(c => `<option value="${OkwUI.escapeHtml(c.name)}">${OkwUI.escapeHtml(c.name)}</option>`).join('')}
+                        </select>
+                    </div>
+                    <div class="field" style="margin:0;">
+                        <label style="display:block;margin-bottom:6px;font-weight:500;">Amount (GH₵):*</label>
+                        <input type="number" step="0.01" id="ae-amt" class="okw-input" placeholder="0.00" style="width:100%;height:38px;">
+                    </div>
+                    <div class="field" style="margin:0;">
+                        <label style="display:block;margin-bottom:6px;font-weight:500;">Date:</label>
+                        <input type="date" id="ae-date" class="okw-input" value="${today}" style="width:100%;height:38px;">
+                    </div>
+                    <div class="field" style="margin:0;">
+                        <label style="display:block;margin-bottom:6px;font-weight:500;">Reference No. (Auto):</label>
+                        <input type="text" id="ae-ref" class="okw-input" value="${autoRef}" readonly style="width:100%;height:38px;background:var(--frame,#f8fafc);font-family:monospace;cursor:not-allowed;">
+                    </div>
+                    <div class="field" style="margin:0;">
+                        <label style="display:block;margin-bottom:6px;font-weight:500;">Branch / Location:</label>
+                        <input type="text" id="ae-loc" class="okw-input" value="${OkwUI.escapeHtml(userLoc)}" placeholder="Main Shop" style="width:100%;height:38px;">
+                    </div>
+                    <div class="field" style="margin:0;">
+                        <label style="display:block;margin-bottom:6px;font-weight:500;">Expense Note:</label>
+                        <input type="text" id="ae-desc" class="okw-input" placeholder="Short description of expense..." style="width:100%;height:38px;">
+                    </div>
+                </div>
+                <div style="margin-top:20px;display:flex;justify-content:flex-end;gap:10px;">
+                    <button type="button" class="okw-btn okw-btn-primary" id="ae-save" style="height:38px;padding:0 22px;">Save Expense</button>
+                </div>
+            </div>
+        `;
+        document.getElementById('ae-save').onclick = async () => {
+            const payload = {
+                category: document.getElementById('ae-cat').value,
+                amount: document.getElementById('ae-amt').value,
+                expense_date: document.getElementById('ae-date').value,
+                reference_no: document.getElementById('ae-ref').value,
+                store_location: document.getElementById('ae-loc').value,
+                description: document.getElementById('ae-desc').value
+            };
+            const res = await fetch('/api/expenses', { method: 'POST', headers, credentials: 'include', body: JSON.stringify(payload) });
+            const d = await res.json().catch(() => ({}));
+            if (res.ok) {
+                OkwUI.toast('Expense saved', 'success');
+                activeView = 'list';
+                viewSel.value = 'list';
+                renderCurrent();
+            } else {
+                OkwUI.toast(d.message || 'Failed to save expense', 'danger');
+            }
+        };
+    }
+
+    function renderCategories() {
+        catFilter.style.display = 'none';
+        dateHost.style.display = 'none';
+        const panel = document.getElementById('exp-panel');
+        panel.innerHTML = `
+            <h2 style="margin:0 0 14px;font-size:18px;">Expense Categories</h2>
+            <div class="okw-filter-bar" style="margin-bottom:16px;">
+                <input type="text" id="ec-name" class="okw-input" placeholder="Category name...">
+                <input type="text" id="ec-code" class="okw-input" placeholder="Category code (optional)">
+                <button type="button" class="okw-btn okw-btn-primary" id="ec-add">Add Category</button>
+            </div>
+            <div id="ec-tbl"></div>
+        `;
+        OkwUI.dataTable('#ec-tbl', {
+            columns: [
+                { key: 'name', label: 'Category Name' },
+                { key: 'code', label: 'Category Code' },
+                {
+                    key: 'id', label: 'Action',
+                    render: (id) => `<button type="button" class="okw-btn okw-btn-danger" onclick="window.__delExpCat(${id})">Delete</button>`
+                }
+            ],
+            rows: categories,
+            exportFilename: 'okwesiwa-expense-categories.xlsx',
+            printTitle: 'Expense Categories'
+        });
+        document.getElementById('ec-add').onclick = async () => {
+            const name = document.getElementById('ec-name').value.trim();
+            const code = document.getElementById('ec-code').value.trim();
+            if (!name) return OkwUI.toast('Category name required', 'warning');
+            const res = await fetch('/api/expense-categories', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ name, code }) });
+            if (res.ok) {
+                OkwUI.toast('Category added', 'success');
+                await loadCategories();
+                renderCategories();
+            }
+        };
+    }
+
+    window.__delExpCat = async (id) => {
+        const res = await fetch(`/api/expense-categories/${id}`, { method: 'DELETE', headers, credentials: 'include' });
+        if (res.ok) {
+            OkwUI.toast('Category deleted', 'success');
+            await loadCategories();
+            renderCategories();
+        }
+    };
+
+    function renderCurrent() {
+        if (activeView === 'add') renderAdd();
+        else if (activeView === 'categories') renderCategories();
+        else renderList();
+    }
+
+    loadCategories().then(renderCurrent);
+})();
+</script>
+</body>
+</html>
+

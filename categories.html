@@ -5,12 +5,12 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footprint | Categories</title>
-    <link rel="icon" type="image/png" href="logo.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <title>OKWESIWA LTD | Categories</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="sidebar.css">
     <style>
         :root { 
@@ -49,7 +49,7 @@
         .btn-cancel { background: #eee; color: #333; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
         .btn-save { background: var(--primary-color); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; }
         
-        footer { margin-left: var(--sidebar-width); padding: 10px; text-align: center; color: white; font-size: 12px; background: linear-gradient(135deg, var(--primary-color), var(--secondary-color)); }
+        footer { margin-left: var(--sidebar-width); padding: 10px; text-align: center; color: white; font-size: 12px; background: #1F3A60; }
     .user-profile-row { display: flex; align-items: center; gap: 10px; }
         
         .sidebar-logout-btn { margin-left: auto; flex-shrink: 0; background: none; border: none; color: rgba(255,255,255,0.65); cursor: pointer; padding: 7px; border-radius: 6px; font-size: 16px; line-height: 1; transition: color 0.2s ease, background 0.2s ease; } .sidebar-logout-btn:hover { color: white; background: rgba(220,53,69,0.6); }
@@ -57,25 +57,17 @@
     <script src="currency.js"></script>
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
 </head>
 <body>
     <div class="sidebar">
         <div class="brand" style="display: flex; flex-direction: column; align-items: center;">
-            <img src="logo.png" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 1.5px solid #f9a51a;">
             
         </div>
         <div class="nav-links">
-            <a href="dashboard" class="nav-item"><i class="fas fa-home"></i> Dashboard</a>
-            <div class="nav-section">Sales & Finance</div>
-            <a href="sales-dashboard" class="nav-item"><i class="fas fa-chart-pie"></i> Sales</a>
-            <a href="profitability" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Profitability</a>
-            <a href="promotions" class="nav-item"><i class="fas fa-tags"></i> Promotions</a>
-            <div class="nav-section">Operations</div>
-            <a href="pos-register" class="nav-item"><i class="fas fa-user-plus"></i> Register Cashier</a>
-            <a href="credit-customers" class="nav-item"><i class="fas fa-address-book"></i> Credit</a>
-            <a href="inventory" class="nav-item active"><i class="fas fa-warehouse"></i> Inventory</a>
-            <a href="reports" class="nav-item"><i class="fas fa-chart-line"></i> Reports</a>
-            <a href="settings" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
         </div>
         <div class="user-profile">
             <div class="user-profile-row">
@@ -136,7 +128,7 @@
         </div>
     </div>
 
-    <footer>© 2026 Footprint</footer>
+    <footer>© 2026 OKWESIWA LTD</footer>
 
     <script>
         document.addEventListener('DOMContentLoaded', loadCategories);
@@ -157,8 +149,8 @@
 
                 tbody.innerHTML = categories.map(c => `
                     <tr>
-                        <td style="font-weight:600; color:var(--primary-color);">${c.name}</td>
-                        <td>${c.description || '-'}</td>
+                        <td style="font-weight:600; color:var(--primary-color);">${OkwUI.escapeHtml(c.name)}</td>
+                        <td>${OkwUI.escapeHtml(c.description || '-')}</td>
                         <td>${new Date(c.created_at).toLocaleDateString()}</td>
                         <td>
                             <button class="action-btn btn-delete" onclick="deleteCategory(${c.id})" title="Delete"><i class="fas fa-trash"></i></button>

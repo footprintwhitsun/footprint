@@ -4,20 +4,23 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footprint POS | Register</title>
-    <link rel="icon" type="image/png" href="logo.png">
+    <title>OKWESIWA LTD | Register</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <script src="currency.js"></script>
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
     <script src="offline-queue.js"></script>
     <script src="auth-guard.js"></script>
+    <link rel="stylesheet" href="/tokens.css">
+    <script src="/ui-components.js"></script>
+    <script src="/pos-upgrade.js"></script>
     <script>
         (function() {
             if ('serviceWorker' in navigator) {
@@ -29,23 +32,22 @@
     </script>
     <style>
         :root {
-            --p-color-bg: #f6f6f7;
+            --p-color-bg: #f8fafc;
             --p-color-surface: #ffffff;
-            --p-color-border: #e1e3e5;
-            --p-color-border-subdued: #ebebeb;
-            --p-color-border-hover: #8c9196;
-            --p-color-text: #202223;
-            --p-color-text-subdued: #6d7175;
-            --p-color-primary: #273990; --p-color-accent: #f9a51a;
-            --p-color-primary-hover: #1e2c73;
-            --p-color-primary-subdued: rgba(39, 57, 144, 0.12);
-            --p-header-bg: #111216;
-            --p-header-border: #22232c;
-            --primary: #273990; --accent: #f9a51a;
-            --secondary: #1c2b70;
-            --accent: #f9a51a;
-            --bg: #f6f6f7;
-            --border: #e1e3e5;
+            --p-color-border: #e2e8f0;
+            --p-color-border-subdued: #f1f5f9;
+            --p-color-border-hover: #94a3b8;
+            --p-color-text: #0f172a;
+            --p-color-text-subdued: #64748b;
+            --p-color-primary: #273990; --p-color-accent: #F9A51A;
+            --p-color-primary-hover: #1C2B70;
+            --p-color-primary-subdued: rgba(39, 57, 144, 0.10);
+            --p-header-bg: #273990;
+            --p-header-border: #1C2B70;
+            --primary: #273990; --accent: #F9A51A;
+            --secondary: #1C2B70;
+            --bg: #f8fafc;
+            --border: #e2e8f0;
             --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
 
@@ -59,9 +61,11 @@
 
         body {
             background: var(--p-color-bg);
-            height: 100vh;
+            min-height: 100vh;
+            height: auto;
             display: flex;
             flex-direction: column;
+            overflow-y: auto;
             color: var(--p-color-text);
         }
 
@@ -98,13 +102,12 @@
             object-fit: contain;
             background: #ffffff;
             padding: 3px 10px;
-            border: 1.5px solid rgba(249, 165, 26, 0.7);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+            border: 1.5px solid rgba(232, 119, 46, 0.7);
         }
         .pos-badge {
-            background: rgba(249, 165, 26, 0.15);
-            color: #f9a51a;
-            border: 1px solid rgba(249, 165, 26, 0.35);
+            background: rgba(232, 119, 46, 0.15);
+            color: #E8772E;
+            border: 1px solid rgba(232, 119, 46, 0.35);
             font-size: 10px;
             font-weight: 700;
             text-transform: uppercase;
@@ -131,25 +134,25 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            background: rgba(255, 255, 255, 0.07);
-            border: 1px solid rgba(255, 255, 255, 0.12);
+            background: rgba(23, 32, 42, 0.06);
+            border: 1px solid #CFCAC1;
             padding: 4px 12px 4px 5px;
             border-radius: 20px;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
             font-size: 13px;
             font-weight: 500;
-            color: #ffffff;
+            color: #17202A;
         }
         .user-pill:hover {
-            background: rgba(255, 255, 255, 0.12);
-            border-color: rgba(245, 158, 11, 0.4);
+            background: rgba(23, 32, 42, 0.1);
+            border-color: #8c9196;
         }
 
         .user-avatar {
             width: 26px;
             height: 26px;
-            background: linear-gradient(135deg, #273990 0%, #1e2c73 100%);
+            background: #1F3A60;
             color: #ffffff;
             display: flex;
             align-items: center;
@@ -157,7 +160,7 @@
             border-radius: 50%;
             font-size: 11px;
             font-weight: 700;
-            border: 1px solid rgba(249, 165, 26, 0.5);
+            border: 1px solid rgba(232, 119, 46, 0.5);
         }
 
         /* DROPDOWN - SHOPIFY POLARIS MENU */
@@ -209,7 +212,7 @@
             text-decoration: none;
             font-size: 13px;
             font-weight: 400;
-            transition: all 0.15s ease;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
         }
 
         .user-dropdown a i {
@@ -233,17 +236,17 @@
         .container {
             flex: 1;
             display: flex;
-            overflow: hidden;
+            overflow: visible;
             background: var(--p-color-bg);
         }
 
         /* MAIN POS LAYOUT */
         .pos-layout {
             flex: 1;
-            padding: 20px 24px;
+            padding: 16px 24px 24px;
             display: flex;
             flex-direction: column;
-            height: 100%;
+            height: auto;
             max-width: 1440px;
             margin: 0 auto;
         }
@@ -267,12 +270,10 @@
             color: var(--p-color-text);
             outline: none;
             transition: border-color 0.15s ease, box-shadow 0.15s ease;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
         }
 
         .search-bar input:focus {
             border-color: var(--p-color-primary);
-            box-shadow: 0 0 0 2px var(--p-color-primary-subdued);
         }
 
         .pos-btn-action,
@@ -289,8 +290,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            transition: all 0.15s ease;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
             white-space: nowrap;
         }
 
@@ -308,16 +308,15 @@
 
         .pos-btn-action.primary,
         .search-bar button:first-of-type {
-            background: linear-gradient(135deg, #273990 0%, #1c2b70 100%);
-            border-color: #1c2b70;
+            background: #1F3A60;
+            border-color: #172C49;
             color: #ffffff !important;
         }
 
         .pos-btn-action.primary:hover,
         .search-bar button:first-of-type:hover {
-            background: linear-gradient(135deg, #3249b6 0%, #1e2c73 100%);
+            background: #2B5C9E;
             color: #ffffff !important;
-            box-shadow: 0 2px 8px rgba(39, 57, 144, 0.35);
         }
 
         #scanResult {
@@ -389,7 +388,7 @@
             font-weight: 600;
             color: #202223;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            transition: all 0.15s ease;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
         }
 
         .scanner-btn:hover {
@@ -416,8 +415,6 @@
             z-index: 10000;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
         }
 
         .scanner-modal.active {
@@ -483,7 +480,7 @@
             padding: 14px 16px;
             border-bottom: 1px solid #f1f2f3;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -535,7 +532,7 @@
         }
 
         .product-option.selected .product-price {
-            color: #f9a51a;
+            color: #E8772E;
         }
 
         /* RIGHT CART - SHOPIFY POLARIS CARD */
@@ -546,9 +543,8 @@
             display: flex;
             flex-direction: row;
             flex: 1;
-            min-height: 0;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 25px -5px rgba(0, 0, 0, 0.04);
-            overflow: hidden;
+            min-height: 420px;
+            overflow: visible;
         }
 
         .cart-main {
@@ -556,7 +552,7 @@
             display: flex;
             flex-direction: column;
             border-right: 1px solid var(--p-color-border);
-            min-height: 0;
+            min-height: 360px;
             background: #ffffff;
         }
 
@@ -574,6 +570,8 @@
 
         .cart-items {
             flex: 1;
+            min-height: 260px;
+            max-height: 460px;
             overflow-y: auto;
             padding: 10px 14px;
         }
@@ -633,7 +631,7 @@
 
         .cart-item .item-discount-badge {
             font-size: 11px;
-            color: #1c2b70;
+            color: #172C49;
             font-weight: 600;
         }
 
@@ -678,7 +676,7 @@
         /* Return mode styling */
         .cart-item.return-item {
             background: #fffbeb;
-            border-left: 4px solid #273990;
+            border-left: 4px solid #1F3A60;
         }
 
         .cart-item.return-item .cart-item-name {
@@ -697,7 +695,7 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.15s ease;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
         }
 
         .qty-btn:hover {
@@ -743,7 +741,6 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
         }
 
         .total span:last-child {
@@ -765,6 +762,7 @@
             border: none;
             font-size: 13px;
             text-transform: none;
+            background: #1F3A60;
             color: #ffffff;
             font-weight: 600;
             border-radius: 8px;
@@ -773,13 +771,11 @@
             align-items: center;
             justify-content: center;
             gap: 7px;
-            transition: all 0.15s ease;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
         }
 
         .btn:hover {
             transform: translateY(-1px);
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
         }
 
         .btn:active {
@@ -794,7 +790,7 @@
 
         .btn-payment-momo,
         .btn[onclick*="'momo'"] {
-            background: linear-gradient(135deg, #273990 0%, #1c2b70 100%) !important;
+            background: #273990 !important;
             color: #ffffff !important;
             font-weight: 700 !important;
         }
@@ -807,32 +803,43 @@
 
         .btn-payment-credit,
         .btn[onclick*="'credit'"] {
-            background: #1f2937 !important;
+            background: #1e293b !important;
             color: #ffffff !important;
+        }
+
+        .btn-payment-split {
+            background: #F9A51A !important;
+            border: 1px solid #D98A0F !important;
+            color: #0f172a !important;
+            font-weight: 700 !important;
+        }
+        .btn-payment-split:hover {
+            background: #e09112 !important;
+            color: #0f172a !important;
         }
 
         .btn-park {
             background: #ffffff !important;
-            border: 1px solid #c9cccf !important;
-            color: #374151 !important;
+            border: 1px solid #cbd5e1 !important;
+            color: #334155 !important;
             font-weight: 600 !important;
         }
         .btn-park:hover {
-            background: #f6f6f7 !important;
-            border-color: #8c9196 !important;
+            background: #f1f5f9 !important;
+            border-color: #94a3b8 !important;
         }
 
         .btn-return,
         .btn[onclick*="openReceiptSearch"] {
             background: #ffffff !important;
-            border: 1px solid #1c2b70 !important;
-            color: #1c2b70 !important;
+            border: 1px solid #273990 !important;
+            color: #273990 !important;
             font-weight: 600 !important;
         }
 
         .btn-refund,
         #returnBtn {
-            background: #1c2b70 !important;
+            background: #1C2B70 !important;
             color: #ffffff !important;
         }
 
@@ -844,71 +851,65 @@
             background: #6d7175;
         }
 
-        /* TICKER FOOTER - LIVE MARQUEE ANIMATION */
+        /* FOOTER - CENTERED */
         footer.pos-live-footer,
         footer {
             width: 100%;
-            height: 38px;
-            background: #ffffff;
-            overflow: hidden;
-            box-sizing: border-box;
-            border-top: 1px solid #dcdfe4;
-            box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.03);
+            height: 40px;
+            background: #273990 !important;
+            color: #ffffff !important;
+            border-top: 2px solid #F9A51A !important;
             flex-shrink: 0;
             position: relative;
             z-index: 100;
-            padding: 0;
+            padding: 0 16px;
             margin: 0;
-            display: block;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
         }
 
         .ticker {
-            display: inline-block;
-            height: 38px;
-            line-height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 40px;
             white-space: nowrap;
-            padding-right: 100%;
-            box-sizing: content-box;
-            animation: ticker 32s linear infinite;
-        }
-
-        .ticker:hover {
-            animation-play-state: paused;
         }
 
         .ticker-item {
             display: inline-flex;
             align-items: center;
-            gap: 16px;
-            padding: 0 2.5rem;
-            font-size: 13.5px;
-            color: #000000 !important;
+            justify-content: center;
+            gap: 12px;
+            font-size: 12.5px;
+            color: #ffffff !important;
             font-weight: 600;
             letter-spacing: 0.2px;
         }
 
         .ticker-item span {
-            color: #000000 !important;
+            color: #ffffff !important;
         }
 
         .ticker-dot {
-            color: #000000 !important;
+            color: rgba(255, 255, 255, 0.55) !important;
             font-weight: 900;
-            font-size: 15px;
-            opacity: 0.6;
+            font-size: 14px;
         }
 
         .ticker-badge {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            background: #f1f3f5;
-            color: #000000 !important;
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff !important;
             padding: 2px 10px;
             border-radius: 12px;
-            font-size: 12px;
+            font-size: 11px;
             font-weight: 700;
-            border: 1px solid #cfd4dc;
+            border: 1px solid rgba(255, 255, 255, 0.2);
             line-height: 1.4;
         }
 
@@ -918,14 +919,14 @@
         }
 
         .ticker-branch {
-            color: #000000 !important;
+            color: #ffffff !important;
             font-weight: 700;
         }
 
         .posLiveClock {
-            color: #000000 !important;
+            color: #ffffff !important;
             font-weight: 700;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+            font-family: inherit; font-variant-numeric: tabular-nums;
         }
 
         @keyframes ticker {
@@ -991,8 +992,6 @@
             z-index: 10002;
             align-items: center;
             justify-content: center;
-            backdrop-filter: blur(4px);
-            -webkit-backdrop-filter: blur(4px);
         }
 
         .token-modal.active {
@@ -1021,13 +1020,13 @@
             border-radius: 8px;
             margin: 16px 0;
             outline: none;
-            transition: all 0.15s ease;
-            font-family: monospace;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
+            font-family: inherit; font-variant-numeric: tabular-nums;
             background: #fdfdfd;
         }
 
         .token-input:focus {
-            border-color: #273990;
+            border-color: #1F3A60;
             box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
             background: #ffffff;
         }
@@ -1049,8 +1048,7 @@
         }
 
         .customer-search-box:focus {
-            border-color: #273990;
-            box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.2);
+            border-color: #1F3A60;
         }
 
         .customer-list {
@@ -1083,7 +1081,7 @@
 
         .selected-customer-card {
             background: #fdfaf3;
-            border: 1px solid rgba(249, 165, 26, 0.35);
+            border: 1px solid rgba(232, 119, 46, 0.35);
             padding: 14px 16px;
             border-radius: 8px;
             margin-bottom: 16px;
@@ -1104,7 +1102,7 @@
         }
 
         .limit-badge {
-            background: rgba(39, 57, 144, 0.12);
+            background: rgba(31, 58, 96, 0.12);
             color: #b45309;
             border: 1px solid rgba(245, 158, 11, 0.3);
             padding: 2px 8px;
@@ -1132,14 +1130,14 @@
             width: 100%;
             height: 44px;
             padding: 0 16px;
-            background: linear-gradient(135deg, #273990 0%, #1c2b70 100%);
-            color: #0b0c10;
+            background: #1F3A60;
+            color: #ffffff;
             border: none;
             border-radius: 8px;
             font-size: 14px;
             font-weight: 700;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
         }
 
         .btn-credit-pay:disabled {
@@ -1179,7 +1177,6 @@
             z-index: 10020;
             /* Ensure tooltip is above the parent item */
             width: 220px;
-            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
             pointer-events: none;
             line-height: 1.5;
             border: 1px solid rgba(255, 255, 255, 0.1);
@@ -1217,8 +1214,18 @@
             cursor: pointer;
             font-size: 12px;
             font-weight: 600;
-            color: white;
+            background: #1F3A60;
+            color: #ffffff;
             margin-left: 5px;
+        }
+
+        .return-indicator {
+            background: #1F3A60;
+            color: #ffffff;
+            padding: 10px 16px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            border-left: 4px solid #E8772E;
         }
 
         /* NOTIFICATIONS */
@@ -1230,7 +1237,7 @@
 
         .notif-icon {
             font-size: 20px;
-            color: white;
+            color: var(--ink, #17202A);
             opacity: 0.85;
             transition: opacity 0.2s;
         }
@@ -1374,8 +1381,7 @@
             object-fit: contain;
             background: #ffffff;
             padding: 3px 10px;
-            border: 1.5px solid rgba(249, 165, 26, 0.7);
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+            border: 1.5px solid rgba(232, 119, 46, 0.7);
         }
 
             #dateTime {
@@ -1398,7 +1404,7 @@
             .user-avatar {
             width: 26px;
             height: 26px;
-            background: linear-gradient(135deg, #273990 0%, #1e2c73 100%);
+            background: #1F3A60;
             color: #ffffff;
             display: flex;
             align-items: center;
@@ -1406,7 +1412,7 @@
             border-radius: 50%;
             font-size: 11px;
             font-weight: 700;
-            border: 1px solid rgba(249, 165, 26, 0.5);
+            border: 1px solid rgba(232, 119, 46, 0.5);
         }
 
             .user-pill span {
@@ -1512,6 +1518,57 @@
         .sidebar-logout-btn { margin-left: auto; flex-shrink: 0; background: none; border: none; color: rgba(255,255,255,0.65); cursor: pointer; padding: 7px; border-radius: 6px; font-size: 16px; line-height: 1; transition: color 0.2s ease, background 0.2s ease; } .sidebar-logout-btn:hover { color: white; background: rgba(220,53,69,0.6); }
         </style>
     <link rel="stylesheet" href="sidebar.css">
+    <script src="/layout.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style id="pos-face">
+        /* the total is the loudest thing on the till; Cash is the primary action */
+        .cart-summary .summary-row.total { background: transparent !important; border: 0 !important; border-top: 1px solid var(--edge) !important; border-radius: 0 !important; margin-top: 10px; padding: 14px 0 6px !important; align-items: flex-end; }
+        .cart-summary .summary-row.total span:first-child { font-size: 14px; font-weight: 600; color: var(--muted); }
+        #grandTotal { font-family: var(--font-display); font-size: 44px !important; font-weight: 700; line-height: 1; color: var(--brand); font-variant-numeric: tabular-nums; }
+        .cart-summary .actions { display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+        .cart-summary .actions .btn { height: 52px; font-size: 14px; font-weight: 700; border-radius: 10px; background: var(--sheet) !important; color: var(--ink) !important; border: 1px solid var(--edge-strong) !important; }
+        .cart-summary .actions .btn:hover { border-color: var(--brand) !important; }
+        .cart-summary .actions .btn-payment-cash { grid-column: 1 / -1; height: 64px; font-size: 18px; background: var(--brand) !important; color: #fff !important; border-color: var(--brand) !important; }
+        .cart-summary .actions .btn-payment-cash:hover { background: var(--brand-hover) !important; }
+        .cart-summary .actions .btn-payment-momo { background: var(--brick) !important; border-color: var(--brick) !important; color: #231800 !important; }
+        .cart-summary .actions .btn-return, .cart-summary .actions .btn-refund { color: var(--bad) !important; }
+        .cart-header { font-family: var(--font-display); }
+        .quick-picks { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; padding: 14px 20px 0; overflow-x: auto; scrollbar-width: none; }
+        .quick-pick { flex: 0 0 auto; }
+        @media (max-width: 700px) {
+            #okw-pos-upgrade-shell, #okw-pos-upgrade-shell * { min-width: 0; }
+            #okw-pos-upgrade-shell [style*="flex"], #okw-pos-upgrade-shell > div > div { flex-wrap: wrap !important; }
+            #okw-pos-upgrade-shell input, #okw-pos-upgrade-shell select { flex: 1 1 140px; }
+            .cart-section { flex-direction: column; }
+            .cart-summary { width: 100% !important; }
+        }
+        .quick-picks[hidden] { display: none; }
+        .quick-picks-title { font-size: 13px; font-weight: 600; color: var(--muted); margin-right: 4px; }
+        .quick-pick { display: inline-flex; align-items: center; gap: 8px; height: 40px; max-width: 260px; padding: 0 14px; border: 1px solid var(--edge-strong); border-radius: 999px; background: var(--sheet); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
+        .quick-pick:hover { border-color: var(--brand); background: rgba(39, 57, 144, 0.05); }
+        .quick-pick span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .quick-pick b { flex-shrink: 0; font-family: var(--font-display); font-weight: 600; color: var(--brand); font-variant-numeric: tabular-nums; }
+        #scanResult:empty { display: none; }
+        /* dark theme: the till follows it too */
+        [data-theme="dark"] .cart-section, [data-theme="dark"] .cart-main, [data-theme="dark"] .cart-summary,
+        [data-theme="dark"] .products-section, [data-theme="dark"] .product-card,
+        [data-theme="dark"] .token-content, [data-theme="dark"] .modal-content,
+        [data-theme="dark"] #okw-pos-view-nav,
+        [data-theme="dark"] #okw-pos-upgrade-shell { background: var(--sheet) !important; color: var(--ink) !important; border-color: var(--edge) !important; }
+        [data-theme="dark"] .okw-pos-nav-btn:not(.active) { color: var(--ink-2) !important; }
+        [data-theme="dark"] #okw-pos-upgrade-shell input, [data-theme="dark"] #okw-pos-upgrade-shell select,
+        [data-theme="dark"] #promoCode, [data-theme="dark"] .qty-btn, [data-theme="dark"] .cart-items input,
+        [data-theme="dark"] .search-bar input, [data-theme="dark"] .customer-search-box,
+        [data-theme="dark"] .quick-pick { background: var(--sheet-2) !important; color: var(--ink) !important; border-color: var(--edge-strong) !important; }
+        [data-theme="dark"] .cart-header, [data-theme="dark"] .cart-items, [data-theme="dark"] .summary-row, [data-theme="dark"] #grandTotal { color: var(--ink); }
+        [data-theme="dark"] #grandTotal { color: #9DB0FF; }
+        [data-theme="dark"] .cart-summary .actions .btn { background: var(--sheet-2) !important; color: var(--ink) !important; }
+        [data-theme="dark"] .cart-summary .actions .btn-payment-cash { background: #4A5FD0 !important; color: #fff !important; }
+        [data-theme="dark"] .cart-summary .actions .btn-payment-momo { background: var(--brick) !important; color: #231800 !important; }
+        .cart-labels { background: transparent !important; border: 0 !important; border-bottom: 1px solid var(--edge) !important; border-radius: 0 !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 12px !important; font-weight: 500 !important; color: var(--muted) !important; }
+        .qty-btn { width: 36px !important; height: 36px !important; border-radius: 8px !important; font-size: 16px; }
+        .cart-summary .actions .btn-return { grid-column: 1 / -1; height: 44px; }
+    </style>
 </head>
 
 <body>
@@ -1524,7 +1581,7 @@
             <div class="scanner-header">
                 <h3>Scan Barcode with Camera</h3>
                 <button onclick="closeCameraScanner()"
-                    style="background:none;border:none;color:white;cursor:pointer;font-size:20px;">✕</button>
+                    style="background:none;border:none;color:white;cursor:pointer;font-size:20px;" aria-label="Close">&times;</button>
             </div>
             <div class="scanner-body">
                 <div style="position: relative;">
@@ -1561,7 +1618,7 @@
             <div class="scanner-header">
                 <h3>Multiple Products Found</h3>
                 <button onclick="closeProductSelection()"
-                    style="background:none;border:none;color:white;cursor:pointer;font-size:20px;">✕</button>
+                    style="background:none;border:none;color:white;cursor:pointer;font-size:20px;" aria-label="Close">&times;</button>
             </div>
             <div class="scanner-body">
                 <div id="barcodeInfo" style="margin-bottom: 20px; text-align: center;">
@@ -1590,7 +1647,7 @@
 
             <div style="display:flex; gap:10px;">
                 <button id="btnNoReceipt" class="pos-btn-action" style="flex:1; justify-content:center; height:44px;">No, Done</button>
-                <button id="btnPrintReceipt" class="pos-btn-action primary" style="flex:1; justify-content:center; height:44px; color:#ffffff !important;"><i class="fas fa-print" style="color:#ffffff; margin-right:6px;"></i> Yes, Print</button>
+                <button id="btnPrintReceipt" class="pos-btn-action primary" style="flex:1; justify-content:center; height:44px;"><i class="fas fa-print" style="margin-right:6px;"></i> Yes, Print</button>
             </div>
         </div>
     </div>
@@ -1599,7 +1656,7 @@
     <div id="creditSaleModal" class="token-modal">
         <div class="token-content" style="max-width: 450px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom: 1px solid #e1e3e5; padding-bottom: 12px;">
-                <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-user-tag" style="color:#273990; margin-right:6px;"></i> Credit Sale</h3>
+                <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-user-tag" style="color:#1F3A60; margin-right:6px;"></i> Credit Sale</h3>
                 <button onclick="closeCreditSaleModal()"
                     style="background:none; border:none; font-size:20px; color:#6d7175; cursor:pointer;">&times;</button>
             </div>
@@ -1638,7 +1695,7 @@
     <div id="managerTokenModal" class="token-modal">
         <div class="token-content">
             <div style="margin-bottom:14px;">
-                <div style="width:48px; height:48px; border-radius:50%; background:rgba(39, 57, 144, 0.12); color:#1c2b70; display:flex; align-items:center; justify-content:center; margin:0 auto; font-size:22px;">
+                <div style="width:48px; height:48px; border-radius:50%; background:rgba(31, 58, 96, 0.12); color:#172C49; display:flex; align-items:center; justify-content:center; margin:0 auto; font-size:22px;">
                     <i class="fas fa-user-shield"></i>
                 </div>
             </div>
@@ -1663,7 +1720,7 @@
         <div class="token-content" style="max-width: 500px; text-align:left; width: 95%;">
             <div
                 style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #e1e3e5; padding-bottom: 12px;">
-                <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-clock" style="color:#273990; margin-right:6px;"></i> Parked Orders</h3>
+                <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-clock" style="color:#1F3A60; margin-right:6px;"></i> Parked Orders</h3>
                 <button onclick="document.getElementById('parkedModal').classList.remove('active')"
                     style="background:none; border:none; font-size:20px; color:#6d7175; cursor:pointer;">&times;</button>
             </div>
@@ -1694,7 +1751,7 @@
     <div id="receiptSearchModal" class="token-modal">
         <div class="token-content" style="max-width: 500px; text-align:left;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom: 1px solid #e1e3e5; padding-bottom: 12px;">
-                <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-receipt" style="color:#273990; margin-right:6px;"></i> Search Receipt</h3>
+                <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-receipt" style="color:#1F3A60; margin-right:6px;"></i> Search Receipt</h3>
                 <button onclick="closeReceiptSearch()"
                     style="background:none; border:none; font-size:20px; color:#6d7175; cursor:pointer;">&times;</button>
             </div>
@@ -1715,19 +1772,24 @@
     </div>
 
     <!-- ================= HEADER - SHOPIFY POLARIS ================= -->
+    <h1 class="sr-only">Point of sale till</h1>
     <header>
         <div class="brand">
-            <img src="logo.png" alt="Footprint" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 2px solid #f9a51a;">
-            <span style="font-size: 15px; font-weight: 700; color: #ffffff; letter-spacing: 0.05em; text-transform: uppercase;">FOOTPRINT</span>
-            <span class="pos-badge">Terminal</span>
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 2px solid #F9A51A;">
         </div>
 
+        <nav id="okw-pos-view-nav" aria-label="POS views" style="display:inline-flex; align-items:center; gap:4px; background:var(--sheet, #ffffff); padding:3px; border-radius:10px; border:1px solid var(--edge-strong, #cbd5e1);">
+            <button type="button" class="okw-pos-nav-btn active" data-pos-view="till" style="border:none; background:#273990; color:#ffffff; padding:5px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;">Till</button>
+            <button type="button" class="okw-pos-nav-btn" data-pos-view="quotes" style="border:none; background:transparent; color:#334155; padding:5px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;">Quotes</button>
+            <button type="button" class="okw-pos-nav-btn" data-pos-view="discounts" style="border:none; background:transparent; color:#334155; padding:5px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;">Discounts</button>
+            <button type="button" class="okw-pos-nav-btn" data-pos-view="splits" style="border:none; background:transparent; color:#334155; padding:5px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;">Splits</button>
+        </nav>
+
         <div class="user-menu">
-            <div id="connectionStatusBadge" style="display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:20px; background:#dcfce7; color:#15803d; transition:all 0.3s ease;">
+            <div id="connectionStatusBadge" style="display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:20px; background:#dcfce7; color:#15803d; transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease;">
                 <span style="width:8px; height:8px; border-radius:50%; background:#22c55e; display:inline-block;" id="statusDot"></span>
                 <span id="statusText">Online</span>
             </div>
-            <span id="dateTime"></span>
 
             <div class="notif-wrapper" id="notifWrapper" onclick="toggleNotifMenu(event)">
                 <i class="fas fa-bell notif-icon"></i>
@@ -1757,6 +1819,7 @@
                     <strong>Cashier</strong>
                     <span>Cashier</span>
                 </div>
+                <a href="/dashboard" id="posManagerPortalLink" style="display:none;"><i class="fas fa-th-large"></i> Manager Portal</a>
                 <a href="profile"><i class="fas fa-user-cog"></i> Profile</a>
                 <a href="transactions"><i class="fas fa-history"></i> Sales History</a>
                 <a href="javascript:void(0)" onclick="openCustomerDisplay()"><i class="fas fa-desktop"></i> Customer
@@ -1771,16 +1834,10 @@
 
         <!-- MAIN POS INTERFACE -->
         <div class="pos-layout">
-            <div class="search-bar">
-                <div style="position: relative; flex: 1;">
-                    <i class="fas fa-search" style="position: absolute; left: 16px; top: 50%; transform: translateY(-50%); color: #8c9196; font-size: 15px; pointer-events: none;"></i>
-                    <input id="barcodeInput" placeholder="Scan barcode, search product, or receipt #..." autofocus autocomplete="off">
-                    <div id="searchSuggestions" class="suggestions-dropdown"></div>
-                </div>
-                <button onclick="manualScan()" title="Search Item" class="pos-btn-action primary"><i class="fas fa-search"></i> <span>Search</span></button>
-                <button onclick="openCameraScanner()" title="Scan with Camera" class="pos-btn-action"><i class="fas fa-camera"></i> <span>Camera</span></button>
-                <button onclick="openReceiptSearch()" title="Search Receipt" class="pos-btn-action"><i class="fas fa-receipt"></i> <span>Receipt</span></button>
-                <button id="refreshProducts" title="Sync Products" class="pos-btn-action"><i class="fas fa-sync-alt"></i> <span>Sync</span></button>
+            <!-- Hidden scanner/suggestion compatibility elements (unified top search + Camera/Receipt/Sync live in #okw-pos-upgrade-shell) -->
+            <div style="display:none;" aria-hidden="true">
+                <input id="barcodeInput" type="hidden" autocomplete="off">
+                <div id="searchSuggestions" class="suggestions-dropdown"></div>
             </div>
 
             <!-- Scan Feedback (Placed here for visibility) -->
@@ -1789,15 +1846,11 @@
 
             <div class="cart-section">
                 <div class="cart-main">
+                    <div id="quickPicks" class="quick-picks" hidden aria-label="Your most-sold items"></div>
                     <div class="cart-header">
                         <span>Current Sale</span>
                         <div style="display:flex; gap:15px; align-items:center;">
-                            <button onclick="openParkedModal()" title="View Parked Orders"
-                                style="background:none;border:none;color:#273990;cursor:pointer;position:relative;">
-                                <i class="fas fa-clock" style="font-size: 18px;"></i>
-                                <span id="parkedCount"
-                                    style="position:absolute; top:-8px; right:-8px; background:#d72c0d; color:white; font-size:10px; padding:2px 5px; border-radius:50%; display:none;">0</span>
-                            </button>
+                            <span id="parkedCount" style="display:none;">0</span>
                             <span id="cartCount" style="font-size:12.5px; font-weight:600; color:#6d7175; background:#f6f6f7; padding:3px 10px; border-radius:12px; border:1px solid #e1e3e5;">0 items</span>
                             <button onclick="clearCart()" title="Clear Cart"
                                 style="background:none;border:none;color:#8c9196;cursor:pointer;transition:color 0.15s ease;" onmouseover="this.style.color='#d72c0d'" onmouseout="this.style.color='#8c9196'">
@@ -1819,24 +1872,24 @@
 
                 <div class="cart-summary">
                     <div style="display:flex;gap:6px;margin-bottom:16px;">
-                        <input id="promoCode" placeholder="Promo Code (e.g. SAVE10)"
+                        <input id="promoCode" aria-label="Promo code" placeholder="Promo Code (e.g. SAVE10)"
                             style="flex:1;padding:8px 12px;border:1px solid #c9cccf;border-radius:6px;font-size:12.5px;outline:none;background:#ffffff;">
                         <button onclick="applyPromo()"
-                            style="background:linear-gradient(135deg, #273990 0%, #1c2b70 100%);color:#ffffff;font-weight:700;border:none;padding:0 14px;border-radius:6px;cursor:pointer;font-size:12.5px;">Apply</button>
+                            style="background:#1F3A60;color:#ffffff;font-weight:700;border:none;padding:0 14px;border-radius:6px;cursor:pointer;font-size:12.5px;">Apply</button>
                     </div>
 
-                    <div class="summary-row"><span>Subtotal</span><span id="subTotal">--</span></div>
-                    <div class="summary-row" id="discountRow" style="display:none;color:#1c2b70;">
+                    <div class="summary-row"><span>Subtotal</span><span id="subTotal">GH₵0.00</span></div>
+                    <div class="summary-row" id="discountRow" style="display:none;color:#172C49;">
                         <span>Discount</span><span id="discountAmt">---</span></div>
                     <div id="taxRows"></div>
-                    <div class="summary-row total"><span>Total Due</span><span id="grandTotal">--</span></div>
+                    <div class="summary-row total"><span>Total Due</span><span id="grandTotal">GH₵0.00</span></div>
 
                     <div class="actions">
                         <button class="btn btn-payment-cash" onclick="processQuickPayment('cash')"><i class="fas fa-money-bill-wave"></i> Cash</button>
                         <button class="btn btn-payment-momo" onclick="processQuickPayment('momo')"><i class="fas fa-mobile-alt"></i> Momo</button>
                         <button class="btn btn-payment-card" onclick="processQuickPayment('card')"><i class="fas fa-credit-card"></i> Card</button>
                         <button class="btn btn-payment-credit" onclick="processQuickPayment('credit')"><i class="fas fa-user-tag"></i> Credit</button>
-                        <button class="btn btn-park" onclick="parkOrder()"><i class="fas fa-pause"></i> Park</button>
+                        <button class="btn btn-payment-split" onclick="if(window.okwOpenSplitPayment)window.okwOpenSplitPayment()"><i class="fas fa-columns"></i> Split</button>
                         <button id="returnBtn" class="btn btn-refund" style="display:none;" onclick="processReturn()"><i class="fas fa-undo"></i> Refund</button>
                         <button class="btn btn-return" onclick="openReceiptSearch()"><i class="fas fa-receipt"></i> Return</button>
                     </div>
@@ -1850,42 +1903,21 @@
     <footer class="pos-live-footer">
         <div class="ticker">
             <div class="ticker-item">
-                <span style="font-weight: 800;">Footprint</span>
+                <span style="font-weight: 800;">OKWESIWA LTD</span>
                 <span class="ticker-dot">&bull;</span>
-                <span>Developed by Whitsun</span>
+                <span class="footerBranchDisplay ticker-branch">TEMA</span>
                 <span class="ticker-dot">&bull;</span>
-                <span>&copy; 2026 POS Retail System</span>
-                <span class="ticker-dot">&bull;</span>
-                <span class="footerBranchDisplay ticker-branch">Branch: TEMA</span>
-                <span class="ticker-dot">&bull;</span>
-                <span class="ticker-badge"><i class="fas fa-circle"></i> Live POS</span>
+                <span class="ticker-badge"><i class="fas fa-circle"></i> Live</span>
                 <span class="ticker-dot">&bull;</span>
                 <span class="posLiveClock">--:--:--</span>
-                <span class="ticker-dot">&bull;</span>
-                <span>Fast Checkout &bull; Multi-Payment &bull; Real-time Stock Sync</span>
-            </div>
-            <div class="ticker-item">
-                <span style="font-weight: 800;">Footprint</span>
-                <span class="ticker-dot">&bull;</span>
-                <span>Developed by Whitsun</span>
-                <span class="ticker-dot">&bull;</span>
-                <span>&copy; 2026 POS Retail System</span>
-                <span class="ticker-dot">&bull;</span>
-                <span class="footerBranchDisplay ticker-branch">Branch: TEMA</span>
-                <span class="ticker-dot">&bull;</span>
-                <span class="ticker-badge"><i class="fas fa-circle"></i> Live POS</span>
-                <span class="ticker-dot">&bull;</span>
-                <span class="posLiveClock">--:--:--</span>
-                <span class="ticker-dot">&bull;</span>
-                <span>Fast Checkout &bull; Multi-Payment &bull; Real-time Stock Sync</span>
             </div>
         </div>
     </footer>
 
-    <!-- Include barcode scanning library -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" crossorigin="anonymous"></script>
+    <!-- Include barcode scanning library (deferred so it never blocks POS render) -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" crossorigin="anonymous" defer></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"
-        crossorigin="anonymous"></script>
+        crossorigin="anonymous" defer></script>
     <script>
         let currentUser = null;
 
@@ -1894,11 +1926,38 @@
         let products = [];
 
         let cart = [];
+        let flatDiscount = 0;
         let scannerMode = 'hardware'; // 'hardware' or 'camera'
         let cameraScanner = null;
         let currentCameraId = null;
         let discountRate = 0;
         let currentPromoCode = null;
+        // read by pos-upgrade.js so multi-tab Sale 1 / + Tab switching and discounts stay 100% isolated per tab
+        window.okwTillCartCount = () => cart.length;
+        window.okwGetCart = () => cart.map(it => ({ ...it }));
+        window.okwSetCart = (nextItems) => {
+            cart = Array.isArray(nextItems) ? nextItems.map(it => ({ ...it })) : [];
+            renderCart();
+        };
+        window.okwGetTillState = () => ({
+            items: cart.map(it => ({ ...it })),
+            discountRate: Number(discountRate || 0),
+            flatDiscount: Number(flatDiscount || 0),
+            promoCode: currentPromoCode || null
+        });
+        window.okwSetTillState = (state = {}) => {
+            cart = Array.isArray(state.items) ? state.items.map(it => ({ ...it })) : [];
+            discountRate = Number(state.discountRate || 0);
+            flatDiscount = Number(state.flatDiscount || 0);
+            currentPromoCode = state.promoCode || null;
+            const pcInput = document.getElementById('promoCode');
+            if (pcInput) pcInput.value = currentPromoCode || '';
+            renderCart();
+        };
+        window.okwSetFlatDiscount = (amt) => {
+            flatDiscount = Math.max(0, Number(amt || 0));
+            renderCart();
+        };
         let lastScanTime = 0;
         let lastScannedCode = null;
         let activeTaxes = []; // Array to store tax rules
@@ -2196,7 +2255,7 @@
 
                     // Load the transaction for return
                     await loadReturnTransaction(transaction);
-                    document.getElementById('scanResult').innerHTML = `📋 Loaded receipt: <strong>${normalizedReceipt}</strong>`;
+                    document.getElementById('scanResult').innerHTML = `Loaded receipt: <strong>${normalizedReceipt}</strong>`;
                 } else {
                     const error = await response.json().catch(() => ({}));
                     notify(error.message || 'Receipt not found', 'error');
@@ -2229,7 +2288,7 @@
                         // Show visual feedback that this is being treated as a receipt
                         const scanResult = document.getElementById('scanResult');
                         if (value.length > 3) { // Only show after typing a few characters
-                            scanResult.innerHTML = `📋 Receipt detected: <strong>${value}</strong> (Press Enter to search)`;
+                            scanResult.innerHTML = `Receipt detected: <strong>${value}</strong> (Press Enter to search)`;
                             scanResult.style.background = '#fff3e0';
                             scanResult.style.border = '1px solid #ff9800';
                         }
@@ -2313,7 +2372,7 @@
 
             // Show success message
             const scanResult = document.getElementById('scanResult');
-            scanResult.innerHTML = `✅ Added: <strong>${window.escapeHtml(product.name)}</strong>`;
+            scanResult.innerHTML = `Added: <strong>${window.escapeHtml(product.name)}</strong>`;
             setTimeout(() => {
                 scanResult.innerHTML = '';
             }, 2000);
@@ -2391,7 +2450,7 @@
             console.log('Processing barcode:', cleanVal);
 
             const scanResult = document.getElementById('scanResult');
-            scanResult.innerHTML = `🔍 Scanning: <strong>${cleanVal}</strong>`;
+            scanResult.innerHTML = `Scanning: <strong>${cleanVal}</strong>`;
 
             // First check if this is a receipt barcode (starts with RCP or is numeric)
             if (cleanVal.startsWith('RCP') || /^\d+$/.test(cleanVal)) {
@@ -2410,7 +2469,7 @@
                         const transaction = await response.json();
                         console.log('Found transaction:', transaction);
                         await loadReturnTransaction(transaction);
-                        scanResult.innerHTML = `📋 Loaded receipt: <strong>${normalizedReceipt}</strong>`;
+                        scanResult.innerHTML = `Loaded receipt: <strong>${normalizedReceipt}</strong>`;
                         return;
                     }
                 } catch (err) {
@@ -2429,7 +2488,7 @@
                 } catch (err) {
                     const errorMsg = 'Failed to load products. Please try again.';
                     console.error(errorMsg, err);
-                    scanResult.innerHTML = `❌ ${errorMsg}`;
+                    scanResult.innerHTML = `${errorMsg}`;
                     notify(errorMsg, 'error');
                     return;
                 }
@@ -2496,7 +2555,7 @@
             }
 
             if (matchedProducts.length === 0) {
-                const errorMsg = `❌ Product not found for barcode: ${cleanVal}`;
+                const errorMsg = `Product not found for barcode: ${cleanVal}`;
                 scanResult.innerHTML = errorMsg;
                 notify(errorMsg, 'error');
                 return;
@@ -2649,7 +2708,39 @@
             } catch (e) { console.error("Audio error", e); }
         }
 
+        // Quick picks: the items this till sells most, one tap away. Counted on this device only.
+        const QUICK_PICK_KEY = 'okwQuickPicks';
+        function bumpQuickPick(id) {
+            try {
+                const counts = JSON.parse(localStorage.getItem(QUICK_PICK_KEY) || '{}');
+                counts[id] = (counts[id] || 0) + 1;
+                localStorage.setItem(QUICK_PICK_KEY, JSON.stringify(counts));
+            } catch (_) { }
+        }
+        function renderQuickPicks() {
+            const host = document.getElementById('quickPicks');
+            if (!host || !Array.isArray(products)) return;
+            let counts = {};
+            try { counts = JSON.parse(localStorage.getItem(QUICK_PICK_KEY) || '{}'); } catch (_) { }
+            const list = products.filter(p => counts[p.id] > 0 && p.stock > 0).sort((a, b) => counts[b.id] - counts[a.id]).slice(0, 6);
+            host.hidden = list.length === 0;
+            const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+            host.innerHTML = list.length ? '<span class="quick-picks-title">Most sold</span>' + list.map(p =>
+                `<button type="button" class="quick-pick" data-id="${esc(p.id)}"><span>${esc(p.name)}</span><b>${formatCurrency(p.price)}</b></button>`).join('') : '';
+            host.onclick = (e) => {
+                const b = e.target.closest('.quick-pick');
+                if (!b) return;
+                const prod = products.find(x => String(x.id) === b.dataset.id);
+                if (prod) addToCart(prod);
+            };
+        }
+
         function addToCart(product) {
+            try { bumpQuickPick(product.id); setTimeout(renderQuickPicks, 0); } catch (_) { }
+            if (window.okwAdvancedCartCount && window.okwAdvancedCartCount() > 0) {
+                notify('A sale is open in the advanced panel. Finish, hold or clear it before using the till.', 'warning');
+                return;
+            }
             // Ensure price is a number before adding to cart
             const price = parseFloat(product.price) || 0;
             const safeProduct = { ...product, price: price };
@@ -2735,7 +2826,7 @@
             <div>
                 <i class="fas fa-undo-alt"></i>
                 <strong>RETURN MODE</strong>
-                <span style="font-size: 12px; opacity: 0.8;">Receipt: ${transaction.receipt_number}</span>
+                <span style="font-size: 12px; opacity: 0.8;">Receipt: ${OkwUI.escapeHtml(transaction.receipt_number)}</span>
             </div>
             <button onclick="exitReturnMode()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
                 <i class="fas fa-times"></i> Exit
@@ -2905,6 +2996,7 @@
             cart = [];
             discountRate = 0;
             currentPromoCode = null;
+            window.selectedPosCustomer = null;
             document.getElementById('promoCode').value = '';
             if (document.getElementById('customerSelect')) document.getElementById('customerSelect').value = "";
 
@@ -3000,7 +3092,8 @@
                 items: adjustedItems,
                 status: (isReturn && (cart[0].refundMethod || 'cash') !== 'credit') ? 'completed' : 'pending',
                 promoCode: currentPromoCode,
-                customerId: customerId || null
+                customerId: (window.selectedPosCustomer && window.selectedPosCustomer.id) || customerId || null,
+                customerName: (window.selectedPosCustomer && window.selectedPosCustomer.name) || null
             };
 
             console.log('Transaction Data:', {
@@ -3027,9 +3120,9 @@
                     price: item.originalPrice
                 }));
 
-                console.log('🔄 RETURN CHECKOUT: Original Transaction:', originalTransactionId, 'Return Amount:', grandTotal.toFixed(2));
+                console.log('RETURN CHECKOUT: Original Transaction:', originalTransactionId, 'Return Amount:', grandTotal.toFixed(2));
             } else {
-                console.log('🛒 NORMAL CHECKOUT: Total: ' + formatCurrency(grandTotal), '| Items:', cart.length, '| Customer Selected:', customerId || 'None');
+                console.log('NORMAL CHECKOUT: Total: ' + formatCurrency(grandTotal), '| Items:', cart.length, '| Customer Selected:', customerId || 'None');
             }
 
             // Create Pending Transaction in DB
@@ -3064,7 +3157,7 @@
                         return;
                     }
                     if (data.transactionId) {
-                        console.log('✅ TRANSACTION CREATED:', data.transactionId, '| Receipt:', data.receiptNumber);
+                        console.log('TRANSACTION CREATED:', data.transactionId, '| Receipt:', data.receiptNumber);
                         customerChannel.postMessage({ type: 'TRANSACTION_COMPLETE' });
 
                         // Exit return mode after successful return
@@ -3209,6 +3302,8 @@
                 items: adjustedItemsQ,
                 status: 'completed',
                 promoCode: currentPromoCode,
+                customerId: (window.selectedPosCustomer && window.selectedPosCustomer.id) || null,
+                customerName: (window.selectedPosCustomer && window.selectedPosCustomer.name) || null,
                 isReturn: isReturn,
                 originalTransactionId: originalTransactionId,
                 returnItems: returnItemsList,
@@ -3317,12 +3412,21 @@
             const cartCount = document.getElementById('cartCount');
 
             if (!cart.length) {
-                cartItems.innerHTML = '<p style="text-align:center;color:#aaa;margin-top:50px;">Cart is empty</p>';
+                cartItems.innerHTML = `
+                    <div style="text-align:center;color:#8c9196;margin-top:60px;display:flex;flex-direction:column;align-items:center;gap:12px;">
+                        <div style="width:48px;height:48px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#64748b;font-size:20px;">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                        <div style="font-size:14px;font-weight:600;color:#0f172a;">Cart is empty</div>
+                        <div style="font-size:12.5px;color:#64748b;max-width:240px;">Scan barcode or type a product name in the search bar to begin.</div>
+                    </div>
+                `;
                 cartCount.textContent = '0 items';
                 subTotalEl.textContent = formatCurrency(0);
                 discountRow.style.display = 'none';
                 taxRowsEl.innerHTML = '';
                 grandTotalEl.textContent = formatCurrency(0);
+                if (typeof window.okwOnTillCartChange === 'function') window.okwOnTillCartChange();
                 return;
             }
 
@@ -3413,8 +3517,8 @@
             });
             cartItems.innerHTML = itemsHtml;
 
-            const discount = displaySubtotal * discountRate;
-            const taxable = displaySubtotal - discount;
+            const discount = Math.min(displaySubtotal, (displaySubtotal * discountRate) + (Number(flatDiscount) || 0));
+            const taxable = Math.max(0, displaySubtotal - discount);
 
             // Calculate Taxes dynamically
             let totalTax = 0;
@@ -3427,7 +3531,7 @@
                     const taxRate = rate / 100;
                     const amount = taxable * (taxRate / (1 + taxRate));
                     totalTax += amount;
-                    taxHtml += `<div class="summary-row"><span>${tax.name} (${tax.rate}%)</span><span>${formatCurrency(amount)}</span></div>`;
+                    taxHtml += `<div class="summary-row"><span>${OkwUI.escapeHtml(tax.name)} (${tax.rate}%)</span><span>${formatCurrency(amount)}</span></div>`;
                 }
             });
 
@@ -3459,6 +3563,7 @@
                 vat: totalTax, // Legacy field for display
                 total: finalTotal
             });
+            if (typeof window.okwOnTillCartChange === 'function') window.okwOnTillCartChange();
         }
 
         function removeItemFromCart(index) {
@@ -3600,8 +3705,8 @@
                 list.innerHTML = notifications.map(n => `
             <div class="notif-item">
                 <div class="notif-content">
-                    <div class="notif-item-title">${n.title}</div>
-                    <div class="notif-item-desc">${n.message}</div>
+                    <div class="notif-item-title">${OkwUI.escapeHtml(n.title)}</div>
+                    <div class="notif-item-desc">${OkwUI.escapeHtml(n.message)}</div>
                     <div class="notif-item-time">${new Date(n.timestamp).toLocaleTimeString()}</div>
                 </div>
             </div>
@@ -3649,13 +3754,6 @@
                 document.getElementById('userDropdown').classList.remove('show');
             }
         };
-
-        function updateTime() {
-            document.getElementById('dateTime').textContent = new Date().toLocaleString();
-        }
-
-        setInterval(updateTime, 1000);
-        updateTime();
 
         async function logout() {
             notify("Logged out. Redirecting...", "success");
@@ -3865,7 +3963,7 @@
                 // For now, let's allow it but warn, or strictly block. 
                 // Based on "apply the credit", let's assume manager auth allows override.
                 btn.disabled = false;
-                btn.textContent = "⚠️ Limit Exceeded - Confirm Anyway";
+                btn.textContent = "Limit exceeded: confirm anyway";
                 btn.style.background = "#f39c12"; // Orange
             }
         }
@@ -3981,7 +4079,7 @@
         async function refreshProducts() {
             console.log("Refreshing products...");
             const scanResult = document.getElementById('scanResult');
-            scanResult.innerHTML = '🔄 Loading products...';
+            scanResult.innerHTML = 'Loading products…';
 
             // Also refresh taxes
             try {
@@ -4032,16 +4130,17 @@
                     return item;
                 });
                 console.log(`Successfully loaded ${products.length} products:`, products);
+                renderQuickPicks();
 
                 // Show success message
-                scanResult.innerHTML = `✅ Loaded ${products.length} products`;
+                scanResult.innerHTML = `Loaded ${products.length} products`;
                 setTimeout(() => scanResult.innerHTML = '', 2000);
 
                 return products;
             } catch (error) {
                 console.error("Failed to load products:", error);
                 const errorMsg = "Failed to load products.";
-                scanResult.innerHTML = `❌ ${errorMsg}`;
+                scanResult.innerHTML = `${errorMsg}`;
                 notify(errorMsg, "error");
                 return [];
             }
@@ -4052,6 +4151,41 @@
            ====================== */
 
         // Check session and shift status
+        function applyUserHeaderAndMenu(user) {
+            if (!user) return;
+            const rawName = String(user.name || user.username || 'User').replace(/^OKWESIWA\s+(LTD\s+)?(Store\s+)?/i, '').trim();
+            const firstName = (rawName || user.username || 'User').split(/[\s_@]+/)[0];
+            const fullNameLabel = user.name || user.username || firstName;
+            const userNameEl = document.getElementById('userName');
+            if (userNameEl) userNameEl.textContent = firstName;
+            const dropdownHeader = document.querySelector('.user-dropdown .header');
+            if (dropdownHeader) {
+                const st = dropdownHeader.querySelector('strong');
+                const sp = dropdownHeader.querySelector('span');
+                if (st) st.textContent = fullNameLabel;
+                if (sp) sp.textContent = user.role || 'staff';
+            }
+            const roleNorm = String(user.role || '').toLowerCase().replace(/[\s-]+/g, '_');
+            const mgrLink = document.getElementById('posManagerPortalLink');
+            if (mgrLink) {
+                if (['manager', 'store_manager', 'ceo', 'admin'].includes(roleNorm)) {
+                    mgrLink.href = ['ceo', 'admin'].includes(roleNorm) ? '/ceo-portal' : '/dashboard';
+                    mgrLink.innerHTML = ['ceo', 'admin'].includes(roleNorm)
+                        ? '<i class="fas fa-th-large"></i> CEO Portal'
+                        : '<i class="fas fa-th-large"></i> Manager Portal';
+                    mgrLink.style.display = 'flex';
+                } else {
+                    mgrLink.style.display = 'none';
+                }
+            }
+            const branchLabel = `Branch: ${(user.store_location || user.branch_name || 'Main').toUpperCase()}`;
+            const footerBranch = document.getElementById('footerBranchDisplay');
+            if (footerBranch) footerBranch.textContent = branchLabel;
+            document.querySelectorAll('.footerBranchDisplay').forEach(el => {
+                el.textContent = branchLabel;
+            });
+        }
+
         async function checkSessionAndShift() {
             try {
                 const token = localStorage.getItem('authToken');
@@ -4060,9 +4194,12 @@
                     return false;
                 }
 
-                const sessionRes = await fetch('/api/session', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                // Run session, active shift, and active taxes requests in parallel for fast POS startup
+                const [sessionRes, shiftRes, taxesRes] = await Promise.all([
+                    fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch('/api/shifts/active', { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch('/api/taxes/active', { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => null)
+                ]);
 
                 if (!sessionRes.ok) {
                     window.location.href = '/';
@@ -4071,14 +4208,16 @@
 
                 const { user } = await sessionRes.json();
 
-                // Store user in global scope for other functions
+                // Store user in global scope and localStorage for POS till & offline/upgrade scripts
                 window.currentUser = user;
                 currentUser = user;
-
-                // Check for active shift
-                const shiftRes = await fetch('/api/shifts/active', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                if (typeof loadParkedOrders === 'function') loadParkedOrders();
+                try {
+                    localStorage.setItem('currentUser', JSON.stringify(user));
+                    localStorage.setItem('user', JSON.stringify(user));
+                } catch (_) {}
+                applyUserHeaderAndMenu(user);
+                window.dispatchEvent(new CustomEvent('okw:user-ready', { detail: user }));
 
                 if (!shiftRes.ok) {
                     window.location.href = '/open-shift';
@@ -4089,6 +4228,10 @@
                 if (!shiftData.active) {
                     window.location.href = '/open-shift';
                     return false;
+                }
+
+                if (taxesRes && taxesRes.ok) {
+                    try { activeTaxes = await taxesRes.json(); } catch (_) { activeTaxes = []; }
                 }
 
                 return true;
@@ -4122,9 +4265,17 @@
         function initPosFooter() {
             function updateClock() {
                 const now = new Date();
-                const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+                const dateTimeStr = now.toLocaleString([], {
+                    year: 'numeric',
+                    month: 'numeric',
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true
+                });
                 document.querySelectorAll('.posLiveClock').forEach(el => {
-                    el.textContent = timeStr;
+                    el.textContent = dateTimeStr;
                 });
             }
             updateClock();
@@ -4146,38 +4297,17 @@
         document.addEventListener('DOMContentLoaded', async function () {
             initPosFooter();
             updateConnectionBadge();
-            // Check session and shift status first
+            try {
+                const cached = JSON.parse(localStorage.getItem('currentUser') || 'null');
+                if (cached) applyUserHeaderAndMenu(cached);
+            } catch (_) {}
+
+            // Check session, shift status, and active taxes in parallel
             const isAuthenticated = await checkSessionAndShift();
             if (!isAuthenticated) return;
 
-            // Load Active Taxes
-            try {
-                const token = localStorage.getItem('authToken');
-                const res = await fetch('/api/taxes/active', { headers: { 'Authorization': `Bearer ${token}` } });
-                if (res.ok) {
-                    activeTaxes = await res.json();
-                    console.log("Loaded active taxes:", activeTaxes);
-                } else {
-                    // Fallback if no taxes defined or error
-                    console.warn("Could not load taxes, defaulting to 0");
-                    activeTaxes = [];
-                }
-            } catch (e) { console.error("Error loading taxes", e); }
-
-            // Update User Info
             const user = window.currentUser;
-            if (user) {
-                document.getElementById('userName').textContent = user.name || 'User';
-                const dropdownHeader = document.querySelector('.user-dropdown .header');
-                if (dropdownHeader) {
-                    dropdownHeader.querySelector('strong').textContent = user.name;
-                    dropdownHeader.querySelector('span').textContent = user.role;
-                }
-                const footerBranch = document.getElementById('footerBranchDisplay');
-                if (footerBranch && (user.store_location || user.branch_name)) {
-                    footerBranch.textContent = `Branch: ${(user.store_location || user.branch_name).toUpperCase()}`;
-                }
-            }
+            applyUserHeaderAndMenu(user);
 
             // Initial load of products
             refreshProducts().then(() => {
@@ -4223,10 +4353,11 @@
             setupHardwareScanner();
 
             // Add refresh button handler
-            document.getElementById('refreshProducts').addEventListener('click', refreshProducts);
+            const refreshBtn = document.getElementById('refreshProducts');
+            if (refreshBtn) refreshBtn.addEventListener('click', refreshProducts);
 
-            const barcodeInput = document.getElementById('barcodeInput');
-            barcodeInput.focus();
+            const posSearchInput = document.getElementById('okw-pos-search') || document.getElementById('barcodeInput');
+            if (posSearchInput && typeof posSearchInput.focus === 'function') posSearchInput.focus();
 
             // Manager Token Input Enter Key
             const tokenInput = document.getElementById('managerTokenInput');
@@ -4272,7 +4403,7 @@
 
         // Clean up on page unload
         window.addEventListener('beforeunload', closeCameraScanner);
-        window.addEventListener('unload', () => customerChannel.close());
+        window.addEventListener('pagehide', () => customerChannel.close());
     </script>
 
     <script>
@@ -4297,27 +4428,95 @@
             }, 100);
         }
 
-        function confirmParkOrder() {
+        // Parked orders live in the database (pos_holds) so any till can resume them.
+        // localStorage is only an offline copy; entries not yet saved carry pending:true.
+        function parkedAuthHeaders() {
+            return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` };
+        }
+        function saveParkedLocal() {
+            localStorage.setItem('parkedOrders', JSON.stringify(parkedOrders));
+        }
+        function parkedEsc(v) {
+            return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function holdToParked(h) {
+            const meta = h.meta || {};
+            return {
+                id: h.id,
+                ref: h.label,
+                cart: Array.isArray(h.items) ? h.items : [],
+                discountRate: Number(meta.discountRate || 0),
+                promoCode: meta.promoCode || null,
+                timestamp: h.created_at
+            };
+        }
+        async function pushParkedToServer(order) {
+            const user = currentUser || {};
+            const res = await fetch('/api/pos/holds', {
+                method: 'POST',
+                headers: parkedAuthHeaders(),
+                body: JSON.stringify({
+                    label: order.ref,
+                    items: order.cart,
+                    store_location: user.store_location || '',
+                    meta: { discountRate: order.discountRate || 0, promoCode: order.promoCode || null }
+                })
+            });
+            if (!res.ok) throw new Error('hold save failed');
+            const data = await res.json();
+            return holdToParked(data.hold);
+        }
+        async function loadParkedOrders() {
+            // 1) save anything parked while offline, 2) replace the list with the database copy
+            try {
+                for (const o of parkedOrders.filter(p => p.pending)) {
+                    const saved = await pushParkedToServer(o);
+                    parkedOrders = parkedOrders.map(p => p === o ? saved : p);
+                }
+                const user = currentUser || {};
+                const qs = user.store_location ? `?store_location=${encodeURIComponent(user.store_location)}` : '';
+                const res = await fetch('/api/pos/holds' + qs, { headers: parkedAuthHeaders() });
+                if (res.ok) {
+                    const data = await res.json();
+                    const pendingLeft = parkedOrders.filter(p => p.pending);
+                    parkedOrders = (data.holds || []).map(holdToParked).concat(pendingLeft);
+                    saveParkedLocal();
+                }
+            } catch (e) { /* offline: keep the local copy */ }
+            updateParkedCount();
+        }
+        async function deleteParkedOnServer(order) {
+            if (order.pending || typeof order.id !== 'number' || order.id > 2147483647) return;
+            try { await fetch('/api/pos/holds/' + order.id, { method: 'DELETE', headers: parkedAuthHeaders() }); } catch (e) { /* offline */ }
+        }
+
+        async function confirmParkOrder() {
             const refInput = document.getElementById('parkRefInput').value.trim();
             const ref = refInput || "Customer " + (parkedOrders.length + 1);
 
-            const order = {
+            let order = {
                 id: Date.now(),
                 ref: ref,
                 cart: [...cart],
                 discountRate: discountRate,
                 promoCode: currentPromoCode,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                pending: true
             };
+            let savedOnServer = false;
+            try {
+                order = await pushParkedToServer(order);
+                savedOnServer = true;
+            } catch (e) { /* offline: stays on this device until the next load */ }
 
             parkedOrders.push(order);
-            localStorage.setItem('parkedOrders', JSON.stringify(parkedOrders));
+            saveParkedLocal();
 
             clearCart(); // This clears current cart
             updateParkedCount();
             logClientActivity('PARK_ORDER', { reference: ref, itemCount: order.cart.length });
             document.getElementById('parkNameModal').classList.remove('active');
-            notify("Order parked successfully", "success");
+            notify(savedOnServer ? "Order parked successfully" : "Parked on this device only (offline) - it will sync when online", savedOnServer ? "success" : "warning");
         }
 
         function openParkedModal() {
@@ -4342,9 +4541,9 @@
                 const tooltipText = `${itemPreview}${moreItems}`;
 
                 return `
-            <div class="parked-item" data-tooltip="${tooltipText}">
+            <div class="parked-item" data-tooltip="${parkedEsc(tooltipText)}">
                 <div>
-                    <div style="font-weight:bold; color:#333;">${order.ref}</div>
+                    <div style="font-weight:bold; color:#333;">${parkedEsc(order.ref)}</div>
                     <div style="font-size:12px; color:#666;">${date} • ${order.cart.length} items • <strong>${formatCurrency(total)}</strong></div>
                 </div>
                 <div>
@@ -4366,9 +4565,10 @@
             discountRate = order.discountRate || 0;
             currentPromoCode = order.promoCode || null;
 
-            // Remove from parked
-            parkedOrders.splice(index, 1);
-            localStorage.setItem('parkedOrders', JSON.stringify(parkedOrders));
+            // Remove from parked (and from the database)
+            const [taken] = parkedOrders.splice(index, 1);
+            saveParkedLocal();
+            deleteParkedOnServer(taken);
 
             renderCart();
             updateParkedCount();
@@ -4380,8 +4580,9 @@
         function discardOrder(index) {
             if (!confirm("Discard this parked order permanently?")) return;
             const orderRef = parkedOrders[index].ref;
-            parkedOrders.splice(index, 1);
-            localStorage.setItem('parkedOrders', JSON.stringify(parkedOrders));
+            const [discarded] = parkedOrders.splice(index, 1);
+            saveParkedLocal();
+            deleteParkedOnServer(discarded);
             renderParkedOrders();
             updateParkedCount();
             logClientActivity('DISCARD_PARKED_ORDER', { reference: orderRef });
@@ -4404,7 +4605,7 @@
 <!-- ================== GLOBAL UX FIXES ================== -->
 <style>
 #custom-toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
+.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #E8772E; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
 .custom-toast.show { opacity: 1; transform: translateY(0); }
 .custom-toast.error { background: #e74c3c; border-left: 4px solid #c0392b; }
 .custom-toast.success { background: #27ae60; border-left: 4px solid #2ecc71; }

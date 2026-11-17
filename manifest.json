@@ -1,0 +1,16 @@
+{
+  "name": "OKWESIWA LTD",
+  "short_name": "OKWESIWA",
+  "start_url": "/pos",
+  "display": "standalone",
+  "background_color": "#10151D",
+  "theme_color": "#1F3A60",
+  "icons": [
+    {
+      "src": "/okwesiwa-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
+

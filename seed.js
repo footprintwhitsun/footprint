@@ -179,8 +179,14 @@ const run = async () => {
             // Column likely doesn't exist or other error, ignore
         }
         
-        const email = 'admin@footprint.com';
-        const password = process.env.DEFAULT_ADMIN_PASS || 'password123';
+        const requirePass = (specificKey) => {
+            const val = process.env[specificKey] || process.env.SEED_DEFAULT_PASSWORD;
+            if (!val) throw new Error(`Missing required password env var: set ${specificKey} or SEED_DEFAULT_PASSWORD`);
+            return val;
+        };
+
+        const email = 'admin@okwesiwaltd.com';
+        const password = requirePass('DEFAULT_ADMIN_PASS');
         const hash = await bcrypt.hash(password, 10);
         
         // Check if user exists
@@ -197,8 +203,8 @@ const run = async () => {
         }
 
         // Create Cashier User
-        const cashierEmail = 'cashier@footprint.com';
-        const cashierPass = process.env.DEFAULT_CASHIER_PASS || 'cashier123';
+        const cashierEmail = 'cashier@okwesiwaltd.com';
+        const cashierPass = requirePass('DEFAULT_CASHIER_PASS');
         const cashierHash = await bcrypt.hash(cashierPass, 10);
         const cashierRes = await pool.query('SELECT * FROM users WHERE email = $1', [cashierEmail]);
 
@@ -216,8 +222,8 @@ const run = async () => {
 
 
         // Create Manager User
-        const managerEmail = 'manager@footprint.com';
-        const managerPass = process.env.DEFAULT_MANAGER_PASS || 'manager123';
+        const managerEmail = 'manager@okwesiwaltd.com';
+        const managerPass = requirePass('DEFAULT_MANAGER_PASS');
         const managerHash = await bcrypt.hash(managerPass, 10);
         const managerRes = await pool.query('SELECT * FROM users WHERE email = $1', [managerEmail]);
 

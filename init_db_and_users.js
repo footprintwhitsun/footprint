@@ -45,26 +45,32 @@ const run = async () => {
             console.log('Schema execution message (probably tables already exist):', e.message);
         }
 
+        const requirePass = (specificKey) => {
+            const val = process.env[specificKey] || process.env.SEED_DEFAULT_PASSWORD;
+            if (!val) throw new Error(`Missing required password env var: set ${specificKey} or SEED_DEFAULT_PASSWORD`);
+            return val;
+        };
+
         console.log('Creating users...');
         const usersToCreate = [
             {
                 name: 'Ceo profile',
                 email: 'ceo@faithway.com',
-                password: 'Faith2026',
+                password: requirePass('DEFAULT_CEO_PASS'),
                 role: 'ceo',
                 location: process.env.MAIN_BRANCH_LOCATION || 'Amasaman'
             },
             {
                 name: 'Manager',
                 email: 'Manager@faithway.com',
-                password: 'Manager2026',
+                password: requirePass('DEFAULT_MANAGER_PASS'),
                 role: 'manager',
                 location: process.env.MAIN_BRANCH_LOCATION || 'Amasaman'
             },
             {
                 name: 'Cashier',
                 email: 'Cashier@faithway.com',
-                password: 'Cashier2026',
+                password: requirePass('DEFAULT_CASHIER_PASS'),
                 role: 'cashier',
                 location: 'Accra Branch'
             }

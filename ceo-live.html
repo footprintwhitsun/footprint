@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live CEO Dashboard - OKWESIWA LTD</title>
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <style>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { padding: 24px; max-width: 1400px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        .kpi-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin-bottom: 18px; }
+        .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } .two-col { grid-template-columns: 1fr; } }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style id="live-face">
+        .kpi-row { display: grid !important; grid-template-columns: 1.7fr 1fr 1fr 1fr; gap: 0 !important; background: var(--sheet); border: 1px solid var(--edge); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+        .kpi-row .okw-kpi { border: 0 !important; border-left: 1px solid var(--edge) !important; border-radius: 0 !important; box-shadow: none !important; background: transparent !important; padding: 20px 22px !important; }
+        .kpi-row .okw-kpi:first-child { border-left: 0 !important; }
+        @media (max-width: 700px) {
+            .kpi-row { grid-template-columns: 1fr 1fr !important; }
+            .kpi-row .okw-kpi:first-child { grid-column: 1 / -1; }
+            .kpi-row .okw-kpi:nth-child(odd):not(:first-child) { border-left: 0 !important; }
+            .kpi-row .okw-kpi:first-child .okw-kpi-value { font-size: 32px !important; white-space: nowrap; }
+        }
+        .kpi-row .okw-kpi:first-child .okw-kpi-value { font-size: 36px !important; font-weight: 700 !important; color: var(--brand); }
+        .kpi-row .okw-kpi:first-child .okw-kpi-value { border-bottom: 3px solid var(--brick); display: inline-block; padding-bottom: 2px; }
+        #controls-box b { font-weight: 500; color: var(--muted); }
+        #controls-box > div { padding: 8px 0; border-top: 1px solid var(--edge); }
+        #controls-box > div:first-child { border-top: 0; }
+        .okw-card { border-radius: 12px; box-shadow: none; }
+        @media (max-width: 900px) { .kpi-row { grid-template-columns: 1fr 1fr; } }
+    </style>
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
+            <span class="sidebar-role-badge">CEO Live</span>
+        </div>
+        <nav class="nav-links">
+            <div class="nav-section">Executive</div>
+            <a href="/ceo-live" class="active"><span>Live CEO Dashboard</span></a>
+            <a href="/ceo-portal"><span>CEO Approvals &amp; Portal</span></a>
+            <a href="/reports?tab=detailed"><span>All Reports</span></a>
+            <a href="/reports?tab=drilldown"><span>Core Reports</span></a>
+            <a href="/daily-close"><span>Daily Close</span></a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap">
+            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;">
+                <div>
+                    <h1 style="margin:0;font-size:24px;">Live CEO Dashboard &amp; Theft Controls</h1>
+                    <p style="margin:4px 0 0;color:var(--color-text-muted);font-size:14px;">Live branch sales vs yesterday &amp; last week, monthly targets, cash drops, blind close variances, and staff flags.</p>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" class="okw-btn okw-btn-outline" id="btn-set-target">Set Branch Target</button>
+                    <button type="button" class="okw-btn okw-btn-accent" id="btn-cash-drop">Record Cash Drop</button>
+                </div>
+            </div>
+
+            <div id="cash-alert-banner" style="display:none;padding:12px 16px;border-radius:var(--radius-md);background:var(--color-warning-soft);color:var(--color-warning);font-weight:600;margin-bottom:16px;"></div>
+
+            <div class="kpi-row" id="ceo-kpis"></div>
+
+            <div class="two-col">
+                <div class="okw-card">
+                    <h3 style="margin:0 0 10px;">Today's Sales by Branch &amp; Targets</h3>
+                    <div id="branch-box"></div>
+                </div>
+                <div class="okw-card">
+                    <h3 style="margin:0 0 10px;">Cash &amp; Theft Controls</h3>
+                    <div id="controls-box"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+(function () {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const fmt = (n) => 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    async function load() {
+        const res = await fetch('/api/ceo-live/overview', { headers });
+        if (!res.ok) return OkwUI.toast('CEO access required', 'danger');
+        const d = await res.json();
+        OkwUI.warnIfPartial(d);
+
+        const alertEl = document.getElementById('cash-alert-banner');
+        if (d.cash_drop_alert) {
+            alertEl.style.display = 'block';
+            alertEl.textContent = `Cash drop alert: Today's sales (${fmt(d.live.today_total)}) exceeded the GH₵ ${Number(d.cash_threshold).toLocaleString()} threshold. Collect a cash drop.`;
+        }
+
+        document.getElementById('ceo-kpis').innerHTML = [
+            OkwUI.kpiCard({ label: "Today's Sales (Live)", value: fmt(d.live.today_total), subtext: (() => { const y = Number(d.live.yesterday_total) || 0, t = Number(d.live.today_total) || 0; const vs = y > 0 ? `${t >= y ? '+' : ''}${(((t - y) / y) * 100).toFixed(1)}% vs yesterday (${fmt(y)})` : 'No sales yesterday to compare'; return `${vs} · last week ${fmt(d.live.last_week_total)}`; })(), tone: 'accent' }),
+            OkwUI.kpiCard({ label: 'Owed to OKWESIWA', value: fmt(d.receivables), subtext: 'Customer receivables', tone: 'warning' }),
+            OkwUI.kpiCard({ label: 'Owed to Suppliers', value: fmt(d.payables), subtext: 'Supplier payables', tone: 'danger' }),
+            OkwUI.kpiCard({ label: 'Low Stock Items', value: String((d.controls?.low_stock_alerts || []).length), subtext: 'Need reorder review', tone: 'info' })
+        ].join('');
+
+        const targetsMap = new Map((d.targets || []).map(t => [t.branch_name.toLowerCase(), Number(t.target_amount || 0)]));
+        const branches = d.live.by_branch || [];
+        document.getElementById('branch-box').innerHTML = branches.length ? branches.map(b => {
+            const tgt = targetsMap.get(String(b.branch).toLowerCase()) || 0;
+            const pct = tgt > 0 ? Math.min(100, Math.round((Number(b.sales) / tgt) * 100)) : 0;
+            return `
+                <div style="margin-bottom:12px;">
+                    <div style="display:flex;justify-content:space-between;font-size:13px;">
+                        <strong>${OkwUI.escapeHtml(b.branch)}</strong>
+                        <span class="mono">${fmt(b.sales)} ${tgt > 0 ? '/ ' + fmt(tgt) + ` (${pct}%)` : ''}</span>
+                    </div>
+                    ${tgt > 0 ? `<div style="height:8px;background:var(--color-border);border-radius:99px;margin-top:4px;overflow:hidden;"><div style="width:${pct}%;height:100%;background:var(--color-accent);"></div></div>` : ''}
+                </div>
+            `;
+        }).join('') : '<p style="color:var(--color-text-muted);font-size:13px;">No sales recorded yet today.</p>';
+
+        const ctrl = d.controls || {};
+        document.getElementById('controls-box').innerHTML = `
+            <div style="margin-bottom:10px;"><strong>Blind Close Variances:</strong> ${(ctrl.blind_close_diffs || []).length}</div>
+            <div style="margin-bottom:10px;"><strong>Staff Flags (3+ returns/30d):</strong> ${(ctrl.staff_flags || []).map(s => `${OkwUI.escapeHtml(s.teller)} (${s.returns_count})`).join(', ') || 'None'}</div>
+            <div><strong>Recent Cash Drops:</strong> ${(d.cash_drops || []).slice(0, 3).map(c => `${OkwUI.escapeHtml(c.branch_name)} ${fmt(c.amount)}`).join(' · ') || 'None'}</div>
+        `;
+    }
+
+    document.getElementById('btn-set-target').onclick = async () => {
+        const branch_name = prompt('Branch name:', 'Main Shop') || 'Main Shop';
+        const target_amount = parseFloat(prompt('Monthly target (GH₵):', '100000') || 0);
+        if (!target_amount) return;
+        const r = await fetch('/api/ceo-live/targets', { method: 'POST', headers, body: JSON.stringify({ branch_name, target_amount }) });
+        if (r.ok) { OkwUI.toast('Target updated', 'success'); load(); }
+    };
+
+    document.getElementById('btn-cash-drop').onclick = async () => {
+        const branch_name = prompt('Branch:', 'Main Shop') || 'Main Shop';
+        const amount = parseFloat(prompt('Cash drop amount (GH₵):', '20000') || 0);
+        if (!amount) return;
+        const r = await fetch('/api/ceo-live/cash-drop', { method: 'POST', headers, body: JSON.stringify({ branch_name, amount }) });
+        if (r.ok) { OkwUI.toast('Cash drop recorded', 'success'); load(); }
+    };
+
+    load();
+    setInterval(load, 30000);
+})();
+</script>
+</body>
+</html>
+

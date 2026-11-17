@@ -3,10 +3,17 @@
   "framework": null,
   "functions": {
     "api/index.js": {
-      "includeFiles": "{*.html,*.css,*.png,*.ico,*.js,migrations/**}",
-      "maxDuration": 30
+      "includeFiles": "{*.html,*.css,*.png,*.ico,*.svg,*.js,migrations/**,db/**,middleware/**,routes/**,services/**}",
+      "maxDuration": 30,
+      "excludeFiles": "{seed.js,create_company_user.js,create_new_users.js,init_db_and_users.js,initialize_complete_database.js,setup_hardware_db.js,setup_momo.js,hash-passwords.js,clean_mock_data.js,emulator.js,test/**,scripts/**,*.md,*.txt,*.sql,.env*}"
     }
   },
+  "crons": [
+    {
+      "path": "/api/cron/nightly-backup",
+      "schedule": "0 2 * * *"
+    }
+  ],
   "rewrites": [
     {
       "source": "/(.*)",

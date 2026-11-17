@@ -3,19 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Footprint | Retail Dashboard</title>
-    <link rel="icon" type="image/png" href="logo.png">
+    <title>OKWESIWA LTD | Retail Dashboard</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
     <link rel="stylesheet" href="sidebar.css">
     <script src="currency.js"></script>
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
     <script src="auth-guard.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js" defer crossorigin="anonymous"></script>
     <style>
         /* Spinner Animation */
         @keyframes spin {
@@ -89,7 +88,6 @@
         }
         .location-selector select:focus {
             border-color: var(--primary-color);
-            box-shadow: 0 0 0 2px rgba(39, 57, 144, 0.12);
         }
 
         /* Stats Grid - Shopify Polaris Cards */
@@ -99,7 +97,6 @@
             padding: 20px 22px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
-            box-shadow: var(--shadow-card);
             display: flex;
             justify-content: space-between;
             align-items: center;
@@ -108,7 +105,6 @@
         }
         .stat-card:hover {
             border-color: #c9cccf;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
             transform: translateY(-1px);
         }
         .stat-info h3 { font-size: 24px; font-weight: 700; color: var(--text-color); margin-bottom: 3px; letter-spacing: -0.02em; }
@@ -126,7 +122,7 @@
         .icon-sales { background: rgba(245, 158, 11, 0.1); color: var(--primary-color); }
         .icon-orders { background: #f0fdf4; color: #166534; }
         .icon-products { background: #fffbeb; color: #b45309; }
-        .icon-stores { background: #f5f3ff; color: #6d28d9; }
+        .icon-stores { background: #f1f5f9; color: #475569; }
 
         /* Tables & Sections - Polaris Cards */
         .recent-section {
@@ -134,7 +130,6 @@
             padding: 20px 24px;
             border-radius: 8px;
             border: 1px solid var(--border-color);
-            box-shadow: var(--shadow-card);
         }
         .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .section-header h3 { font-size: 16px; font-weight: 600; color: var(--text-color); }
@@ -225,7 +220,6 @@
                 border: 1px solid var(--border-color);
                 border-radius: 8px;
                 margin-bottom: 12px;
-                box-shadow: var(--shadow-card);
                 background: white;
             }
             .recent-txn-table tbody tr:last-child { border-bottom: 1px solid var(--border-color); }
@@ -257,7 +251,6 @@
                 border: 1px solid var(--border-color);
                 border-radius: 8px;
                 margin-bottom: 12px;
-                box-shadow: var(--shadow-card);
                 background: white;
             }
             .cashier-table tbody tr:last-child { border-bottom: 1px solid var(--border-color); }
@@ -283,6 +276,26 @@
             }
         }
     </style>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style id="dash-face">
+        .dash-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+        .dash-head h1 { margin: 0; font-size: 26px; }
+        .dash-head p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
+        .stock-notice { background: #FFF8E6 !important; border: 1px solid #F6E3B4 !important; color: #7A4B00 !important; border-radius: 10px !important; padding: 10px 14px !important; font-size: 13px !important; margin-bottom: 16px !important; }
+        .kpi-group { margin: 0 0 16px; }
+        .kpi-group-title { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); font-family: inherit; }
+        .kpi-strip { display: grid; background: var(--sheet); border: 1px solid var(--edge); border-radius: 12px; overflow: hidden; }
+        .kpi-cell { padding: 18px 20px; border-left: 1px solid var(--edge); cursor: pointer; min-width: 0; }
+        .kpi-cell:first-child { border-left: 0; }
+        .kpi-cell:hover { background: var(--sheet-2); }
+        .kpi-label { margin: 0 0 8px; font-size: 13px; font-weight: 500; color: var(--muted); }
+        .kpi-figure { margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 600; line-height: 1.15; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+        .kpi-figure.due { color: var(--warn); }
+        .kpi-cell.lead .kpi-figure { display: inline-block; font-size: 34px; font-weight: 700; color: var(--brand); border-bottom: 3px solid var(--brick); padding-bottom: 2px; }
+        @media (max-width: 900px) { .kpi-strip { grid-template-columns: 1fr 1fr !important; } .kpi-cell { border-left: 0; border-top: 1px solid var(--edge); } .kpi-cell.lead { grid-column: 1 / -1; border-top: 0; } }
+    </style>
 </head>
 <body>
     <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
@@ -291,22 +304,9 @@
     <!-- Sidebar -->
     <div class="sidebar">
         <div class="brand">
-            <img src="logo.png" alt="Footprint">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
         </div>
         <div class="nav-links">
-            <a href="dashboard" class="nav-item active"><i class="fas fa-home"></i> Dashboard</a>
-            
-            <div class="nav-section">Sales & Finance</div>
-            <a href="sales-dashboard" class="nav-item"><i class="fas fa-chart-pie"></i> Sales</a>
-            <a href="profitability" class="nav-item"><i class="fas fa-file-invoice-dollar"></i> Profitability</a>
-            <a href="promotions" class="nav-item"><i class="fas fa-tags"></i> Promotions</a>
-
-            <div class="nav-section">Operations</div>
-            <a href="pos-register" class="nav-item"><i class="fas fa-users"></i> Staff</a>
-            <a href="credit-customers" class="nav-item"><i class="fas fa-address-book"></i> Credit</a>
-            <a href="inventory" class="nav-item"><i class="fas fa-warehouse"></i> Inventory</a>
-            <a href="reports" class="nav-item"><i class="fas fa-chart-line"></i> Reports</a>
-            <a href="settings" class="nav-item"><i class="fas fa-cog"></i> Settings</a>
         </div>
         <div class="user-profile">
             <div class="user-profile-row">
@@ -322,44 +322,84 @@
 
     <!-- Main Content -->
     <div class="main-content">
-        <header>
+        <header class="dash-head">
             <div class="header-title">
-                <h2>Dashboard Overview</h2>
-                <p>Welcome back, here's what's happening today.</p>
+                <h1>Dashboard</h1>
+                <p>Today's sales, transactions and stock at a glance.</p>
             </div>
+            <div id="dash-date-picker"></div>
         </header>
 
         <!-- Stats -->
-        <div class="stats-grid">
-            <div class="stat-card" onclick="window.location.href='sales-dashboard'">
-                <div class="stat-info">
-                    <h3 id="totalSales">--</h3>
-                    <p>Total Sales</p>
+        <div id="lowStockNotice" class="stock-notice" role="status" hidden>
+            <span id="lowStockMsg"></span>
+            <span class="stock-notice-actions">
+                <a href="/inventory">Review stock</a>
+                <button type="button" onclick="closeLowStockAlert()" aria-label="Dismiss until tomorrow or until the counts change">Dismiss</button>
+            </span>
+        </div>
+
+        <section class="kpi-group" aria-label="Sales">
+            <h2 class="kpi-group-title">Sales</h2>
+            <div class="kpi-strip" style="grid-template-columns: 1.7fr 1fr 1fr 1fr 1fr;">
+                <div class="kpi-cell lead" onclick="window.location.href='/reports?tab=overview'">
+                    <p class="kpi-label">Total sales</p>
+                    <p class="kpi-figure" id="totalSales">--</p>
                 </div>
-                <div class="stat-icon icon-sales"><i class="fas fa-coins"></i></div>
+                <div class="kpi-cell" onclick="window.location.href='/reports?tab=overview'">
+                    <p class="kpi-label">Net sales</p>
+                    <p class="kpi-figure" id="netSales">--</p>
+                </div>
+                <div class="kpi-cell" onclick="window.location.href='/stock?tab=returns'">
+                    <p class="kpi-label">Sale returns</p>
+                    <p class="kpi-figure" id="totalSellReturn">--</p>
+                </div>
+                <div class="kpi-cell" onclick="window.location.href='/customers?tab=clients'">
+                    <p class="kpi-label">Invoices due</p>
+                    <p class="kpi-figure due" id="invoiceDue">--</p>
+                </div>
+                <div class="kpi-cell" onclick="window.location.href='/sales?tab=all'">
+                    <p class="kpi-label">Transactions</p>
+                    <p class="kpi-figure" id="totalTxns">--</p>
+                </div>
             </div>
-            <div class="stat-card" onclick="window.location.href='reports?tab=transactions'">
-                <div class="stat-info">
-                    <h3 id="totalTxns">0</h3>
-                    <p>Transactions</p>
+        </section>
+
+        <section class="kpi-group" aria-label="Purchasing and costs">
+            <h2 class="kpi-group-title">Purchasing and costs</h2>
+            <div class="kpi-strip" style="grid-template-columns: repeat(4, 1fr);">
+                <div class="kpi-cell" onclick="window.location.href='/stock?tab=orders'">
+                    <p class="kpi-label">Purchases</p>
+                    <p class="kpi-figure" id="totalPurchase">--</p>
                 </div>
-                <div class="stat-icon icon-orders"><i class="fas fa-shopping-bag"></i></div>
+                <div class="kpi-cell" onclick="window.location.href='/stock?tab=suppliers'">
+                    <p class="kpi-label">Owed to suppliers</p>
+                    <p class="kpi-figure due" id="purchaseDue">--</p>
+                </div>
+                <div class="kpi-cell" onclick="window.location.href='/stock?tab=orders'">
+                    <p class="kpi-label">Purchase returns</p>
+                    <p class="kpi-figure" id="totalPurchaseReturn">--</p>
+                </div>
+                <div class="kpi-cell" onclick="window.location.href='/money?tab=expenses-list'">
+                    <p class="kpi-label">Expenses</p>
+                    <p class="kpi-figure" id="totalExpense">--</p>
+                </div>
             </div>
-            <div class="stat-card" onclick="window.location.href='inventory?tab=stock&lowStock=true'">
-                <div class="stat-info">
-                    <h3 id="lowStock">0</h3>
-                    <p>Low Stock Items</p>
-                </div>
-                <div class="stat-icon icon-products"><i class="fas fa-exclamation-triangle"></i></div>
+        </section>
+
+        <!-- Analytics Charts (Bar, Doughnut, Pie) -->
+        <div class="charts-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;">
+            <div class="okw-card" style="padding:16px;">
+                <h3 style="margin:0 0 12px;font-size:15px;">Financial Overview</h3>
+                <div style="height:230px;position:relative;"><canvas id="dashBarChart"></canvas></div>
             </div>
-            <div class="stat-card" onclick="window.location.href='inventory?tab=stock&outOfStock=true'">
-                <div class="stat-info">
-                    <h3 id="outOfStock" style="color: #c62828;">0</h3>
-                    <p>Out of Stock Items</p>
-                </div>
-                <div class="stat-icon" style="background: rgba(198, 40, 40, 0.1); color: #c62828;">
-                    <i class="fas fa-ban"></i>
-                </div>
+            <div class="okw-card" style="padding:16px;">
+                <h3 style="margin:0 0 12px;font-size:15px;">Payment Methods</h3>
+                <div style="height:230px;position:relative;"><canvas id="dashDoughnutChart"></canvas></div>
+            </div>
+            <div class="okw-card" style="padding:16px;">
+                <h3 style="margin:0 0 12px;font-size:15px;">Sales by Category</h3>
+                <div style="height:230px;position:relative;"><canvas id="dashPieChart"></canvas></div>
             </div>
         </div>
 
@@ -375,7 +415,7 @@
                         <th>ID</th>
                         <th>Location</th>
                         <th>Customer</th>
-                        <th>Amount</th>
+                        <th class="numeric">Amount</th>
                         <th>Status</th>
                         <th>Time</th>
                     </tr>
@@ -409,7 +449,7 @@
     </div>
 
     <footer>
-        <span>&copy; 2026 Footprint</span>
+        <span>&copy; 2026 OKWESIWA LTD</span>
         <span>&bull;</span>
         <a href="#">Support</a>
     </footer>
@@ -422,16 +462,6 @@
 
     <!-- Error Message -->
     <div id="errorMessage" class="message error" style="display: none; margin: 20px;"></div>
-
-    <!-- Low Stock Alert Modal -->
-    <div id="lowStockModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center;">
-        <div style="background: white; padding: 30px; border-radius: 12px; width: 400px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); animation: popIn 0.3s ease;">
-            <div style="font-size: 48px; color: #f39c12; margin-bottom: 20px;"><i class="fas fa-exclamation-triangle"></i></div>
-            <h3 style="margin-bottom: 10px; color: #333; font-size: 20px;">Low Stock Alert</h3>
-            <p id="lowStockMsg" style="color: #666; margin-bottom: 25px; font-size: 14px;">Warning: There are <strong id="alertLowStockCount" style="color: #c62828;">0</strong> items running low on stock.</p>
-            <button onclick="closeLowStockAlert()" style="background: var(--primary-color); color: white; border: none; padding: 12px 30px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; transition: 0.2s;">Close & Continue</button>
-        </div>
-    </div>
 
     <script>
         function toggleSidebar() {
@@ -486,17 +516,17 @@
 
         function initDashboard(user) {
             const userRole = user.role ? user.role.toLowerCase() : '';
-            // Verify admin or manager role
-            if (userRole !== 'admin' && userRole !== 'manager') {
-                if (userRole === 'cashier' || userRole === 'teller') {                    checkShiftAndRedirect();                } else {
+            // Verify leadership/manager role
+            if (!['super_admin', 'ceo', 'admin', 'manager', 'store_manager'].includes(userRole)) {
+                if (userRole === 'cashier' || userRole === 'teller') { checkShiftAndRedirect(); } else {
                     window.location.href = '/login';
                 }
                 return;
             }
 
             // Update UI with user info
-            document.getElementById('userName').textContent = user.name || (user.role === 'manager' ? 'Manager' : 'Admin');
-            const roleLabel = user.role === 'manager' ? 'Store Manager' : 'Administrator';
+            document.getElementById('userName').textContent = user.name || (userRole === 'manager' || userRole === 'store_manager' ? 'Manager' : (userRole === 'super_admin' ? 'Super Profile' : (userRole === 'ceo' ? 'CEO' : 'Admin')));
+            const roleLabel = userRole === 'super_admin' ? 'Super Profile' : (userRole === 'ceo' ? 'CEO' : (userRole === 'manager' || userRole === 'store_manager' ? 'Store Manager' : 'Administrator'));
             const branchLabel = user.store_location ? ` · ${user.store_location}` : '';
             document.getElementById('userRole').textContent = roleLabel + branchLabel;
             
@@ -525,6 +555,17 @@
             }
         }
 
+        let dashDateRange = { from: new Date().toISOString().slice(0, 8) + '01', to: new Date().toISOString().slice(0, 10) };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.OkwUI && typeof OkwUI.dateRangePicker === 'function') {
+                OkwUI.dateRangePicker('#dash-date-picker', (range) => {
+                    dashDateRange = range;
+                    loadDashboardData();
+                });
+            }
+        });
+
         async function loadDashboardData() {
             const loadingIndicator = document.getElementById('loadingIndicator');
             const errorMessage = document.getElementById('errorMessage');
@@ -536,26 +577,136 @@
                 const token = localStorage.getItem('authToken');
                 if (!token) return;
                 
-                const response = await fetch('/api/dashboard', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
+                const qs = new URLSearchParams({ from: dashDateRange.from || '', to: dashDateRange.to || '' }).toString();
+                const [response, repResponse] = await Promise.all([
+                    fetch(`/api/dashboard?${qs}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }),
+                    fetch(`/api/reports/all?${qs}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    }).catch(() => null)
+                ]);
                 
                 if (!response.ok) {
                     throw new Error('Failed to load dashboard data');
                 }
                 
                 const data = await response.json();
+                const repData = repResponse && repResponse.ok ? await repResponse.json().catch(() => ({})) : {};
+                if (window.OkwUI && OkwUI.warnIfPartial) OkwUI.warnIfPartial(repData);
                 updateDashboardUI(data);
+                renderDashboardCharts(data.stats || {}, repData);
                 
             } catch (error) {
                 console.error('Error loading dashboard:', error);
-                errorMessage.textContent = 'Failed to load dashboard data. Please try again.';
+                // A failed load must not look like a quiet day: show dashes, not zeros, and put the error where it is seen.
+                ['totalSales', 'invoiceDue', 'netSales', 'totalSellReturn', 'totalPurchase', 'purchaseDue', 'totalPurchaseReturn', 'totalExpense'].forEach((id) => { const el = document.getElementById(id); if (el) el.textContent = '--'; });
+                const cs = document.getElementById('cashierStatsBody'); if (cs) cs.innerHTML = '<tr><td colspan="3">Could not load cashier sales.</td></tr>';
+                const rt = document.querySelector('.recent-txn-table tbody, #recentTxnBody'); if (rt) rt.innerHTML = '<tr><td colspan="6">Could not load transactions.</td></tr>';
+                errorMessage.setAttribute('role', 'alert');
+                errorMessage.innerHTML = 'Could not load dashboard figures. <button type="button" onclick="loadDashboardData()" style="margin-left:8px;font:inherit;text-decoration:underline;background:none;border:0;cursor:pointer;color:inherit;">Try again</button>';
                 errorMessage.style.display = 'block';
+                const mc = document.querySelector('.main-content'); if (mc && errorMessage.parentNode !== mc) mc.insertBefore(errorMessage, mc.querySelector('.stats-grid') || mc.firstChild);
             } finally {
                 loadingIndicator.style.display = 'none';
+            }
+        }
+
+        let dashBarInst = null;
+        let dashDoughnutInst = null;
+        let dashPieInst = null;
+
+        function renderDashboardCharts(stats, repData) {
+            if (typeof Chart === 'undefined') {
+                setTimeout(() => renderDashboardCharts(stats, repData), 150);
+                return;
+            }
+            const palette = ['#273990', '#4B5BB0', '#7C8BD0', '#A9B3E0', '#CBD1EE', '#E4E7F6'];
+            const methodColors = { Cash: '#273990', MoMo: '#F9A51A', Card: '#7C8BD0', Bank: '#9AA3B2', Credit: '#B4531A' };
+
+            // 1. Financial Overview Bar Chart
+            const barCtx = document.getElementById('dashBarChart');
+            if (barCtx) {
+                if (dashBarInst) dashBarInst.destroy();
+                dashBarInst = new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Total Sales', 'Net', 'Purchase', 'Expense', 'Invoice Due'],
+                        datasets: [{
+                            label: 'Amount (GH₵)',
+                            data: [
+                                Number(stats.totalSales || 0),
+                                Number(stats.netSales ?? stats.totalSales ?? 0),
+                                Number(stats.totalPurchase || 0),
+                                Number(stats.totalExpense || 0),
+                                Number(stats.invoiceDue || 0)
+                            ],
+                            backgroundColor: ['#273990', '#4B5BB0', '#9AA3B2', '#B4531A', '#F9A51A'],
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
+                        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#E3E7F1' }, border: { display: false } } }
+                    }
+                });
+            }
+
+            // 2. Payment Methods Doughnut Chart
+            const dCtx = document.getElementById('dashDoughnutChart');
+            if (dCtx) {
+                if (dashDoughnutInst) dashDoughnutInst.destroy();
+                const pmRows = Array.isArray(repData.salesByPaymentMethod) ? repData.salesByPaymentMethod : [];
+                const totals = { Cash: 0, MoMo: 0, Card: 0, Bank: 0, Credit: 0 };
+                for (const r of pmRows) {
+                    totals.Cash += Number(r.cash || 0);
+                    totals.MoMo += Number(r.momo || 0);
+                    totals.Card += Number(r.card || 0);
+                    totals.Bank += Number(r.bank || 0);
+                    totals.Credit += Number(r.credit || 0);
+                }
+                const entries = Object.entries(totals).filter(([, v]) => v > 0);
+                const labels = entries.length ? entries.map(([k]) => k) : ['No Payments'];
+                const values = entries.length ? entries.map(([, v]) => Number(v.toFixed(2))) : [1];
+                const colors = entries.length ? entries.map(([k]) => methodColors[k]) : ['#E3E7F1'];
+
+                dashDoughnutInst = new Chart(dCtx, {
+                    type: 'doughnut',
+                    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '62%',
+                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+                    }
+                });
+            }
+
+            // 3. Sales by Category Pie Chart
+            const pCtx = document.getElementById('dashPieChart');
+            if (pCtx) {
+                if (dashPieInst) dashPieInst.destroy();
+                const catRows = (Array.isArray(repData.salesByCategory) ? repData.salesByCategory : [])
+                    .filter(c => Number(c.revenue || 0) > 0)
+                    .slice(0, 6);
+                const labels = catRows.length ? catRows.map(c => c.category || 'General') : ['No Sales Data'];
+                const values = catRows.length ? catRows.map(c => Number(Number(c.revenue || 0).toFixed(2))) : [1];
+                const colors = catRows.length ? palette.slice(0, catRows.length) : ['#e2e8f0'];
+
+                dashPieInst = new Chart(pCtx, {
+                    type: 'pie',
+                    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
+                    }
+                });
             }
         }
 
@@ -567,17 +718,42 @@
                 document.querySelector('.header-title p').textContent = `Overview for: ${branch}`;
             }
             // Update stats cards
-            document.getElementById('totalSales').textContent = formatCurrency(stats.totalSales || 0);
-            document.getElementById('totalTxns').textContent = stats.totalTransactions;
-            document.getElementById('lowStock').textContent = stats.lowStockCount;
-            document.getElementById('outOfStock').textContent = stats.outOfStockCount || 0;
+            const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            setEl('totalSales', formatCurrency(stats.totalSales || 0));
+            setEl('invoiceDue', formatCurrency(stats.invoiceDue || 0));
+            setEl('netSales', formatCurrency(stats.netSales ?? stats.totalSales ?? 0));
+            setEl('totalSellReturn', formatCurrency(stats.totalSellReturn || 0));
+            setEl('totalPurchase', formatCurrency(stats.totalPurchase || 0));
+            setEl('purchaseDue', formatCurrency(stats.purchaseDue || 0));
+            setEl('totalPurchaseReturn', formatCurrency(stats.totalPurchaseReturn || 0));
+            setEl('totalExpense', formatCurrency(stats.totalExpense || 0));
+            setEl('totalTxns', stats.totalTransactions || 0);
+            setEl('lowStock', stats.lowStockCount || 0);
+            setEl('outOfStock', stats.outOfStockCount || 0);
 
-            // Show Low Stock / Out of Stock Alert if needed and not dismissed
-            const totalAlert = stats.lowStockCount + (stats.outOfStockCount || 0);
-            if (totalAlert > 0 && !localStorage.getItem('lowStockAlertDismissed')) {
-                const msg = `Warning: There are <strong style="color: #c62828;">${stats.outOfStockCount || 0}</strong> empty items and <strong style="color: #f57f17;">${stats.lowStockCount}</strong> low items.`;
-                document.getElementById('lowStockMsg').innerHTML = msg;
-                document.getElementById('lowStockModal').style.display = 'flex';
+            // Low / out-of-stock notice. A dismissal covers today's counts only: it comes back tomorrow,
+            // or as soon as either count goes up.
+            const outCount = Number(stats.outOfStockCount || 0);
+            const lowCount = Number(stats.lowStockCount || 0);
+            window.__stockCounts = { out: outCount, low: lowCount };
+            let dismissed = null;
+            try { dismissed = JSON.parse(localStorage.getItem('lowStockAlertDismissed') || 'null'); } catch (e) { dismissed = null; }
+            const today = new Date().toISOString().slice(0, 10);
+            const stillDismissed = dismissed && dismissed.day === today && outCount <= dismissed.out && lowCount <= dismissed.low;
+            const notice = document.getElementById('lowStockNotice');
+            if (notice && (outCount + lowCount) > 0 && !stillDismissed) {
+                document.getElementById('lowStockMsg').innerHTML =
+                    `<strong>${outCount}</strong> ${outCount === 1 ? 'item is' : 'items are'} out of stock and <strong>${lowCount}</strong> ${lowCount === 1 ? 'item is' : 'items are'} running low.`;
+                const reviewLink = notice.querySelector('a');
+                if (reviewLink) {
+                    const params = new URLSearchParams({ tab: 'stock' });
+                    if (lowCount > 0) params.set('lowStock', 'true');
+                    if (outCount > 0) params.set('outOfStock', 'true');
+                    reviewLink.href = '/inventory?' + params.toString();
+                }
+                notice.hidden = false;
+            } else if (notice) {
+                notice.hidden = true;
             }
 
             // Update cashier stats
@@ -585,7 +761,7 @@
             if (cashierStats && cashierStats.length > 0) {
                 cashierBody.innerHTML = cashierStats.map(cashier => `
                     <tr>
-                        <td data-label="Cashier">${cashier.cashier || 'Unknown'}</td>
+                        <td data-label="Cashier">${OkwUI.escapeHtml(cashier.cashier || 'Unknown')}</td>
                         <td data-label="Transactions">${cashier.transaction_count || 0}</td>
                         <td data-label="Total Sales">${formatCurrency(cashier.total_sales || 0)}</td>
                     </tr>
@@ -604,8 +780,8 @@
                     return `
                         <tr>
                             <td data-label="ID">#${(txn.receipt_number || txn.id || '---').toString().slice(-6)}</td>
-                            <td data-label="Location">${txn.store_location || 'N/A'}</td>
-                            <td data-label="Customer">${txn.customer_name || 'Walk-in Customer'}</td>
+                            <td data-label="Location">${OkwUI.escapeHtml(txn.store_location || 'N/A')}</td>
+                            <td data-label="Customer">${OkwUI.escapeHtml(txn.customer_name || 'Walk-in Customer')}</td>
                             <td data-label="Amount">${formatCurrency(txn.total_amount || 0)}</td>
                             <td data-label="Status"><span class="status ${txn.status || 'completed'}">${txn.status || 'Completed'}</span></td>
                             <td data-label="Time">${timeStr}</td>
@@ -618,8 +794,10 @@
         }
 
         function closeLowStockAlert() {
-            document.getElementById('lowStockModal').style.display = 'none';
-            localStorage.setItem('lowStockAlertDismissed', 'true');
+            const n = document.getElementById('lowStockNotice');
+            if (n) n.hidden = true;
+            const c = window.__stockCounts || { out: 0, low: 0 };
+            try { localStorage.setItem('lowStockAlertDismissed', JSON.stringify({ day: new Date().toISOString().slice(0, 10), out: c.out, low: c.low })); } catch (e) {}
         }
 
         // Logout function
@@ -654,7 +832,7 @@
 <!-- ================== GLOBAL UX FIXES ================== -->
 <style>
 #custom-toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
+.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
 .custom-toast.show { opacity: 1; transform: translateY(0); }
 .custom-toast.error { background: #e74c3c; border-left: 4px solid #c0392b; }
 .custom-toast.success { background: #27ae60; border-left: 4px solid #2ecc71; }

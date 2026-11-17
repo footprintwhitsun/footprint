@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Close - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <style>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { padding: 24px; max-width: 1400px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        .sheet-box { margin-bottom: 24px; }
+        .sig-row { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; margin-top: 28px; }
+        .sig-line { border-top: 1px solid var(--color-border-strong); padding-top: 6px; font-size: 13px; color: var(--color-text-muted); }
+        @media print {
+            .sidebar, .okw-topbar, .no-print { display: none !important; }
+            .main-content { margin-left: 0 !important; }
+            .page-wrap { padding: 0; max-width: 100%; }
+            .sheet-box { page-break-after: always; border: none !important; box-shadow: none !important; }
+        }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style id="close-face">
+        #sales-totals-box { background: var(--sheet-2) !important; border-radius: 12px !important; padding: 20px !important; display: grid !important; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 18px 24px !important; }
+        #sales-totals-box > div > div:first-child { text-transform: none !important; font-size: 13px !important; color: var(--muted) !important; margin-bottom: 4px; }
+        #sales-totals-box .mono { font-family: var(--font-display) !important; font-size: 20px !important; font-weight: 600 !important; font-variant-numeric: tabular-nums; }
+        #sales-totals-box > div:first-child .mono, #sales-totals-box > div:last-child .mono { color: var(--brand); font-size: 24px !important; white-space: nowrap; }
+    </style>
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
+            <span class="sidebar-role-badge">Daily Close</span>
+        </div>
+        <nav class="nav-links">
+            <div class="nav-section">Operations</div>
+            <a href="/dashboard"><span>Dashboard</span></a>
+            <a href="/pos"><span>POS Till</span></a>
+            <a href="/daily-close" class="active"><span>Daily Close</span></a>
+            <a href="/reports?tab=drilldown"><span>Core Reports</span></a>
+            <a href="/transactions"><span>Transactions</span></a>
+        </nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap">
+            <div class="no-print" style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:18px;">
+                <div>
+                    <h1 style="margin:0;font-size:24px;">Daily Close (A4 Sheets)</h1>
+                    <p style="margin:4px 0 0;color:var(--color-text-muted);font-size:14px;">Close each day with a printable Inventory Sheet and Sales Sheet, or reprint any past date.</p>
+                </div>
+                <div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                    <input type="date" id="dc-date" class="okw-input">
+                    <select id="dc-branch" class="okw-select"><option value="All Branches">All Branches</option></select>
+                    <input type="number" id="dc-counted-cash" class="okw-input" placeholder="Counted Cash (GH₵)" step="0.01" style="width:170px;">
+                    <button type="button" class="okw-btn okw-btn-accent" id="btn-close-day">Close Day</button>
+                    <button type="button" class="okw-btn okw-btn-outline" onclick="window.print()">Print A4 / PDF</button>
+                    <button type="button" class="okw-btn okw-btn-outline" id="btn-email-ceo">Email CEO</button>
+                </div>
+            </div>
+
+            <!-- Sheet 1: Inventory Sheet -->
+            <div class="okw-card sheet-box">
+                <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;">
+                    <div>
+                        <h2 style="margin:0;font-size:18px;">1. Inventory Sheet (Items Left)</h2>
+                        <div id="inv-sheet-meta" style="font-size:12px;color:var(--color-text-muted);"></div>
+                    </div>
+                    <div class="no-print" style="display:flex;gap:8px;align-items:center;">
+                        <select id="inv-filter" class="okw-select">
+                            <option value="all">Show: Everything</option>
+                            <option value="moved">Show: Moved Today</option>
+                            <option value="low">Show: Low Stock Only</option>
+                        </select>
+                        <button type="button" class="okw-btn okw-btn-primary" id="btn-apply-counts">Apply Physical Counts</button>
+                        <button type="button" class="okw-btn okw-btn-outline" id="btn-export-inv">Export Excel</button>
+                    </div>
+                </div>
+                <div class="table-card">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr>
+                                <th>Item, Brand, Unit</th>
+                                <th class="numeric">Opening</th>
+                                <th class="numeric">Received</th>
+                                <th class="numeric">Sold</th>
+                                <th class="numeric">Ret / Adj</th>
+                                <th class="numeric">Closing</th>
+                                <th class="numeric">Physical Count</th>
+                                <th class="numeric">Diff</th>
+                                <th class="numeric">Value at Cost (GH₵)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inv-sheet-body"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Sheet 2: Sales Sheet -->
+            <div class="okw-card sheet-box">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                    <div>
+                        <h2 style="margin:0;font-size:18px;">2. Sales Sheet (Items Sold Today)</h2>
+                        <div id="sales-sheet-meta" style="font-size:12px;color:var(--color-text-muted);"></div>
+                    </div>
+                    <button type="button" class="okw-btn okw-btn-outline no-print" id="btn-export-sales">Export Excel</button>
+                </div>
+
+                <h4 style="margin:10px 0 8px;">Part 1: Items Sold (Grouped by Brand)</h4>
+                <div class="table-card" style="margin-bottom:16px;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr>
+                                <th>Brand</th>
+                                <th>Item</th>
+                                <th>Unit</th>
+                                <th class="numeric">Qty</th>
+                                <th class="numeric">Avg Price</th>
+                                <th class="numeric">Total</th>
+                                <th class="numeric">Discount</th>
+                                <th class="numeric">Cost</th>
+                                <th class="numeric">Profit</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sales-items-body"></tbody>
+                    </table>
+                </div>
+
+                <h4 style="margin:10px 0 8px;">Part 2: Receipts</h4>
+                <div class="table-card" style="margin-bottom:16px;">
+                    <table style="width:100%;border-collapse:collapse;">
+                        <thead>
+                            <tr>
+                                <th>Receipt #</th>
+                                <th>Time</th>
+                                <th>Teller</th>
+                                <th>Customer</th>
+                                <th>Method</th>
+                                <th class="numeric">Amount (GH₵)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sales-receipts-body"></tbody>
+                    </table>
+                </div>
+
+                <div id="sales-totals-box" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;padding:12px;background:var(--color-surface-muted);border-radius:var(--radius-sm);"></div>
+
+                <div class="sig-row">
+                    <div class="sig-line">Teller Signature & Date</div>
+                    <div class="sig-line">Manager Signature & Date</div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+(function () {
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const fmt = (n) => Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const dateIn = document.getElementById('dc-date');
+    dateIn.value = new Date().toISOString().slice(0, 10);
+    let currentData = null;
+
+    async function loadBranches() {
+        try {
+            const res = await fetch('/api/branches', { headers });
+            if (!res.ok) return;
+            const d = await res.json();
+            const list = Array.isArray(d) ? d : (d.branches || []);
+            const sel = document.getElementById('dc-branch');
+            list.forEach(b => {
+                const name = b.name || b.branch_name;
+                if (name) sel.insertAdjacentHTML('beforeend', `<option value="${OkwUI.escapeHtml(name)}">${OkwUI.escapeHtml(name)}</option>`);
+            });
+        } catch (e) {}
+    }
+
+    async function loadDailyClose() {
+        const date = dateIn.value;
+        const branch = document.getElementById('dc-branch').value;
+        const res = await fetch(`/api/daily-close?date=${encodeURIComponent(date)}&branch=${encodeURIComponent(branch)}`, { headers });
+        if (!res.ok) return OkwUI.toast('Failed to load daily close data', 'danger');
+        currentData = await res.json();
+        document.getElementById('inv-sheet-meta').textContent = `OKWESIWA LTD · ${currentData.branch || 'All branches'} · ${currentData.date}`;
+        document.getElementById('sales-sheet-meta').textContent = `OKWESIWA LTD · ${currentData.branch || 'All branches'} · ${currentData.date}`;
+        renderInventorySheet();
+        renderSalesSheet();
+    }
+
+    function renderInventorySheet() {
+        if (!currentData) return;
+        const filter = document.getElementById('inv-filter').value;
+        let rows = currentData.inventorySheet || [];
+        if (filter === 'moved') rows = rows.filter(r => r.moved_today);
+        if (filter === 'low') rows = rows.filter(r => r.low_stock);
+
+        const body = document.getElementById('inv-sheet-body');
+        body.innerHTML = rows.length ? rows.map((r, idx) => `
+            <tr>
+                <td><strong>${OkwUI.escapeHtml(r.name)}</strong><small>${OkwUI.escapeHtml(r.brand)} · ${OkwUI.escapeHtml(r.category)} · ${OkwUI.escapeHtml(r.unit)}</small></td>
+                <td class="numeric">${r.opening_stock}</td>
+                <td class="numeric">${r.received_today}</td>
+                <td class="numeric">${r.sold_today}</td>
+                <td class="numeric">${r.returned_or_adjusted}</td>
+                <td class="numeric"><strong>${r.closing_stock}</strong></td>
+                <td class="numeric"><input type="number" step="any" class="okw-input" data-phys="${OkwUI.escapeHtml(r.barcode)}" data-closing="${r.closing_stock}" data-diff-idx="${idx}" style="width:90px;text-align:right;padding:4px 6px;"></td>
+                <td class="numeric" id="diff-${idx}">—</td>
+                <td class="numeric">${fmt(r.value_at_cost)}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--color-text-muted);">No items match filter.</td></tr>';
+
+        body.querySelectorAll('[data-phys]').forEach(inp => {
+            inp.oninput = () => {
+                const diffEl = document.getElementById(`diff-${inp.dataset.diffIdx}`);
+                if (inp.value === '') { diffEl.textContent = '—'; return; }
+                const diff = (parseFloat(inp.value) - parseFloat(inp.dataset.closing)).toFixed(2);
+                diffEl.textContent = diff;
+                diffEl.style.color = Number(diff) < 0 ? 'var(--color-danger)' : 'var(--color-success)';
+            };
+        });
+    }
+
+    function renderSalesSheet() {
+        if (!currentData) return;
+        const items = [...(currentData.salesSheetItems || [])].sort((a, b) => a.brand.localeCompare(b.brand));
+        document.getElementById('sales-items-body').innerHTML = items.length ? items.map(it => `
+            <tr>
+                <td>${OkwUI.escapeHtml(it.brand)}</td>
+                <td><strong>${OkwUI.escapeHtml(it.name)}</strong></td>
+                <td>${OkwUI.escapeHtml(it.unit)}</td>
+                <td class="numeric">${it.qty}</td>
+                <td class="numeric">${fmt(it.avg_price)}</td>
+                <td class="numeric">${fmt(it.total)}</td>
+                <td class="numeric">${fmt(it.discount)}</td>
+                <td class="numeric">${fmt(it.cost)}</td>
+                <td class="numeric"><strong>${fmt(it.profit)}</strong></td>
+            </tr>
+        `).join('') : '<tr><td colspan="9" style="text-align:center;color:var(--color-text-muted);">No items sold on this date.</td></tr>';
+
+        const recs = currentData.receipts || [];
+        document.getElementById('sales-receipts-body').innerHTML = recs.length ? recs.map(r => `
+            <tr>
+                <td class="mono">${OkwUI.escapeHtml(r.receipt_number)}</td>
+                <td>${new Date(r.time).toLocaleTimeString()}</td>
+                <td>${OkwUI.escapeHtml(r.teller)}</td>
+                <td>${OkwUI.escapeHtml(r.customer)}</td>
+                <td>${OkwUI.badge(r.payment_method, r.is_return ? 'danger' : 'info')}</td>
+                <td class="numeric">${fmt(r.total_amount)}</td>
+            </tr>
+        `).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--color-text-muted);">No receipts on this date.</td></tr>';
+
+        const t = currentData.totals || {};
+        const m = t.by_method || {};
+        document.getElementById('sales-totals-box').innerHTML = [
+            ['Total Sales', fmt(t.total_sales)],
+            ['Total Profit', fmt(t.total_profit)],
+            ['Cash', fmt(m.cash)],
+            ['Mobile Money', fmt(m.momo)],
+            ['Card', fmt(m.card)],
+            ['Bank / Cheque', fmt(m.bank)],
+            ['Credit Given', fmt(t.credit_sales_given)],
+            ['Credit Payments Recv', fmt(t.credit_payments_received)],
+            ['Returns', fmt(t.returns)],
+            ['Discounts', fmt(t.discounts)],
+            ['Expenses Paid Out', fmt(t.expenses_paid_out)],
+            ['Expected Cash', fmt(t.expected_cash)]
+        ].map(([k, v]) => `<div><div style="font-size:11px;color:var(--color-text-muted);text-transform:uppercase;">${k}</div><div class="mono" style="font-size:16px;font-weight:700;">GH₵ ${v}</div></div>`).join('');
+    }
+
+    document.getElementById('inv-filter').onchange = renderInventorySheet;
+    dateIn.onchange = loadDailyClose;
+    document.getElementById('dc-branch').onchange = loadDailyClose;
+
+    document.getElementById('btn-close-day').onclick = async () => {
+        const counted = parseFloat(document.getElementById('dc-counted-cash').value || 0);
+        const res = await fetch('/api/daily-close/close', {
+            method: 'POST', headers,
+            body: JSON.stringify({ date: dateIn.value, branch: document.getElementById('dc-branch').value, counted_cash: counted })
+        });
+        const d = await res.json().catch(() => ({}));
+        if (res.ok) OkwUI.toast(`Day closed. Cash difference: GH₵ ${fmt(d.close_record?.cash_difference)}`, 'success');
+        else OkwUI.toast(d.message || 'Close day failed', 'danger');
+    };
+
+    document.getElementById('btn-apply-counts').onclick = async () => {
+        const counts = Array.from(document.querySelectorAll('[data-phys]'))
+            .filter(inp => inp.value !== '')
+            .map(inp => ({ barcode: inp.dataset.phys, physical_count: inp.value, closing_stock: inp.dataset.closing }));
+        if (!counts.length) return OkwUI.toast('Enter at least one physical count first', 'warning');
+        const res = await fetch('/api/daily-close/submit-counts', { method: 'POST', headers, body: JSON.stringify({ counts }) });
+        const d = await res.json().catch(() => ({}));
+        if (res.ok) { OkwUI.toast(`Applied ${d.adjusted} stock adjustments`, 'success'); loadDailyClose(); }
+        else OkwUI.toast(d.message || 'Failed to apply counts', 'danger');
+    };
+
+    document.getElementById('btn-email-ceo').onclick = async () => {
+        const res = await fetch('/api/daily-close/email-ceo', {
+            method: 'POST', headers, body: JSON.stringify({ date: dateIn.value, branch: document.getElementById('dc-branch').value })
+        });
+        const d = await res.json().catch(() => ({}));
+        OkwUI.toast(d.message || 'Email request processed', res.ok ? 'success' : 'warning');
+    };
+
+    document.getElementById('btn-export-inv').onclick = () => {
+        if (!currentData) return;
+        OkwUI.exportRowsToExcel([
+            { key: 'name', label: 'Item' }, { key: 'brand', label: 'Brand' }, { key: 'unit', label: 'Unit' },
+            { key: 'opening_stock', label: 'Opening' }, { key: 'received_today', label: 'Received' },
+            { key: 'sold_today', label: 'Sold' }, { key: 'returned_or_adjusted', label: 'Ret/Adj' },
+            { key: 'closing_stock', label: 'Closing' }, { key: 'value_at_cost', label: 'Value at Cost' }
+        ], currentData.inventorySheet, `okwesiwa-inventory-sheet-${dateIn.value}.xlsx`);
+    };
+
+    document.getElementById('btn-export-sales').onclick = () => {
+        if (!currentData) return;
+        OkwUI.exportRowsToExcel([
+            { key: 'brand', label: 'Brand' }, { key: 'name', label: 'Item' }, { key: 'unit', label: 'Unit' },
+            { key: 'qty', label: 'Qty' }, { key: 'avg_price', label: 'Avg Price' },
+            { key: 'total', label: 'Total' }, { key: 'cost', label: 'Cost' }, { key: 'profit', label: 'Profit' }
+        ], currentData.salesSheetItems, `okwesiwa-sales-sheet-${dateIn.value}.xlsx`);
+    };
+
+    loadBranches();
+    loadDailyClose();
+})();
+</script>
+</body>
+</html>
+

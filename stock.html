@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock - OKWESIWA LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <style>
+        .app-shell { display: flex; min-height: 100vh; }
+        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
+        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
+        .page-wrap { flex: 1; padding: 24px; max-width: 1360px; width: 100%; margin: 0 auto; box-sizing: border-box; }
+        @media (max-width: 900px) { .main-content { margin-left: 0; } }
+    </style>
+    <link rel="stylesheet" href="/portal-skin.css">
+</head>
+<body>
+<div class="app-shell">
+    <aside class="sidebar">
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD"></div>
+        <nav class="nav-links"></nav>
+    </aside>
+
+    <main class="main-content">
+        <div class="page-wrap" id="hub"></div>
+        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA LTD</footer>
+    </main>
+</div>
+
+<script>
+(function () {
+    if (new URLSearchParams(window.location.search).get('tab') === 'analytics') {
+        window.location.replace('/reports?tab=overview');
+        return;
+    }
+    // Each section shows the existing, working page for that job inside the hub.
+    // The server also refuses these pages to anyone without the right role.
+    OkwUI.sectionPage({
+        mount: '#hub',
+        title: 'Stock',
+        subtitle: 'Stock, purchasing, stock movement and the product catalog.',
+        defaultId: 'stock',
+        sections: [
+            { id: 'stock', label: 'Stock items', group: 'Stock', embed: '/inventory?tab=stock' },
+            { id: 'shelf', label: 'Batch and lot tracking', group: 'Stock', embed: '/inventory?tab=shelf' },
+            { id: 'stocktaking', label: 'Stock taking', group: 'Stock', embed: '/inventory?tab=stocktaking' },
+            { id: 'barcodes', label: 'Barcode generator', group: 'Stock', embed: '/inventory?tab=barcodes' },
+            { id: 'negative', label: 'Negative stock', group: 'Stock', embed: '/negative-stock' },
+            { id: 'orders', label: 'Purchase orders', group: 'Purchasing', embed: '/inventory?tab=orders' },
+            { id: 'receiving', label: 'Goods receiving', group: 'Purchasing', embed: '/inventory?tab=receiving' },
+            { id: 'suppliers', label: 'Suppliers', group: 'Purchasing', embed: '/inventory?tab=suppliers' },
+            { id: 'distribution', label: 'Distribution', group: 'Movement', embed: '/inventory?tab=distribution' },
+            { id: 'adj-list', label: 'Stock adjustments', group: 'Movement', embed: '/stock-adjustments?tab=list' },
+            { id: 'adj-add', label: 'Add stock adjustment', group: 'Movement', embed: '/stock-adjustments?tab=add' },
+            { id: 'adj-bulk', label: 'Bulk adjustment', group: 'Movement', embed: '/stock-adjustments?tab=bulk' },
+            { id: 'tr-list', label: 'Stock transfers', group: 'Movement', embed: '/stock-transfers?tab=list' },
+            { id: 'tr-add', label: 'Add stock transfer', group: 'Movement', embed: '/stock-transfers?tab=add' },
+            { id: 'returns', label: 'Returned sales', group: 'Movement', embed: '/inventory?tab=returns' },
+            { id: 'deliveries', label: 'Deliveries and counts', group: 'Movement', embed: '/operations' },
+            { id: 'categories', label: 'Categories', group: 'Catalog', embed: '/categories' },
+            { id: 'catalog', label: 'Brands, units and prices', group: 'Catalog', embed: '/catalog-ops' },
+            { id: 'import', label: 'Bulk import', group: 'Catalog', embed: '/bulk-upload' }
+        ]
+    });
+})();
+</script>
+</body>
+</html>
