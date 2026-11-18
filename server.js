@@ -22,7 +22,7 @@ const PDFDocument = require('pdfkit');
 const crypto = require('crypto');
 const { randomUUID: uuidv4 } = crypto;
 const fs = require('fs');
-const { pool, dbConfigured, tenantContext, missingConfigKeys, setRlsBootstrapComplete } = require('./db/pool');
+const { pool, adminPool, dbConfigured, tenantContext, missingConfigKeys, setRlsBootstrapComplete } = require('./db/pool');
 const { PgRateLimitStore, hit: hitCounter, clearHits } = require('./services/shared-state');
 const {
     JWT_SECRET,
@@ -218,6 +218,8 @@ function resolveBranchStockFromLevels(levels, candidates) {
 
 // Initialize/Migrate Database Schema
 async function initDb() {
+    // schema bootstrap runs as the owner role (the same pool when DATABASE_URL_ADMIN is not set)
+    const pool = adminPool;
     if (!pool) {
         console.warn('initDb skipped: No database pool configured');
         return;
@@ -945,9 +947,9 @@ async function initDb() {
                 id SERIAL PRIMARY KEY,
                 stock_take_id INTEGER REFERENCES stock_takes(id) ON DELETE CASCADE,
                 product_barcode VARCHAR(50),
-                physical_count INTEGER,
-                system_count INTEGER,
-                variance INTEGER,
+                physical_count NUMERIC(12,3),
+                system_count NUMERIC(12,3),
+                variance NUMERIC(12,3),
                 variance_reason VARCHAR(255),
                 counted_by VARCHAR(100),
                 counted_at TIMESTAMP
@@ -957,9 +959,9 @@ async function initDb() {
             CREATE TABLE IF NOT EXISTS reorder_alerts (
                 id SERIAL PRIMARY KEY,
                 product_barcode VARCHAR(50),
-                current_stock INTEGER,
-                reorder_level INTEGER,
-                suggested_quantity INTEGER,
+                current_stock NUMERIC(12,3),
+                reorder_level NUMERIC(12,3),
+                suggested_quantity NUMERIC(12,3),
                 priority VARCHAR(20),
                 status VARCHAR(50) DEFAULT 'Active',
                 branch_id INTEGER,
@@ -1261,7 +1263,7 @@ let sessionStore;
 if (pool) {
     try {
         sessionStore = new pgSession({
-            pool: pool,
+            pool: adminPool,
             tableName: 'user_sessions',
             createTableIfMissing: true,
             ttl: 24 * 60 * 60 // 24 hours in seconds
@@ -1424,6 +1426,14 @@ app.options(/.*/, cors(corsOptions)); // Enable pre-flight for all routes
 // Body parser middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+
+// Routes that run before anyone is logged in (so there is no tenant yet) work in the system context the
+// row-level-security policies allow: login lookups, password reset, logout audit entries.
+const PRE_LOGIN_POSTS = new Set(['/login', '/api/company/login', '/forgot-password', '/api/reset-password', '/api/logout', '/api/company/logout']);
+app.use((req, res, next) => {
+    if (req.method === 'POST' && PRE_LOGIN_POSTS.has(req.path)) return tenantContext.run({ tenantId: '', isSuperAdmin: true }, next);
+    next();
+});
 
 // Wait for schema & RLS bootstrap before serving API/page requests (skip for static assets/healthz and cap wait to avoid serverless 504s)
 app.use(async (req, res, next) => {
@@ -2478,7 +2488,7 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
                 `WITH BranchTotals AS (
                     SELECT 
                         COALESCE((
-                            SELECT SUM(CAST(value AS INTEGER)) 
+                            SELECT SUM(CAST(value AS NUMERIC)) 
                             FROM jsonb_each_text(COALESCE(stock_levels, '{}'))
                         ), COALESCE(stock, 0)) as total_stock,
                         COALESCE(reorder_level, 10) as target_reorder
@@ -2926,7 +2936,7 @@ app.get('/products', authenticateToken, async (req, res) => {
                 *,
                 COUNT(*) OVER() AS total_count,
                 COALESCE(
-                    (SELECT SUM(CAST(value AS INTEGER)) 
+                    (SELECT SUM(CAST(value AS NUMERIC)) 
                      FROM jsonb_each_text(COALESCE(stock_levels, '{}'))),
                     0
                 ) as calculated_total
@@ -3018,7 +3028,7 @@ app.get('/api/products', authenticateToken, async (req, res) => {
                 *,
                 COUNT(*) OVER() AS total_count,
                 COALESCE(
-                    (SELECT SUM(CAST(value AS INTEGER)) 
+                    (SELECT SUM(CAST(value AS NUMERIC)) 
                      FROM jsonb_each_text(COALESCE(stock_levels, '{}'))),
                     0
                 ) as calculated_total
@@ -3163,7 +3173,7 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
         // Full-row query for a set of products; batch stats are aggregated once instead of two subselects per row.
         const fullSelect = (where, params, tail) => pool.query(`
             SELECT p.*,
-                COALESCE((SELECT SUM(CAST(value AS INTEGER)) FROM jsonb_each_text(COALESCE(p.stock_levels, '{}'))), 0) AS calculated_total,
+                COALESCE((SELECT SUM(CAST(value AS NUMERIC)) FROM jsonb_each_text(COALESCE(p.stock_levels, '{}'))), 0) AS calculated_total,
                 COALESCE(pb.batch_count, 0) AS batch_count,
                 pb.next_expiry AS next_expiry
             FROM products p
@@ -3184,7 +3194,7 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
             const [lightRes, br] = await Promise.all([
                 pool.query(`
                     SELECT id, stock, reorder_level, stock_levels,
-                        COALESCE((SELECT SUM(CAST(value AS INTEGER)) FROM jsonb_each_text(COALESCE(stock_levels, '{}'))), 0) AS calculated_total
+                        COALESCE((SELECT SUM(CAST(value AS NUMERIC)) FROM jsonb_each_text(COALESCE(stock_levels, '{}'))), 0) AS calculated_total
                     FROM products ${whereClause} ORDER BY name
                 `, queryParams),
                 branchPromise
@@ -3205,7 +3215,7 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
                 pool.query(`
                     SELECT p.*,
                         COUNT(*) OVER() AS total_count,
-                        COALESCE((SELECT SUM(CAST(value AS INTEGER)) FROM jsonb_each_text(COALESCE(p.stock_levels, '{}'))), 0) AS calculated_total,
+                        COALESCE((SELECT SUM(CAST(value AS NUMERIC)) FROM jsonb_each_text(COALESCE(p.stock_levels, '{}'))), 0) AS calculated_total,
                         COALESCE(pb.batch_count, 0) AS batch_count,
                         pb.next_expiry AS next_expiry
                     FROM products p
@@ -4274,7 +4284,7 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, requireRole(MANA
                     stock_levels = jsonb_set(
                         COALESCE(stock_levels, '{}'::jsonb), 
                         ARRAY[$3::text], 
-                        to_jsonb(COALESCE((stock_levels->>$3)::int, 0) + $1)
+                        to_jsonb(COALESCE((stock_levels->>$3)::numeric, 0) + $1)
                     )
                 WHERE barcode = $2 AND COALESCE(tenant_id, 1) = $4
             `, [totalUnits, item.product_barcode, branchName, tenantId]);
@@ -4540,7 +4550,7 @@ app.post('/api/transfers/:id/receive', authenticateToken, async (req, res) => {
                 SET stock_levels = jsonb_set(
                     COALESCE(stock_levels, '{}'::jsonb), 
                     ARRAY[$1::text], 
-                    to_jsonb(COALESCE((stock_levels->>$1::text)::int, 0) + $2)
+                    to_jsonb(COALESCE((stock_levels->>$1::text)::numeric, 0) + $2)
                 )
                 WHERE id = $3
             `, [transfer.to_location, item.qty, item.product_id]);
@@ -4663,8 +4673,8 @@ app.get('/api/inventory/reorder', authenticateToken, async (req, res) => {
             query = `
                 SELECT * FROM products 
                 WHERE deleted_at IS NULL
-                AND (COALESCE(stock_levels->>$1, '0'))::int < COALESCE(reorder_level, 10)
-                ORDER BY (COALESCE(stock_levels->>$1, '0'))::int ASC
+                AND (COALESCE(stock_levels->>$1, '0'))::numeric < COALESCE(reorder_level, 10)
+                ORDER BY (COALESCE(stock_levels->>$1, '0'))::numeric ASC
             `;
             params.push(req.user.store_location);
         } else {
@@ -5461,7 +5471,7 @@ app.get('/api/ceo/financials', authenticateToken, async (req, res) => {
         if (branch && branch !== 'All Branches') {
             // Calculate assets for specific branch using stock_levels JSON
             const assetsRes = await pool.query(`
-                SELECT SUM(COALESCE((stock_levels->>$1)::int, 0) * cost_price) as asset_value FROM products WHERE deleted_at IS NULL
+                SELECT SUM(COALESCE((stock_levels->>$1)::numeric, 0) * cost_price) as asset_value FROM products WHERE deleted_at IS NULL
             `, [branch]);
             assetValue = parseFloat(assetsRes.rows[0].asset_value) || 0;
         } else {
@@ -6145,7 +6155,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                             stock_levels = jsonb_set(
                                 COALESCE(stock_levels, '{}'::jsonb), 
                                 ARRAY[$3::text], 
-                                to_jsonb(COALESCE((stock_levels->>$3::text)::int, 0) + $1)
+                                to_jsonb(COALESCE((stock_levels->>$3::text)::numeric, 0) + $1)
                             )
                         WHERE id = $2 AND COALESCE(tenant_id, 1) = $4
                         RETURNING id, name, stock
@@ -6200,7 +6210,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                             stock_levels = jsonb_set(
                                 COALESCE(stock_levels, '{}'::jsonb), 
                                 ARRAY[$3::text], 
-                                to_jsonb(COALESCE((stock_levels->>$3::text)::int, 0) - $1)
+                                to_jsonb(COALESCE((stock_levels->>$3::text)::numeric, 0) - $1)
                             )
                         WHERE id = $2
                     `, [item.qty, item.id, storeLoc]);
@@ -6523,7 +6533,7 @@ app.post('/api/stock-adjustments', authenticateToken, requireRole(MANAGER_ROLES)
                 stock_levels = jsonb_set(
                     COALESCE(stock_levels, '{}'::jsonb), 
                     ARRAY[$3::text], 
-                    to_jsonb(COALESCE((stock_levels->>$3::text)::int, 0) + $1)
+                    to_jsonb(COALESCE((stock_levels->>$3::text)::numeric, 0) + $1)
                 )
             WHERE barcode = $2 AND COALESCE(tenant_id, 1) = $4
         `, [quantity_adjusted, product_barcode, branchName, tenantId]);
@@ -6643,9 +6653,10 @@ app.post('/api/stock-takes/:id/items', authenticateToken, requireRole(PAGE_ROLES
     const { id } = req.params;
     const { product_barcode } = req.body;
     const counted_by = req.user.id;
-    const physical_count = Number(req.body.physical_count);
-    if (!Number.isInteger(physical_count) || physical_count < 0) {
-        return res.status(400).json({ message: 'physical_count must be a whole number, 0 or more' });
+    // stock can be fractional (2.5 m, 3.75 kg), so a count is any number 0 or more, to 3 decimals
+    const physical_count = Math.round(Number(req.body.physical_count) * 1000) / 1000;
+    if (req.body.physical_count === '' || req.body.physical_count === null || !Number.isFinite(physical_count) || physical_count < 0) {
+        return res.status(400).json({ message: 'physical_count must be a number, 0 or more' });
     }
     try {
         const tenantId = req.user.tenant_id || 1;
@@ -6663,6 +6674,7 @@ app.post('/api/stock-takes/:id/items', authenticateToken, requireRole(PAGE_ROLES
 
         res.json({ success: true, variance });
     } catch (err) {
+        console.error('Error recording stock count:', err.message);
         res.status(500).json({ message: 'Error recording stock count' });
     }
 });
@@ -6698,7 +6710,7 @@ app.post('/api/stock-takes/:id/approve', authenticateToken, requireRole(MANAGER_
                         stock_levels = jsonb_set(
                             COALESCE(stock_levels, '{}'::jsonb), 
                             ARRAY[$3::text], 
-                            to_jsonb(COALESCE((stock_levels->>$3::text)::int, 0) + $1)
+                            to_jsonb(COALESCE((stock_levels->>$3::text)::numeric, 0) + $1)
                         )
                     WHERE barcode = $2 AND tenant_id = $4
                 `, [item.variance, item.product_barcode, branchName, req.user.tenant_id || 1]);
@@ -6962,7 +6974,7 @@ app.post('/api/pos/sale/:barcode', authenticateToken, async (req, res) => {
                 stock_levels = jsonb_set(
                     COALESCE(stock_levels, '{}'::jsonb), 
                     ARRAY[$3::text], 
-                    to_jsonb(COALESCE((stock_levels->>$3::text)::int, 0) - $1)
+                    to_jsonb(COALESCE((stock_levels->>$3::text)::numeric, 0) - $1)
                 )
             WHERE barcode = $2 AND tenant_id = $4
         `, [qty, barcode, branchName, tenantId]);
@@ -8924,7 +8936,7 @@ app.post('/api/company/quick-sale', authenticateToken, requireRole(COMPANY_PORTA
                                 stock_levels = jsonb_set(
                                     COALESCE(stock_levels, '{}'::jsonb),
                                     ARRAY[$1],
-                                    (COALESCE((stock_levels->>$1)::int, 0) - $2)::text::jsonb
+                                    (COALESCE((stock_levels->>$1)::numeric, 0) - $2)::text::jsonb
                                 ),
                                 stock = COALESCE(stock, 0) - $2
                             WHERE id = $3 AND COALESCE(tenant_id, 1) = $4
@@ -8943,8 +8955,8 @@ app.post('/api/company/quick-sale', authenticateToken, requireRole(COMPANY_PORTA
                             reference_id, reference_type, user_id, branch_id, notes
                         )
                         SELECT
-                            $7::int, 'Stock Out', $1::text, (COALESCE((stock_levels->>$2::text)::int, 0) + $3::int),
-                            (COALESCE((stock_levels->>$2::text)::int, 0)), $4::int, 'Quick Sale', $5::int,
+                            $7::int, 'Stock Out', $1::text, (COALESCE((stock_levels->>$2::text)::numeric, 0) + $3::int),
+                            (COALESCE((stock_levels->>$2::text)::numeric, 0)), $4::int, 'Quick Sale', $5::int,
                             (SELECT id FROM branches WHERE name = $2::text AND COALESCE(tenant_id, 1) = $7::int LIMIT 1), 'Company Portal Quick Sale (' || $2 || ')'
                         FROM products WHERE id = $6 AND COALESCE(tenant_id, 1) = $7::int
                     `, [item.barcode || '', actualKey || targetBranch, item.quantity, newId, req.user.id, item.product_id, tenantId]);

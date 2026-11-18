@@ -556,3 +556,52 @@ test('Company tax routes are company-portal only, the tax report is the caller\'
     const r2 = pos.indexOf("router.get('/api/pos/customers/:id/recent-orders'");
     assert.ok(pos.slice(r2, r2 + 600).includes('COALESCE(tenant_id, 1) = $2'));
 });
+
+test('Schema changes are sent to the owner connection, normal queries are not, and without an admin URL there is one pool', () => {
+    process.env.DATABASE_URL = process.env.DATABASE_URL || 'postgres://u:p@127.0.0.1:9/x';
+    const dbp = require('../db/pool');
+    for (const ddl of [
+        'CREATE TABLE IF NOT EXISTS x (id int)', 'ALTER TABLE y ADD COLUMN IF NOT EXISTS z int',
+        'ALTER TABLE products ENABLE ROW LEVEL SECURITY', 'ALTER TABLE t FORCE ROW LEVEL SECURITY',
+        'CREATE POLICY p ON t FOR ALL USING (true)', 'DROP POLICY IF EXISTS p ON t', 'CREATE UNIQUE INDEX IF NOT EXISTS i ON t(a)',
+        "DO $$ BEGIN ALTER TABLE a ADD COLUMN b int; END $$;", '-- seed\nCREATE INDEX IF NOT EXISTS i2 ON t(b)'
+    ]) assert.equal(dbp.isSchemaChange(ddl), true, ddl);
+    for (const dml of [
+        'SELECT * FROM products WHERE tenant_id = $1', 'INSERT INTO expenses (note) VALUES ($1)', 'UPDATE products SET stock = stock - $1 WHERE id = $2',
+        'DELETE FROM holds WHERE id = $1', "SELECT set_config('app.current_tenant', $1, false)", 'BEGIN', 'COMMIT'
+    ]) assert.equal(dbp.isSchemaChange(dml), false, dml);
+    delete process.env.DATABASE_URL_ADMIN;
+    assert.equal(dbp.adminPool, dbp.pool, 'no DATABASE_URL_ADMIN -> the same pool, so behaviour is unchanged');
+});
+
+test('Boot-time schema work and sessions use the owner connection; pre-login routes and the cron run in the system context', () => {
+    const server = read('server.js');
+    assert.ok(/async function initDb\(\) \{[^}]*const pool = adminPool;/.test(server), 'initDb runs on the owner connection');
+    assert.ok(server.includes('pool: adminPool,'), 'the session store uses the owner connection');
+    for (const route of ["'/login'", "'/api/company/login'", "'/forgot-password'", "'/api/reset-password'", "'/api/logout'", "'/api/company/logout'"]) {
+        const i = server.indexOf('const PRE_LOGIN_POSTS');
+        assert.ok(server.slice(i, i + 400).includes(route), `${route} runs in the system context`);
+    }
+    assert.ok(read('routes/backups.js').includes("tenantContext.run({ tenantId: '', isSuperAdmin: true }, runNightlyBackupInContext)"));
+    assert.ok(fs.existsSync(path.join(ROOT, 'scripts/create-app-role.sql')));
+    assert.ok(fs.existsSync(path.join(ROOT, 'migrations/007_fractional_stock_counts.sql')));
+});
+
+test('Stock counts accept fractions (stock can be 2.5 m) but reject blanks and negatives', () => {
+    const server = read('server.js');
+    const i = server.indexOf("app.post('/api/stock-takes/:id/items'");
+    const head = server.slice(i, i + 900);
+    assert.ok(head.includes('Math.round(Number(req.body.physical_count) * 1000) / 1000'));
+    assert.ok(!head.includes('Number.isInteger(physical_count)'), 'whole numbers must not be required');
+    assert.ok(head.includes("physical_count === ''") && head.includes('physical_count < 0'));
+});
+
+test('Stock quantities are never cast to integer: fractional stock (2.5 m) must not break the product list, dashboard or stock take', () => {
+    const files = ['server.js', ...fs.readdirSync(path.join(ROOT, 'routes')).map((f) => 'routes/' + f)];
+    for (const f of files) {
+        const text = read(f);
+        assert.ok(!/CAST\(value AS INTEGER\)/.test(text), `${f}: sum stock levels as NUMERIC`);
+        assert.ok(!/stock_levels\s*->>[^)]*\)\s*::\s*int\b/.test(text), `${f}: stock_levels values must be cast to numeric, not int`);
+    }
+    assert.match(read('migrations/007_fractional_stock_counts.sql'), /stock_take_items.*physical_count[\s\S]*reorder_alerts.*current_stock/);
+});

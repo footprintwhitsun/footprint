@@ -4,7 +4,15 @@ const { AsyncLocalStorage } = require('async_hooks');
 // SaaS RLS Wrapper Context Tracking
 const tenantContext = new AsyncLocalStorage();
 
+// Schema-changing statements (the many "create table if missing" helpers) go to the owner connection;
+// everything else runs as the application role. Statement text is static in this codebase, never user input.
+const SCHEMA_CHANGE = /\b(CREATE|ALTER|DROP)\s+(OR\s+REPLACE\s+)?(UNIQUE\s+)?(TEMP\w*\s+|UNLOGGED\s+)?(TABLE|INDEX|POLICY|SCHEMA|SEQUENCE|EXTENSION|FUNCTION|TRIGGER|VIEW|TYPE|CONSTRAINT)\b|\b(ENABLE|FORCE|DISABLE)\s+ROW\s+LEVEL\s+SECURITY\b|^\s*(TRUNCATE|GRANT|REVOKE|COMMENT\s+ON)\b/im;
+const isSchemaChange = (text) => typeof text === 'string' && SCHEMA_CHANGE.test(text);
+
 let pool = null;
+// A second connection for the owner role: schema changes (CREATE/ALTER/POLICY) and the session store. When
+// DATABASE_URL_ADMIN is not set it is the same pool as `pool`, so behaviour is exactly as before.
+let adminPool = null;
 let dbConfigured = false;
 let rlsBootstrapComplete = false;
 const missingConfigKeys = [];
@@ -82,6 +90,19 @@ try {
             console.error('DATABASE POOL ERROR:', err);
         });
 
+        // Optional owner connection. With it, DATABASE_URL can be a restricted role (no BYPASSRLS, no schema
+        // rights) so that the tenant row-level-security policies really apply to the application's queries.
+        adminPool = pool;
+        const adminRaw = process.env.DATABASE_URL_ADMIN && process.env.DATABASE_URL_ADMIN.trim().replace(/^["']|["']$/g, '');
+        if (adminRaw) {
+            let adminConn = adminRaw.replace(/sslmode=[^&]*/g, '').replace(/\?&/, '?').replace(/&&/g, '&').replace(/[?&]$/, '');
+            if (adminConn.includes(':6543') && !adminConn.includes('prepare_threshold')) {
+                adminConn += (adminConn.includes('?') ? '&' : '?') + 'prepare_threshold=0';
+            }
+            adminPool = new Pool({ connectionString: adminConn, ssl, max: 5, statement_timeout: 30000, idleTimeoutMillis: 30000, connectionTimeoutMillis: 8000 });
+            adminPool.on('error', (err) => console.error('DATABASE ADMIN POOL ERROR:', err));
+        }
+
         const originalPoolConnect = pool.connect.bind(pool);
         pool.connect = async function () {
             const client = await originalPoolConnect();
@@ -114,6 +135,10 @@ try {
         };
 
         pool.query = async function (...args) {
+            if (adminPool !== pool) {
+                const text = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].text);
+                if (text && isSchemaChange(text)) return adminPool.query(...args);
+            }
             const client = await pool.connect();
             try {
                 return await client.query(...args);
@@ -132,6 +157,8 @@ function setRlsBootstrapComplete(val = true) {
 
 module.exports = {
     pool,
+    adminPool: adminPool || pool,
+    isSchemaChange,
     dbConfigured,
     tenantContext,
     missingConfigKeys,

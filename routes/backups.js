@@ -3,7 +3,7 @@ const router = express.Router();
 const xlsx = require('xlsx');
 const PDFDocument = require('pdfkit');
 const zlib = require('zlib');
-const { pool } = require('../db/pool');
+const { pool, tenantContext } = require('../db/pool');
 const { authenticateToken } = require('../middleware/auth');
 const { logActivity } = require('../services/audit');
 
@@ -433,7 +433,12 @@ async function sendBackupOffsite(backupId) {
     return { sent: true, to };
 }
 
-async function runNightlyBackup() {
+// Runs for every tenant, outside any request: it works in the system context the row-level-security policies allow.
+function runNightlyBackup() {
+    return tenantContext.run({ tenantId: '', isSuperAdmin: true }, runNightlyBackupInContext);
+}
+
+async function runNightlyBackupInContext() {
     await ensureBackupsTable();
     let tenantIds = [1];
     try {
