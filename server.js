@@ -6259,14 +6259,14 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
 });
 
 // Get batches for a specific product (for dropdowns)
-app.get('/api/batches/product/:barcode', authenticateToken, async (req, res) => {
+app.get('/api/batches/product/:barcode', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { barcode } = req.params;
     try {
         const result = await pool.query(`
             SELECT * FROM product_batches 
-            WHERE product_barcode = $1 AND quantity_available > 0 
+            WHERE product_barcode = $1 AND quantity_available > 0 AND COALESCE(tenant_id, 1) = $2
             ORDER BY expiry_date ASC NULLS LAST, created_at ASC
-        `, [barcode]);
+        `, [barcode, req.user.tenant_id || 1]);
         res.json(result.rows);
     } catch (err) {
         console.error(err);
@@ -6307,15 +6307,15 @@ app.get('/api/batches/expiring/:days', authenticateToken, async (req, res) => {
 });
 
 // 9. Get next available batch (FIFO/FEFO)
-app.get('/api/batches/next/:product_barcode', authenticateToken, async (req, res) => {
+app.get('/api/batches/next/:product_barcode', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { product_barcode } = req.params;
     try {
         const result = await pool.query(`
             SELECT * FROM product_batches
-            WHERE product_barcode = $1 AND status = 'Active' AND quantity_available > 0
+            WHERE product_barcode = $1 AND status = 'Active' AND quantity_available > 0 AND COALESCE(tenant_id, 1) = $2
             ORDER BY expiry_date ASC NULLS LAST, created_at ASC, id ASC
             LIMIT 1
-        `, [product_barcode]);
+        `, [product_barcode, req.user.tenant_id || 1]);
         res.json(result.rows[0] || null);
     } catch (err) {
         res.status(500).json({ message: 'Error fetching next batch' });
@@ -6703,8 +6703,9 @@ app.post('/api/stock-takes/:id/approve', authenticateToken, requireRole(MANAGER_
 });
 
 // 14. Check reorder alerts
-app.post('/api/reorder/check', authenticateToken, async (req, res) => {
+app.post('/api/reorder/check', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { branch_id } = req.body;
+    const reorderTenant = req.user.tenant_id || 1;
     try {
         const result = await pool.query(`
             SELECT p.barcode, p.name, p.stock, p.reorder_level,
@@ -6715,17 +6716,17 @@ app.post('/api/reorder/check', authenticateToken, async (req, res) => {
                 END as priority,
                 (p.reorder_level * 2) as suggested_quantity
             FROM products p
-            WHERE p.stock <= p.reorder_level
+            WHERE p.stock <= p.reorder_level AND COALESCE(p.tenant_id, 1) = $1 AND p.deleted_at IS NULL
             ORDER BY p.stock ASC
-        `);
+        `, [reorderTenant]);
 
         for (const product of result.rows) {
             await pool.query(`
-                INSERT INTO reorder_alerts (product_barcode, current_stock, reorder_level, suggested_quantity, priority, branch_id, status)
-                VALUES ($1, $2, $3, $4, $5, $6, 'Active')
+                INSERT INTO reorder_alerts (product_barcode, current_stock, reorder_level, suggested_quantity, priority, branch_id, status, tenant_id)
+                VALUES ($1, $2, $3, $4, $5, $6, 'Active', $7)
                 ON CONFLICT (product_barcode) DO UPDATE SET
                     current_stock = $2, priority = $5, created_at = CURRENT_TIMESTAMP
-            `, [product.barcode, product.stock, product.reorder_level, product.suggested_quantity, product.priority, branch_id]);
+            `, [product.barcode, product.stock, product.reorder_level, product.suggested_quantity, product.priority, branch_id, reorderTenant]);
         }
         await logActivity(req, 'CHECK_REORDER_ALERTS', { branch_id, alertsFound: result.rows.length });
         res.json({ success: true, alerts: result.rows });
@@ -6736,18 +6737,18 @@ app.post('/api/reorder/check', authenticateToken, async (req, res) => {
 });
 
 // 15. Get reorder alerts
-app.get('/api/reorder/alerts/:branch_id', authenticateToken, async (req, res) => {
+app.get('/api/reorder/alerts/:branch_id', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { branch_id } = req.params;
     try {
         const result = await pool.query(`
             SELECT ra.*, p.name, p.selling_unit, p.price
             FROM reorder_alerts ra
-            JOIN products p ON ra.product_barcode = p.barcode
+            JOIN products p ON ra.product_barcode = p.barcode AND COALESCE(p.tenant_id, 1) = $2
             WHERE ra.branch_id = $1 AND ra.status = 'Active'
             ORDER BY 
                 CASE WHEN ra.priority = 'Critical' THEN 1 WHEN ra.priority = 'High' THEN 2 ELSE 3 END,
                 ra.current_stock ASC
-        `, [branch_id]);
+        `, [branch_id, req.user.tenant_id || 1]);
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ message: 'Error fetching alerts' });
@@ -6798,7 +6799,7 @@ app.post('/api/transfers/:id/confirm', authenticateToken, requireRole(PAGE_ROLES
 });
 
 // 17. Low stock report
-app.get('/api/reports/low-stock/:branch_id', authenticateToken, async (req, res) => {
+app.get('/api/reports/low-stock/:branch_id', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { branch_id } = req.params;
     try {
         const result = await pool.query(`
@@ -6806,9 +6807,9 @@ app.get('/api/reports/low-stock/:branch_id', authenticateToken, async (req, res)
                 (p.reorder_level - p.stock) as shortage,
                 ROUND((p.stock::decimal / NULLIF(p.reorder_level, 0)) * 100, 2) as stock_percentage
             FROM products p
-            WHERE p.stock < p.reorder_level
+            WHERE p.stock < p.reorder_level AND COALESCE(p.tenant_id, 1) = $1 AND p.deleted_at IS NULL
             ORDER BY shortage DESC
-        `);
+        `, [req.user.tenant_id || 1]);
         await logActivity(req, 'VIEW_REPORT_LOW_STOCK', { branch_id });
         res.json(result.rows);
     } catch (err) {
@@ -6817,7 +6818,7 @@ app.get('/api/reports/low-stock/:branch_id', authenticateToken, async (req, res)
 });
 
 // 18. Expiry report
-app.get('/api/reports/expiry/:branch_id', authenticateToken, async (req, res) => {
+app.get('/api/reports/expiry/:branch_id', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { branch_id } = req.params;
     try {
         const result = await pool.query(`
@@ -6830,10 +6831,10 @@ app.get('/api/reports/expiry/:branch_id', authenticateToken, async (req, res) =>
                     ELSE 'OK'
                 END as status
             FROM product_batches pb
-            JOIN products p ON pb.product_barcode = p.barcode
-            WHERE pb.branch_id = $1 AND pb.status = 'Active'
+            JOIN products p ON pb.product_barcode = p.barcode AND COALESCE(p.tenant_id, 1) = $2
+            WHERE pb.branch_id = $1 AND pb.status = 'Active' AND COALESCE(pb.tenant_id, 1) = $2
             ORDER BY pb.expiry_date ASC
-        `, [branch_id]);
+        `, [branch_id, req.user.tenant_id || 1]);
         await logActivity(req, 'VIEW_REPORT_EXPIRY', { branch_id });
         res.json(result.rows);
     } catch (err) {

@@ -39,6 +39,9 @@ exports.securityHeaders = helmet({
                 'https://fonts.gstatic.com'
             ],
             frameAncestors: ["'self'"],
+            objectSrc: ["'none'"],
+            baseUri: ["'self'"],
+            formAction: ["'self'"],
             workerSrc: ["'self'", "blob:"],
             upgradeInsecureRequests: isProduction ? [] : null
         }

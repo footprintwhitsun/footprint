@@ -435,3 +435,23 @@ test('The schema debug endpoint is not available in production', () => {
     const i = server.indexOf("app.get('/api/debug/schema/:tableName'");
     assert.ok(server.slice(i, i + 400).includes("NODE_ENV === 'production'"));
 });
+
+test('Batch, reorder and stock/expiry reports are staff-only and tenant-scoped', () => {
+    const server = read('server.js');
+    for (const route of [
+        "app.get('/api/batches/product/:barcode'", "app.get('/api/batches/next/:product_barcode'",
+        "app.post('/api/reorder/check'", "app.get('/api/reorder/alerts/:branch_id'",
+        "app.get('/api/reports/low-stock/:branch_id'", "app.get('/api/reports/expiry/:branch_id'"
+    ]) {
+        const i = server.indexOf(route);
+        assert.ok(i > -1, `${route} exists`);
+        const block = server.slice(i, i + 1400);
+        assert.ok(block.includes('requireRole(PAGE_ROLES.STAFF_ALL)'), `${route} is role-gated`);
+        assert.ok(/tenant_id/.test(block), `${route} is tenant-scoped`);
+    }
+});
+
+test('The content security policy blocks plugins, base-tag and form hijacking', () => {
+    const sec = read('security.js');
+    for (const d of ['objectSrc', 'baseUri', 'formAction']) assert.ok(sec.includes(d), `${d} is set`);
+});
