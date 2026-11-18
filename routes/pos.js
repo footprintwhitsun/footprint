@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const { pool } = require('../db/pool');
 const { authenticateToken, requirePermission, requireRole, PAGE_ROLES, MANAGER_ROLES } = require('../middleware/auth');
 const { logActivity } = require('../services/audit');
+const { DEFAULT_BRANCH_NAME } = require('../services/branches');
 
 async function runOptional(client, spName, fn) {
     await client.query(`SAVEPOINT ${spName}`);
@@ -600,7 +601,7 @@ router.post('/api/pos/checkout', authenticateToken, requirePermission('sales', '
             discount_amount = 0,
             approval_token = null,
             idempotency_key = null,
-            store_location = req.user.store_location || 'Main Warehouse',
+            store_location = req.user.store_location || DEFAULT_BRANCH_NAME,
             delivery = null,
             quotation_id = null
         } = req.body;
@@ -658,7 +659,7 @@ router.post('/api/pos/checkout', authenticateToken, requirePermission('sales', '
         const sellerUsername = sellerRow.username || req.user.username || (req.user.email ? req.user.email.split('@')[0] : 'staff');
         const sellerRole = (sellerRow.role || req.user.role || 'teller').toLowerCase();
         let branchId = sellerRow.store_id || req.user.store_id || req.user.branch_id || null;
-        let storeLoc = sellerRow.store_location || req.user.store_location || store_location || 'Main Warehouse';
+        let storeLoc = sellerRow.store_location || req.user.store_location || store_location || DEFAULT_BRANCH_NAME;
 
         const branchRes = await runOptional(client, 'sp_branch_lookup', () =>
             client.query(
@@ -1009,7 +1010,7 @@ router.post('/api/pos/returns', authenticateToken, async (req, res) => {
             return res.status(400).json({ message: 'Store credit refund requires a customer on the original sale' });
         }
 
-        const storeLoc = orig.store_location || req.user.store_location || 'Main Warehouse';
+        const storeLoc = orig.store_location || req.user.store_location || DEFAULT_BRANCH_NAME;
         for (const it of verifiedReturnItems) {
             const baseQty = Number((it.qty * it.unit_factor).toFixed(3));
             await client.query(

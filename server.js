@@ -23,6 +23,7 @@ const crypto = require('crypto');
 const { randomUUID: uuidv4 } = crypto;
 const fs = require('fs');
 const { pool, adminPool, dbConfigured, tenantContext, missingConfigKeys, setRlsBootstrapComplete } = require('./db/pool');
+const { DEFAULT_BRANCH_NAME, toQty, loadBranch, mainBranchId, mainBranchName, resolveStockKey } = require('./services/branches');
 const { PgRateLimitStore, hit: hitCounter, clearHits } = require('./services/shared-state');
 const {
     JWT_SECRET,
@@ -482,16 +483,23 @@ async function initDb() {
             END $$;
 
             -- 1. Initialize stock_levels from stock if missing (Legacy support)
+            -- (the key is the tenant's own main branch name; 'Main Warehouse' only if the tenant has no branch)
             UPDATE products 
-            SET stock_levels = jsonb_build_object('Main Warehouse', stock)
+            SET stock_levels = jsonb_build_object(
+                COALESCE((SELECT b.name FROM branches b
+                          WHERE COALESCE(b.tenant_id, 1) = COALESCE(products.tenant_id, 1) AND b.deleted_at IS NULL
+                          ORDER BY b.is_main DESC NULLS LAST, b.id ASC LIMIT 1), 'Main Warehouse'),
+                stock)
             WHERE (stock_levels IS NULL OR stock_levels = '{}'::jsonb) AND stock > 0;
 
             -- 2. Force sync total stock from stock_levels (Ensures Dashboard KPI is accurate)
+            -- NUMERIC (stock can be fractional), and only products that actually have levels: a product with none keeps its stock
             UPDATE products 
             SET stock = (
-                SELECT COALESCE(SUM(value::int), 0) 
+                SELECT COALESCE(SUM(value::numeric), 0) 
                 FROM jsonb_each_text(COALESCE(stock_levels, '{}'::jsonb))
-            );
+            )
+            WHERE stock_levels IS NOT NULL AND stock_levels <> '{}'::jsonb;
 
             -- Create Users Table if not exists
             CREATE TABLE IF NOT EXISTS users (
@@ -860,7 +868,10 @@ async function initDb() {
             ALTER TABLE branches      ADD COLUMN IF NOT EXISTS status VARCHAR(20) DEFAULT 'Active';
             ALTER TABLE promotions    ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
             -- Ensure branch 1 is the main branch if no main branch is set yet
-            UPDATE branches SET is_main = TRUE WHERE id = 1 AND NOT EXISTS (SELECT 1 FROM branches WHERE is_main = TRUE);
+            -- (per tenant: its first branch, if the tenant has none marked main)
+            UPDATE branches SET is_main = TRUE
+            WHERE id = (SELECT MIN(b2.id) FROM branches b2 WHERE COALESCE(b2.tenant_id, 1) = COALESCE(branches.tenant_id, 1) AND b2.deleted_at IS NULL)
+              AND NOT EXISTS (SELECT 1 FROM branches b3 WHERE b3.is_main = TRUE AND COALESCE(b3.tenant_id, 1) = COALESCE(branches.tenant_id, 1));
 
             -- Partial unique indexes: uniqueness ONLY enforced on active (non-deleted) records.
             -- This allows re-creation of the same email/barcode/code after a soft delete.
@@ -967,7 +978,8 @@ async function initDb() {
                 branch_id INTEGER,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 acknowledged_at TIMESTAMP,
-                UNIQUE(product_barcode)
+                tenant_id INT DEFAULT 1,
+                UNIQUE(tenant_id, product_barcode)
             );
 
             -- Inventory Audit Log
@@ -1762,7 +1774,7 @@ app.post('/login', loginLimiter, [
             }
         } catch (_) {}
         const resolvedUsername = user.username || (user.email ? user.email.split('@')[0] : 'staff');
-        const finalStoreLoc = resolvedStoreLoc || process.env.MAIN_BRANCH_LOCATION || 'Main Warehouse';
+        const finalStoreLoc = resolvedStoreLoc || DEFAULT_BRANCH_NAME;
 
         // Set session
         req.session.user = {
@@ -1772,7 +1784,7 @@ app.post('/login', loginLimiter, [
             name: user.name,
             role: normalizedRole,
             tenant_id: tenantId,
-            store_id: resolvedStoreId || 1,
+            store_id: resolvedStoreId || (await mainBranchId(pool, tenantId)),
             store_location: finalStoreLoc
         };
 
@@ -1807,7 +1819,7 @@ app.post('/login', loginLimiter, [
                 name: user.name,
                 role: user.role,
                 tenant_id: tenantId,
-                store_id: resolvedStoreId || 1,
+                store_id: resolvedStoreId || (await mainBranchId(pool, tenantId)),
                 store_location: finalStoreLoc
             }
         });
@@ -1866,8 +1878,8 @@ app.get('/api/session', authenticateToken, async (req, res) => {
                 role: (dbUser.role || req.user.role || '').toLowerCase(),
                 username,
                 tenant_id: tenantId,
-                store_id: storeId || 1,
-                store_location: storeLocation || process.env.MAIN_BRANCH_LOCATION || 'Main Warehouse'
+                store_id: storeId || (await mainBranchId(pool, req.user.tenant_id || 1)),
+                store_location: storeLocation || DEFAULT_BRANCH_NAME
             }
         });
     } catch (err) {
@@ -2739,7 +2751,7 @@ app.post('/api/shifts/close', authenticateToken, async (req, res) => {
 app.get('/api/shifts/history', authenticateToken, async (req, res) => {
     try {
         const isRestricted = !['super_admin', 'admin', 'ceo'].includes((req.user.role || '').toLowerCase());
-        const userBranch = req.user.store_location || 'Main Warehouse';
+        const userBranch = req.user.store_location || DEFAULT_BRANCH_NAME;
 
         let query = `
             SELECT s.*, u.name as user_name, u.store_location as branch,
@@ -2901,11 +2913,12 @@ app.get('/products', authenticateToken, async (req, res) => {
         const isRestricted = !['super_admin', 'admin', 'ceo'].includes((req.user.role || '').toLowerCase());
 
         // Ensure all products have stock_levels initialized
+        const _mainName = await mainBranchName(pool, req.user.tenant_id || 1);
         await pool.query(`
             UPDATE products 
-            SET stock_levels = jsonb_build_object('Main Warehouse', COALESCE(stock, 0))
+            SET stock_levels = jsonb_build_object($2::text, COALESCE(stock, 0))
             WHERE (stock_levels IS NULL OR stock_levels = '{}'::jsonb) AND tenant_id = $1
-        `, [req.user.tenant_id || 1]);
+        `, [req.user.tenant_id || 1, _mainName]);
 
         // Support Pagination & Search parameters
         const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -2958,7 +2971,7 @@ app.get('/products', authenticateToken, async (req, res) => {
                 let bStock = 0;
                 for (const key of Object.keys(levelsObj)) {
                     if (key.toLowerCase() === (userBranch || '').toLowerCase()) {
-                        bStock += parseInt(levelsObj[key]) || 0;
+                        bStock += toQty(levelsObj[key]);
                     }
                 }
                 p.stock = bStock;
@@ -2967,7 +2980,7 @@ app.get('/products', authenticateToken, async (req, res) => {
                 if (p.stock_levels && typeof p.stock_levels === 'object') {
                     p.stock = p.calculated_total;
                 } else if (!p.stock_levels) {
-                    p.stock_levels = { 'Main Warehouse': p.stock || 0 };
+                    p.stock_levels = { [_mainName]: p.stock || 0 };
                 }
             }
             delete p.calculated_total; // Remove the helper column
@@ -2994,11 +3007,12 @@ app.get('/api/products', authenticateToken, async (req, res) => {
         const isRestricted = !['super_admin', 'admin', 'ceo'].includes((req.user.role || '').toLowerCase());
 
         // Ensure all products have stock_levels initialized
+        const _mainName = await mainBranchName(pool, req.user.tenant_id || 1);
         await pool.query(`
             UPDATE products 
-            SET stock_levels = jsonb_build_object('Main Warehouse', COALESCE(stock, 0))
+            SET stock_levels = jsonb_build_object($2::text, COALESCE(stock, 0))
             WHERE (stock_levels IS NULL OR stock_levels = '{}'::jsonb) AND tenant_id = $1
-        `, [req.user.tenant_id || 1]);
+        `, [req.user.tenant_id || 1, _mainName]);
 
         // Support Pagination & Search parameters
         const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -3048,7 +3062,7 @@ app.get('/api/products', authenticateToken, async (req, res) => {
                 let bStock = 0;
                 for (const key of Object.keys(levelsObj)) {
                     if (key.toLowerCase() === (userBranch || '').toLowerCase()) {
-                        bStock += parseInt(levelsObj[key]) || 0;
+                        bStock += toQty(levelsObj[key]);
                     }
                 }
                 p.stock = bStock;
@@ -3056,7 +3070,7 @@ app.get('/api/products', authenticateToken, async (req, res) => {
                 if (p.stock_levels && typeof p.stock_levels === 'object') {
                     p.stock = p.calculated_total;
                 } else if (!p.stock_levels) {
-                    p.stock_levels = { 'Main Warehouse': p.stock || 0 };
+                    p.stock_levels = { [_mainName]: p.stock || 0 };
                 }
             }
             delete p.calculated_total;
@@ -3092,7 +3106,7 @@ app.get('/api/products/barcode/:barcode', authenticateToken, async (req, res) =>
             FROM products p
             WHERE (p.barcode = $1 OR p.group_barcode = $1) AND p.tenant_id = $3
             LIMIT 1
-        `, [barcode, req.user.store_location || 'Main Warehouse', req.user.tenant_id]);
+        `, [barcode, req.user.store_location || DEFAULT_BRANCH_NAME, req.user.tenant_id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ message: 'Product not found' });
@@ -3113,25 +3127,18 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
         const userRes = await pool.query('SELECT store_id, store_location FROM users WHERE id = $1', [req.user.id]);
         const dbUser = userRes.rows[0] || {};
 
-        let userBranch = dbUser.store_location || req.user.store_location || 'Main Warehouse';
+        let userBranch = dbUser.store_location || req.user.store_location || DEFAULT_BRANCH_NAME;
         const isRestricted = !['super_admin', 'admin', 'ceo'].includes((req.user.role || '').toLowerCase());
 
         // Core mapping: Always link external company portals directly to the primary/main warehouse
         if (req.user.role === 'business_client' || req.user.type === 'company') {
             // Resolve main branch name from DB so it matches actual stock_levels keys
             try {
-                const mainBranchRes = await pool.query(
-                    `SELECT name, location FROM branches WHERE is_main = TRUE AND deleted_at IS NULL LIMIT 1`
-                );
-                if (mainBranchRes.rows.length > 0) {
-                    userBranch = mainBranchRes.rows[0].name || mainBranchRes.rows[0].location;
-                } else {
-                    // Fallback: use branch id=1
-                    const fallbackRes = await pool.query('SELECT name, location FROM branches WHERE id = 1 LIMIT 1');
-                    userBranch = fallbackRes.rows[0]?.name || process.env.MAIN_BRANCH_LOCATION || 'Main Branch';
-                }
+                // this tenant's main branch (or its first branch if none is marked main)
+                const mb = await loadBranch(pool, req.user.tenant_id || 1, null);
+                userBranch = (mb && (mb.name || mb.location)) || DEFAULT_BRANCH_NAME;
             } catch (branchErr) {
-                userBranch = process.env.MAIN_BRANCH_LOCATION || 'Main Branch';
+                userBranch = DEFAULT_BRANCH_NAME;
             }
         }
 
@@ -3141,9 +3148,9 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
         if (!stockLevelsInitDone.has(_initTenant)) {
             await pool.query(`
                 UPDATE products 
-                SET stock_levels = jsonb_build_object('Main Warehouse', COALESCE(stock, 0))
+                SET stock_levels = jsonb_build_object($2::text, COALESCE(stock, 0))
                 WHERE (stock_levels IS NULL OR stock_levels = '{}'::jsonb) AND tenant_id = $1
-            `, [_initTenant]);
+            `, [_initTenant, await mainBranchName(pool, _initTenant)]);
             stockLevelsInitDone.add(_initTenant);
         }
 
@@ -3299,10 +3306,10 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
         const userRes = await pool.query('SELECT store_id, store_location FROM users WHERE id = $1', [req.user.id]);
         const dbUser = userRes.rows[0];
 
-        const userBranch = dbUser?.store_location || req.user.store_location || 'Main Warehouse';
-        const branchId = dbUser?.store_id || req.user.store_id || 1;
+        const userBranch = dbUser?.store_location || req.user.store_location || DEFAULT_BRANCH_NAME;
+        const branchId = dbUser?.store_id || req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
 
-        const stockValue = parseInt(stock) || 0;
+        const stockValue = toQty(stock);
         const stockLevels = JSON.stringify({ [userBranch]: stockValue });
 
         // Check if a soft-deleted product with the same barcode+name already exists
@@ -3508,8 +3515,8 @@ app.post('/api/products/bulk', authenticateToken, requireRole(MANAGER_ROLES), up
 
 
         const results = { success: 0, failed: 0, errors: [] };
-        const userBranch = req.user.store_location || 'Main Warehouse';
-        const branchId = req.user.store_id || 1;
+        const userBranch = req.user.store_location || DEFAULT_BRANCH_NAME;
+        const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
 
         // Helper to extract clean numeric value (handles "GHS 10.00", "₵5", "1,000")
         const cleanNum = (val) => {
@@ -3570,7 +3577,7 @@ app.post('/api/products/bulk', authenticateToken, requireRole(MANAGER_ROLES), up
                     price = cost * (1 + (markup / 100));
                 }
 
-                stock = parseInt(findColumn(['currentstock', 'stock', 'quantity']) || 0);
+                stock = toQty(findColumn(['currentstock', 'stock', 'quantity']));
                 sellingUnit = findColumn(['sellingunit', 'unit']) || 'Unit';
                 packagingUnit = findColumn(['packagingunit', 'box', 'pack']) || 'Box';
                 conversionRate = cleanNum(findColumn(['itemsperpackage', 'conversion', 'perpackage']) || 1);
@@ -3619,7 +3626,7 @@ app.post('/api/products/bulk', authenticateToken, requireRole(MANAGER_ROLES), up
                 }
 
                 // Optional physical count for stock take
-                physicalCount = parseInt(findColumn(['physicalcount', 'stocktake', 'count', 'physical']) || 0);
+                physicalCount = toQty(findColumn(['physicalcount', 'stocktake', 'count', 'physical']));
                 if (!isNaN(physicalCount) && physicalCount > 0) {
                     stockTakeItems.push({ barcode, name, physicalCount });
                 }
@@ -3627,7 +3634,7 @@ app.post('/api/products/bulk', authenticateToken, requireRole(MANAGER_ROLES), up
                 // --- STOCK LEVEL UPDATES ---
                 if (existingProduct) {
                     // 1. Calculate NEW TOTAL STOCK
-                    const currentTotalStock = parseInt(existingProduct.stock || 0);
+                    const currentTotalStock = toQty(existingProduct.stock);
                     const newTotalStock = currentTotalStock + stock;
 
                     // 2. Update BRANCH-SPECIFIC STOCK in JSONB
@@ -3731,8 +3738,8 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
     try {
         const userRes = await pool.query('SELECT store_id, store_location FROM users WHERE id = $1', [req.user.id]);
         const dbUser = userRes.rows[0];
-        const userBranch = dbUser?.store_location || 'Main Warehouse';
-        const branchId = dbUser?.store_id || 1;
+        const userBranch = dbUser?.store_location || DEFAULT_BRANCH_NAME;
+        const branchId = dbUser?.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
 
         const stockValue = Number(stock) || 0;
 
@@ -3762,7 +3769,7 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
 
         // Fallback: update branch stock manually using the 'stock' field if stock_levels wasn't explicitly provided
         if (!incomingStockLevels) {
-            const existingBranches = Object.keys(stockLevels).filter(k => !isNaN(parseInt(stockLevels[k])));
+            const existingBranches = Object.keys(stockLevels).filter(k => Number.isFinite(Number(stockLevels[k])));
             const targetBranch = existingBranches.length > 0 ? existingBranches[0] : userBranch;
             stockLevels[targetBranch] = stockValue;
         }
@@ -3967,7 +3974,7 @@ app.get('/api/categories', authenticateToken, async (req, res) => {
 
 app.post('/api/categories', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const { name, description } = req.body;
-    const branchId = req.user.store_id || 1;
+    const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
     const tenantId = req.user.tenant_id || 1;
     try {
         // Restore if soft-deleted category with same name exists in this branch
@@ -4035,7 +4042,7 @@ app.get('/api/suppliers', authenticateToken, async (req, res) => {
 
 app.post('/api/suppliers', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const { name, contact, phone, email, address } = req.body;
-    const branchId = req.user.store_id || 1;
+    const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
     const tenantId = req.user.tenant_id || 1;
     try {
         // Restore if soft-deleted supplier with same name exists in this branch
@@ -4175,7 +4182,7 @@ app.post('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), 
                 if (bRes.rows.length > 0) branchId = bRes.rows[0].id;
             } catch (e) { console.error('Branch lookup error in PO creation:', e); }
         }
-        if (!branchId) branchId = 1; // Default to Main Warehouse
+        if (!branchId) branchId = await mainBranchId(pool, tenantId); // the tenant's main branch
     }
 
     const client = await pool.connect();
@@ -4253,7 +4260,7 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, requireRole(MANA
         const supplierCode = (po.supplier_name || 'SUP').substring(0, 3).toUpperCase().replace(/\s/g, '');
 
         // Update stock and create batches
-        const branchId = req.user.store_id || 1;
+        const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
         for (const item of itemsRes.rows) {
             // Fetch product details for conversion
             const prodRes = await client.query('SELECT name, conversion_rate, track_expiry FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2', [item.product_barcode, tenantId]);
@@ -4267,7 +4274,7 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, requireRole(MANA
             if (receivedItems && Array.isArray(receivedItems)) {
                 const provided = receivedItems.find(ri => ri.product_barcode === item.product_barcode);
                 if (provided) {
-                    if (provided.quantity_received) qtyToReceive = parseInt(provided.quantity_received);
+                    if (provided.quantity_received) qtyToReceive = toQty(provided.quantity_received);
                     if (provided.batch_number) finalBatchNum = provided.batch_number;
                     if (provided.expiry_date) finalExpiry = new Date(provided.expiry_date);
                 }
@@ -4277,7 +4284,7 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, requireRole(MANA
             const totalUnits = qtyToReceive;
 
             // 1. Update Product Stock with Total Units (Update both total stock and stock_levels for User's Branch)
-            const branchName = req.user.store_location || 'Main Warehouse';
+            const branchName = req.user.store_location || DEFAULT_BRANCH_NAME;
             await client.query(`
                 UPDATE products 
                 SET stock = COALESCE(stock, 0) + $1,
@@ -4447,7 +4454,7 @@ app.post('/api/transfers', authenticateToken, requirePermission('stock', 'create
             // Consolidate all alias keys into the primary key to prevent split stock
             for (const key of possibleKeys) {
                 if (stockLevels[key] !== undefined && stockLevels[key] !== null) {
-                    consolidatedStock += parseInt(stockLevels[key]) || 0;
+                    consolidatedStock += toQty(stockLevels[key]);
                     if (key !== primaryKey) delete stockLevels[key];
                 }
             }
@@ -4471,7 +4478,7 @@ app.post('/api/transfers', authenticateToken, requirePermission('stock', 'create
         // Insert Transfer AFTER validating and deducting stock
         await client.query(
             'INSERT INTO stock_transfers (from_location, to_location, items, status, branch_id) VALUES ($1, $2, $3, $4, $5)',
-            [mappedFrom, mappedTo, JSON.stringify(items), 'In Transit', req.user.store_id || 1]
+            [mappedFrom, mappedTo, JSON.stringify(items), 'In Transit', req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1))]
         );
 
         await client.query('COMMIT');
@@ -4537,7 +4544,7 @@ app.post('/api/transfers/:id/receive', authenticateToken, async (req, res) => {
                         levels = {};
                     }
                 }
-                currentBranchStock = parseInt(levels[transfer.to_location]) || 0;
+                currentBranchStock = toQty(levels[transfer.to_location]);
             }
 
 
@@ -4569,7 +4576,7 @@ app.post('/api/transfers/:id/receive', authenticateToken, async (req, res) => {
                         levels = {};
                     }
                 }
-                updatedBranchStock = parseInt(levels[transfer.to_location]) || 0;
+                updatedBranchStock = toQty(levels[transfer.to_location]);
             }
 
         }
@@ -4617,7 +4624,7 @@ app.post('/api/stock-take', authenticateToken, async (req, res) => {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
 
     const { adjustments } = req.body; // Array of { barcode, physicalQty }
-    const userBranch = req.user.store_location || 'Main Warehouse';
+    const userBranch = req.user.store_location || DEFAULT_BRANCH_NAME;
     const client = await pool.connect();
 
     try {
@@ -4629,8 +4636,8 @@ app.post('/api/stock-take', authenticateToken, async (req, res) => {
 
             const product = resProd.rows[0];
             const stockLevels = product.stock_levels || {};
-            const currentBranchStock = parseInt(stockLevels[userBranch] || 0);
-            const newBranchStock = parseInt(adj.physicalQty);
+            const currentBranchStock = toQty(stockLevels[userBranch]);
+            const newBranchStock = toQty(adj.physicalQty);
             const variance = newBranchStock - currentBranchStock;
 
             if (variance !== 0) {
@@ -4649,7 +4656,7 @@ app.post('/api/stock-take', authenticateToken, async (req, res) => {
                 await client.query(`
                     INSERT INTO inventory_audit_log (action_type, product_barcode, quantity_before, quantity_after, reference_id, reference_type, user_id, branch_id, notes)
                     VALUES ('Stock Take', $1, $2, $3, NULL, 'Stock Take', $4, $5, 'Quick Update')
-                `, [adj.barcode, currentBranchStock, newBranchStock, req.user.id, req.user.store_id || 1]);
+                `, [adj.barcode, currentBranchStock, newBranchStock, req.user.id, req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1))]);
             }
         }
         await client.query('COMMIT');
@@ -4693,7 +4700,7 @@ app.get('/api/inventory/negative-analysis', authenticateToken, async (req, res) 
         const isAdmin = req.user.role === 'super_admin' || req.user.role === 'admin' || req.user.role === 'ceo';
         const isCompany = req.user.type === 'company';
 
-        let userBranch = req.user.store_location || 'Main Warehouse';
+        let userBranch = req.user.store_location || DEFAULT_BRANCH_NAME;
         const branchRes = await pool.query('SELECT name FROM branches WHERE name = $1 OR location = $1', [userBranch]);
         const branchStockKey = branchRes.rows[0]?.name || userBranch;
 
@@ -4713,7 +4720,7 @@ app.get('/api/inventory/negative-analysis', authenticateToken, async (req, res) 
                 const candidates = [userBranch, branchStockKey, branchRes.rows[0]?.location].filter(Boolean);
                 checkStock = resolveBranchStockFromLevels(levels, candidates);
             } else {
-                checkStock = parseInt(row.stock || 0); // Admins check global stock
+                checkStock = toQty(row.stock); // Admins check global stock
             }
 
             if (checkStock < 0) {
@@ -4778,7 +4785,7 @@ app.get('/api/analytics/ytd/all', authenticateToken, async (req, res) => {
             const isReturn = row.is_return || false;
 
             items.forEach(item => {
-                const qty = isReturn ? -parseInt(item.qty) : parseInt(item.qty);
+                const qty = isReturn ? -toQty(item.qty) : toQty(item.qty);
                 const price = parseFloat(item.price);
                 totalUnits += qty;
                 totalRevenue += qty * price;
@@ -4839,7 +4846,7 @@ app.get('/api/analytics/ytd/:barcode', authenticateToken, async (req, res) => {
 
             items.forEach(item => {
                 if (item.barcode === barcode) {
-                    const qty = isReturn ? -parseInt(item.qty) : parseInt(item.qty);
+                    const qty = isReturn ? -toQty(item.qty) : toQty(item.qty);
                     const price = parseFloat(item.price);
                     totalUnits += qty;
                     totalRevenue += qty * price;
@@ -4948,7 +4955,7 @@ app.get('/transactions/:id', authenticateToken, async (req, res) => {
             subtotal = parseFloat(txn.total_amount) - totalTax;
         } else {
             // Legacy Fallback (Only for old transactions where tax_breakdown is NULL)
-            const branchId = txn.store_id || req.user.store_id || 1;
+            const branchId = txn.store_id || req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
             let settingsRes = await pool.query('SELECT vat_rate FROM system_settings WHERE branch_id = $1', [branchId]);
             if (settingsRes.rows.length === 0) settingsRes = await pool.query('SELECT vat_rate FROM system_settings WHERE branch_id = 1');
             const vatRate = settingsRes.rows.length > 0 ? parseFloat(settingsRes.rows[0].vat_rate) : 0.0;
@@ -5484,9 +5491,13 @@ app.get('/api/ceo/financials', authenticateToken, async (req, res) => {
         const branchRes = await pool.query("SELECT COUNT(*) as count FROM branches");
         const branchCount = parseInt(branchRes.rows[0].count || 0);
 
-        // Fetch Monthly Target (Global from ID 1)
+        // Fetch Monthly Target: this tenant's settings (the main branch's row first), not one global row
         let target = 0; // no invented target: the CEO page shows "No target set"
-        const targetRes = await pool.query("SELECT monthly_target FROM system_settings WHERE id = 1");
+        const _targetTenant = req.user.tenant_id || 1;
+        const targetRes = await pool.query(
+            "SELECT monthly_target FROM system_settings WHERE COALESCE(tenant_id, 1) = $1 ORDER BY (branch_id = $2) DESC NULLS LAST, id ASC LIMIT 1",
+            [_targetTenant, await mainBranchId(pool, _targetTenant)]
+        );
         if (targetRes.rows.length > 0 && targetRes.rows[0].monthly_target) {
             target = parseFloat(targetRes.rows[0].monthly_target);
         }
@@ -6090,7 +6101,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                  LIMIT 1`,
                 [tenantId, sellerStoreId, sellerStoreLoc]
             );
-            const canonicalStoreLoc = brCanon.rows.length > 0 ? brCanon.rows[0].name : (sellerStoreLoc || 'Main Warehouse');
+            const canonicalStoreLoc = brCanon.rows.length > 0 ? brCanon.rows[0].name : (sellerStoreLoc || DEFAULT_BRANCH_NAME);
 
             const txnRes = await client.query(
                 `INSERT INTO transactions
@@ -6127,7 +6138,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                 );
 
                 // Resolve canonical branch name once for this tenant
-                let storeLoc = req.user.store_location || 'Main Warehouse';
+                let storeLoc = req.user.store_location || DEFAULT_BRANCH_NAME;
                 const branchRes = await client.query(
                     'SELECT name FROM branches WHERE (name = $1 OR location = $1) AND COALESCE(tenant_id, 1) = $2 LIMIT 1',
                     [storeLoc, tenantId]
@@ -6186,9 +6197,9 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
             } else {
                 // Normal sale - deduct stock
                 // Resolve canonical branch name for POS user
-                let storeLoc = req.user.store_location || 'Main Warehouse';
+                let storeLoc = req.user.store_location || DEFAULT_BRANCH_NAME;
                 const branchRes = await client.query('SELECT id, name FROM branches WHERE name = $1 OR location = $1', [storeLoc]);
-                let branchId = req.user.store_id || 1;
+                let branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
 
                 if (branchRes.rows.length > 0) {
                     storeLoc = branchRes.rows[0].name;
@@ -6252,7 +6263,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                 );
 
                 // Update branch specific usage
-                const branchId = req.user.store_id || 1;
+                const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
                 await client.query(`
                     INSERT INTO promotion_usage (promotion_code, branch_id, total_discounted)
                     VALUES ($1, $2, $3)
@@ -6440,10 +6451,10 @@ app.get('/api/shelf/inventory/:branch_id', authenticateToken, async (req, res) =
             if (req.user && req.user.type === 'company') {
                 // Dynamically resolve stock for this branch — no hardcoded names
                 const matchKey = Object.keys(levels).find(k => k.toLowerCase() === (branchName || '').toLowerCase());
-                bStock = parseInt(matchKey ? levels[matchKey] : 0);
+                bStock = toQty(matchKey ? levels[matchKey] : 0);
             } else {
-                const manualFallback = req.user && req.user.store_location ? req.user.store_location : 'Main Warehouse';
-                bStock = parseInt(levels[branchName] || levels[manualFallback] || levels['Main Warehouse'] || 0);
+                const manualFallback = req.user && req.user.store_location ? req.user.store_location : DEFAULT_BRANCH_NAME;
+                bStock = toQty(levels[branchName] || levels[manualFallback] || levels[DEFAULT_BRANCH_NAME] || 0);
             }
 
             row.branch_stock = bStock;
@@ -6518,14 +6529,21 @@ app.post('/api/batches', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), a
 app.post('/api/stock-adjustments', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('stock', 'create'), async (req, res) => {
     const tenantId = req.user.tenant_id || 1;
     const { product_barcode, adjustment_type, quantity_adjusted, reason, approver_id, branch_id, user_id } = req.body;
-    const branchName = branch_id == 2 ? 'Accra Branch' : (branch_id == 3 ? 'Kumasi Branch' : 'Main Warehouse');
+    if (!Number.isFinite(Number(quantity_adjusted)) || quantity_adjusted === '' || quantity_adjusted === null) {
+        return res.status(400).json({ message: 'quantity_adjusted must be a number' });
+    }
 
     try {
+        // The branch must be one of this tenant's; stock is written under that branch's real name (never a name
+        // guessed from the id), reusing the key the product already has stock under.
+        const effBranchId = (branch_id !== undefined && branch_id !== null && branch_id !== '') ? branch_id : (req.user.store_id || null);
+        if (effBranchId && !(await loadBranch(pool, tenantId, effBranchId))) return res.status(400).json({ message: 'Branch not found' });
+        const branchName = await resolveStockKey(pool, { tenantId, branchId: effBranchId, barcode: product_barcode, fallbackName: req.user.store_location });
         const result = await pool.query(`
             INSERT INTO stock_adjustments (tenant_id, product_barcode, adjustment_type, quantity_adjusted, reason, approver_id, branch_id, approved_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
             RETURNING id
-        `, [tenantId, product_barcode, adjustment_type || 'Correction', quantity_adjusted, reason || '', approver_id || req.user.id || null, branch_id || req.user.store_id || 1]);
+        `, [tenantId, product_barcode, adjustment_type || 'Correction', quantity_adjusted, reason || '', approver_id || req.user.id || null, branch_id || req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1))]);
 
         await pool.query(`
             UPDATE products 
@@ -6541,7 +6559,7 @@ app.post('/api/stock-adjustments', authenticateToken, requireRole(MANAGER_ROLES)
         await pool.query(`
             INSERT INTO inventory_audit_log (action_type, product_barcode, quantity_after, reference_id, reference_type, user_id, branch_id, notes)
             SELECT 'Stock Adjustment', $1::varchar, stock - $6, stock, $2, 'Adjustment', $3, $4, $5 FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $7
-        `, [product_barcode, result.rows[0].id, user_id || req.user.id || null, branch_id || req.user.store_id || 1, reason || '', quantity_adjusted, tenantId]).catch(() => {});
+        `, [product_barcode, result.rows[0].id, user_id || req.user.id || null, branch_id || req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1)), reason || '', quantity_adjusted, tenantId]).catch(() => {});
 
         await logActivity(req, 'STOCK_ADJUSTMENT', { product_barcode, quantity_adjusted, reason });
         res.json({ success: true, id: result.rows[0].id });
@@ -6567,7 +6585,7 @@ app.post('/api/stock-adjustments/bulk', authenticateToken, requireRole(MANAGER_R
             await client.query(
                 `INSERT INTO stock_adjustments (tenant_id, product_barcode, adjustment_type, quantity_adjusted, reason, approver_id, branch_id, approved_at)
                  VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)`,
-                [tenantId, adj.product_barcode, adj.adjustment_type || 'Correction', qty, adj.reason || 'Bulk Adjustment', req.user.id || null, req.user.store_id || 1]
+                [tenantId, adj.product_barcode, adj.adjustment_type || 'Correction', qty, adj.reason || 'Bulk Adjustment', req.user.id || null, req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1))]
             );
             await client.query(
                 `UPDATE products SET stock = COALESCE(stock, 0) + $1 WHERE barcode = $2 AND COALESCE(tenant_id, 1) = $3`,
@@ -6698,12 +6716,13 @@ app.post('/api/stock-takes/:id/approve', authenticateToken, requireRole(MANAGER_
             await client.query('ROLLBACK');
             return res.status(409).json({ message: 'Stock take has already been approved' });
         }
-        const bId = lockRes.rows[0].branch_id || 1;
-        const branchName = bId == 2 ? 'Accra Branch' : (bId == 3 ? 'Kumasi Branch' : 'Main Warehouse');
+        const bId = lockRes.rows[0].branch_id || null;
 
         const items = await client.query('SELECT * FROM stock_take_items WHERE stock_take_id = $1', [id]);
         for (const item of items.rows) {
-            if (item.variance !== 0) {
+            // variance is NUMERIC, which the driver returns as a string ("0.000"): compare as a number
+            if (toQty(item.variance) !== 0) {
+                const branchName = await resolveStockKey(client, { tenantId: req.user.tenant_id || 1, branchId: bId, barcode: item.product_barcode, fallbackName: req.user.store_location });
                 await client.query(`
                     UPDATE products 
                     SET stock = COALESCE(stock, 0) + $1,
@@ -6755,12 +6774,18 @@ app.post('/api/reorder/check', authenticateToken, requireRole(PAGE_ROLES.STAFF_A
         `, [reorderTenant]);
 
         for (const product of result.rows) {
-            await pool.query(`
+            const upsert = (target) => pool.query(`
                 INSERT INTO reorder_alerts (product_barcode, current_stock, reorder_level, suggested_quantity, priority, branch_id, status, tenant_id)
                 VALUES ($1, $2, $3, $4, $5, $6, 'Active', $7)
-                ON CONFLICT (product_barcode) DO UPDATE SET
-                    current_stock = $2, priority = $5, created_at = CURRENT_TIMESTAMP
+                ON CONFLICT ${target} DO UPDATE SET
+                    current_stock = $2, reorder_level = $3, suggested_quantity = $4, priority = $5, created_at = CURRENT_TIMESTAMP
             `, [product.barcode, product.stock, product.reorder_level, product.suggested_quantity, product.priority, branch_id, reorderTenant]);
+            try {
+                await upsert('(tenant_id, product_barcode)');
+            } catch (e) {
+                // until migration 008 has run, the table is still unique on the barcode alone
+                if (e.code === '42P10') await upsert('(product_barcode)'); else throw e;
+            }
         }
         await logActivity(req, 'CHECK_REORDER_ALERTS', { branch_id, alertsFound: result.rows.length });
         res.json({ success: true, alerts: result.rows });
@@ -6930,16 +6955,21 @@ app.get('/api/pos/product/:barcode', authenticateToken, requireRole(PAGE_ROLES.S
 app.post('/api/pos/sale/:barcode', authenticateToken, async (req, res) => {
     const { barcode } = req.params;
     const { quantity, batch_id, branch_id } = req.body;
-    const qty = parseInt(quantity, 10);
-    if (!Number.isInteger(qty) || qty <= 0) {
-        return res.status(400).json({ message: 'quantity must be a positive integer' });
+    const qty = toQty(quantity);
+    if (!(qty > 0)) {
+        return res.status(400).json({ message: 'quantity must be a positive number' });
     }
-    const branchName = branch_id == 2 ? 'Accra Branch' : (branch_id == 3 ? 'Kumasi Branch' : 'Main Warehouse');
     const tenantId = req.user.tenant_id || 1;
 
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
+        const saleBranchId = (branch_id !== undefined && branch_id !== null && branch_id !== '') ? branch_id : (req.user.store_id || null);
+        if (saleBranchId && !(await loadBranch(client, tenantId, saleBranchId))) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'Branch not found' });
+        }
+        const branchName = await resolveStockKey(client, { tenantId, branchId: saleBranchId, barcode, fallbackName: req.user.store_location });
 
         // Locking the product row makes the stock comparison reliable; previously two
         // concurrent scans could both pass the check and oversell.
@@ -6951,7 +6981,7 @@ app.post('/api/pos/sale/:barcode', authenticateToken, async (req, res) => {
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Product not found' });
         }
-        const stockBefore = parseInt(product.rows[0].stock, 10) || 0;
+        const stockBefore = toQty(product.rows[0].stock);
         if (stockBefore < qty) {
             await client.query('ROLLBACK');
             return res.status(400).json({ message: 'Insufficient stock', available: stockBefore });
@@ -6981,12 +7011,12 @@ app.post('/api/pos/sale/:barcode', authenticateToken, async (req, res) => {
 
         await client.query(`
             INSERT INTO inventory_audit_log (action_type, product_barcode, quantity_before, quantity_after, reference_id, reference_type, user_id, branch_id)
-            SELECT 'Sale', $1::varchar, $2, stock, NULL, 'POS Sale', $4, $5 FROM products WHERE barcode = $1
-        `, [barcode, stockBefore, qty, req.user.id, branch_id]);
+            SELECT 'Sale', $1::varchar, $2::numeric, stock, NULL, 'POS Sale', $3, $4 FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $5
+        `, [barcode, stockBefore, req.user.id, saleBranchId, tenantId]);
         await client.query('COMMIT');
 
         await logActivity(req, 'POS_SALE_ITEM', { barcode, quantity: qty, batch_id });
-        res.json({ success: true, remaining_stock: stockBefore - qty });
+        res.json({ success: true, remaining_stock: toQty(stockBefore - qty) });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error(err);
@@ -6999,12 +7029,12 @@ app.post('/api/pos/sale/:barcode', authenticateToken, async (req, res) => {
 app.get('/api/settings', authenticateToken, async (req, res) => {
     try {
         const tenantId = req.user.tenant_id || 1;
-        // Company portal users always manage the master settings (branch_id=1)
-        let branchId = 1;
+        // Company portal users always manage the tenant's master settings (the main branch)
+        let branchId = await mainBranchId(pool, tenantId);
         if (req.user.type !== 'company') {
             const userRes = await pool.query('SELECT store_id FROM users WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [req.user.id, tenantId]);
             const dbStoreId = userRes.rows[0]?.store_id;
-            branchId = dbStoreId || req.user.store_id || 1;
+            branchId = dbStoreId || req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
         }
 
         let result = await pool.query('SELECT * FROM system_settings WHERE branch_id = $1 AND COALESCE(tenant_id, 1) = $2 LIMIT 1', [branchId, tenantId]);
@@ -7034,7 +7064,7 @@ app.post('/api/settings', authenticateToken, async (req, res) => {
         address, email, logoUrl
     } = req.body;
     // Company portal users always manage the master settings (branch_id=1)
-    const branchId = req.user.type === 'company' ? 1 : (req.user.store_id || 1);
+    const branchId = req.user.type === 'company' ? await mainBranchId(pool, req.user.tenant_id || 1) : (req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1)));
 
     try {
         const existing = await pool.query(
@@ -7089,7 +7119,7 @@ app.post('/api/settings', authenticateToken, async (req, res) => {
 // Delete System VAT (Set to 0)
 app.delete('/api/settings/vat', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
-    const branchId = req.user.store_id || 1;
+    const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
     const tenantId = req.user.tenant_id || 1;
     try {
         const upd = await pool.query(
@@ -7271,16 +7301,9 @@ app.delete('/api/branches/:id', authenticateToken, async (req, res) => {
 // Get current main branch
 app.get('/api/branches/main', authenticateToken, async (req, res) => {
     try {
-        const result = await pool.query(
-            `SELECT id, name, location FROM branches WHERE is_main = TRUE AND deleted_at IS NULL AND COALESCE(tenant_id, 1) = $1 LIMIT 1`,
-            [req.user.tenant_id || 1]
-        );
-        if (result.rows.length === 0) {
-            // Fallback: return branch id=1
-            const fallback = await pool.query('SELECT id, name, location FROM branches WHERE id = 1 AND COALESCE(tenant_id, 1) = $1 LIMIT 1', [req.user.tenant_id || 1]);
-            return res.json(fallback.rows[0] || { id: 1, name: 'Main Branch', location: 'Main Branch' });
-        }
-        res.json(result.rows[0]);
+        // the tenant's main branch, or its first branch if none is marked main
+        const main = await loadBranch(pool, req.user.tenant_id || 1, null);
+        res.json(main || { id: null, name: DEFAULT_BRANCH_NAME, location: DEFAULT_BRANCH_NAME });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error' });
@@ -7339,7 +7362,7 @@ app.post('/api/verify-auth-code', authenticateToken, async (req, res) => {
         // Refresh user store_id from DB to ensure accuracy
         const userCheck = await pool.query('SELECT store_id FROM users WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [req.user.id, tenantId]);
         const dbStoreId = userCheck.rows[0]?.store_id;
-        const branchId = dbStoreId || req.user.store_id || 1;
+        const branchId = dbStoreId || req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
 
         const inputCode = String(code || '').trim();
 
@@ -7391,7 +7414,7 @@ app.post('/api/verify-auth-code', authenticateToken, async (req, res) => {
 });
 
 app.get('/api/settings/auth-code', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
-    const branchId = req.user.store_id || 1;
+    const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
     const tenantId = req.user.tenant_id || 1;
     try {
         const result = await pool.query('SELECT credit_auth_code, credit_auth_code_expiry FROM system_settings WHERE branch_id = $1 AND COALESCE(tenant_id, 1) = $2', [branchId, tenantId]);
@@ -7406,7 +7429,7 @@ app.get('/api/settings/auth-code', authenticateToken, requireRole(MANAGER_ROLES)
 app.post('/api/settings/auth-code', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('settings', 'edit'), async (req, res) => {
     const tenantId = req.user.tenant_id || 1;
     const userCheck = await pool.query('SELECT store_id FROM users WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [req.user.id, tenantId]);
-    const branchId = userCheck.rows[0]?.store_id || req.user.store_id || 1;
+    const branchId = userCheck.rows[0]?.store_id || req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
 
     // Generate 6-digit code and set 24h expiry
     const code = crypto.randomInt(100000, 1000000).toString();
@@ -8252,7 +8275,7 @@ app.use(extrasRouter);
 // Get active tax rules (Public for POS - isolated per branch)
 app.get('/api/taxes/active', authenticateToken, async (req, res) => {
     try {
-        const branchId = req.user.store_id || 1;
+        const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
         const userType = req.user.type || 'staff';
 
         // 1. Fetch Additional Taxes
@@ -8296,7 +8319,7 @@ app.get('/api/taxes', authenticateToken, async (req, res) => {
     }
 
     try {
-        const branchId = req.user.store_id || 1;
+        const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
         const userType = req.user.type || 'staff';
 
         let query = 'SELECT * FROM tax_rules WHERE branch_id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL ORDER BY created_at DESC';
@@ -8325,7 +8348,7 @@ app.post('/api/taxes', authenticateToken, async (req, res) => {
 
     const { name, rate } = req.body;
     try {
-        const branchId = req.user.store_id || 1;
+        const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
         const tenantId = req.user.tenant_id || 1;
         // Restore if soft-deleted tax rule with same name exists for this branch
         const deletedRes = await pool.query(
@@ -8394,7 +8417,7 @@ app.get('/api/ceo/tax-report', authenticateToken, async (req, res) => {
     try {
         // 1. Get Active Tax Rules (for Columns) - only this company's rules
         const tenantId = req.user.tenant_id || 1;
-        const branchId = req.user.store_id || 1;
+        const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
         const rulesRes = await pool.query(
             "SELECT * FROM tax_rules WHERE status = 'Active' AND deleted_at IS NULL AND COALESCE(tenant_id, 1) = $2 AND (branch_id = $1 OR branch_id = 1) ORDER BY created_at DESC",
             [branchId, tenantId]
@@ -8921,7 +8944,7 @@ app.post('/api/company/quick-sale', authenticateToken, requireRole(COMPANY_PORTA
                     LIMIT 1
                 `, [userStoreLocation, tenantId]);
 
-                const targetBranch = branchLookupRes.rows.length > 0 ? branchLookupRes.rows[0].name : (userStoreLocation || 'Main Warehouse');
+                const targetBranch = branchLookupRes.rows.length > 0 ? branchLookupRes.rows[0].name : (userStoreLocation || DEFAULT_BRANCH_NAME);
 
                 for (const item of verifiedItems) {
                     let actualKey = null;

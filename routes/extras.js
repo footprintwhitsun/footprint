@@ -3,6 +3,7 @@ const router = express.Router();
 const { safeQuery, withWarnings, warnings } = require('../services/safe-query');
 router.use(withWarnings);
 const { pool } = require('../db/pool');
+const { DEFAULT_BRANCH_NAME } = require('../services/branches');
 const { authenticateToken, MANAGER_ROLES } = require('../middleware/auth');
 const { logActivity } = require('../services/audit');
 
@@ -146,7 +147,7 @@ router.post('/api/layaways', authenticateToken, async (req, res) => {
         if (deposit > 0) {
             await client.query(
                 `INSERT INTO layaway_payments (tenant_id, layaway_id, amount, payment_method, store_location, received_by) VALUES ($1,$2,$3,$4,$5,$6)`,
-                [tenantId, r.rows[0].id, deposit, String(payment_method).toLowerCase(), req.user.store_location || 'Main Shop', req.user.id || null]
+                [tenantId, r.rows[0].id, deposit, String(payment_method).toLowerCase(), req.user.store_location || DEFAULT_BRANCH_NAME, req.user.id || null]
             );
         }
         await client.query('COMMIT');
@@ -228,7 +229,7 @@ router.post('/api/layaways/:id/payment', authenticateToken, async (req, res) => 
         );
         await client.query(
             `INSERT INTO layaway_payments (tenant_id, layaway_id, amount, payment_method, store_location, received_by) VALUES ($1,$2,$3,$4,$5,$6)`,
-            [tenantId, row.id, amount, String(req.body.payment_method || 'cash').toLowerCase(), req.user.store_location || 'Main Shop', req.user.id || null]
+            [tenantId, row.id, amount, String(req.body.payment_method || 'cash').toLowerCase(), req.user.store_location || DEFAULT_BRANCH_NAME, req.user.id || null]
         );
         await client.query('COMMIT');
         await logActivity(req, 'LAYAWAY_PAYMENT', { layaway_id: req.params.id, amount, balance: nextBal });

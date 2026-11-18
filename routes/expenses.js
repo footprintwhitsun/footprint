@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const { pool } = require('../db/pool');
+const { mainBranchId } = require('../services/branches');
 const { authenticateToken, requireRole, requirePermission, MANAGER_ROLES } = require('../middleware/auth');
 const { logActivity } = require('../services/audit');
 
@@ -124,7 +125,7 @@ router.post('/api/expenses', authenticateToken, requireRole(MANAGER_ROLES), requ
         const r = await pool.query(
             `INSERT INTO expenses (tenant_id, category, amount, description, expense_date, branch_id, store_location, reference_no, created_by)
              VALUES ($1, $2, $3, $4, COALESCE($5::date, CURRENT_DATE), $6, $7, $8, $9) RETURNING *`,
-            [tenantId, String(category).trim(), numAmt, String(description || ''), expense_date || null, req.user.store_id || 1, String(store_location || req.user.store_location || ''), String(reference_no || ''), req.user.id || null]
+            [tenantId, String(category).trim(), numAmt, String(description || ''), expense_date || null, req.user.store_id || (await mainBranchId(pool, tenantId)), String(store_location || req.user.store_location || ''), String(reference_no || ''), req.user.id || null]
         );
         await logActivity(req, 'EXPENSE_CREATED', { id: r.rows[0].id, category, amount: numAmt });
         res.status(201).json({ success: true, expense: r.rows[0] });
