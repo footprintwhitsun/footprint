@@ -1209,6 +1209,21 @@ console.log('initDb() called');
 
 // Security middleware
 app.use(security.securityHeaders);
+app.use(security.cspReportOnly);
+
+// Collects what the strict (report-only) content security policy would have blocked. Public by design:
+// browsers send reports without credentials. Small bodies, de-duplicated, only the first of each is logged.
+const cspSeen = new Map();
+app.post('/api/csp-report', express.json({ type: ['application/csp-report', 'application/reports+json', 'application/json'], limit: '16kb' }), (req, res) => {
+    try {
+        const raw = req.body && (req.body['csp-report'] || (Array.isArray(req.body) ? (req.body[0] && req.body[0].body) : req.body)) || {};
+        const key = [raw['effective-directive'] || raw['violated-directive'] || raw.effectiveDirective, String(raw['document-uri'] || raw.documentURL || '').split('?')[0], raw['blocked-uri'] || raw.blockedURL, raw['line-number'] || raw.lineNumber].join('|');
+        const n = (cspSeen.get(key) || 0) + 1;
+        if (cspSeen.size < 2000) cspSeen.set(key, n);
+        if (n === 1) console.warn('[csp-report]', key, String(raw['script-sample'] || raw.sample || '').slice(0, 80));
+    } catch (_) { /* a malformed report is not worth an error */ }
+    res.status(204).end();
+});
 app.use(security.limiter);
 
 app.get('/healthz', async (req, res) => {

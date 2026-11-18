@@ -55,6 +55,27 @@ exports.securityHeaders = helmet({
     crossOriginEmbedderPolicy: false
 });
 
+// Strict policy in REPORT-ONLY mode: nothing is blocked. The browser reports what an enforced policy
+// (no inline scripts, no inline event handlers) would have blocked, so the pages can be fixed first.
+const STRICT_REPORT_POLICY = [
+    "default-src 'self'",
+    "script-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://cdn.sheetjs.com",
+    "script-src-attr 'none'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'self'",
+    'report-uri /api/csp-report'
+].join('; ');
+
+exports.cspReportOnly = (req, res, next) => {
+    const p = req.path || '';
+    if (!p.startsWith('/api/') && !/\.(css|js|svg|png|jpg|jpeg|webp|ico|woff2?|json|map)$/i.test(p)) {
+        res.setHeader('Content-Security-Policy-Report-Only', STRICT_REPORT_POLICY);
+    }
+    next();
+};
+
 // Rate limiting
 exports.limiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes

@@ -455,3 +455,20 @@ test('The content security policy blocks plugins, base-tag and form hijacking', 
     const sec = read('security.js');
     for (const d of ['objectSrc', 'baseUri', 'formAction']) assert.ok(sec.includes(d), `${d} is set`);
 });
+
+test('The strict content security policy is report-only, on pages only, and blocks inline scripts and handlers', () => {
+    const security = require('../security');
+    const headers = {};
+    const res = { setHeader: (k, v) => { headers[k] = v; } };
+    security.cspReportOnly({ path: '/dashboard' }, res, () => {});
+    const policy = headers['Content-Security-Policy-Report-Only'];
+    assert.ok(policy, 'page responses carry the report-only policy');
+    assert.ok(!/unsafe-inline/.test(policy), 'the strict policy has no unsafe-inline');
+    assert.ok(policy.includes("script-src-attr 'none'"), 'inline event handlers are reported');
+    assert.ok(policy.includes('report-uri /api/csp-report'));
+    for (const p of ['/api/products', '/layout.js', '/sidebar.css']) {
+        const h = {};
+        security.cspReportOnly({ path: p }, { setHeader: (k, v) => { h[k] = v; } }, () => {});
+        assert.equal(h['Content-Security-Policy-Report-Only'], undefined, `${p} is skipped`);
+    }
+});
