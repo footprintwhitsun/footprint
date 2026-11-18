@@ -498,3 +498,20 @@ test('Each page is allowed exactly its own inline scripts by hash, and nothing e
     const injected = 'sha256-' + crypto.createHash('sha256').update('alert(1)', 'utf8').digest('base64');
     assert.ok(!policy.includes(injected));
 });
+
+test('Scripts load only from this site: pinned libraries live in vendor/, and no policy allows a public CDN for scripts', () => {
+    const security = require('../security');
+    const sec = read('security.js');
+    const m = /scriptSrc:\s*\[([^\]]*)\]/.exec(sec);
+    assert.ok(m && !/https?:/.test(m[1]), 'the enforced script-src must not list a CDN host');
+    assert.ok(!/https?:/.test(security.buildStrictPolicy([]).match(/script-src [^;]*/)[0]), 'the strict script-src must not list a CDN host');
+    for (const f of fs.readdirSync(ROOT).filter((x) => /\.(html|js)$/.test(x) && !/^(initialize|create_|setup_|seed|hash-|clean_|emulator|server|security)/.test(x))) {
+        const text = read(f);
+        assert.ok(!/<script\b[^>]*\bsrc\s*=\s*["']https?:/i.test(text), `${f} loads a script from another site`);
+        assert.ok(!/data-lazy-src\s*=\s*["']https?:/i.test(text), `${f} lazy-loads a script from another site`);
+        for (const m2 of text.matchAll(/["'`](\/vendor\/[\w.\-]+\.js)["'`]/g)) {
+            assert.ok(fs.existsSync(path.join(ROOT, m2[1])), `${f} references ${m2[1]} which is missing`);
+        }
+    }
+    assert.ok(read('vercel.json').includes('vendor/**'), 'vendor/ must be deployed with the function');
+});

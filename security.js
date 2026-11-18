@@ -9,13 +9,11 @@ exports.securityHeaders = helmet({
     contentSecurityPolicy: {
         directives: {
             defaultSrc: ["'self'"],
+            // Scripts come only from this site (third-party libraries are pinned in vendor/), so a script tag
+            // injected from a public CDN, which can serve any published package, is refused.
             scriptSrc: [
                 "'self'", 
-                "'unsafe-inline'", 
-                'https://cdn.jsdelivr.net', 
-                'https://cdnjs.cloudflare.com', 
-                'https://unpkg.com', 
-                'https://cdn.sheetjs.com'
+                "'unsafe-inline'"
             ],
             scriptSrcAttr: ["'unsafe-inline'"],
             styleSrc: [
@@ -74,7 +72,7 @@ const STRICT_BASE = [
     "frame-ancestors 'self'",
     'report-uri /api/csp-report'
 ];
-const SCRIPT_HOSTS = "'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://cdn.sheetjs.com";
+const SCRIPT_HOSTS = "'self'";
 const buildStrictPolicy = (hashes) =>
     [STRICT_BASE[0], `script-src ${SCRIPT_HOSTS}${hashes && hashes.length ? ' ' + hashes.map(h => `'${h}'`).join(' ') : ''}`, ...STRICT_BASE.slice(1)].join('; ');
 

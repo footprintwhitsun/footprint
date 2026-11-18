@@ -9266,7 +9266,8 @@ app.use((req, res, next) => {
     }
 
     // Block all server-side JS files from root (only whitelist allowed client scripts)
-    if (lowerPath.endsWith('.js')) {
+    // third-party libraries served from this site (pinned versions in vendor/), instead of a public CDN
+    if (lowerPath.endsWith('.js') && !/^\/vendor\/[\w.\-]+\.js$/.test(lowerPath)) {
         const allowedClientScripts = [
             '/auth-guard.js',
             '/user-session.js',
@@ -9297,7 +9298,10 @@ app.use(express.static(path.join(__dirname), {
     setHeaders: (res, filePath) => {
         // HTML and shared JS/CSS must revalidate so every page renders the same
         // layout.js/sidebar.css instead of a day-old cached copy.
-        if (filePath.endsWith('.html')) {
+        if (/[\\/]vendor[\\/]/.test(filePath)) {
+            // version is in the file name, so these never change in place
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+        } else if (filePath.endsWith('.html')) {
             res.setHeader('Cache-Control', 'no-cache');
         } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
             res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
