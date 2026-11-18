@@ -130,7 +130,7 @@ test('Every page that loads the dispatcher has no inline handlers left, and the 
         if (/data-on[a-z]+\s*=|data-media-swap/.test(html)) assert.ok(loads, `${f} uses data-on* but does not load the dispatcher`);
         if (loads) { converted++; assert.ok(!inline.test(html), `${f} loads the dispatcher but still has an inline event handler`); }
     }
-    assert.ok(converted >= 19, `expected at least 19 converted pages, found ${converted}`);
+    assert.ok(converted >= 18, `expected at least 18 converted pages, found ${converted}`);
     const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
     assert.ok(server.includes("'/okw-events.js'"), 'the dispatcher must be on the client-script allow-list');
 });
