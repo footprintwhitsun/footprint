@@ -95,8 +95,26 @@ test('Reorder alerts are per tenant; the code falls back until migration 008 has
     const fs = require('node:fs');
     const path = require('node:path');
     const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
-    assert.ok(server.includes("upsert('(tenant_id, product_barcode)')") && server.includes("e.code === '42P10'") && server.includes("upsert('(product_barcode)')"));
+    assert.ok(server.includes("upsert('(tenant_id, product_barcode)')") && server.includes("e.code !== '42P10'") && server.includes("upsert('(product_barcode)')"));
     const mig = fs.readFileSync(path.join(__dirname, '..', 'migrations', '008_reorder_alerts_per_tenant.sql'), 'utf8');
     assert.match(mig, /UNIQUE \(product_barcode\)/);
     assert.match(mig, /CREATE UNIQUE INDEX IF NOT EXISTS idx_reorder_alerts_tenant_barcode ON reorder_alerts \(tenant_id, product_barcode\)/);
+});
+
+test('initDb creates the branch columns and balance_due before anything reads them (found on a fresh database)', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+    const backfill = server.indexOf('-- 1. Initialize stock_levels from stock if missing');
+    const alter = server.indexOf('ALTER TABLE branches ADD COLUMN IF NOT EXISTS tenant_id INT REFERENCES tenants(id) DEFAULT 1;');
+    assert.ok(alter > -1 && backfill > -1 && alter < backfill, 'branches.tenant_id/is_main/deleted_at must exist before the main-branch backfill uses them');
+    assert.ok(server.includes('ALTER TABLE transactions ADD COLUMN IF NOT EXISTS balance_due'), 'the dashboard needs transactions.balance_due from boot');
+});
+
+test('Until migration 008 runs, a reorder alert never overwrites another tenant\'s row', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const server = fs.readFileSync(path.join(__dirname, '..', 'server.js'), 'utf8');
+    assert.ok(server.includes('WHERE reorder_alerts.tenant_id = EXCLUDED.tenant_id'));
+    assert.ok(server.includes("e2.code !== '42501'"), 'a row-level-security refusal skips that alert instead of failing the check');
 });

@@ -482,6 +482,11 @@ async function initDb() {
                 END IF;
             END $$;
 
+            -- the main-branch lookups below need these branch columns (they are also added further down on older databases)
+            ALTER TABLE branches ADD COLUMN IF NOT EXISTS tenant_id INT REFERENCES tenants(id) DEFAULT 1;
+            ALTER TABLE branches ADD COLUMN IF NOT EXISTS is_main BOOLEAN DEFAULT FALSE;
+            ALTER TABLE branches ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ;
+
             -- 1. Initialize stock_levels from stock if missing (Legacy support)
             -- (the key is the tenant's own main branch name; 'Main Warehouse' only if the tenant has no branch)
             UPDATE products 
@@ -630,6 +635,8 @@ async function initDb() {
             ALTER TABLE transactions ADD COLUMN IF NOT EXISTS tax_breakdown JSONB;
             ALTER TABLE transactions ADD COLUMN IF NOT EXISTS original_total DECIMAL(10, 2);
             ALTER TABLE transactions ADD COLUMN IF NOT EXISTS current_total DECIMAL(10, 2);
+            -- the dashboard reads this column, so it must exist from boot (a POS route used to be the only thing creating it)
+            ALTER TABLE transactions ADD COLUMN IF NOT EXISTS balance_due DECIMAL(12,2) DEFAULT 0.00;
 
             CREATE TABLE IF NOT EXISTS refunds (
                 id SERIAL PRIMARY KEY,
@@ -6779,12 +6786,16 @@ app.post('/api/reorder/check', authenticateToken, requireRole(PAGE_ROLES.STAFF_A
                 VALUES ($1, $2, $3, $4, $5, $6, 'Active', $7)
                 ON CONFLICT ${target} DO UPDATE SET
                     current_stock = $2, reorder_level = $3, suggested_quantity = $4, priority = $5, created_at = CURRENT_TIMESTAMP
+                WHERE reorder_alerts.tenant_id = EXCLUDED.tenant_id
             `, [product.barcode, product.stock, product.reorder_level, product.suggested_quantity, product.priority, branch_id, reorderTenant]);
             try {
                 await upsert('(tenant_id, product_barcode)');
             } catch (e) {
-                // until migration 008 has run, the table is still unique on the barcode alone
-                if (e.code === '42P10') await upsert('(product_barcode)'); else throw e;
+                if (e.code !== '42P10') throw e;
+                // until migration 008 has run, the table is still unique on the barcode alone. Another tenant's alert
+                // for the same barcode is never overwritten (that was the bug), and never fails the whole check.
+                try { await upsert('(product_barcode)'); }
+                catch (e2) { if (e2.code !== '42501') throw e2; console.warn('reorder alert skipped: another tenant already has one for', product.barcode, '(run migration 008)'); }
             }
         }
         await logActivity(req, 'CHECK_REORDER_ALERTS', { branch_id, alertsFound: result.rows.length });
