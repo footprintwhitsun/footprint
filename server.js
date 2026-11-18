@@ -1226,8 +1226,14 @@ const sessionConfig = {
     name: 'pos.sid' // Custom session cookie name
 };
 
-// Initialize session middleware
-app.use(session(sessionConfig));
+// Initialize session middleware. Static assets never need a session, so skip the session-store
+// (Postgres) round trip for them.
+const sessionMiddleware = session(sessionConfig);
+const STATIC_ASSET_RE = /\.(css|js|svg|png|jpg|jpeg|webp|ico|woff2?|map|webmanifest)$/i;
+app.use((req, res, next) => {
+    if (req.method === 'GET' && STATIC_ASSET_RE.test(req.path)) return next();
+    return sessionMiddleware(req, res, next);
+});
 
 // Cross-site request check. A cookie-authenticated write must come from this site; calls that carry
 // their own bearer token cannot be forged by another site and pass through.
@@ -1349,7 +1355,8 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 // Wait for schema & RLS bootstrap before serving API/page requests (skip for static assets/healthz and cap wait to avoid serverless 504s)
 app.use(async (req, res, next) => {
     const p = req.path || '';
-    if (p === '/healthz' || /\.(css|js|svg|png|ico|woff2|jpg|jpeg|webp|pdf)$/i.test(p)) {
+    // Only API calls need the schema bootstrap; HTML pages and assets are served without waiting on the database.
+    if (!p.startsWith('/api/')) {
         return next();
     }
     try {
@@ -2287,6 +2294,7 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
             queryParams.push(storeLocation);
         }
 
+        const _salesP = (async () => {
         // Gross Sales, Sell Returns, Invoice Due & Transactions in selected date range
         const salesSummaryRes = await pool.query(
             `SELECT
@@ -2318,6 +2326,10 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
             } catch (_) {}
         }
 
+        return { salesSummaryRes, grossSales, totalSellReturn, netSales, invoiceDue };
+        })();
+
+        const _purchP = (async () => {
         // Purchases, Purchase Due, Purchase Returns & Expenses in selected date range
         let totalPurchase = 0;
         let purchaseDue = 0;
@@ -2343,6 +2355,10 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
             totalPurchaseReturn = Number(poSummary.rows[0]?.purchase_return || 0);
         } catch (_) {}
 
+        return { totalPurchase, purchaseDue, totalPurchaseReturn };
+        })();
+
+        const _expP = (async () => {
         let totalExpense = 0;
         try {
             const expSummary = await pool.query(
@@ -2354,6 +2370,10 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
             totalExpense = Number(expSummary.rows[0]?.total_expense || 0);
         } catch (_) {}
 
+        return { totalExpense };
+        })();
+
+        const _stockP = (async () => {
         // Low & Out of Stock Logic
         let lowStockCount = 0;
         let outOfStockCount = 0;
@@ -2403,6 +2423,10 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
             lowStockCount = parseInt(stockRes.rows[0].low_stock || 0);
         }
 
+        return { lowStockCount, outOfStockCount };
+        })();
+
+        const _recentP = (async () => {
         // Recent Transactions
         let recentWhere = "WHERE LOWER(t.status) = 'completed' AND t.is_return = FALSE AND t.tenant_id = $" + (storeLocation ? "2" : "1");
         let recentParams = storeLocation ? [storeLocation, req.user.tenant_id] : [req.user.tenant_id];
@@ -2426,6 +2450,10 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
             recentParams
         );
 
+        return { recentRes };
+        })();
+
+        const _cashierP = (async () => {
         // Cashier Performance Stats (in selected date range)
         let cashierWhere = "AND COALESCE(t.tenant_id, 1) = $3";
         const cashierParams = [fromTs, toTs, tenantId];
@@ -2445,6 +2473,12 @@ app.get('/api/dashboard', authenticateToken, async (req, res) => {
              ORDER BY total_sales DESC LIMIT 5`,
             cashierParams
         );
+
+        return { cashierRes };
+        })();
+
+        const [{ salesSummaryRes, grossSales, totalSellReturn, netSales, invoiceDue }, { totalPurchase, purchaseDue, totalPurchaseReturn }, { totalExpense }, { lowStockCount, outOfStockCount }, { recentRes }, { cashierRes }] =
+            await Promise.all([_salesP, _purchP, _expP, _stockP, _recentP, _cashierP]);
 
         res.json({
             stats: {
@@ -2989,6 +3023,7 @@ app.get('/api/products/barcode/:barcode', authenticateToken, async (req, res) =>
     }
 });
 
+const stockLevelsInitDone = new Set();
 // Full product endpoint with branch-specific stock_for_branch field
 app.get('/api/products/full', authenticateToken, async (req, res) => {
     try {
@@ -3019,125 +3054,142 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
         }
 
 
-        // Ensure all products have stock_levels initialized
-        await pool.query(`
-            UPDATE products 
-            SET stock_levels = jsonb_build_object('Main Warehouse', COALESCE(stock, 0))
-            WHERE (stock_levels IS NULL OR stock_levels = '{}'::jsonb) AND tenant_id = $1
-        `, [req.user.tenant_id || 1]);
+        // Ensure all products have stock_levels initialized (once per tenant per instance, not on every read)
+        const _initTenant = req.user.tenant_id || 1;
+        if (!stockLevelsInitDone.has(_initTenant)) {
+            await pool.query(`
+                UPDATE products 
+                SET stock_levels = jsonb_build_object('Main Warehouse', COALESCE(stock, 0))
+                WHERE (stock_levels IS NULL OR stock_levels = '{}'::jsonb) AND tenant_id = $1
+            `, [_initTenant]);
+            stockLevelsInitDone.add(_initTenant);
+        }
 
         // Support Pagination & Search parameters
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limitParam = req.query.limit;
         const lowStockOnly = req.query.lowStock === 'true';
         const outOfStockOnly = req.query.outOfStock === 'true';
+        const stockFilter = lowStockOnly || outOfStockOnly;
 
-        // When filtering for stock, we MUST fetch ALL products first (no DB-level pagination)
-        // because low-stock items may be on any page and we can only filter after computing branch stock
-        const limit = (lowStockOnly || outOfStockOnly || limitParam === 'all') ? null : Math.max(1, parseInt(limitParam) || 20);
         const requestedLimit = limitParam === 'all' ? null : Math.max(1, parseInt(limitParam) || 20);
-        const offset = limit ? (page - 1) * limit : 0;
         const search = req.query.search ? req.query.search.trim() : null;
 
         let queryParams = [req.user.tenant_id || 1];
         let whereClause = `WHERE tenant_id = $1 AND deleted_at IS NULL`;
-
         if (search) {
             queryParams.push(`%${search}%`);
             whereClause += ` AND (name ILIKE $2 OR barcode ILIKE $2 OR category ILIKE $2)`;
         }
 
-        let limitClause = '';
-        if (limit !== null) {
-            queryParams.push(limit);
-            limitClause = `LIMIT $${queryParams.length}`;
-            queryParams.push(offset);
-            limitClause += ` OFFSET $${queryParams.length}`;
-        }
-
-        // Execute Fetch — no LIMIT when lowStock=true so we get all products to filter
-        const result = await pool.query(`
-            SELECT 
-                *,
-                COUNT(*) OVER() AS total_count,
-                COALESCE(
-                    (SELECT SUM(CAST(value AS INTEGER)) 
-                     FROM jsonb_each_text(COALESCE(stock_levels, '{}'))),
-                    0
-                ) as calculated_total,
-                (SELECT COUNT(*) FROM product_batches pb WHERE pb.product_barcode = products.barcode AND pb.status = 'Active') as batch_count,
-                (SELECT MIN(expiry_date) FROM product_batches pb WHERE pb.product_barcode = products.barcode AND pb.status = 'Active') as next_expiry
-            FROM products 
-            ${whereClause}
-            ORDER BY name
-            ${limitClause}
-        `, queryParams);
-
-        // Extract total_count from window function
-        const totalItems = result.rows.length > 0 ? parseInt(result.rows[0].total_count) : 0;
-
-        // Map branch name for stock lookup (match how stock_levels keys are stored)
-        // Query BOTH name and location from branches — keys may be stored under either field
-        const branchRes = await pool.query(
+        // Branch lookup runs in parallel with the first product query
+        const branchPromise = pool.query(
             'SELECT id, name, location FROM branches WHERE name = $1 OR location = $1',
             [userBranch]
         );
-        const branchRow = branchRes.rows[0];
-        const branchStockKey = branchRow?.name || userBranch;
 
-        // Build candidate list for branch stock resolution (exact, case-insensitive, and fuzzy)
-        const branchCandidates = [userBranch, branchStockKey, branchRow?.location].filter(Boolean);
+        // Full-row query for a set of products; batch stats are aggregated once instead of two subselects per row.
+        const fullSelect = (where, params, tail) => pool.query(`
+            SELECT p.*,
+                COALESCE((SELECT SUM(CAST(value AS INTEGER)) FROM jsonb_each_text(COALESCE(p.stock_levels, '{}'))), 0) AS calculated_total,
+                COALESCE(pb.batch_count, 0) AS batch_count,
+                pb.next_expiry AS next_expiry
+            FROM products p
+            LEFT JOIN (
+                SELECT product_barcode, COUNT(*) AS batch_count, MIN(expiry_date) AS next_expiry
+                FROM product_batches WHERE status = 'Active' GROUP BY product_barcode
+            ) pb ON pb.product_barcode = p.barcode
+            ${where}
+            ORDER BY p.name
+            ${tail || ''}
+        `, params);
 
-        const rows = result.rows.map(p => {
-            const branchStock = resolveBranchStockFromLevels(p.stock_levels, branchCandidates);
+        let result, totalItems, branchRes;
+        let idFilterRows = null; // light rows used only when a stock filter is active
 
-            // Add stock_for_branch field for frontend
-            p.stock_for_branch = branchStock;
-
-            if ((isRestricted && userBranch) || req.user.role === 'business_client') {
-                // Branch View or Company Portal: Show only stock for this branch
-                p.stock = branchStock;
-            } else {
-                // Admin/CEO View: Show total stock across branches when stock_levels has entries
-                if (p.stock_levels && typeof p.stock_levels === 'object' && Object.keys(p.stock_levels).length > 0) {
-                    p.stock = p.calculated_total;
-                }
+        if (stockFilter) {
+            // Light pass: only the columns the stock/reorder rule needs, for every matching product.
+            const [lightRes, br] = await Promise.all([
+                pool.query(`
+                    SELECT id, stock, reorder_level, stock_levels,
+                        COALESCE((SELECT SUM(CAST(value AS INTEGER)) FROM jsonb_each_text(COALESCE(stock_levels, '{}'))), 0) AS calculated_total
+                    FROM products ${whereClause} ORDER BY name
+                `, queryParams),
+                branchPromise
+            ]);
+            branchRes = br;
+            idFilterRows = lightRes.rows;
+        } else {
+            const pageLimit = requestedLimit;
+            const pageParams = queryParams.slice();
+            let tail = '';
+            if (pageLimit !== null) {
+                pageParams.push(pageLimit);
+                tail = `LIMIT $${pageParams.length}`;
+                pageParams.push((page - 1) * pageLimit);
+                tail += ` OFFSET $${pageParams.length}`;
             }
-            delete p.calculated_total;
-            return p;
-        });
-
-        // Apply lowStock filter AFTER branch stock is resolved for ALL products
-        // Then re-apply pagination to the filtered set
-        let finalRows = rows;
-        let finalTotal = totalItems;
-
-        if (lowStockOnly || outOfStockOnly) {
-            // Use p.stock — already correctly set:
-            //   - branch stock for restricted/business_client users
-            //   - total stock for admin/CEO
-            // This ensures the filter matches exactly what is displayed in the table.
-            const filteredSet = rows.filter(p => {
-                const s = Number(p.stock ?? 0);
-                const reorder = (p.reorder_level !== null && p.reorder_level !== undefined)
-                    ? Number(p.reorder_level)
-                    : 10;
-
-                if (outOfStockOnly && lowStockOnly) {
-                    return s <= reorder;              // Both checked: all at or below reorder
-                } else if (outOfStockOnly) {
-                    return s <= 0;                    // Strictly zero or negative
-                } else if (lowStockOnly) {
-                    return s <= reorder;              // All items at or below reorder level (including out of stock)
-                }
-                return true;
-            });
-            finalTotal = filteredSet.length;
-            // Re-paginate the filtered results
-            const startIdx = (page - 1) * (requestedLimit || finalTotal);
-            finalRows = requestedLimit ? filteredSet.slice(startIdx, startIdx + requestedLimit) : filteredSet;
+            const [res1, br] = await Promise.all([
+                pool.query(`
+                    SELECT p.*,
+                        COUNT(*) OVER() AS total_count,
+                        COALESCE((SELECT SUM(CAST(value AS INTEGER)) FROM jsonb_each_text(COALESCE(p.stock_levels, '{}'))), 0) AS calculated_total,
+                        COALESCE(pb.batch_count, 0) AS batch_count,
+                        pb.next_expiry AS next_expiry
+                    FROM products p
+                    LEFT JOIN (
+                        SELECT product_barcode, COUNT(*) AS batch_count, MIN(expiry_date) AS next_expiry
+                        FROM product_batches WHERE status = 'Active' GROUP BY product_barcode
+                    ) pb ON pb.product_barcode = p.barcode
+                    ${whereClause.replace(/\b(tenant_id|deleted_at|name|barcode|category)\b/g, 'p.$1')}
+                    ORDER BY p.name
+                    ${tail}
+                `, pageParams),
+                branchPromise
+            ]);
+            result = res1;
+            branchRes = br;
+            totalItems = result.rows.length > 0 ? parseInt(result.rows[0].total_count) : 0;
         }
 
+        const branchRow = branchRes.rows[0];
+        const branchStockKey = branchRow?.name || userBranch;
+        const branchCandidates = [userBranch, branchStockKey, branchRow?.location].filter(Boolean);
+
+        const displayStock = (p) => {
+            const branchStock = resolveBranchStockFromLevels(p.stock_levels, branchCandidates);
+            p.stock_for_branch = branchStock;
+            if ((isRestricted && userBranch) || req.user.role === 'business_client') {
+                p.stock = branchStock;
+            } else if (p.stock_levels && typeof p.stock_levels === 'object' && Object.keys(p.stock_levels).length > 0) {
+                p.stock = p.calculated_total;
+            }
+            return p;
+        };
+
+        let finalRows, finalTotal;
+        if (stockFilter) {
+            // Same rule as before (p.stock as displayed vs reorder level), but on light rows only.
+            const matched = idFilterRows.filter(p => {
+                displayStock(p);
+                const s = Number(p.stock ?? 0);
+                const reorder = (p.reorder_level !== null && p.reorder_level !== undefined) ? Number(p.reorder_level) : 10;
+                if (outOfStockOnly && !lowStockOnly) return s <= 0;
+                return s <= reorder;
+            });
+            finalTotal = matched.length;
+            const startIdx = (page - 1) * (requestedLimit || finalTotal);
+            const pageIds = (requestedLimit ? matched.slice(startIdx, startIdx + requestedLimit) : matched).map(p => p.id);
+            if (pageIds.length === 0) {
+                finalRows = [];
+            } else {
+                const full = await fullSelect(`WHERE p.id = ANY($1::int[])`, [pageIds]);
+                finalRows = full.rows.map(p => { displayStock(p); delete p.calculated_total; return p; });
+            }
+        } else {
+            finalRows = result.rows.map(p => { displayStock(p); delete p.calculated_total; return p; });
+            finalTotal = totalItems;
+        }
 
         // Set header with branch key for frontend reference
         res.setHeader('X-Branch-Stock-Key', branchStockKey);
@@ -9102,6 +9154,7 @@ app.use((req, res, next) => {
             '/instant-nav.js',
             '/telemetry-guard.js',
             '/offline-queue.js',
+            '/lazy-libs.js',
             '/layout.js',
             '/ui-components.js',
             '/pos-upgrade.js'
@@ -9123,7 +9176,7 @@ app.use(express.static(path.join(__dirname), {
         if (filePath.endsWith('.html')) {
             res.setHeader('Cache-Control', 'no-cache');
         } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
-            res.setHeader('Cache-Control', 'public, max-age=120, must-revalidate');
+            res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
         } else if (filePath.endsWith('.png') || filePath.endsWith('.ico') || filePath.endsWith('.svg') || filePath.endsWith('.woff2')) {
             res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
         }

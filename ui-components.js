@@ -896,12 +896,18 @@
                     <div class="okw-hub-toolbar"></div>
                 </div>
             </div>
-            <div class="okw-card okw-hub-panel">Loading...</div>
+            <div class="okw-card okw-hub-panel"><div class="okw-hub-frames"></div><div class="okw-hub-render">Loading...</div></div>
         `;
 
         const picker = root.querySelector('#' + pickerId);
         const toolbar = root.querySelector('.okw-hub-toolbar');
-        const panel = root.querySelector('.okw-hub-panel');
+        const outer = root.querySelector('.okw-hub-panel');
+        const framesBox = outer.querySelector('.okw-hub-frames');
+        const panel = outer.querySelector('.okw-hub-render');
+        // Embedded sections stay loaded once opened (hidden, not removed), so coming back is instant.
+        // A frame that has been away for a while reloads quietly so it never shows stale numbers.
+        const frames = new Map();
+        const FRAME_STALE_MS = 45000;
 
         let shown = null; // the section currently on screen
         async function show(id) {
@@ -919,11 +925,34 @@
                 window.history.replaceState(null, '', url);
             } catch (_) { /* history is a nicety, never required */ }
             toolbar.innerHTML = '';
-            panel.classList.remove('okw-hub-panel-embed');
-            panel.innerHTML = 'Loading...';
+            frames.forEach(f => { f.el.style.display = 'none'; });
             try {
-                if (section.embed) embedFrame(panel, section.embed, section.label);
-                else await section.render(panel, { toolbar, show, current });
+                if (section.embed) {
+                    outer.classList.add('okw-hub-panel-embed');
+                    panel.style.display = 'none';
+                    let f = frames.get(section.id);
+                    if (!f) {
+                        const u = new URL(section.embed, window.location.origin);
+                        u.searchParams.set('embed', '1');
+                        const el = document.createElement('iframe');
+                        el.className = 'okw-embed-frame';
+                        el.title = section.label || 'Section';
+                        el.src = u.pathname + u.search;
+                        framesBox.appendChild(el);
+                        f = { el, left: 0 };
+                        frames.set(section.id, f);
+                    } else if (f.left && Date.now() - f.left > FRAME_STALE_MS) {
+                        try { f.el.contentWindow.location.reload(); } catch (_) { /* cross-origin guard */ }
+                    }
+                    f.el.style.display = 'block';
+                    frames.forEach(o => { if (o !== f) o.left = o.left || Date.now(); });
+                    f.left = 0;
+                } else {
+                    outer.classList.remove('okw-hub-panel-embed');
+                    panel.style.display = '';
+                    panel.innerHTML = 'Loading...';
+                    await section.render(panel, { toolbar, show, current });
+                }
             } catch (err) {
                 panel.innerHTML = '<div>This section could not be loaded.</div>';
                 toast((err && err.message) || 'This section could not be loaded.', 'danger');
