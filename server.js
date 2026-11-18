@@ -165,6 +165,27 @@ async function initDb() {
         return;
     }
     try {
+        if (process.env.VERCEL) {
+            try {
+                const fastCheck = await pool.query(`
+                    SELECT
+                        to_regclass('public.users') IS NOT NULL AS has_users,
+                        to_regclass('public.gl_accounts') IS NOT NULL AS has_gl,
+                        to_regclass('public.payroll_runs') IS NOT NULL AS has_payroll,
+                        EXISTS (
+                            SELECT 1 FROM information_schema.columns
+                            WHERE table_name = 'delivery_notes' AND column_name = 'store_location'
+                        ) AS has_dn_loc
+                `);
+                const row = fastCheck.rows[0] || {};
+                if (row.has_users && row.has_gl && row.has_payroll && row.has_dn_loc) {
+                    console.log('Database schema up-to-date (fast boot)');
+                    return;
+                }
+            } catch (_) {
+                // Fall through to full schema bootstrap
+            }
+        }
         await pool.query(`
             -- SaaS Multitenancy Table
             CREATE TABLE IF NOT EXISTS tenants (
@@ -1325,10 +1346,17 @@ app.options(/.*/, cors(corsOptions)); // Enable pre-flight for all routes
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Wait for schema & RLS bootstrap before serving API/page requests
+// Wait for schema & RLS bootstrap before serving API/page requests (skip for static assets/healthz and cap wait to avoid serverless 504s)
 app.use(async (req, res, next) => {
+    const p = req.path || '';
+    if (p === '/healthz' || /\.(css|js|svg|png|ico|woff2|jpg|jpeg|webp|pdf)$/i.test(p)) {
+        return next();
+    }
     try {
-        await initDbPromise;
+        await Promise.race([
+            initDbPromise,
+            new Promise((resolve) => setTimeout(resolve, 5000))
+        ]);
     } catch (e) {
         // initDb logs errors internally
     }
