@@ -486,7 +486,8 @@
             }
         }
 
-        loadFeed();
+        // the alerts feed is not needed to paint the page; fetch it once the page has settled
+        setTimeout(loadFeed, 2500);
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
             const open = dd.style.display === 'flex';

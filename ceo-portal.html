@@ -3261,10 +3261,10 @@
 
         // Active Adaptive Background Polling (Every 10 seconds while tab is open)
         let backgroundPollingTimer = setInterval(() => {
-            if (document.visibilityState === 'visible') {
+            if (document.visibilityState === 'visible' && window.innerWidth > 0) {
                 refreshActiveTab(true);
             }
-        }, 10000);
+        }, 20000);
 
         // Immediate background refresh when returning to tab or focusing window
         let lastFocusSyncTime = Date.now();

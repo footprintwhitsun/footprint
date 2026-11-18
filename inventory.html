@@ -2182,7 +2182,8 @@
             setInterval(() => {
                 const isModalOpen = document.querySelector('.modal.active, .modal[style*="display: block"]');
                 const isInputActive = document.activeElement && (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA');
-                if (!isModalOpen && !isInputActive) {
+                // a hidden hub frame (width 0) or background tab must not keep polling
+                if (!isModalOpen && !isInputActive && document.visibilityState === 'visible' && window.innerWidth > 0) {
                     loadInventory();
                 }
             }, 60000);
