@@ -472,3 +472,28 @@ test('The strict content security policy is report-only, on pages only, and bloc
         assert.equal(h['Content-Security-Policy-Report-Only'], undefined, `${p} is skipped`);
     }
 });
+
+test('Each page is allowed exactly its own inline scripts by hash, and nothing else inline', () => {
+    const crypto = require('node:crypto');
+    const security = require('../security');
+    const file = path.join(ROOT, 'login.html');
+    const html = fs.readFileSync(file, 'utf8');
+    const blocks = [...html.matchAll(/<script(?![^>]*\bsrc\s*=)[^>]*>([\s\S]*?)<\/script>/gi)].map(m => m[1]).filter(t => t.trim());
+    assert.ok(blocks.length > 0, 'login.html has an inline script to hash');
+    const expected = blocks.map(t => 'sha256-' + crypto.createHash('sha256').update(t, 'utf8').digest('base64'));
+    const hashes = security.inlineScriptHashes(file);
+    for (const h of expected) assert.ok(hashes.includes(h), 'hash for an inline block is present');
+
+    // the header set when a page file is sent carries those hashes and still no unsafe-inline
+    const headers = {};
+    const res = { setHeader: (k, v) => { headers[k] = v; }, sendFile: () => 'sent' };
+    security.cspReportOnly({ path: '/login' }, res, () => {});
+    assert.equal(res.sendFile(file), 'sent');
+    const policy = headers['Content-Security-Policy-Report-Only'];
+    for (const h of expected) assert.ok(policy.includes(`'${h}'`), 'policy lists the page hash');
+    assert.ok(!/unsafe-inline/.test(policy));
+
+    // an injected script (different text) is not covered
+    const injected = 'sha256-' + crypto.createHash('sha256').update('alert(1)', 'utf8').digest('base64');
+    assert.ok(!policy.includes(injected));
+});
