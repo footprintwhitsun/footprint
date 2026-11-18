@@ -2078,6 +2078,15 @@
             filterInventory();
         }
 
+        // Lazy, once-only loaders: a tab pays only for the data it shows.
+        const TABS_NEEDING_POS = ['orders', 'receiving', 'analytics', 'suppliers'];
+        const TABS_NEEDING_TRANSFERS = ['distribution'];
+        let _posRequested = false, _transfersRequested = false;
+        function ensureTabData(tabId) {
+            if (!_posRequested && TABS_NEEDING_POS.includes(tabId)) { _posRequested = true; loadPOs(); }
+            if (!_transfersRequested && TABS_NEEDING_TRANSFERS.includes(tabId)) { _transfersRequested = true; loadTransfers(); }
+        }
+
         async function switchTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             const target = document.getElementById('tab-' + tabId);
@@ -2105,6 +2114,9 @@
             // Only update title if element exists
             const titleEl = document.getElementById('pageTitle');
             if(titleEl) titleEl.textContent = titles[tabId] || 'Inventory & Supply Chain';
+
+            // Purchase orders and transfers are only fetched for the tabs that show them
+            ensureTabData(tabId);
 
             // Load data specific to activated tab
             if (tabId === 'stock') {
@@ -2151,8 +2163,7 @@
             // Load background lookups
             loadCategories();
             loadSuppliers();
-            loadPOs();
-            loadTransfers();
+            // loadPOs() / loadTransfers() now run from switchTab -> ensureTabData for the tabs that need them
 
             // Single unified activation point for the initial tab
             switchTab(tab);
