@@ -32,10 +32,31 @@ const MANAGER_ROLES = ['super_admin', 'ceo', 'admin', 'manager', 'store_manager'
 
 const userTenantScope = (req) => ((req.user.role === 'super_admin' || req.user.role === 'ceo') ? null : (req.user.tenant_id || 1));
 
+// Cookie-mode login: the browser never holds the signed JWT. The server hands it a "session marker" instead:
+// an UNSIGNED, non-secret token-shaped string (header.payload.session) that carries only the display fields the
+// pages need (role, name, expiry) so existing client code keeps working. It is never accepted as a credential:
+// requests are authenticated by the httpOnly session cookie. A forged marker grants nothing.
+const SESSION_MARKER_SIG = 'session';
+const b64url = (obj) => Buffer.from(JSON.stringify(obj)).toString('base64').replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+const isSessionMarker = (t) => {
+    if (typeof t !== 'string') return false;
+    const parts = t.split('.');
+    return parts.length === 3 && parts[2] === SESSION_MARKER_SIG;
+};
+const makeSessionMarker = (payload, ttlSeconds = 8 * 3600) => {
+    const now = Math.floor(Date.now() / 1000);
+    return [b64url({ alg: 'none', typ: 'JWT' }), b64url({ ...payload, iat: now, exp: now + ttlSeconds }), SESSION_MARKER_SIG].join('.');
+};
+// The real bearer token in an Authorization header, or null (absent, "null", or a session marker).
+const bearerFromHeader = (authHeader) => {
+    const t = authHeader && authHeader.split(' ')[1];
+    if (!t || t === 'null' || t === 'undefined' || isSessionMarker(t)) return null;
+    return t;
+};
+
 const authenticateToken = (req, res, next) => {
     const authHeader = req.headers['authorization'];
-    let token = authHeader && authHeader.split(' ')[1];
-    if (token === 'null' || token === 'undefined') token = null;
+    const token = bearerFromHeader(authHeader);
 
     const enforceSaaSBoundary = (userPayload) => {
         if (!userPayload) return res.status(401).json({ message: 'Not authenticated' });
@@ -105,9 +126,8 @@ const guardPageRoute = (allowedRoles, htmlFile, rootDir) => (req, res) => {
     const sessionUser = req.session && (req.session.user || req.session.companyUser);
     let bearerUser = null;
     if (!sessionUser) {
-        const authHeader = req.headers['authorization'];
-        const token = authHeader && authHeader.split(' ')[1];
-        if (token && token !== 'null' && token !== 'undefined') {
+        const token = bearerFromHeader(req.headers['authorization']);
+        if (token) {
             try { bearerUser = jwt.verify(token, JWT_SECRET); } catch (e) { bearerUser = null; }
         }
     }
@@ -135,5 +155,8 @@ module.exports = {
     authenticateToken,
     requireRole,
     requirePermission,
-    guardPageRoute
+    guardPageRoute,
+    makeSessionMarker,
+    bearerFromHeader,
+    isSessionMarker
 };

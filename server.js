@@ -35,8 +35,16 @@ const {
     authenticateToken,
     requireRole,
     requirePermission,
-    guardPageRoute
+    guardPageRoute,
+    makeSessionMarker,
+    bearerFromHeader
 } = require('./middleware/auth');
+
+// What the browser receives as its "token" after login. By default a session marker (the real JWT stays on the
+// server and the httpOnly session cookie authenticates). Scripts that really need the bearer token can send
+// the header X-Token-Mode: bearer.
+const tokenForClient = (req, payload, jwtToken) =>
+    (String(req.headers['x-token-mode'] || '').toLowerCase() === 'bearer' ? jwtToken : makeSessionMarker(payload));
 // Secrets: a production server must not start with a placeholder or a short secret.
 (function checkSecrets() {
     const placeholders = ['footprint-secure-secret-key-2025', 'okwesiwa-dev-jwt-secret-local-only', 'okwesiwa-dev-session-secret-local-only', 'change_this_to_a_random_secret_string'];
@@ -1290,7 +1298,7 @@ app.use((req, res, next) => {
 const ALLOWED_ORIGINS = String(process.env.ALLOWED_ORIGINS || '').split(',').map(s => s.trim()).filter(Boolean);
 app.use((req, res, next) => {
     if (!['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) return next();
-    if (req.headers.authorization) return next();
+    if (bearerFromHeader(req.headers.authorization)) return next();
     let origin = req.headers.origin;
     if (!origin && req.headers.referer) { try { origin = new URL(req.headers.referer).origin; } catch (_) { origin = ''; } }
     const host = req.headers['x-forwarded-host'] || req.headers.host;
@@ -1424,8 +1432,7 @@ app.use(async (req, res, next) => {
 
 // Session Revocation Endpoint
 app.post('/api/auth/revoke', authenticateToken, async (req, res) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+    const token = bearerFromHeader(req.headers['authorization']);
     if (token) await revokeToken(token);
     if (req.session) {
         req.session.destroy(() => { });
@@ -1666,12 +1673,12 @@ app.post('/login', loginLimiter, [
                         type: 'company',
                         tenant_id: compUser.tenant_id || 1
                     };
-                    const token = jwt.sign(req.session.companyUser, JWT_SECRET, { expiresIn: '8h' });
+                    const jwtToken = jwt.sign(req.session.companyUser, JWT_SECRET, { expiresIn: '8h' });
                     return res.json({
                         success: true,
                         message: 'Login successful',
                         user: req.session.companyUser,
-                        token,
+                        token: tokenForClient(req, req.session.companyUser, jwtToken),
                         redirectTo: '/company-portal'
                     });
                 }
@@ -1765,7 +1772,7 @@ app.post('/login', loginLimiter, [
 
         res.json({
             success: true,
-            token: token,
+            token: tokenForClient(req, req.session.user, token),
             redirectTo: redirectTo.replace(/^\//, ''),
             user: {
                 id: user.id,
@@ -1845,9 +1852,8 @@ app.get('/api/session', authenticateToken, async (req, res) => {
 // Logout Endpoint
 app.post('/api/logout', async (req, res) => {
     // Destroying the session alone left an issued bearer token valid for its full 8h life.
-    const authHeader = req.headers['authorization'];
-    const bearer = authHeader && authHeader.split(' ')[1];
-    if (bearer && bearer !== 'null' && bearer !== 'undefined') await revokeToken(bearer);
+    const bearer = bearerFromHeader(req.headers['authorization']);
+    if (bearer) await revokeToken(bearer);
     await logActivity(req, 'LOGOUT');
     req.session.destroy((err) => {
         if (err) {
@@ -1918,7 +1924,7 @@ app.post('/api/company/login', authLimiter, [
 
         res.json({
             success: true,
-            token: token,
+            token: tokenForClient(req, req.session.companyUser, token),
             user: {
                 id: user.id,
                 company_id: user.company_id,
@@ -5364,7 +5370,7 @@ app.post('/api/debug/switch-role', authenticateToken, async (req, res) => {
         const token = jwt.sign(req.session.user, JWT_SECRET, { expiresIn: '8h' });
         await logActivity(req, 'DEBUG_SWITCH_ROLE', { targetRole });
 
-        res.json({ success: true, token, redirectTo: redirectTo.replace(/^\//, ''), user: req.session.user });
+        res.json({ success: true, token: tokenForClient(req, req.session.user, token), redirectTo: redirectTo.replace(/^\//, ''), user: req.session.user });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error switching role' });
