@@ -464,7 +464,7 @@ test('The strict content security policy is report-only, on pages only, and bloc
     security.cspReportOnly({ path: '/dashboard' }, res, () => {});
     const policy = headers['Content-Security-Policy-Report-Only'];
     assert.ok(policy, 'page responses carry the report-only policy');
-    assert.ok(!/unsafe-inline/.test(policy), 'the strict policy has no unsafe-inline');
+    assert.ok(!/script-src[^;]*unsafe-inline/.test(policy), 'the strict script-src has no unsafe-inline');
     assert.ok(policy.includes("script-src-attr 'none'"), 'inline event handlers are reported');
     assert.ok(policy.includes('report-uri /api/csp-report'));
     for (const p of ['/api/products', '/layout.js', '/sidebar.css']) {
@@ -492,7 +492,7 @@ test('Each page is allowed exactly its own inline scripts by hash, and nothing e
     assert.equal(res.sendFile(file), 'sent');
     const policy = headers['Content-Security-Policy-Report-Only'];
     for (const h of expected) assert.ok(policy.includes(`'${h}'`), 'policy lists the page hash');
-    assert.ok(!/unsafe-inline/.test(policy));
+    assert.ok(!/script-src[^;]*unsafe-inline/.test(policy));
 
     // an injected script (different text) is not covered
     const injected = 'sha256-' + crypto.createHash('sha256').update('alert(1)', 'utf8').digest('base64');
@@ -514,4 +514,27 @@ test('Scripts load only from this site: pinned libraries live in vendor/, and no
         }
     }
     assert.ok(read('vercel.json').includes('vendor/**'), 'vendor/ must be deployed with the function');
+});
+
+test('The strict policy keeps every non-script rule of the live policy, and can be enforced from the environment', () => {
+    const security = require('../security');
+    const strict = security.buildStrictPolicy([]);
+    for (const part of ['style-src', 'img-src', 'font-src', 'connect-src', 'worker-src', 'frame-ancestors', "object-src 'none'", "base-uri 'self'", "form-action 'self'"]) {
+        assert.ok(strict.includes(part), `strict policy keeps ${part}`);
+    }
+    const run = (env) => {
+        const before = process.env.CSP_ENFORCE_STRICT;
+        if (env === undefined) delete process.env.CSP_ENFORCE_STRICT; else process.env.CSP_ENFORCE_STRICT = env;
+        const headers = {};
+        security.cspReportOnly({ path: '/dashboard' }, { setHeader: (k, v) => { headers[k] = v; } }, () => {});
+        if (before === undefined) delete process.env.CSP_ENFORCE_STRICT; else process.env.CSP_ENFORCE_STRICT = before;
+        return headers;
+    };
+    assert.ok(run(undefined)['Content-Security-Policy-Report-Only'], 'report-only by default');
+    assert.equal(run(undefined)['Content-Security-Policy'], undefined);
+    assert.ok(run('false')['Content-Security-Policy-Report-Only']);
+    const on = run('true');
+    assert.ok(on['Content-Security-Policy'], 'enforced when CSP_ENFORCE_STRICT=true');
+    assert.equal(on['Content-Security-Policy-Report-Only'], undefined);
+    assert.ok(!/script-src[^;]*unsafe-inline/.test(on['Content-Security-Policy']));
 });

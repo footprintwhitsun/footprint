@@ -5,6 +5,36 @@ const { validationResult } = require('express-validator');
 // Security middleware
 const isProduction = process.env.NODE_ENV === 'production';
 
+// Everything except the script rules is shared by the live policy and the strict one, so enforcing the
+// strict policy changes how scripts are allowed and nothing else.
+const COMMON_DIRECTIVES = {
+    styleSrc: [
+        "'self'", 
+        "'unsafe-inline'", 
+        'https://cdn.jsdelivr.net', 
+        'https://cdnjs.cloudflare.com', 
+        'https://fonts.googleapis.com'
+    ],
+    imgSrc: ["'self'", "data:", "https:", "blob:"],
+    connectSrc: [
+        "'self'", 
+        'https://api.mtn.com', 
+        'https://cdn.jsdelivr.net', 
+        'https://cdnjs.cloudflare.com',
+        'https://cdn.sheetjs.com'
+    ],
+    fontSrc: [
+        "'self'", 
+        'https://cdnjs.cloudflare.com', 
+        'https://fonts.gstatic.com'
+    ],
+    frameAncestors: ["'self'"],
+    objectSrc: ["'none'"],
+    baseUri: ["'self'"],
+    formAction: ["'self'"],
+    workerSrc: ["'self'", "blob:"]
+};
+
 exports.securityHeaders = helmet({
     contentSecurityPolicy: {
         directives: {
@@ -16,31 +46,7 @@ exports.securityHeaders = helmet({
                 "'unsafe-inline'"
             ],
             scriptSrcAttr: ["'unsafe-inline'"],
-            styleSrc: [
-                "'self'", 
-                "'unsafe-inline'", 
-                'https://cdn.jsdelivr.net', 
-                'https://cdnjs.cloudflare.com', 
-                'https://fonts.googleapis.com'
-            ],
-            imgSrc: ["'self'", "data:", "https:", "blob:"],
-            connectSrc: [
-                "'self'", 
-                'https://api.mtn.com', 
-                'https://cdn.jsdelivr.net', 
-                'https://cdnjs.cloudflare.com',
-                'https://cdn.sheetjs.com'
-            ],
-            fontSrc: [
-                "'self'", 
-                'https://cdnjs.cloudflare.com', 
-                'https://fonts.gstatic.com'
-            ],
-            frameAncestors: ["'self'"],
-            objectSrc: ["'none'"],
-            baseUri: ["'self'"],
-            formAction: ["'self'"],
-            workerSrc: ["'self'", "blob:"],
+            ...COMMON_DIRECTIVES,
             upgradeInsecureRequests: isProduction ? [] : null
         }
     },
@@ -63,18 +69,16 @@ const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
 
-const STRICT_BASE = [
+const kebab = (k) => k.replace(/[A-Z]/g, (m) => '-' + m.toLowerCase());
+const commonPolicyParts = Object.keys(COMMON_DIRECTIVES).map((k) => `${kebab(k)} ${COMMON_DIRECTIVES[k].join(' ')}`);
+const buildStrictPolicy = (hashes) => [
     "default-src 'self'",
+    `script-src 'self'${hashes && hashes.length ? ' ' + hashes.map((h) => `'${h}'`).join(' ') : ''}`,
     "script-src-attr 'none'",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'self'",
+    ...commonPolicyParts,
+    ...(isProduction ? ['upgrade-insecure-requests'] : []),
     'report-uri /api/csp-report'
-];
-const SCRIPT_HOSTS = "'self'";
-const buildStrictPolicy = (hashes) =>
-    [STRICT_BASE[0], `script-src ${SCRIPT_HOSTS}${hashes && hashes.length ? ' ' + hashes.map(h => `'${h}'`).join(' ') : ''}`, ...STRICT_BASE.slice(1)].join('; ');
+].join('; ');
 
 const INLINE_SCRIPT = /<script(?![^>]*\bsrc\s*=)[^>]*>([\s\S]*?)<\/script>/gi;
 const hashCache = new Map(); // absolute file -> { mtimeMs, hashes }
@@ -97,16 +101,21 @@ function inlineScriptHashes(file) {
 exports.inlineScriptHashes = inlineScriptHashes;
 exports.buildStrictPolicy = buildStrictPolicy;
 
+// CSP_ENFORCE_STRICT=true (a Vercel environment variable) makes the strict policy the ENFORCED one on pages;
+// unset or anything else keeps it report-only. Switching it back is an environment change, not a code change.
+const enforceStrict = () => String(process.env.CSP_ENFORCE_STRICT || '').toLowerCase() === 'true';
+
 exports.cspReportOnly = (req, res, next) => {
     const p = req.path || '';
     if (!p.startsWith('/api/') && !/\.(css|js|svg|png|jpg|jpeg|webp|ico|woff2?|json|map)$/i.test(p)) {
-        res.setHeader('Content-Security-Policy-Report-Only', buildStrictPolicy([]));
+        const header = enforceStrict() ? 'Content-Security-Policy' : 'Content-Security-Policy-Report-Only';
+        res.setHeader(header, buildStrictPolicy([]));
         // When a page file is sent, allow exactly that file's inline scripts.
         const send = typeof res.sendFile === 'function' ? res.sendFile.bind(res) : null;
         if (send) res.sendFile = function (file, ...rest) {
             try {
                 if (typeof file === 'string' && /\.html$/i.test(file) && path.isAbsolute(file)) {
-                    res.setHeader('Content-Security-Policy-Report-Only', buildStrictPolicy(inlineScriptHashes(file)));
+                    res.setHeader(header, buildStrictPolicy(inlineScriptHashes(file)));
                 }
             } catch (_) { /* a policy that cannot be built must never stop the page */ }
             return send(file, ...rest);
