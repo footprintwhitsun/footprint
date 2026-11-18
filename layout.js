@@ -134,9 +134,24 @@
         return localStorage.getItem(themeKey()) || localStorage.getItem('okwesiwa_theme') || 'light';
     }
 
+    // Hard-coded light surfaces and dark text that the shared dark tokens do not reach.
+    // Only fetched in dark mode, so light-mode users never download it.
+    function syncDarkFixes(t) {
+        let link = document.getElementById('okw-dark-fixes');
+        if (t === 'dark' && !link) {
+            link = document.createElement('link');
+            link.id = 'okw-dark-fixes';
+            link.rel = 'stylesheet';
+            link.href = '/dark-fixes.css';
+            document.head.appendChild(link);
+        }
+        if (link) link.disabled = t !== 'dark';
+    }
+
     function applyTheme(theme) {
         const t = theme === 'dark' ? 'dark' : 'light';
         document.documentElement.setAttribute('data-theme', t);
+        syncDarkFixes(t);
         localStorage.setItem(themeKey(), t);
         localStorage.setItem('okwesiwa_theme', t);
         const btn = document.getElementById('okw-theme-toggle');
