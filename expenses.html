@@ -22,6 +22,7 @@
         @media (max-width: 900px) { .main-content { margin-left: 0; } }
     </style>
     <link rel="stylesheet" href="/portal-skin.css">
+    <script src="/okw-events.js"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -230,7 +231,7 @@
                 { key: 'code', label: 'Category Code' },
                 {
                     key: 'id', label: 'Action',
-                    render: (id) => `<button type="button" class="okw-btn okw-btn-danger" onclick="window.__delExpCat(${id})">Delete</button>`
+                    render: (id) => `<button type="button" class="okw-btn okw-btn-danger" data-onclick="window.__delExpCat(${id})">Delete</button>`
                 }
             ],
             rows: categories,

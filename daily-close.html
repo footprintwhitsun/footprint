@@ -32,6 +32,7 @@
         #sales-totals-box .mono { font-family: var(--font-display) !important; font-size: 20px !important; font-weight: 600 !important; font-variant-numeric: tabular-nums; }
         #sales-totals-box > div:first-child .mono, #sales-totals-box > div:last-child .mono { color: var(--brand); font-size: 24px !important; white-space: nowrap; }
     </style>
+    <script src="/okw-events.js"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -62,7 +63,7 @@
                     <select id="dc-branch" class="okw-select"><option value="All Branches">All Branches</option></select>
                     <input type="number" id="dc-counted-cash" class="okw-input" placeholder="Counted Cash (GH₵)" step="0.01" style="width:170px;">
                     <button type="button" class="okw-btn okw-btn-accent" id="btn-close-day">Close Day</button>
-                    <button type="button" class="okw-btn okw-btn-outline" onclick="window.print()">Print A4 / PDF</button>
+                    <button type="button" class="okw-btn okw-btn-outline" data-onclick="window.print()">Print A4 / PDF</button>
                     <button type="button" class="okw-btn okw-btn-outline" id="btn-email-ceo">Email CEO</button>
                 </div>
             </div>

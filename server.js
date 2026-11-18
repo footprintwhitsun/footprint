@@ -9276,6 +9276,7 @@ app.use((req, res, next) => {
             '/telemetry-guard.js',
             '/offline-queue.js',
             '/lazy-libs.js',
+            '/okw-events.js',
             '/layout.js',
             '/ui-components.js',
             '/pos-upgrade.js'

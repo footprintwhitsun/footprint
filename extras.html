@@ -18,6 +18,7 @@
         @media (max-width: 900px) { .main-content { margin-left: 0; } }
     </style>
     <link rel="stylesheet" href="/portal-skin.css">
+    <script src="/okw-events.js"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -146,7 +147,7 @@
                 { key: 'amount_paid', label: 'Paid', numeric: true, render: fmt },
                 { key: 'balance', label: 'Balance', numeric: true, render: fmt },
                 { key: 'status', label: 'Status', render: v => OkwUI.badge(v, v === 'paid' ? 'success' : (v === 'cancelled' ? 'danger' : 'warning')) },
-                { key: 'id', label: 'Actions', render: (id, row) => row.status === 'cancelled' ? '<span style="font-size:12px;color:var(--color-text-muted);">Cancelled</span>' : `<div style="display:flex;gap:6px;"><button type="button" class="okw-btn okw-btn-outline" onclick="window.__payLayaway(${id})">Add Payment</button><button type="button" class="okw-btn okw-btn-outline" onclick="window.__cancelLayaway(${id})">Cancel</button></div>` }
+                { key: 'id', label: 'Actions', render: (id, row) => row.status === 'cancelled' ? '<span style="font-size:12px;color:var(--color-text-muted);">Cancelled</span>' : `<div style="display:flex;gap:6px;"><button type="button" class="okw-btn okw-btn-outline" data-onclick="window.__payLayaway(${id})">Add Payment</button><button type="button" class="okw-btn okw-btn-outline" data-onclick="window.__cancelLayaway(${id})">Cancel</button></div>` }
             ],
             rows: d.layaways || []
         });
@@ -206,7 +207,7 @@
                 { key: 'clock_out', label: 'Clock Out', render: v => v ? new Date(v).toLocaleString() : 'Active' },
                 { key: 'hours_worked', label: 'Hours', numeric: true },
                 { key: 'is_late', label: 'Status', render: v => v ? OkwUI.badge('Late', 'warning') : OkwUI.badge('On Time', 'success') },
-                { key: 'id', label: 'Action', render: (id, r) => r.clock_out ? '—' : `<button type="button" class="okw-btn okw-btn-outline" onclick="window.__clockOut(${id})">Clock Out</button>` }
+                { key: 'id', label: 'Action', render: (id, r) => r.clock_out ? '—' : `<button type="button" class="okw-btn okw-btn-outline" data-onclick="window.__clockOut(${id})">Clock Out</button>` }
             ],
             rows: d.attendance || []
         });

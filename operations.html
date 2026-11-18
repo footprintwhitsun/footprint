@@ -18,6 +18,7 @@
         @media (max-width: 900px) { .main-content { margin-left: 0; } }
     </style>
     <link rel="stylesheet" href="/portal-skin.css">
+    <script src="/okw-events.js"></script>
 </head>
 <body>
 <div class="app-shell">
@@ -74,8 +75,8 @@
                     key: 'id', label: 'Update',
                     render: (id, row) => `
                         <div style="display:flex;gap:6px;">
-                            <button type="button" class="okw-btn okw-btn-outline" onclick="window.__delStatus(${id}, 'On the way')">On the way</button>
-                            <button type="button" class="okw-btn okw-btn-primary" onclick="window.__delStatus(${id}, 'Delivered')">Mark Delivered</button>
+                            <button type="button" class="okw-btn okw-btn-outline" data-onclick="window.__delStatus(${id}, 'On the way')">On the way</button>
+                            <button type="button" class="okw-btn okw-btn-primary" data-onclick="window.__delStatus(${id}, 'Delivered')">Mark Delivered</button>
                         </div>
                     `
                 }
