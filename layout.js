@@ -195,7 +195,7 @@
             const hits = allowed.filter(m => m.label.toLowerCase().includes(term) || m.group.toLowerCase().includes(term));
             list.innerHTML = hits.length
                 ? hits.map(m => `
-                    <a href="${m.url}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:6px;text-decoration:none;color:var(--color-text);font-size:14px;" onmouseover="this.style.background='var(--color-primary-soft)'" onmouseout="this.style.background='transparent'">
+                    <a href="${m.url}" style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-radius:6px;text-decoration:none;color:var(--color-text);font-size:14px;" class="okw-cmd-item">
                         <span style="display:inline-flex;align-items:center;gap:10px;">${ICONS[m.icon] || ''}<span>${m.label}</span></span>
                         <span class="okw-badge okw-badge-neutral">${m.group}</span>
                     </a>

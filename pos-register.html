@@ -4,17 +4,17 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <script src="auth-guard.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OKWESIWA LTD | Staff Management</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
     <style>
         /* Reusing Dashboard/Inventory Styles */
         :root { 
@@ -568,10 +568,11 @@
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
     <link rel="stylesheet" href="/portal-skin.css">
+    <script src="/okw-events.js"></script>
 </head>
 <body>
-    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-    <div class="overlay" onclick="toggleSidebar()"></div>
+    <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div class="overlay" data-onclick="toggleSidebar()"></div>
 
     <div class="sidebar">
         <div class="brand" style="display: flex; flex-direction: column; align-items: center;">
@@ -588,7 +589,7 @@
                 <div style="font-size: 12px; opacity: 0.7;" id="userRole">...</div>
             </div>
             </div>
-            <button class="sidebar-logout-btn" onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
+            <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </div>
 
@@ -603,12 +604,12 @@
             </div>
             
             <div class="menu-grid">
-                <div class="menu-card" onclick="switchTab('register')">
+                <div class="menu-card" data-onclick="switchTab('register')">
                     <i class="fas fa-user-plus"></i>
                     <h3>Onboard New Staff</h3>
                     <p>Create a new account for cashiers, managers, or administrators.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('users')">
+                <div class="menu-card" data-onclick="switchTab('users')">
                     <i class="fas fa-users-cog"></i>
                     <h3>Manage Existing Users</h3>
                     <p>View, edit, and manage all registered staff members.</p>
@@ -618,10 +619,10 @@
 
         <!-- 2. REGISTRATION FORM TAB -->
         <div id="tab-register" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Menu</div>
 
             <div class="form-card" style="max-width:960px;margin:0 auto;padding:24px;border-radius:12px;">
-                <form id="registrationForm" onsubmit="registerStaff(event)">
+                <form id="registrationForm" data-onsubmit="registerStaff(event)">
                     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;">
                         <div style="padding:18px;border:1px solid var(--edge,#e2e8f0);border-radius:10px;background:var(--frame,#f8fafc);">
                             <div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.05em;color:#273990;margin-bottom:14px;">1. Staff Identity</div>
@@ -682,11 +683,11 @@
 
         <!-- 3. EXISTING USERS MANAGEMENT TAB -->
         <div id="tab-users" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Menu</div>
             
             <div class="search-container">
-                <input type="text" id="userSearch" placeholder="Search by name, username, or ID..." class="search-input" onkeyup="filterUsers()">
-                <select id="roleFilter" class="search-filter" onchange="filterUsers()">
+                <input type="text" id="userSearch" placeholder="Search by name, username, or ID..." class="search-input" data-onkeyup="filterUsers()">
+                <select id="roleFilter" class="search-filter" data-onchange="filterUsers()">
                     <option value="">All Roles</option>
                     <option value="cashier">Cashier / Teller</option>
                     <option value="manager">Manager</option>
@@ -717,14 +718,14 @@
                 </table>
                 <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                     <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                    <select id="rowsPerPage" onchange="changeRowsPerPage()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                    <select id="rowsPerPage" data-onchange="changeRowsPerPage()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                         <option value="10">10</option>
                         <option value="25">25</option>
                         <option value="100">100</option>
                     </select>
                     <span id="pageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                    <button onclick="changePage(-1)" id="btnPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                    <button onclick="changePage(1)" id="btnNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                    <button data-onclick="changePage(-1)" id="btnPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                    <button data-onclick="changePage(1)" id="btnNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
         </div>
@@ -734,7 +735,7 @@
     <div id="editUserModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-bottom: 20px;">Edit User Details</h3>
-            <form id="editUserForm" onsubmit="saveUserChanges(event)">
+            <form id="editUserForm" data-onsubmit="saveUserChanges(event)">
                 <input type="hidden" id="editUserId">
                 <div class="form-group">
                     <label>Full Name</label>
@@ -780,7 +781,7 @@
                     </select>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="closeEditModal()">Cancel</button>
+                    <button type="button" class="btn-cancel" data-onclick="closeEditModal()">Cancel</button>
                     <button type="submit" class="btn-save">Save Changes</button>
                 </div>
             </form>
@@ -791,7 +792,7 @@
     <div id="resetPasswordModal" class="modal">
         <div class="modal-content">
             <h3 style="margin-bottom: 20px;">Reset Password</h3>
-            <form id="resetPasswordForm" onsubmit="resetUserPassword(event)">
+            <form id="resetPasswordForm" data-onsubmit="resetUserPassword(event)">
                 <input type="hidden" id="resetUserId">
                 <div class="form-group">
                     <label>New Password</label>
@@ -802,7 +803,7 @@
                     <input type="password" id="confirmNewPassword" required>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="closeResetModal()">Cancel</button>
+                    <button type="button" class="btn-cancel" data-onclick="closeResetModal()">Cancel</button>
                     <button type="submit" class="btn-save">Reset Password</button>
                 </div>
             </form>
@@ -816,8 +817,8 @@
             <div class="confirm-title">Permanent Delete</div>
             <div class="confirm-text">Are you sure you want to permanently delete this user? This action cannot be undone.</div>
             <div class="confirm-buttons">
-                <button class="btn-no" onclick="closeConfirmation()">Cancel</button>
-                <button class="btn-yes" onclick="confirmDeleteAction()">Delete</button>
+                <button class="btn-no" data-onclick="closeConfirmation()">Cancel</button>
+                <button class="btn-yes" data-onclick="confirmDeleteAction()">Delete</button>
             </div>
         </div>
     </div>
@@ -998,13 +999,13 @@
                         </span>
                     </td>
                     <td data-label="Actions">
-                        <button class="action-btn btn-edit" onclick="editUser(${user.id})" title="Edit">
+                        <button class="action-btn btn-edit" data-onclick="editUser(${user.id})" title="Edit">
                             <i class="fas fa-edit"></i>
                         </button>
-                        <button class="action-btn btn-reset" onclick="openResetModal(${user.id})" title="Reset Password">
+                        <button class="action-btn btn-reset" data-onclick="openResetModal(${user.id})" title="Reset Password">
                             <i class="fas fa-key"></i>
                         </button>
-                        <button class="action-btn btn-delete" onclick="deleteUser(${user.id})" title="Delete">
+                        <button class="action-btn btn-delete" data-onclick="deleteUser(${user.id})" title="Delete">
                             <i class="fas fa-trash"></i>
                         </button>
                     </td>

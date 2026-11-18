@@ -134,3 +134,70 @@ test('Every page that loads the dispatcher has no inline handlers left, and the 
     const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
     assert.ok(server.includes("'/okw-events.js'"), 'the dispatcher must be on the client-script allow-list');
 });
+
+test('JSON object arguments (as the portals render them) parse: nested data, escapes, exponents', () => {
+    const e = env();
+    const got = [];
+    e.win.view = (o) => got.push(o);
+    const trx = { id: 12, total: 1.5e-7, big: 2e21, items: [{ n: 'Milk "2%"', q: 2, tags: [] }], note: "café \\ back\nslash", ok: true, none: null };
+    run('view(' + JSON.stringify(trx).replace(/"/g, '"') + ')', e);
+    assert.deepEqual(got[0], trx);
+    run('view({"k":"\\u00e9\\u0041","x":-3})', e);
+    assert.deepEqual(got[1], { k: 'éA', x: -3 });
+    assert.throws(() => run('view({"__proto__":1})', e), undefined, 'blocked key');
+});
+
+test('prototype-pollution routes are refused', () => {
+    const e = env();
+    for (const bad of ["this.__proto__.x='y'", "this['__proto__']", "window.constructor.prototype.x=1", "this.prototype"]) {
+        assert.throws(() => run(bad, e), undefined, bad);
+    }
+});
+
+test('a handler that stops propagation also keeps later document listeners from running (as inline handlers did)', () => {
+    const listeners = {};
+    const node = { nodeType: 1, parentElement: null, hasAttribute: (n) => n === 'data-onclick', getAttribute: () => 'open(event)', contains: () => false };
+    const doc = { readyState: 'complete', addEventListener: (t, f) => { listeners[t] = f; }, querySelectorAll: () => [] };
+    const win = { document: doc, addEventListener() {}, console: { error() {} }, open: (e) => e.stopPropagation() };
+    ev.install(win);
+    let immediate = false;
+    const event = { target: node, cancelBubble: false, preventDefault() {}, stopPropagation() { this.cancelBubble = true; }, stopImmediatePropagation() { immediate = true; } };
+    listeners.click(event);
+    assert.equal(immediate, true);
+});
+
+test('Every handler on every converted page executes in the interpreter (stand-in functions, no blocked names)', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const ROOT = path.resolve(__dirname, '..');
+    const decode = (s) => s.replace(/&quot;/g, '"').replace(/&#39;|&#x27;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+    // anything callable, anything readable: records nothing, throws nothing
+    const dummy = () => new Proxy(function () {}, {
+        get: (t, k) => (k === Symbol.toPrimitive ? () => '' : dummy()),
+        apply: () => dummy(),
+        set: () => true,
+        has: () => true
+    });
+    const win = new Proxy({ document: dummy(), location: dummy(), history: dummy(), console: { error() {} } }, {
+        has: () => true,
+        get: (t, k) => (k in t ? t[k] : dummy())
+    });
+    let checked = 0;
+    const failures = [];
+    for (const f of fs.readdirSync(ROOT).filter((x) => x.endsWith('.html'))) {
+        const html = fs.readFileSync(path.join(ROOT, f), 'utf8');
+        if (!html.includes('/okw-events.js')) continue;
+        for (const m of html.matchAll(/\sdata-on[a-z]+\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) {
+            let body = decode(m[1] !== undefined ? m[1] : m[2]);
+            if (/\$\{/.test(body)) body = body.replace(/\$\{(?:[^{}]|\{[^{}]*\})*\}/g, '0');
+            checked++;
+            try { ev.run(body, dummy(), dummy(), win); }
+            catch (err) {
+                // a truncated render-time template (quotes inside ${...}) cannot be judged from the source text
+                if (!/\$\{|JSON\.stringify|unterminated|unexpected end|expected/.test(m[0] + err.message)) failures.push(`${f}: ${body.slice(0, 80)} -> ${err.message}`);
+            }
+        }
+    }
+    assert.ok(checked > 400, `expected hundreds of handlers, checked ${checked}`);
+    assert.deepEqual(failures, []);
+});

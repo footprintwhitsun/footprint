@@ -3,17 +3,17 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <script src="auth-guard.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OKWESIWA LTD | Credit Clients</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
     <script src="/lazy-libs.js"></script>
     <script data-lazy-src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" crossorigin="anonymous"></script>
     <script data-lazy-src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js" crossorigin="anonymous"></script>
@@ -197,10 +197,11 @@
         .btn-add { border-radius: 8px !important; height: 40px; box-shadow: none !important; margin: 16px 24px 0 auto !important; }
         .status-badge { font-weight: 600; }
     </style>
+    <script src="/okw-events.js"></script>
 </head>
 <body>
-    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-    <div class="overlay" onclick="toggleSidebar()"></div>
+    <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div class="overlay" data-onclick="toggleSidebar()"></div>
 
     <div class="sidebar">
         <div class="brand" style="display: flex; flex-direction: column; align-items: center;">
@@ -217,7 +218,7 @@
                 <div style="font-size: 12px; opacity: 0.7;" id="userRole">...</div>
             </div>
             </div>
-            <button class="sidebar-logout-btn" onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
+            <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </div>
 
@@ -230,12 +231,12 @@
                 <h2>Credit Management</h2>
             </div>
             <div class="menu-grid">
-                <div class="menu-card" onclick="switchTab('clients')">
+                <div class="menu-card" data-onclick="switchTab('clients')">
                     <i class="fas fa-users"></i>
                     <h3>Onboard Clients</h3>
                     <p>Manage credit customer database, view balances, and record payments.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('auth')">
+                <div class="menu-card" data-onclick="switchTab('auth')">
                     <i class="fas fa-user-shield"></i>
                     <h3>Manager Authorization</h3>
                     <p>Set up authorization codes for tellers to approve credit purchases.</p>
@@ -245,15 +246,15 @@
 
         <!-- 2. CLIENTS TAB -->
         <div id="tab-clients" class="tab-content">
-        <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Menu</div>
+        <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Menu</div>
         <div class="page-header" style="justify-content:flex-end;">
-            <button class="btn-add" onclick="openAddModal()"><i class="fas fa-user-plus"></i> Add Client</button>
+            <button class="btn-add" data-onclick="openAddModal()"><i class="fas fa-user-plus"></i> Add Client</button>
         </div>
 
         <div class="search-container">
             <i class="fas fa-search" style="color: #94a3b8;"></i>
-            <input type="text" id="clientSearch" class="search-input" placeholder="Search by name, phone or email..." onkeyup="filterCustomers()">
-            <select id="clientFilter" class="filter-select" onchange="filterCustomers()">
+            <input type="text" id="clientSearch" class="search-input" placeholder="Search by name, phone or email..." data-onkeyup="filterCustomers()">
+            <select id="clientFilter" class="filter-select" data-onchange="filterCustomers()">
                 <option value="all">All Clients</option>
                 <option value="debt">Has Debt</option>
                 <option value="nodebt">No Debt</option>
@@ -279,21 +280,21 @@
             </table>
             <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee;">
                 <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="rowsPerPage" onchange="changeRowsPerPage()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <select id="rowsPerPage" data-onchange="changeRowsPerPage()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
                 <span id="pageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changePage(-1)" id="btnPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changePage(1)" id="btnNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button data-onclick="changePage(-1)" id="btnPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button data-onclick="changePage(1)" id="btnNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
         </div>
 
         <!-- 3. AUTHORIZATION TAB -->
         <div id="tab-auth" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Menu</div>
             <div class="card" style="max-width: 500px; text-align: center; margin: 0 auto;">
                 <p style="margin-bottom: 20px; color: #666; font-size: 14px;">
                     Generate a temporary 6-digit code for tellers to authorize credit sales. This code expires in 24 hours.
@@ -305,7 +306,7 @@
                     <div id="displayAuthExpiry" style="font-size: 13px; color: #c62828; margin-top: 10px; font-weight: 500;"></div>
                 </div>
 
-                <button onclick="generateAuthCode()" class="btn-save" style="width: 100%; padding: 15px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px;">
+                <button data-onclick="generateAuthCode()" class="btn-save" style="width: 100%; padding: 15px; font-size: 16px; display: flex; align-items: center; justify-content: center; gap: 10px;">
                     <i class="fas fa-sync-alt"></i> Generate New Code
                 </button>
             </div>
@@ -316,13 +317,13 @@
     <div id="addModal" class="modal">
         <div class="modal-content">
             <h3>Add Credit Client</h3>
-            <form onsubmit="saveCustomer(event)">
+            <form data-onsubmit="saveCustomer(event)">
                 <div class="form-group"><label>Name</label><input id="cName" required></div>
                 <div class="form-group"><label>Phone</label><input id="cPhone" required></div>
                 <div class="form-group"><label>Email (Required for Alerts)</label><input id="cEmail" type="email" required></div>
                 <div class="form-group"><label>Credit Limit</label><input id="cLimit" type="number" step="0.01" required></div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="closeModal('addModal')">Cancel</button>
+                    <button type="button" class="btn-cancel" data-onclick="closeModal('addModal')">Cancel</button>
                     <button type="submit" class="btn-save">Save</button>
                 </div>
             </form>
@@ -334,12 +335,12 @@
         <div class="modal-content">
             <h3>Record Payment</h3>
             <p id="payCustomerName" style="margin-bottom:15px; color:#666;"></p>
-            <form onsubmit="processPayment(event)">
+            <form data-onsubmit="processPayment(event)">
                 <input type="hidden" id="payCustomerId">
                 <div class="form-group"><label>Amount</label><input id="payAmount" type="number" step="0.01" required></div>
                 <div style="margin-bottom: 15px; font-size: 12px; color: #666;"><i class="fas fa-envelope"></i> Receipt will be emailed to customer.</div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="closeModal('payModal')">Cancel</button>
+                    <button type="button" class="btn-cancel" data-onclick="closeModal('payModal')">Cancel</button>
                     <button type="submit" class="btn-save">Record Payment</button>
                 </div>
             </form>
@@ -351,7 +352,7 @@
         <div class="modal-content">
             <h3>Increase Credit Limit</h3>
             <p id="limitCustomerName" style="margin-bottom:15px; color:#666;"></p>
-            <form onsubmit="updateLimit(event)">
+            <form data-onsubmit="updateLimit(event)">
                 <input type="hidden" id="limitCustomerId">
                 <div class="form-group">
                     <label>Current Limit: <span id="currentLimitDisplay" style="font-weight:bold; color:var(--primary-color);"></span></label>
@@ -361,7 +362,7 @@
                     <input id="newLimit" type="number" step="0.01" required>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="closeModal('increaseLimitModal')">Cancel</button>
+                    <button type="button" class="btn-cancel" data-onclick="closeModal('increaseLimitModal')">Cancel</button>
                     <button type="submit" class="btn-save">Update Limit</button>
                 </div>
             </form>
@@ -381,8 +382,8 @@
             </div>
             
             <div class="modal-actions">
-                <button type="button" class="btn-cancel" onclick="closeModal('statementModal')">Cancel</button>
-                <button type="button" class="btn-save" onclick="emailStatement()" style="background:#0284c7;">
+                <button type="button" class="btn-cancel" data-onclick="closeModal('statementModal')">Cancel</button>
+                <button type="button" class="btn-save" data-onclick="emailStatement()" style="background:#0284c7;">
                     <i class="fas fa-envelope"></i> Email Report
                 </button>
             </div>
@@ -396,8 +397,8 @@
             <h3>Confirm Deletion</h3>
             <p style="color: #666; margin-bottom: 25px;">Are you sure you want to delete this client?</p>
             <div class="modal-actions" style="justify-content: center;">
-                <button type="button" class="btn-cancel" onclick="closeDeleteConfirmModal()">Cancel</button>
-                <button type="button" class="btn-save" onclick="confirmDeleteCustomer()" style="background: #c62828;">Delete</button>
+                <button type="button" class="btn-cancel" data-onclick="closeDeleteConfirmModal()">Cancel</button>
+                <button type="button" class="btn-save" data-onclick="confirmDeleteCustomer()" style="background: #c62828;">Delete</button>
             </div>
         </div>
     </div>
@@ -413,7 +414,7 @@
                     </div>
                     <div style="font-size:12.5px;opacity:0.85;margin-top:4px;">Account: <span id="viewClientAcct" style="font-family:monospace;">-</span></div>
                 </div>
-                <button onclick="closeModal('viewClientModal')" style="background:rgba(255,255,255,0.14); color:#fff; border:none; width:30px; height:30px; border-radius:8px; font-size:18px; cursor:pointer; line-height:1;">&times;</button>
+                <button data-onclick="closeModal('viewClientModal')" style="background:rgba(255,255,255,0.14); color:#fff; border:none; width:30px; height:30px; border-radius:8px; font-size:18px; cursor:pointer; line-height:1;">&times;</button>
             </div>
 
             <div style="padding: 22px 24px;">
@@ -468,8 +469,8 @@
             <h3>Generate New Code?</h3>
             <p style="color: #666; margin-bottom: 25px;">The previous code will stop working immediately.</p>
             <div class="modal-actions" style="justify-content: center;">
-                <button type="button" class="btn-cancel" onclick="closeGenerateConfirmModal()">Cancel</button>
-                <button type="button" class="btn-save" onclick="confirmGenerateCode()">Generate</button>
+                <button type="button" class="btn-cancel" data-onclick="closeGenerateConfirmModal()">Cancel</button>
+                <button type="button" class="btn-save" data-onclick="confirmGenerateCode()">Generate</button>
             </div>
         </div>
     </div>
@@ -607,7 +608,7 @@
                         <td data-label="Available" style="font-variant-numeric: tabular-nums; font-weight: 600;">${formatCurrency(available)}</td>
                         <td data-label="Status"><span class="status-badge ${statusClass}">${status}</span></td>
                         <td data-label="Actions">
-                            <button onclick="openViewModal(${c.id})" class="btn-icon" style="background: var(--sheet); border: 1px solid var(--edge-strong); color: var(--ink); width: auto; padding: 0 14px; font-weight: 600; font-size: 13px; height: 34px; border-radius: 8px;">View</button>
+                            <button data-onclick="openViewModal(${c.id})" class="btn-icon" style="background: var(--sheet); border: 1px solid var(--edge-strong); color: var(--ink); width: auto; padding: 0 14px; font-weight: 600; font-size: 13px; height: 34px; border-radius: 8px;">View</button>
                         </td>
                     </tr>
                 `;

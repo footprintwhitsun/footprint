@@ -266,7 +266,7 @@
                             <option value="contractor">Contractor</option>
                             <option value="wholesale">Wholesale</option>
                         </select>
-                        <button type="button" class="pos-btn-action" onclick="if(window.openReceiptSearch)openReceiptSearch()" title="Find Receipt" style="height:38px;padding:0 12px;font-size:12.5px;"><i class="fas fa-receipt"></i> <span>Receipt</span></button>
+                        <button type="button" class="pos-btn-action" data-onclick="if(window.openReceiptSearch)openReceiptSearch()" title="Find Receipt" style="height:38px;padding:0 12px;font-size:12.5px;"><i class="fas fa-receipt"></i> <span>Receipt</span></button>
                         <button type="button" class="pos-btn-action" id="refreshProducts" title="Sync Catalog" style="height:38px;padding:0 12px;font-size:12.5px;"><i class="fas fa-sync-alt"></i> <span>Sync</span></button>
                     </div>
                     <!-- Collapsible dropdown: hidden by default until user types -->

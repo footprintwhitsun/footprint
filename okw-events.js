@@ -16,13 +16,13 @@
 })(typeof window !== 'undefined' ? window : globalThis, function (root) {
     'use strict';
 
-    var BLOCKED = {
-        eval: 1, Function: 1, constructor: 1, __proto__: 1, prototype: 1, __defineGetter__: 1, __defineSetter__: 1,
-        setTimeout: 1, setInterval: 1, setImmediate: 1, execScript: 1, importScripts: 1, import: 1,
-        write: 1, writeln: 1, srcdoc: 1, innerHTML: 1, outerHTML: 1, insertAdjacentHTML: 1, createContextualFragment: 1,
-        cookie: 1, localStorage: 1, sessionStorage: 1, indexedDB: 1, fetch: 1, XMLHttpRequest: 1, sendBeacon: 1,
-        WebSocket: 1, Worker: 1, SharedWorker: 1, Proxy: 1, Reflect: 1, globalThis: 1, self: 1, top: 1, parent: 1, frames: 1
-    };
+    // A null-prototype table: in an object literal, "__proto__: 1" would set the prototype instead of adding a key.
+    var BLOCKED = Object.create(null);
+    ('eval Function constructor __proto__ prototype __defineGetter__ __defineSetter__ __lookupGetter__ __lookupSetter__ ' +
+     'setTimeout setInterval setImmediate execScript importScripts import write writeln srcdoc innerHTML outerHTML ' +
+     'insertAdjacentHTML createContextualFragment cookie localStorage sessionStorage indexedDB fetch XMLHttpRequest ' +
+     'sendBeacon WebSocket Worker SharedWorker Proxy Reflect globalThis self top parent frames').split(' ')
+        .forEach(function (n) { BLOCKED[n] = 1; });
 
     // ---------- tokenizer ----------
     function tokenize(src) {
@@ -37,7 +37,9 @@
                     if (src[i] === '\\' && i + 1 < n) {
                         i++;
                         var e = src[i];
-                        s += e === 'n' ? '\n' : e === 't' ? '\t' : e === 'r' ? '\r' : e;
+                        if (e === 'u' && /^[0-9a-fA-F]{4}/.test(src.substr(i + 1, 4))) { s += String.fromCharCode(parseInt(src.substr(i + 1, 4), 16)); i += 4; }
+                        else if (e === 'x' && /^[0-9a-fA-F]{2}/.test(src.substr(i + 1, 2))) { s += String.fromCharCode(parseInt(src.substr(i + 1, 2), 16)); i += 2; }
+                        else s += e === 'n' ? '\n' : e === 't' ? '\t' : e === 'r' ? '\r' : e === 'b' ? '\b' : e === 'f' ? '\f' : e;
                     } else s += src[i];
                     i++;
                 }
@@ -47,7 +49,7 @@
                 continue;
             }
             if (/[0-9]/.test(c) || (c === '-' && /[0-9]/.test(src[i + 1] || '') && (!t.length || /^(op|punc)$/.test(t[t.length - 1].k) && t[t.length - 1].v !== ')' && t[t.length - 1].v !== ']'))) {
-                var m = /^-?\d+(?:\.\d+)?/.exec(src.slice(i));
+                var m = /^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?/.exec(src.slice(i));
                 t.push({ k: 'num', v: parseFloat(m[0]) });
                 i += m[0].length;
                 continue;
@@ -289,6 +291,9 @@
                     if (ev.cancelBubble) break;
                     if (capture) break; // non-bubbling events only concern their own target
                 }
+                // An inline handler that called stopPropagation() kept document/window listeners (like "click outside
+                // closes the menu") from seeing the click. Delegating from document must not change that.
+                if (ev.cancelBubble && typeof ev.stopImmediatePropagation === 'function') ev.stopImmediatePropagation();
             }, capture);
         });
 

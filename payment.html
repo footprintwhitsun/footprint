@@ -3,17 +3,17 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <script src="auth-guard.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OKWESIWA LTD | Payment</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
     <style>
         :root {
             --primary-color: #273990; --accent-color: #f9a51a;
@@ -208,6 +208,7 @@
         body > header .back-btn { display: inline-flex; align-items: center; gap: 8px; color: var(--brand) !important; font-weight: 600; font-size: 14px; text-decoration: none; background: transparent !important; }
         body > header .back-btn:hover { text-decoration: underline; }
     </style>
+    <script src="/okw-events.js"></script>
 </head>
 <body>
 
@@ -241,19 +242,19 @@
         <!-- Right: Payment Input -->
         <div class="card">
             <div class="methods-grid">
-                <div class="method-btn active" onclick="selectMethod('cash')">
+                <div class="method-btn active" data-onclick="selectMethod('cash')">
                     <i class="fas fa-money-bill-wave method-icon"></i>
                     <span class="method-name">Cash</span>
                 </div>
-                <div class="method-btn" onclick="selectMethod('momo')">
+                <div class="method-btn" data-onclick="selectMethod('momo')">
                     <i class="fas fa-mobile-alt method-icon"></i>
                     <span class="method-name">Mobile Money</span>
                 </div>
-                <div class="method-btn" onclick="selectMethod('card')">
+                <div class="method-btn" data-onclick="selectMethod('card')">
                     <i class="fas fa-credit-card method-icon"></i>
                     <span class="method-name">Card</span>
                 </div>
-                <div class="method-btn" onclick="selectMethod('credit')">
+                <div class="method-btn" data-onclick="selectMethod('credit')">
                     <i class="fas fa-address-book method-icon"></i>
                     <span class="method-name">Store Credit</span>
                 </div>
@@ -262,7 +263,7 @@
             <!-- CASH SECTION -->
             <div id="cash-section" class="payment-input-group active">
                 <label class="input-label">Amount Received</label>
-                <input type="number" id="amountTendered" class="input-field" placeholder="0.00" oninput="calculateChange()">
+                <input type="number" id="amountTendered" class="input-field" placeholder="0.00" data-oninput="calculateChange()">
                 
                 <div class="change-display">
                     <div class="change-label">Change Due</div>
@@ -279,7 +280,7 @@
                     <option value="tigo">AirtelTigo Money</option>
                 </select>
                 <label class="input-label">Customer Phone Number</label>
-                <input type="tel" id="momoPhone" class="input-field" placeholder="024XXXXXXX" oninput="validatePayment()">
+                <input type="tel" id="momoPhone" class="input-field" placeholder="024XXXXXXX" data-oninput="validatePayment()">
             </div>
 
             <!-- CARD SECTION -->
@@ -289,7 +290,7 @@
                     <p>Process payment on POS terminal.</p>
                 </div>
                 <label class="input-label">Transaction Reference (from Receipt)</label>
-                <input type="text" id="cardRef" class="input-field" placeholder="Enter Ref / Auth Code" oninput="validatePayment()">
+                <input type="text" id="cardRef" class="input-field" placeholder="Enter Ref / Auth Code" data-oninput="validatePayment()">
             </div>
 
             <!-- CREDIT SECTION -->
@@ -299,13 +300,13 @@
                     <p style="font-size:13px; color:#666;">Search and select a credit customer</p>
                 </div>
 
-                <input type="text" id="creditSearchInput" class="customer-search-box" placeholder="Search Name or Phone..." onkeyup="searchCreditCustomers()" autocomplete="off">
+                <input type="text" id="creditSearchInput" class="customer-search-box" placeholder="Search Name or Phone..." data-onkeyup="searchCreditCustomers()" autocomplete="off">
                 <div id="creditSearchResults" class="customer-list"></div>
 
                 <div id="creditCustomerDetails" class="selected-customer-card">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
                         <h4 id="ccName" style="margin:0; color:var(--primary-color);">Customer Name</h4>
-                        <button onclick="clearCreditCustomer()" style="background:none; border:none; color:#c62828; cursor:pointer; font-size:12px;">Change</button>
+                        <button data-onclick="clearCreditCustomer()" style="background:none; border:none; color:#c62828; cursor:pointer; font-size:12px;">Change</button>
                     </div>
                     <div class="customer-detail-row"><span>Phone:</span> <span id="ccPhone">-</span></div>
                     <div class="customer-detail-row"><span>Credit Limit:</span> <span id="ccLimit">--</span></div>
@@ -317,13 +318,13 @@
 
                 <div id="creditOverrideUI" style="display:none; text-align: center; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ddd;">
                     <p style="color: #c62828; font-size: 13px; margin-bottom: 10px;">Credit limit exceeded.</p>
-                    <button type="button" onclick="requestOverride()" style="background: #f39c12; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    <button type="button" data-onclick="requestOverride()" style="background: #f39c12; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-user-shield"></i> Request Manager Override
                     </button>
                 </div>
             </div>
 
-            <button id="confirmBtn" class="btn-confirm" onclick="processPayment()" disabled>Confirm Payment</button>
+            <button id="confirmBtn" class="btn-confirm" data-onclick="processPayment()" disabled>Confirm Payment</button>
         </div>
     </div>
 
@@ -340,8 +341,8 @@
             <div id="tokenError" style="color:#c62828; font-size:13px; margin-bottom:15px; display:none;">Invalid Token</div>
             
             <div style="display:flex; gap:10px;">
-                <button onclick="closeManagerTokenModal()" class="btn-confirm" style="background:#eee; color:#333; margin-top:0;">Cancel</button>
-                <button onclick="verifyManagerToken()" class="btn-confirm" style="margin-top:0;">Verify</button>
+                <button data-onclick="closeManagerTokenModal()" class="btn-confirm" style="background:#eee; color:#333; margin-top:0;">Cancel</button>
+                <button data-onclick="verifyManagerToken()" class="btn-confirm" style="margin-top:0;">Verify</button>
             </div>
         </div>
     </div>
@@ -546,7 +547,7 @@
             );
             
             list.innerHTML = matches.map(c => `
-                <div class="customer-item" onclick="selectCreditCustomer(${c.id})">
+                <div class="customer-item" data-onclick="selectCreditCustomer(${c.id})">
                     <strong>${OkwUI.escapeHtml(c.name)}</strong>
                     <span>${OkwUI.escapeHtml(c.phone || '')}</span>
                 </div>

@@ -4,15 +4,15 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OKWESIWA LTD | Register</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
     <script src="currency.js"></script>
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
@@ -1569,6 +1569,7 @@
         .qty-btn { width: 36px !important; height: 36px !important; border-radius: 8px !important; font-size: 16px; }
         .cart-summary .actions .btn-return { grid-column: 1 / -1; height: 44px; }
     </style>
+    <script src="/okw-events.js"></script>
 </head>
 
 <body>
@@ -1580,7 +1581,7 @@
         <div class="scanner-content">
             <div class="scanner-header">
                 <h3>Scan Barcode with Camera</h3>
-                <button onclick="closeCameraScanner()"
+                <button data-onclick="closeCameraScanner()"
                     style="background:none;border:none;color:white;cursor:pointer;font-size:20px;" aria-label="Close">&times;</button>
             </div>
             <div class="scanner-body">
@@ -1596,14 +1597,14 @@
                 </div>
                 <div style="margin-top:20px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
                     <input type="file" id="barcodeFile" accept="image/*" style="display:none"
-                        onchange="handleFileUpload(this)">
-                    <button class="scanner-btn" onclick="document.getElementById('barcodeFile').click()">
+                        data-onchange="handleFileUpload(this)">
+                    <button class="scanner-btn" data-onclick="document.getElementById('barcodeFile').click()">
                         <i class="fas fa-upload"></i> Upload
                     </button>
-                    <button class="scanner-btn" onclick="switchCamera()">
+                    <button class="scanner-btn" data-onclick="switchCamera()">
                         <i class="fas fa-camera-rotate"></i> Switch Camera
                     </button>
-                    <button type="button" class="scanner-btn" onclick="closeCameraScanner()"
+                    <button type="button" class="scanner-btn" data-onclick="closeCameraScanner()"
                         style="background:var(--secondary);color:white;">
                         <i class="fas fa-times"></i> Cancel
                     </button>
@@ -1617,7 +1618,7 @@
         <div class="scanner-content" style="max-width: 500px;">
             <div class="scanner-header">
                 <h3>Multiple Products Found</h3>
-                <button onclick="closeProductSelection()"
+                <button data-onclick="closeProductSelection()"
                     style="background:none;border:none;color:white;cursor:pointer;font-size:20px;" aria-label="Close">&times;</button>
             </div>
             <div class="scanner-body">
@@ -1629,7 +1630,7 @@
                     <!-- Product options will be populated here -->
                 </div>
                 <div style="margin-top: 20px; text-align: center;">
-                    <button type="button" class="scanner-btn" onclick="closeProductSelection()"
+                    <button type="button" class="scanner-btn" data-onclick="closeProductSelection()"
                         style="background:var(--secondary);color:white;">
                         <i class="fas fa-times"></i> Cancel
                     </button>
@@ -1657,13 +1658,13 @@
         <div class="token-content" style="max-width: 450px;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom: 1px solid #e1e3e5; padding-bottom: 12px;">
                 <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-user-tag" style="color:#1F3A60; margin-right:6px;"></i> Credit Sale</h3>
-                <button onclick="closeCreditSaleModal()"
+                <button data-onclick="closeCreditSaleModal()"
                     style="background:none; border:none; font-size:20px; color:#6d7175; cursor:pointer;">&times;</button>
             </div>
 
             <div class="credit-modal-body">
                 <input type="text" id="creditCustomerSearch" class="customer-search-box"
-                    placeholder="Search Client Name or Phone..." onkeyup="searchCreditCustomers()">
+                    placeholder="Search Client Name or Phone..." data-onkeyup="searchCreditCustomers()">
                 <div id="creditCustomerList" class="customer-list"></div>
 
                 <div id="selectedCustomerCard" class="selected-customer-card">
@@ -1685,7 +1686,7 @@
                     <div class="credit-total" id="creditSaleTotal">--</div>
                 </div>
 
-                <button id="btnConfirmCredit" class="btn-credit-pay" onclick="processCreditSale()" disabled>Select
+                <button id="btnConfirmCredit" class="btn-credit-pay" data-onclick="processCreditSale()" disabled>Select
                     Client to Proceed</button>
             </div>
         </div>
@@ -1708,8 +1709,8 @@
             </div>
 
             <div style="display:flex; gap:10px;">
-                <button onclick="closeManagerTokenModal()" class="pos-btn-action" style="flex:1; justify-content:center; height:42px;">Cancel</button>
-                <button onclick="verifyManagerToken()" class="pos-btn-action primary"
+                <button data-onclick="closeManagerTokenModal()" class="pos-btn-action" style="flex:1; justify-content:center; height:42px;">Cancel</button>
+                <button data-onclick="verifyManagerToken()" class="pos-btn-action primary"
                     style="flex:1; justify-content:center; height:42px;">Verify</button>
             </div>
         </div>
@@ -1721,7 +1722,7 @@
             <div
                 style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #e1e3e5; padding-bottom: 12px;">
                 <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-clock" style="color:#1F3A60; margin-right:6px;"></i> Parked Orders</h3>
-                <button onclick="document.getElementById('parkedModal').classList.remove('active')"
+                <button data-onclick="document.getElementById('parkedModal').classList.remove('active')"
                     style="background:none; border:none; font-size:20px; color:#6d7175; cursor:pointer;">&times;</button>
             </div>
             <div id="parkedOrdersList" style="max-height:300px; overflow-y:auto;"></div>
@@ -1739,9 +1740,9 @@
                 placeholder="Customer Name or Note" autocomplete="off">
 
             <div style="display:flex; gap:10px;">
-                <button onclick="document.getElementById('parkNameModal').classList.remove('active')"
+                <button data-onclick="document.getElementById('parkNameModal').classList.remove('active')"
                     class="pos-btn-action" style="flex:1; justify-content:center; height:42px;">Cancel</button>
-                <button onclick="confirmParkOrder()" class="pos-btn-action primary"
+                <button data-onclick="confirmParkOrder()" class="pos-btn-action primary"
                     style="flex:1; justify-content:center; height:42px;"><i class="fas fa-pause"></i> Park</button>
             </div>
         </div>
@@ -1752,7 +1753,7 @@
         <div class="token-content" style="max-width: 500px; text-align:left;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom: 1px solid #e1e3e5; padding-bottom: 12px;">
                 <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-receipt" style="color:#1F3A60; margin-right:6px;"></i> Search Receipt</h3>
-                <button onclick="closeReceiptSearch()"
+                <button data-onclick="closeReceiptSearch()"
                     style="background:none; border:none; font-size:20px; color:#6d7175; cursor:pointer;">&times;</button>
             </div>
 
@@ -1764,8 +1765,8 @@
             </div>
 
             <div style="display:flex; gap:10px;">
-                <button onclick="closeReceiptSearch()" class="pos-btn-action" style="flex:1; justify-content:center; height:42px;">Cancel</button>
-                <button onclick="searchReceipt()" class="pos-btn-action primary"
+                <button data-onclick="closeReceiptSearch()" class="pos-btn-action" style="flex:1; justify-content:center; height:42px;">Cancel</button>
+                <button data-onclick="searchReceipt()" class="pos-btn-action primary"
                     style="flex:1; justify-content:center; height:42px;"><i class="fas fa-search"></i> Search</button>
             </div>
         </div>
@@ -1791,14 +1792,14 @@
                 <span id="statusText">Online</span>
             </div>
 
-            <div class="notif-wrapper" id="notifWrapper" onclick="toggleNotifMenu(event)">
+            <div class="notif-wrapper" id="notifWrapper" data-onclick="toggleNotifMenu(event)">
                 <i class="fas fa-bell notif-icon"></i>
                 <span class="notif-badge" id="notifCount" style="display:none;">0</span>
 
                 <div class="notif-dropdown" id="notifDropdown">
                     <div class="header">
                         <strong style="color:var(--primary); font-size:14px;">Notifications</strong>
-                        <button onclick="clearNotifications(event)"
+                        <button data-onclick="clearNotifications(event)"
                             style="background:none; border:none; color:var(--secondary); font-size:11px; cursor:pointer; font-weight:600;">Clear
                             All</button>
                     </div>
@@ -1808,7 +1809,7 @@
                 </div>
             </div>
 
-            <div class="user-pill" onclick="toggleUserMenu()">
+            <div class="user-pill" data-onclick="toggleUserMenu()">
                 <div class="user-avatar"><i class="fas fa-user"></i></div>
                 <span id="userName">Cashier</span>
                 <i class="fas fa-chevron-down" style="font-size:11px; opacity:0.8;"></i>
@@ -1822,10 +1823,10 @@
                 <a href="/dashboard" id="posManagerPortalLink" style="display:none;"><i class="fas fa-th-large"></i> Manager Portal</a>
                 <a href="profile"><i class="fas fa-user-cog"></i> Profile</a>
                 <a href="transactions"><i class="fas fa-history"></i> Sales History</a>
-                <a href="javascript:void(0)" onclick="openCustomerDisplay()"><i class="fas fa-desktop"></i> Customer
+                <a href="javascript:void(0)" data-onclick="openCustomerDisplay()"><i class="fas fa-desktop"></i> Customer
                     Display</a>
                 <a href="close-shift"><i class="fas fa-door-closed"></i> Close Shift</a>
-                <a href="javascript:void(0)" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
+                <a href="javascript:void(0)" data-onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</a>
             </div>
         </div>
     </header>
@@ -1852,8 +1853,8 @@
                         <div style="display:flex; gap:15px; align-items:center;">
                             <span id="parkedCount" style="display:none;">0</span>
                             <span id="cartCount" style="font-size:12.5px; font-weight:600; color:#6d7175; background:#f6f6f7; padding:3px 10px; border-radius:12px; border:1px solid #e1e3e5;">0 items</span>
-                            <button onclick="clearCart()" title="Clear Cart"
-                                style="background:none;border:none;color:#8c9196;cursor:pointer;transition:color 0.15s ease;" onmouseover="this.style.color='#d72c0d'" onmouseout="this.style.color='#8c9196'">
+                            <button data-onclick="clearCart()" title="Clear Cart"
+                                style="background:none;border:none;color:#8c9196;cursor:pointer;transition:color 0.15s ease;" data-onmouseover="this.style.color='#d72c0d'" data-onmouseout="this.style.color='#8c9196'">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </div>
@@ -1874,7 +1875,7 @@
                     <div style="display:flex;gap:6px;margin-bottom:16px;">
                         <input id="promoCode" aria-label="Promo code" placeholder="Promo Code (e.g. SAVE10)"
                             style="flex:1;padding:8px 12px;border:1px solid #c9cccf;border-radius:6px;font-size:12.5px;outline:none;background:#ffffff;">
-                        <button onclick="applyPromo()"
+                        <button data-onclick="applyPromo()"
                             style="background:#1F3A60;color:#ffffff;font-weight:700;border:none;padding:0 14px;border-radius:6px;cursor:pointer;font-size:12.5px;">Apply</button>
                     </div>
 
@@ -1885,13 +1886,13 @@
                     <div class="summary-row total"><span>Total Due</span><span id="grandTotal">GH₵0.00</span></div>
 
                     <div class="actions">
-                        <button class="btn btn-payment-cash" onclick="processQuickPayment('cash')"><i class="fas fa-money-bill-wave"></i> Cash</button>
-                        <button class="btn btn-payment-momo" onclick="processQuickPayment('momo')"><i class="fas fa-mobile-alt"></i> Momo</button>
-                        <button class="btn btn-payment-card" onclick="processQuickPayment('card')"><i class="fas fa-credit-card"></i> Card</button>
-                        <button class="btn btn-payment-credit" onclick="processQuickPayment('credit')"><i class="fas fa-user-tag"></i> Credit</button>
-                        <button class="btn btn-payment-split" onclick="if(window.okwOpenSplitPayment)window.okwOpenSplitPayment()"><i class="fas fa-columns"></i> Split</button>
-                        <button id="returnBtn" class="btn btn-refund" style="display:none;" onclick="processReturn()"><i class="fas fa-undo"></i> Refund</button>
-                        <button class="btn btn-return" onclick="openReceiptSearch()"><i class="fas fa-receipt"></i> Return</button>
+                        <button class="btn btn-payment-cash" data-onclick="processQuickPayment('cash')"><i class="fas fa-money-bill-wave"></i> Cash</button>
+                        <button class="btn btn-payment-momo" data-onclick="processQuickPayment('momo')"><i class="fas fa-mobile-alt"></i> Momo</button>
+                        <button class="btn btn-payment-card" data-onclick="processQuickPayment('card')"><i class="fas fa-credit-card"></i> Card</button>
+                        <button class="btn btn-payment-credit" data-onclick="processQuickPayment('credit')"><i class="fas fa-user-tag"></i> Credit</button>
+                        <button class="btn btn-payment-split" data-onclick="if(window.okwOpenSplitPayment)window.okwOpenSplitPayment()"><i class="fas fa-columns"></i> Split</button>
+                        <button id="returnBtn" class="btn btn-refund" style="display:none;" data-onclick="processReturn()"><i class="fas fa-undo"></i> Refund</button>
+                        <button class="btn btn-return" data-onclick="openReceiptSearch()"><i class="fas fa-receipt"></i> Return</button>
                     </div>
                 </div>
             </div>
@@ -2607,7 +2608,7 @@
                             .replace(/</g, '&lt;');
                     box.innerHTML = matches.map(
                         (p, i) => `
-                <div class="suggestion-item" data-index="${i}" data-id="${p.id}" onclick="selectSuggestionById(this.dataset.id)">
+                <div class="suggestion-item" data-index="${i}" data-id="${p.id}" data-onclick="selectSuggestionById(this.dataset.id)">
                     <div>
                         <strong>${escAttr(p.name)}</strong>
                         <div style="font-size:12px; color:#666;">${escAttr(p.barcode)}</div>
@@ -2828,7 +2829,7 @@
                 <strong>RETURN MODE</strong>
                 <span style="font-size: 12px; opacity: 0.8;">Receipt: ${OkwUI.escapeHtml(transaction.receipt_number)}</span>
             </div>
-            <button onclick="exitReturnMode()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+            <button data-onclick="exitReturnMode()" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); color: white; padding: 5px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
                 <i class="fas fa-times"></i> Exit
             </button>
         </div>
@@ -3437,7 +3438,7 @@
             const allSelected = cart.filter(item => item.returnMode && item.selectedForReturn).length === cart.filter(item => item.returnMode).length;
             let itemsHtml = `
         <div class="cart-labels">
-            ${isReturnMode ? `<span style="text-align: center;"><input type="checkbox" id="selectAllReturns" ${allSelected ? 'checked' : ''} onclick="toggleSelectAllReturns(this)" title="Select all items"></span>` : ''}
+            ${isReturnMode ? `<span style="text-align: center;"><input type="checkbox" id="selectAllReturns" ${allSelected ? 'checked' : ''} data-onclick="toggleSelectAllReturns(this)" title="Select all items"></span>` : ''}
             <span>Product</span>
             <span>Barcode</span>
             <span style="text-align: right;">Price</span>
@@ -3474,7 +3475,7 @@
                 // Different styling for return mode items
                 const returnClass = item.returnMode ? 'return-item' : '';
                 const returnLabel = item.returnMode ? '<span style="background:#ff9800;color:white;font-size:9px;padding:2px 5px;border-radius:3px;">RETURN</span>' : '';
-                const returnCheckbox = item.returnMode ? `<input type="checkbox" class="return-checkbox" data-index="${index}" ${item.selectedForReturn ? 'checked' : ''} onchange="toggleItemReturn(${index}, this.checked)" title="Select for return">` : '';
+                const returnCheckbox = item.returnMode ? `<input type="checkbox" class="return-checkbox" data-index="${index}" ${item.selectedForReturn ? 'checked' : ''} data-onchange="toggleItemReturn(${index}, this.checked)" title="Select for return">` : '';
 
                 itemsHtml += `
             <div class="cart-item ${returnClass}">
@@ -3491,26 +3492,26 @@
                 </div>
                 <div style="display:flex; align-items:center; justify-content: center; gap:3px;">
                     ${item.returnMode ?
-                        `<button class="qty-btn" onclick="updateQty(${index}, -1)" title="Remove from return">-</button>
+                        `<button class="qty-btn" data-onclick="updateQty(${index}, -1)" title="Remove from return">-</button>
                          <input type="number" value="${item.qty}" min="0" max="${item.qty}" style="width:35px; text-align:center; padding:2px; border:1px solid #ff9800; border-radius:4px; font-size: 12px; background:#fff3e0;" 
-                             onchange="setQty(${index}, this.value)" onclick="this.select()">
-                         <button class="qty-btn" onclick="updateQty(${index}, 1)" title="Keep item" style="background:#fdbb2d;">+</button>` :
-                        `<button class="qty-btn" onclick="updateQty(${index}, -1)">-</button>
+                             data-onchange="setQty(${index}, this.value)" data-onclick="this.select()">
+                         <button class="qty-btn" data-onclick="updateQty(${index}, 1)" title="Keep item" style="background:#fdbb2d;">+</button>` :
+                        `<button class="qty-btn" data-onclick="updateQty(${index}, -1)">-</button>
                          <input type="number" value="${item.qty}" min="1" style="width:35px; text-align:center; padding:2px; border:1px solid #ddd; border-radius:4px; font-size: 12px;" 
-                             onchange="setQty(${index}, this.value)" onclick="this.select()">
-                         <button class="qty-btn" onclick="updateQty(${index}, 1)">+</button>`
+                             data-onchange="setQty(${index}, this.value)" data-onclick="this.select()">
+                         <button class="qty-btn" data-onclick="updateQty(${index}, 1)">+</button>`
                     }
                 </div>
                 <div>
                     <input type="text" class="promo-input ${hasPromo}" 
                         value="${promoDisplay}" 
                         placeholder="Promo code"
-                        onblur="applyItemPromo(${index}, this.value)"
-                        onkeypress="if(event.key==='Enter')applyItemPromo(${index}, this.value)"
+                        data-onblur="applyItemPromo(${index}, this.value)"
+                        data-onkeypress="if(event.key==='Enter')applyItemPromo(${index}, this.value)"
                         title="${item.promoType === 'percentage' ? item.promoValue + '% off' : item.promoType === 'fixed' ? formatCurrency(item.promoValue) + ' off' : 'Enter promo code'}">
                 </div>
                 <div>
-                    <button class="delete-btn" onclick="removeItemFromCart(${index})" title="${item.returnMode ? 'Remove from return' : 'Remove from cart'}"><i class="fas fa-trash"></i></button>
+                    <button class="delete-btn" data-onclick="removeItemFromCart(${index})" title="${item.returnMode ? 'Remove from return' : 'Remove from cart'}"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;
@@ -3920,7 +3921,7 @@
             );
 
             list.innerHTML = matches.map(c => `
-        <div class="customer-item" onclick="selectCreditCustomer(${c.id})">
+        <div class="customer-item" data-onclick="selectCreditCustomer(${c.id})">
             <strong>${window.escapeHtml(c.name)}</strong>
             <span>${window.escapeHtml(c.phone || '')}</span>
         </div>
@@ -4547,8 +4548,8 @@
                     <div style="font-size:12px; color:#666;">${date} • ${order.cart.length} items • <strong>${formatCurrency(total)}</strong></div>
                 </div>
                 <div>
-                    <button onclick="retrieveOrder(${index})" class="parked-btn" style="background:#27ae60;">Retrieve</button>
-                    <button onclick="discardOrder(${index})" class="parked-btn" style="background:#c62828;"><i class="fas fa-trash"></i></button>
+                    <button data-onclick="retrieveOrder(${index})" class="parked-btn" style="background:#27ae60;">Retrieve</button>
+                    <button data-onclick="discardOrder(${index})" class="parked-btn" style="background:#c62828;"><i class="fas fa-trash"></i></button>
                 </div>
             </div>
         `;

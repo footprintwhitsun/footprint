@@ -2133,6 +2133,9 @@ td .okw-btn-danger, tbody .okw-btn-danger, .okw-table .okw-btn-danger {
 }
 td .okw-btn-danger:hover, tbody .okw-btn-danger:hover { background: #FDE8E8 !important; }
 
+/* command palette rows: hover without an inline handler */
+.okw-cmd-item:hover { background: var(--color-primary-soft); }
+
 /* ---- Dark mode polish: eliminate stray white cards, inputs & hover highlights ---- */
 [data-theme="dark"] .okw-card,
 [data-theme="dark"] .okw-hub-bar,

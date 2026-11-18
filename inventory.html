@@ -7,8 +7,8 @@
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
     <link rel="stylesheet" href="sidebar.css">
     <script src="currency.js"></script>
     <script src="telemetry-guard.js"></script>
@@ -649,10 +649,11 @@
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
     <link rel="stylesheet" href="/portal-skin.css">
+    <script src="/okw-events.js"></script>
 </head>
 <body>
-    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-    <div class="overlay" onclick="toggleSidebar()"></div>
+    <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div class="overlay" data-onclick="toggleSidebar()"></div>
 
     <div id="notification" class="notification"></div>
 
@@ -671,7 +672,7 @@
                 <div style="font-size: 12px; opacity: 0.7;" id="userRole">...</div>
             </div>
             </div>
-            <button class="sidebar-logout-btn" onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
+            <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </div>
 
@@ -684,62 +685,62 @@
             <p style="color: #666; margin-bottom: 30px;">Select a module to manage your inventory and supply chain operations.</p>
             
             <div class="inventory-menu-grid">
-                <div class="menu-card" onclick="switchTab('categories')">
+                <div class="menu-card" data-onclick="switchTab('categories')">
                     <i class="fas fa-list"></i>
                     <h3>Categories</h3>
                     <p>Organize products into categories.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('suppliers')">
+                <div class="menu-card" data-onclick="switchTab('suppliers')">
                     <i class="fas fa-truck"></i>
                     <h3>Suppliers</h3>
                     <p>Manage supplier database and contact information.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('stock')">
+                <div class="menu-card" data-onclick="switchTab('stock')">
                     <i class="fas fa-box"></i>
                     <h3>Stock Items</h3>
                     <p>Manage product catalog, pricing, and stock levels.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('orders')">
+                <div class="menu-card" data-onclick="switchTab('orders')">
                     <i class="fas fa-file-invoice"></i>
                     <h3>Purchase Orders</h3>
                     <p>Create and track purchase orders to suppliers.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('receiving')">
+                <div class="menu-card" data-onclick="switchTab('receiving')">
                     <i class="fas fa-dolly"></i>
                     <h3>Goods Receiving</h3>
                     <p>Receive stock against POs and track batches.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('shelf')">
+                <div class="menu-card" data-onclick="switchTab('shelf')">
                     <i class="fas fa-cubes"></i>
                     <h3>Batch & Lot Tracking</h3>
                     <p>Monitor batch and lot numbers across stock.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('distribution')">
+                <div class="menu-card" data-onclick="switchTab('distribution')">
                     <i class="fas fa-truck-loading"></i>
                     <h3>Distribution</h3>
                     <p>Transfer stock between warehouse and branches.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('stocktaking')">
+                <div class="menu-card" data-onclick="switchTab('stocktaking')">
                     <i class="fas fa-clipboard-check"></i>
                     <h3>Stock Taking</h3>
                     <p>Perform physical stock counts and reconciliation.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('analytics')">
+                <div class="menu-card" data-onclick="switchTab('analytics')">
                     <i class="fas fa-chart-bar"></i>
                     <h3>Analytics & YTD</h3>
                     <p>View sales performance and inventory reports.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('barcodes')">
+                <div class="menu-card" data-onclick="switchTab('barcodes')">
                     <i class="fas fa-barcode"></i>
                     <h3>Barcode Generator</h3>
                     <p>View, generate, and print barcodes for all products.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('returns')">
+                <div class="menu-card" data-onclick="switchTab('returns')">
                     <i class="fas fa-undo-alt"></i>
                     <h3>Returned Sales</h3>
                     <p>View and manage all product returns and refunds.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('negative')">
+                <div class="menu-card" data-onclick="switchTab('negative')">
                     <i class="fas fa-exclamation-triangle" style="color: #c62828;"></i>
                     <h3>Negative Stock Management</h3>
                     <p>Analyze products sold without stock and manage inventory debt.</p>
@@ -749,28 +750,28 @@
 
         <!-- 1. STOCK ITEMS TAB (Existing Functionality) -->
         <div id="tab-stock" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
             <div class="page-header">
                 <h2 id="pageTitle">Stock Items</h2>
                 <div style="display: flex; align-items: center; gap: 10px;">
                     <p id="branchInfo" style="font-size: 12px; color: #888; margin-top: 5px;"></p>
-                    <button class="btn-header-secondary btn-export-pdf" onclick="exportLowStockPDF()" style="padding: 8px 15px; font-size: 13px;"><i class="fas fa-file-pdf"></i> Export PDF</button>
+                    <button class="btn-header-secondary btn-export-pdf" data-onclick="exportLowStockPDF()" style="padding: 8px 15px; font-size: 13px;"><i class="fas fa-file-pdf"></i> Export PDF</button>
                 </div>
             </div>
             <div style="display: flex; justify-content: flex-end; margin-bottom: 15px; gap: 10px;">
-                <button class="btn-add" onclick="deleteSelectedStock()" style="background-color: #c62828;"><i class="fas fa-trash"></i> Delete Selected</button>
-                <button class="btn-add" onclick="prepareAddProduct()"><i class="fas fa-plus"></i> Add Product</button>
+                <button class="btn-add" data-onclick="deleteSelectedStock()" style="background-color: #c62828;"><i class="fas fa-trash"></i> Delete Selected</button>
+                <button class="btn-add" data-onclick="prepareAddProduct()"><i class="fas fa-plus"></i> Add Product</button>
             </div>
 
             <div class="stock-filter-bar" style="display: grid; grid-template-columns: 3fr 1fr auto; gap: 15px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); align-items: center;">
-                <input type="text" id="searchInput" placeholder="Search by name or barcode..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" onkeyup="filterInventory()">
-                <select id="categoryFilter" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" onchange="filterInventory()"></select>
+                <input type="text" id="searchInput" placeholder="Search by name or barcode..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" data-onkeyup="filterInventory()">
+                <select id="categoryFilter" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" data-onchange="filterInventory()"></select>
                 <div style="display: flex; gap: 15px; align-items: center;">
                     <label class="filter-checkbox" style="display: inline-flex; align-items: center; gap: 5px;">
-                        <input type="checkbox" id="lowStockFilter" onchange="onStockFilterChange('low')"> Low Stock Only
+                        <input type="checkbox" id="lowStockFilter" data-onchange="onStockFilterChange('low')"> Low Stock Only
                     </label>
                     <label class="filter-checkbox" style="display: inline-flex; align-items: center; gap: 5px; color: #c62828;">
-                        <input type="checkbox" id="outOfStockFilter" onchange="onStockFilterChange('out')"> Out of Stock Only
+                        <input type="checkbox" id="outOfStockFilter" data-onchange="onStockFilterChange('out')"> Out of Stock Only
                     </label>
                 </div>
             </div>
@@ -779,7 +780,7 @@
                 <table class="stock-table">
                     <thead>
                         <tr>
-                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="selectAllStock" onchange="toggleAllStock(this)"></th>
+                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="selectAllStock" data-onchange="toggleAllStock(this)"></th>
                             <th>Barcode</th>
                             <th>Product Name</th>
                             <th>Category</th>
@@ -797,26 +798,26 @@
             </div>
             <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                 <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="stockRowsPerPage" onchange="changeStockRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <select id="stockRowsPerPage" data-onchange="changeStockRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
                 <span id="stockPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changeStockPage(-1)" id="btnStockPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changeStockPage(1)" id="btnStockNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button data-onclick="changeStockPage(-1)" id="btnStockPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button data-onclick="changeStockPage(1)" id="btnStockNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
         <!-- 2. SUPPLIERS TAB -->
         <div id="tab-suppliers" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
             <div class="page-header">
                 <h3>Supplier Management</h3>
-                <button class="btn-add" onclick="openSupplierModal()"><i class="fas fa-user-plus"></i> Add Supplier</button>
+                <button class="btn-add" data-onclick="openSupplierModal()"><i class="fas fa-user-plus"></i> Add Supplier</button>
             </div>
             <div style="margin-bottom: 20px;">
-                <input type="text" id="supplierSearch" placeholder="Search by name or contact..." onkeyup="filterSuppliers()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <input type="text" id="supplierSearch" placeholder="Search by name or contact..." data-onkeyup="filterSuppliers()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
             </div>
             <div class="inventory-card">
                 <table class="supplier-table">
@@ -837,26 +838,26 @@
             </div>
             <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                 <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="supRowsPerPage" onchange="changeSupRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <select id="supRowsPerPage" data-onchange="changeSupRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
                 <span id="supPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changeSupPage(-1)" id="btnSupPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changeSupPage(1)" id="btnSupNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button data-onclick="changeSupPage(-1)" id="btnSupPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button data-onclick="changeSupPage(1)" id="btnSupNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
         <!-- 3. PURCHASE ORDERS TAB -->
         <div id="tab-orders" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
             <div class="page-header">
                 <h3>Purchase Orders</h3>
-                <button class="btn-add" onclick="openPOModal()">Create New PO</button>
+                <button class="btn-add" data-onclick="openPOModal()">Create New PO</button>
             </div>
             <div style="margin-bottom: 20px;">
-                <input type="text" id="poSearch" placeholder="Search by PO # or supplier..." onkeyup="filterPOs()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <input type="text" id="poSearch" placeholder="Search by PO # or supplier..." data-onkeyup="filterPOs()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
             </div>
             <div class="inventory-card">
                 <table class="po-table">
@@ -866,28 +867,28 @@
             </div>
             <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                 <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="poRowsPerPage" onchange="changePoRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <select id="poRowsPerPage" data-onchange="changePoRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
                 <span id="poPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changePoPage(-1)" id="btnPoPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changePoPage(1)" id="btnPoNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button data-onclick="changePoPage(-1)" id="btnPoPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button data-onclick="changePoPage(1)" id="btnPoNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
         <!-- 4. GOODS RECEIVING TAB -->
         <div id="tab-receiving" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
             <div class="page-header">
                 <h3>Goods Receiving</h3>
-                <button class="btn-add" onclick="receiveSelected()" style="background:var(--secondary-color);"><i class="fas fa-box-open"></i> Receive Selected</button>
+                <button class="btn-add" data-onclick="receiveSelected()" style="background:var(--secondary-color);"><i class="fas fa-box-open"></i> Receive Selected</button>
             </div>
             
             <div style="display: flex; gap: 15px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); align-items: center;">
-                <input type="text" id="receivingSearch" placeholder="Search PO # or Supplier..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" onkeyup="renderReceivingTable()">
-                <select id="receivingStatusFilter" onchange="renderReceivingTable()" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none; min-width: 150px;">
+                <input type="text" id="receivingSearch" placeholder="Search PO # or Supplier..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" data-onkeyup="renderReceivingTable()">
+                <select id="receivingStatusFilter" data-onchange="renderReceivingTable()" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none; min-width: 150px;">
                     <option value="all" selected>All Orders</option>
                     <option value="Pending">Pending</option>
                     <option value="Received">Received (History)</option>
@@ -898,7 +899,7 @@
                 <table id="receivingTable" class="receiving-table">
                     <thead>
                         <tr>
-                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="selectAllReceiving" onchange="toggleSelectAllReceiving(this)"></th>
+                            <th style="width: 40px; text-align: center;"><input type="checkbox" id="selectAllReceiving" data-onchange="toggleSelectAllReceiving(this)"></th>
                             <th>PO #</th>
                             <th>Supplier</th>
                             <th>Total</th>
@@ -913,26 +914,26 @@
             </div>
             <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                 <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="recvRowsPerPage" onchange="changeRecvRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <select id="recvRowsPerPage" data-onchange="changeRecvRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
                 <span id="recvPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changeRecvPage(-1)" id="btnRecvPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changeRecvPage(1)" id="btnRecvNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button data-onclick="changeRecvPage(-1)" id="btnRecvPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button data-onclick="changeRecvPage(1)" id="btnRecvNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
         <!-- 5. DISTRIBUTION TAB -->
         <div id="tab-distribution" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
             <div class="page-header">
                 <h3>Inter-Store Distribution</h3>
-                <button class="btn-add" onclick="openTransferModal()"><i class="fas fa-exchange-alt"></i> New Transfer</button>
+                <button class="btn-add" data-onclick="openTransferModal()"><i class="fas fa-exchange-alt"></i> New Transfer</button>
             </div>
             <div style="margin-bottom: 20px;">
-                <input type="text" id="transferSearch" placeholder="Search transfers..." onkeyup="filterTransfers()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <input type="text" id="transferSearch" placeholder="Search transfers..." data-onkeyup="filterTransfers()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
             </div>
             <div class="inventory-card">
                 <table class="transfer-table">
@@ -952,27 +953,27 @@
             </div>
             <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                 <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="transRowsPerPage" onchange="changeTransRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <select id="transRowsPerPage" data-onchange="changeTransRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
                 <span id="transPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changeTransPage(-1)" id="btnTransPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changeTransPage(1)" id="btnTransNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button data-onclick="changeTransPage(-1)" id="btnTransPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button data-onclick="changeTransPage(1)" id="btnTransNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
         <!-- 7. ANALYTICS & YTD TAB -->
         <div id="tab-analytics" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
             <div class="page-header" style="margin-bottom: 25px;">
                 <div>
                     <h3>Analytics & Performance</h3>
                     <p style="color: #666; font-size: 14px; margin-top: 5px;">Year-to-Date (YTD) Sales Analysis & Insights</p>
                 </div>
                 <div style="display: flex; gap: 10px;">
-                    <button class="btn-header-secondary btn-export-pdf" onclick="exportAnalyticsPDF()"><i class="fas fa-file-pdf"></i> Export Report</button>
+                    <button class="btn-header-secondary btn-export-pdf" data-onclick="exportAnalyticsPDF()"><i class="fas fa-file-pdf"></i> Export Report</button>
                 </div>
             </div>
 
@@ -1009,7 +1010,7 @@
                 <div class="analytics-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee;">
                     <h4 style="margin: 0; color: var(--primary-color);">Product Performance Breakdown</h4>
                     <div style="display: flex; gap: 10px;">
-                        <input type="text" id="analyticsFilter" placeholder="Search products..." style="padding: 10px 15px; border: 1px solid #ddd; border-radius: 6px; width: 250px; outline: none;" onkeyup="filterAnalyticsTable()">
+                        <input type="text" id="analyticsFilter" placeholder="Search products..." style="padding: 10px 15px; border: 1px solid #ddd; border-radius: 6px; width: 250px; outline: none;" data-onkeyup="filterAnalyticsTable()">
                     </div>
                 </div>
 
@@ -1017,7 +1018,7 @@
                     <table class="analytics-table" style="width: 100%; border-collapse: collapse;">
                         <thead>
                             <tr style="background: #f8f9fa;">
-                                <th style="width: 40px; text-align: center; padding: 15px; border-bottom: 2px solid #eee;"><input type="checkbox" id="selectAllAnalytics" onchange="toggleAllAnalytics(this)"></th>
+                                <th style="width: 40px; text-align: center; padding: 15px; border-bottom: 2px solid #eee;"><input type="checkbox" id="selectAllAnalytics" data-onchange="toggleAllAnalytics(this)"></th>
                                 <th style="padding: 15px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #eee;">Product Name</th>
                                 <th style="padding: 15px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #eee;">Barcode</th>
                                 <th style="padding: 15px; text-align: left; font-weight: 600; color: #555; border-bottom: 2px solid #eee;">Category</th>
@@ -1033,20 +1034,20 @@
             </div>
             <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                 <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="analRowsPerPage" onchange="changeAnalRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <select id="analRowsPerPage" data-onchange="changeAnalRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
                 <span id="analPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changeAnalPage(-1)" id="btnAnalPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changeAnalPage(1)" id="btnAnalNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button data-onclick="changeAnalPage(-1)" id="btnAnalPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button data-onclick="changeAnalPage(1)" id="btnAnalNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
         <!-- NEW BARCODE GENERATOR TAB -->
         <div id="tab-barcodes" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
             <div class="page-header">
                 <h3>Barcode Generator</h3>
             </div>
@@ -1066,14 +1067,14 @@
             </div>
             <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                 <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="barRowsPerPage" onchange="changeBarRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <select id="barRowsPerPage" data-onchange="changeBarRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
                 <span id="barPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changeBarPage(-1)" id="btnBarPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changeBarPage(1)" id="btnBarNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button data-onclick="changeBarPage(-1)" id="btnBarPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button data-onclick="changeBarPage(1)" id="btnBarNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
@@ -1093,30 +1094,30 @@
                     <label style="display: block; text-align: left; margin-bottom: 5px; font-weight: 600; color: #333;">Edit Barcode:</label>
                     <div style="display: flex; gap: 8px;">
                         <input type="text" id="bvBarcodeInput" placeholder="Enter new barcode" maxlength="20" style="flex: 1; padding: 8px 12px; border: 1px solid #ddd; border-radius: 4px; font-family: inherit; font-variant-numeric: tabular-nums; font-size: 14px;">
-                        <button type="button" class="btn-save" onclick="saveEditedBarcode()" style="background: var(--primary-color);"><i class="fas fa-save"></i> Save</button>
-                        <button type="button" class="btn-cancel" onclick="cancelBarcodeEdit()">Cancel</button>
+                        <button type="button" class="btn-save" data-onclick="saveEditedBarcode()" style="background: var(--primary-color);"><i class="fas fa-save"></i> Save</button>
+                        <button type="button" class="btn-cancel" data-onclick="cancelBarcodeEdit()">Cancel</button>
                     </div>
                     <small style="color: #666; font-size: 11px; text-align: left; display: block; margin-top: 3px;">Enter a unique barcode (max 20 characters)</small>
                 </div>
 
                 <div class="modal-actions" style="justify-content: center; gap: 10px;">
-                    <button type="button" class="btn-save" onclick="toggleBarcodeEdit()" id="bvEditBtn" style="background: var(--primary-color);"><i class="fas fa-edit"></i> Edit</button>
-                    <button type="button" class="btn-save" onclick="generateBarcodeFromModal()" style="background: var(--secondary-color);"><i class="fas fa-sync-alt"></i> Generate</button>
-                    <button type="button" class="btn-save" onclick="downloadBarcodeImage()"><i class="fas fa-download"></i> Download</button>
-                    <button type="button" class="btn-cancel" onclick="document.getElementById('barcodeViewModal').classList.remove('active')">Close</button>
+                    <button type="button" class="btn-save" data-onclick="toggleBarcodeEdit()" id="bvEditBtn" style="background: var(--primary-color);"><i class="fas fa-edit"></i> Edit</button>
+                    <button type="button" class="btn-save" data-onclick="generateBarcodeFromModal()" style="background: var(--secondary-color);"><i class="fas fa-sync-alt"></i> Generate</button>
+                    <button type="button" class="btn-save" data-onclick="downloadBarcodeImage()"><i class="fas fa-download"></i> Download</button>
+                    <button type="button" class="btn-cancel" data-onclick="document.getElementById('barcodeViewModal').classList.remove('active')">Close</button>
                 </div>
             </div>
         </div>
 
         <!-- 8. CATEGORIES TAB -->
         <div id="tab-categories" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
             <div class="page-header">
                 <h3>Product Categories</h3>
-                <button class="btn-add" onclick="openCategoryModal()"><i class="fas fa-plus"></i> Add Category</button>
+                <button class="btn-add" data-onclick="openCategoryModal()"><i class="fas fa-plus"></i> Add Category</button>
             </div>
             <div style="margin-bottom: 20px;">
-                <input type="text" id="categorySearch" placeholder="Search categories..." onkeyup="filterCategories()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                <input type="text" id="categorySearch" placeholder="Search categories..." data-onkeyup="filterCategories()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
             </div>
             <div class="inventory-card">
                 <table class="category-table">
@@ -1135,25 +1136,25 @@
             </div>
             <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                 <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="catRowsPerPage" onchange="changeCatRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <select id="catRowsPerPage" data-onchange="changeCatRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
                 <span id="catPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changeCatPage(-1)" id="btnCatPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changeCatPage(1)" id="btnCatNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button data-onclick="changeCatPage(-1)" id="btnCatPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button data-onclick="changeCatPage(1)" id="btnCatNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
         <!-- 9. STOCK TAKING TAB -->
         <div id="tab-stocktaking" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
             <div class="page-header">
                 <h3>Stock Taking & Reconciliation</h3>
                 <div style="display:flex; gap:10px;">
-                    <button class="btn-header-secondary" onclick="printStockSheet()"><i class="fas fa-print"></i> Print Sheet</button>
-                    <button class="btn-add" onclick="saveStockTake()"><i class="fas fa-save"></i> Update Inventory</button>
+                    <button class="btn-header-secondary" data-onclick="printStockSheet()"><i class="fas fa-print"></i> Print Sheet</button>
+                    <button class="btn-add" data-onclick="saveStockTake()"><i class="fas fa-save"></i> Update Inventory</button>
                 </div>
             </div>
             <div class="inventory-card">
@@ -1161,7 +1162,7 @@
                     <div style="color:#666; font-size:14px;">
                         Enter physical counts below. Variance will be calculated automatically.
                     </div>
-                    <input type="text" id="stockTakeSearch" placeholder="Search products..." style="padding:8px; border:1px solid #ddd; border-radius:4px; width: 250px;" onkeyup="filterStockTake()">
+                    <input type="text" id="stockTakeSearch" placeholder="Search products..." style="padding:8px; border:1px solid #ddd; border-radius:4px; width: 250px;" data-onkeyup="filterStockTake()">
                 </div>
                 <table id="stockTakingTable" class="stocktake-table">
                     <thead>
@@ -1180,27 +1181,27 @@
             </div>
             <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                 <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="takeRowsPerPage" onchange="changeTakeRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <select id="takeRowsPerPage" data-onchange="changeTakeRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
                 <span id="takePageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changeTakePage(-1)" id="btnTakePrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changeTakePage(1)" id="btnTakeNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button data-onclick="changeTakePage(-1)" id="btnTakePrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button data-onclick="changeTakePage(1)" id="btnTakeNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
         <!-- 10. SHELF & BATCHES TAB -->
         <div id="tab-shelf" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
             <div class="page-header">
                 <h3>Batch & Lot Tracking</h3>
             </div>
             
             <div style="display: flex; gap: 15px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); align-items: center;">
-                <input type="text" id="batchSearch" placeholder="Search product or batch..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" onkeyup="renderBatchTable()">
-                <select id="batchFilter" onchange="renderBatchTable()" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none; min-width: 150px;">
+                <input type="text" id="batchSearch" placeholder="Search product or batch..." style="flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" data-onkeyup="renderBatchTable()">
+                <select id="batchFilter" data-onchange="renderBatchTable()" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none; min-width: 150px;">
                     <option value="all">All Batches</option>
                     <option value="expired">Expired</option>
                     <option value="soon">Expiring Soon (30 days)</option>
@@ -1230,21 +1231,21 @@
                 </div>
                 <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                     <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                    <select id="shelfRowsPerPage" onchange="changeShelfRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                    <select id="shelfRowsPerPage" data-onchange="changeShelfRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                         <option value="10">10</option>
                         <option value="25">25</option>
                         <option value="100">100</option>
                     </select>
                     <span id="shelfPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                    <button onclick="changeShelfPage(-1)" id="btnShelfPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                    <button onclick="changeShelfPage(1)" id="btnShelfNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                    <button data-onclick="changeShelfPage(-1)" id="btnShelfPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                    <button data-onclick="changeShelfPage(1)" id="btnShelfNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
         </div>
 
         <!-- 11. NEGATIVE STOCK TAB -->
         <div id="tab-negative" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
             <div class="page-header">
                 <h3>Negative Stock Analysis</h3>
                 <p style="color: #666; font-size: 14px; margin-top: 5px;">Manage products sold without stock and track inventory debt.</p>
@@ -1279,7 +1280,7 @@
 
             <div class="inventory-card">
                 <div style="margin-bottom: 20px;">
-                    <input type="text" id="negSearch" placeholder="Search by name or barcode..." onkeyup="filterNegative()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                    <input type="text" id="negSearch" placeholder="Search by name or barcode..." data-onkeyup="filterNegative()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
                 </div>
                 <table class="negative-table">
                     <thead>
@@ -1299,20 +1300,20 @@
             </div>
             <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                 <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="negRowsPerPage" onchange="changeNegRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <select id="negRowsPerPage" data-onchange="changeNegRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
                 <span id="negPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changeNegPage(-1)" id="btnNegPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changeNegPage(1)" id="btnNegNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button data-onclick="changeNegPage(-1)" id="btnNegPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button data-onclick="changeNegPage(1)" id="btnNegNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
 
         <!-- 12. RETURNS TAB -->
         <div id="tab-returns" class="tab-content">
-            <div onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
+            <div data-onclick="switchTab('overview')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Inventory Menu</div>
             <div class="page-header">
                 <h3>Returned Sales</h3>
                 <p style="color: #666; font-size: 14px; margin-top: 5px;">View and manage all product returns and refunds.</p>
@@ -1359,18 +1360,18 @@
                     <div style="flex: 1; min-width: 200px;">
                         <input type="text" id="returnsSearch" placeholder="Search by receipt #, customer, or product..." 
                                style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" 
-                               onkeyup="filterReturns()">
+                               data-onkeyup="filterReturns()">
                     </div>
                     <div>
-                        <input type="date" id="returnsStartDate" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" onchange="filterReturns()">
+                        <input type="date" id="returnsStartDate" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" data-onchange="filterReturns()">
                     </div>
                     <div>
-                        <input type="date" id="returnsEndDate" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" onchange="filterReturns()">
+                        <input type="date" id="returnsEndDate" style="padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;" data-onchange="filterReturns()">
                     </div>
-                    <button onclick="clearReturnFilters()" style="padding: 10px 20px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
+                    <button data-onclick="clearReturnFilters()" style="padding: 10px 20px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 6px; cursor: pointer;">
                         <i class="fas fa-times"></i> Clear
                     </button>
-                    <button onclick="exportReturns()" style="padding: 10px 20px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <button data-onclick="exportReturns()" style="padding: 10px 20px; background: var(--primary-color); color: white; border: none; border-radius: 6px; cursor: pointer;">
                         <i class="fas fa-download"></i> Export
                     </button>
                 </div>
@@ -1399,14 +1400,14 @@
                 </div>
                 <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                     <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                    <select id="returnsRowsPerPage" onchange="changeReturnsRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                    <select id="returnsRowsPerPage" data-onchange="changeReturnsRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                         <option value="10">10</option>
                         <option value="25">25</option>
                         <option value="100">100</option>
                     </select>
                     <span id="returnsPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                    <button onclick="changeReturnsPage(-1)" id="btnReturnsPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                    <button onclick="changeReturnsPage(1)" id="btnReturnsNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                    <button data-onclick="changeReturnsPage(-1)" id="btnReturnsPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                    <button data-onclick="changeReturnsPage(1)" id="btnReturnsNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
         </div>
@@ -1417,7 +1418,7 @@
         <div class="modal-content" style="width: 800px; max-width: 95%;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
                 <h3 style="margin:0;" id="modalTitle">Add New Product</h3>
-                <button type="button" id="btnToggleBulk" onclick="toggleBulkMode()" style="background:#e3f2fd; border:none; color:var(--primary-color); padding:8px 15px; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px;">
+                <button type="button" id="btnToggleBulk" data-onclick="toggleBulkMode()" style="background:#e3f2fd; border:none; color:var(--primary-color); padding:8px 15px; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px;">
                     <i class="fas fa-file-upload"></i> Bulk Upload
                 </button>
             </div>
@@ -1428,15 +1429,15 @@
                 <h4 style="color: #555; margin-bottom: 10px;">Upload Inventory Excel Sheet</h4>
                 <p style="color: #888; font-size: 13px; margin-bottom: 20px;">Supported formats: .xlsx, .xls, .csv<br><strong>Columns:</strong> Product Name, Category, Cost, Markup, Price, Current Stock, Physical Count, Selling Unit, Packaging Unit, Items per Package, Reorder Level, Batch Number, Expiry Date</p>
                 
-                <input type="file" id="bulkFileInput" accept=".xlsx, .xls" style="display:none" onchange="handleBulkFileSelect(this)">
-                <button onclick="document.getElementById('bulkFileInput').click()" style="background:var(--primary-color); color:white; border:none; padding:10px 25px; border-radius:6px; cursor:pointer; font-weight:600;">
+                <input type="file" id="bulkFileInput" accept=".xlsx, .xls" style="display:none" data-onchange="handleBulkFileSelect(this)">
+                <button data-onclick="document.getElementById('bulkFileInput').click()" style="background:var(--primary-color); color:white; border:none; padding:10px 25px; border-radius:6px; cursor:pointer; font-weight:600;">
                     Select File
                 </button>
                 <div id="bulkFileName" style="margin-top: 15px; font-weight: 600; color: #333;"></div>
                 <div id="bulkUploadStatus" style="margin-top: 20px; display:none;"></div>
             </div>
 
-            <form id="productForm" onsubmit="saveProduct(event)">
+            <form id="productForm" data-onsubmit="saveProduct(event)">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
                     <input type="hidden" id="pId">
                     <!-- Left Column -->
@@ -1462,12 +1463,12 @@
                         <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
                             <div class="form-group">
                                 <label>Cost</label>
-                                <input type="number" step="0.01" id="pCostPrice" placeholder="0.00" list="costPriceOptions" oninput="calculateSellingPrice()">
+                                <input type="number" step="0.01" id="pCostPrice" placeholder="0.00" list="costPriceOptions" data-oninput="calculateSellingPrice()">
                                 <datalist id="costPriceOptions"></datalist>
                             </div>
                             <div class="form-group">
                                 <label>Markup</label>
-                                <select id="pMarkup" onchange="calculateSellingPrice()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+                                <select id="pMarkup" data-onchange="calculateSellingPrice()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
                                     <option value="">Custom</option>
                                     <option value="5">5%</option>
                                     <option value="10">10%</option>
@@ -1480,7 +1481,7 @@
                             </div>
                             <div class="form-group">
                                 <label>Price</label>
-                                <input type="number" step="0.01" id="pPrice" required placeholder="0.00" list="priceOptions" oninput="document.getElementById('pMarkup').value = ''">
+                                <input type="number" step="0.01" id="pPrice" required placeholder="0.00" list="priceOptions" data-oninput="document.getElementById('pMarkup').value = ''">
                                 <datalist id="priceOptions"></datalist>
                             </div>
                         </div>
@@ -1523,9 +1524,9 @@
                     </div>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                    <button type="button" class="btn-cancel" data-onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn-save">Save Product</button>
-                    <button type="button" class="btn-save" id="btnUploadBulk" onclick="submitBulkUpload()" style="display:none;">Upload Now</button>
+                    <button type="button" class="btn-save" id="btnUploadBulk" data-onclick="submitBulkUpload()" style="display:none;">Upload Now</button>
                 </div>
             </form>
         </div>
@@ -1535,7 +1536,7 @@
     <div id="supplierModal" class="modal">
         <div class="modal-content">
             <h3 id="supplierModalTitle">Add Supplier</h3>
-            <form id="supplierForm" onsubmit="saveSupplier(event)">
+            <form id="supplierForm" data-onsubmit="saveSupplier(event)">
                 <input type="hidden" id="supId">
                 <div class="form-group"><label>Company Name</label><input id="supName" required></div>
                 <div class="form-group"><label>Contact Person</label><input id="supContact"></div>
@@ -1543,7 +1544,7 @@
                 <div class="form-group"><label>Email</label><input id="supEmail" type="email"></div>
                 <div class="form-group"><label>Address</label><input id="supAddress"></div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="document.getElementById('supplierModal').classList.remove('active')">Cancel</button>
+                    <button type="button" class="btn-cancel" data-onclick="document.getElementById('supplierModal').classList.remove('active')">Cancel</button>
                     <button type="submit" class="btn-save">Save Supplier</button>
                 </div>
             </form>
@@ -1557,8 +1558,8 @@
             <h3 style="margin-bottom: 10px;">Delete Supplier?</h3>
             <p style="color: #666; font-size: 14px; margin-bottom: 25px;">Are you sure you want to delete this supplier? This action cannot be undone.</p>
             <div class="modal-actions" style="justify-content: center; gap: 10px;">
-                <button type="button" class="btn-cancel" onclick="closeDeleteSupplierModal()" style="flex: 1;">Cancel</button>
-                <button type="button" class="btn-save" style="background: #c62828; flex: 1;" onclick="confirmDeleteSupplier()">Delete</button>
+                <button type="button" class="btn-cancel" data-onclick="closeDeleteSupplierModal()" style="flex: 1;">Cancel</button>
+                <button type="button" class="btn-save" style="background: #c62828; flex: 1;" data-onclick="confirmDeleteSupplier()">Delete</button>
             </div>
         </div>
     </div>
@@ -1567,7 +1568,7 @@
     <div id="categoryModal" class="modal">
         <div class="modal-content" style="width: 400px;">
             <h3>Add Category</h3>
-            <form onsubmit="saveCategory(event)">
+            <form data-onsubmit="saveCategory(event)">
                 <div class="form-group">
                     <label>Category Name</label>
                     <input type="text" id="catName" required placeholder="e.g. Beverages">
@@ -1577,7 +1578,7 @@
                     <textarea id="catDesc" rows="3" style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;" placeholder="Optional description..."></textarea>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="document.getElementById('categoryModal').classList.remove('active')">Cancel</button>
+                    <button type="button" class="btn-cancel" data-onclick="document.getElementById('categoryModal').classList.remove('active')">Cancel</button>
                     <button type="submit" class="btn-save">Save</button>
                 </div>
             </form>
@@ -1591,8 +1592,8 @@
             <h3 style="margin-bottom: 10px;">Delete Category?</h3>
             <p style="color: #666; font-size: 14px; margin-bottom: 25px;">Are you sure you want to delete this category? This action cannot be undone.</p>
             <div class="modal-actions" style="justify-content: center; gap: 10px;">
-                <button type="button" class="btn-cancel" onclick="closeDeleteCategoryModal()" style="flex: 1;">Cancel</button>
-                <button type="button" class="btn-save" style="background: #c62828; flex: 1;" onclick="confirmDeleteCategory()">Delete</button>
+                <button type="button" class="btn-cancel" data-onclick="closeDeleteCategoryModal()" style="flex: 1;">Cancel</button>
+                <button type="button" class="btn-save" style="background: #c62828; flex: 1;" data-onclick="confirmDeleteCategory()">Delete</button>
             </div>
         </div>
     </div>
@@ -1630,8 +1631,8 @@
             </table>
 
             <div class="modal-actions">
-                <button type="button" class="btn-cancel" onclick="document.getElementById('receiveGoodsModal').classList.remove('active')">Cancel</button>
-                <button type="button" class="btn-save" onclick="submitGoodsReceipt()">Confirm Receipt</button>
+                <button type="button" class="btn-cancel" data-onclick="document.getElementById('receiveGoodsModal').classList.remove('active')">Cancel</button>
+                <button type="button" class="btn-save" data-onclick="submitGoodsReceipt()">Confirm Receipt</button>
             </div>
         </div>
     </div>
@@ -1644,7 +1645,7 @@
                 <span style="font-size:12px; color:#666;" id="poDateDisplay"></span>
             </div>
             
-            <form onsubmit="createPO(event)">
+            <form data-onsubmit="createPO(event)">
                 <div class="form-group">
                     <label>Supplier</label>
                     <select id="poSupplier" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;"></select>
@@ -1667,7 +1668,7 @@
                             <input type="number" id="poCost" placeholder="Cost" step="0.01" min="0" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
                         </div>
                         <div>
-                            <button type="button" onclick="addPOItem()" style="background:var(--primary-color); color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">
+                            <button type="button" data-onclick="addPOItem()" style="background:var(--primary-color); color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
@@ -1699,7 +1700,7 @@
                 </div>
 
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="document.getElementById('poModal').classList.remove('active')">Cancel</button>
+                    <button type="button" class="btn-cancel" data-onclick="document.getElementById('poModal').classList.remove('active')">Cancel</button>
                     <button type="submit" class="btn-save">Create Order</button>
                 </div>
             </form>
@@ -1734,7 +1735,7 @@
                 </tfoot>
             </table>
             <div class="modal-actions">
-                <button class="btn-cancel" onclick="document.getElementById('viewPOModal').classList.remove('active')">Close</button>
+                <button class="btn-cancel" data-onclick="document.getElementById('viewPOModal').classList.remove('active')">Close</button>
             </div>
         </div>
     </div>
@@ -1745,13 +1746,13 @@
             <div style="border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center;">
                 <h3 style="margin: 0; color: var(--primary-color);">New Stock Transfer</h3>
                 <div style="display: flex; gap: 8px;">
-                    <button type="button" onclick="downloadTransferTemplate()" class="btn-header-secondary" style="padding: 6px 12px; font-size: 12px; height: 32px;"><i class="fas fa-download"></i> Template</button>
-                    <button type="button" onclick="document.getElementById('transferBulkInput').click()" class="btn-header-secondary" style="padding: 6px 12px; font-size: 12px; height: 32px; background: #e3f2fd; color: var(--primary-color); border-color: #bbdefb;"><i class="fas fa-file-upload"></i> Bulk Upload</button>
-                    <input type="file" id="transferBulkInput" accept=".xlsx, .xls, .csv" style="display: none;" onchange="handleTransferBulkFile(this)">
+                    <button type="button" data-onclick="downloadTransferTemplate()" class="btn-header-secondary" style="padding: 6px 12px; font-size: 12px; height: 32px;"><i class="fas fa-download"></i> Template</button>
+                    <button type="button" data-onclick="document.getElementById('transferBulkInput').click()" class="btn-header-secondary" style="padding: 6px 12px; font-size: 12px; height: 32px; background: #e3f2fd; color: var(--primary-color); border-color: #bbdefb;"><i class="fas fa-file-upload"></i> Bulk Upload</button>
+                    <input type="file" id="transferBulkInput" accept=".xlsx, .xls, .csv" style="display: none;" data-onchange="handleTransferBulkFile(this)">
                 </div>
             </div>
 
-            <form onsubmit="createTransfer(event)">
+            <form data-onsubmit="createTransfer(event)">
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
                     <div class="form-group">
                         <label style="font-weight: 600; color: #555;">From (Your Location)</label>
@@ -1777,7 +1778,7 @@
                         <div class="form-group" style="margin-bottom: 0; position: relative;">
                             <label style="font-size: 12px; margin-bottom: 4px;">Product Search</label>
                             <div style="display: flex; gap: 5px;">
-                                <input type="text" id="transferProductSearch" placeholder="Type name or barcode..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;" oninput="handleTransferProductSearch()">
+                                <input type="text" id="transferProductSearch" placeholder="Type name or barcode..." style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;" data-oninput="handleTransferProductSearch()">
                                 <button type="button" style="background: var(--primary-color); color: white; border: none; width: 40px; border-radius: 6px; cursor: pointer;"><i class="fas fa-search"></i></button>
                             </div>
                             <div id="transferSearchSuggestions" class="suggestions-dropdown"></div>
@@ -1794,7 +1795,7 @@
                             <input type="number" id="transferQty" placeholder="0" min="1" style="width: 100%;">
                         </div>
                         <div style="padding-top: 22px;">
-                            <button type="button" onclick="addTransferItem()" style="background: var(--primary-color); color: white; border: none; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
+                            <button type="button" data-onclick="addTransferItem()" style="background: var(--primary-color); color: white; border: none; width: 36px; height: 36px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s;">
                                 <i class="fas fa-plus"></i>
                             </button>
                         </div>
@@ -1823,7 +1824,7 @@
                 </div>
 
                 <div class="modal-actions" style="border-top: 1px solid #eee; padding-top: 20px; margin-top: 0;">
-                    <button type="button" class="btn-cancel" onclick="document.getElementById('transferModal').classList.remove('active')">Cancel</button>
+                    <button type="button" class="btn-cancel" data-onclick="document.getElementById('transferModal').classList.remove('active')">Cancel</button>
                     <button type="submit" class="btn-save" style="padding: 10px 25px; font-weight: 600;"><i class="fas fa-paper-plane" style="margin-right: 8px;"></i> Initiate Transfer</button>
                 </div>
             </form>
@@ -1870,7 +1871,7 @@
             </div>
 
             <div class="modal-actions" style="padding: 8px 25px; background: #f8f9fa; border-top: 1px solid #eee; margin-top: 0;">
-                <button class="btn-cancel" onclick="document.getElementById('viewTransferModal').classList.remove('active')" style="background: white; border: 1px solid #ddd;">Close</button>
+                <button class="btn-cancel" data-onclick="document.getElementById('viewTransferModal').classList.remove('active')" style="background: white; border: 1px solid #ddd;">Close</button>
             </div>
         </div>
     </div>
@@ -1888,8 +1889,8 @@
                 </table>
             </div>
             <div class="modal-actions">
-                <button type="button" class="btn-cancel" onclick="document.getElementById('stockTakeModal').classList.remove('active')">Cancel</button>
-                <button type="button" class="btn-save" onclick="submitStockTake()">Update Stock</button>
+                <button type="button" class="btn-cancel" data-onclick="document.getElementById('stockTakeModal').classList.remove('active')">Cancel</button>
+                <button type="button" class="btn-save" data-onclick="submitStockTake()">Update Stock</button>
             </div>
         </div>
     </div>
@@ -1901,8 +1902,8 @@
             <h3 style="margin-bottom: 10px;">Delete Product?</h3>
             <p style="color: #666; margin-bottom: 25px;">Are you sure you want to delete this product?</p>
             <div class="modal-actions" style="justify-content: center;">
-                <button type="button" class="btn-cancel" onclick="closeDeleteModal()">Cancel</button>
-                <button type="button" class="btn-save" onclick="confirmDelete()" style="background: #c62828;">Delete</button>
+                <button type="button" class="btn-cancel" data-onclick="closeDeleteModal()">Cancel</button>
+                <button type="button" class="btn-save" data-onclick="confirmDelete()" style="background: #c62828;">Delete</button>
             </div>
         </div>
     </div>
@@ -2245,7 +2246,7 @@
                         <td data-label="Description">${OkwUI.escapeHtml(c.description || '-')}</td>
                         <td data-label="Created At">${new Date(c.created_at).toLocaleDateString()}</td>
                         <td data-label="Actions">
-                            <button class="action-btn btn-delete" onclick="deleteCategory(${c.id})" title="Delete"><i class="fas fa-trash"></i></button>
+                            <button class="action-btn btn-delete" data-onclick="deleteCategory(${c.id})" title="Delete"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `).join('');
@@ -2430,9 +2431,9 @@
                         <td data-label="Batch Number">${batchNumber}</td>
                         <td data-label="Expiry Date">${expiryDate}</td>
                         <td data-label="Actions">
-                            <button class="action-btn btn-edit" onclick="editProduct(${p.id})" title="Edit Product"><i class="fas fa-edit"></i></button>
-                            <button class="action-btn btn-print" onclick="printLabel('${OkwUI.escapeHtml(p.barcode)}')" title="Print Label"><i class="fas fa-print"></i></button>
-                            <button class="action-btn btn-delete" onclick="deleteProduct(${p.id})" title="Delete"><i class="fas fa-trash"></i></button>
+                            <button class="action-btn btn-edit" data-onclick="editProduct(${p.id})" title="Edit Product"><i class="fas fa-edit"></i></button>
+                            <button class="action-btn btn-print" data-onclick="printLabel('${OkwUI.escapeHtml(p.barcode)}')" title="Print Label"><i class="fas fa-print"></i></button>
+                            <button class="action-btn btn-delete" data-onclick="deleteProduct(${p.id})" title="Delete"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `;
@@ -2793,6 +2794,14 @@
 
         function printBarcodeWindow(name, barcode, price) {
             const printWindow = window.open('', '', 'width=400,height=400');
+            if (!printWindow) return;
+            // Render the barcode in this page (it already has JsBarcode) so the print window needs no scripts of its own.
+            let barcodeSvg = '';
+            try {
+                const svgHost = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                JsBarcode(svgHost, String(barcode), { format: 'CODE128', width: 2, height: 40, displayValue: true });
+                barcodeSvg = svgHost.outerHTML;
+            } catch (e) { barcodeSvg = '<p>' + OkwUI.escapeHtml(String(barcode)) + '</p>'; }
             printWindow.document.write(`
                 <html>
                 <head>
@@ -2807,20 +2816,13 @@
                 <body>
                     <div class="label">
                         <h2>${OkwUI.escapeHtml(name)}</h2>
-                        <svg id="barcode"></svg>
+                        ${barcodeSvg}
                     </div>
-                    <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"><\/script>
-                    <script>
-                        JsBarcode("#barcode", "${OkwUI.escapeHtml(barcode)}", {
-                            format: "CODE128", width: 2, height: 40, displayValue: true
-                        });
-                        window.onload = function() { window.print(); window.close(); }
-                    <\/script>
-                
-</body>
+                </body>
                 </html>
             `);
             printWindow.document.close();
+            setTimeout(() => { printWindow.focus(); printWindow.print(); printWindow.close(); }, 300);
         }
 
         function exportLowStockPDF() {
@@ -3047,8 +3049,8 @@
                     <td data-label="Address">${OkwUI.escapeHtml(s.address || '-')}</td>
                     <td data-label="Status"><span class="stock-badge stock-ok">${s.status || 'Active'}</span></td>
                     <td data-label="Actions">
-                        <button class="action-btn btn-edit" onclick="editSupplier(${s.id})" title="Edit"><i class="fas fa-edit"></i></button>
-                        <button class="action-btn btn-delete" onclick="deleteSupplier(${s.id})" title="Delete"><i class="fas fa-trash"></i></button>
+                        <button class="action-btn btn-edit" data-onclick="editSupplier(${s.id})" title="Edit"><i class="fas fa-edit"></i></button>
+                        <button class="action-btn btn-delete" data-onclick="deleteSupplier(${s.id})" title="Delete"><i class="fas fa-trash"></i></button>
                     </td>
                 </tr>
             `).join('') : '<tr><td colspan="6" style="text-align:center; padding:20px;">No suppliers found</td></tr>';
@@ -3225,7 +3227,7 @@
                         <td data-label="Supplier">${OkwUI.escapeHtml(supplierName)}</td>
                         <td data-label="Total">${formatCurrency(total)}</td>
                         <td data-label="Status"><span class="stock-badge ${status === 'Received' ? 'stock-ok' : 'stock-low'}">${status}</span></td>
-                        <td data-label="Action"><button onclick="viewPO(${id})" title="View Details" style="padding: 5px 15px; background: #f0f7ff; color: var(--primary-color); border: 1px solid #b3e5fc; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px;">View</button></td>
+                        <td data-label="Action"><button data-onclick="viewPO(${id})" title="View Details" style="padding: 5px 15px; background: #f0f7ff; color: var(--primary-color); border: 1px solid #b3e5fc; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px;">View</button></td>
                     </tr>
                 `;
             }).join('') : '<tr><td colspan="5" style="text-align:center;">No POs found</td></tr>';
@@ -3270,8 +3272,8 @@
                         <td data-label="Total">${formatCurrency(total)}</td>
                         <td data-label="Status"><span class="stock-badge ${statusClass}">${status}</span></td>
                         <td data-label="Actions">
-                            <button onclick="viewPO(${id})" title="View Details" style="padding: 5px 15px; background: #f0f7ff; color: var(--primary-color); border: 1px solid #b3e5fc; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px; margin-right: 5px;">View</button>
-                            ${isPending ? `<button onclick="receiveGoods(${id})" style="padding: 5px 15px; background: var(--secondary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px;">Receive</button>` : ''}
+                            <button data-onclick="viewPO(${id})" title="View Details" style="padding: 5px 15px; background: #f0f7ff; color: var(--primary-color); border: 1px solid #b3e5fc; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px; margin-right: 5px;">View</button>
+                            ${isPending ? `<button data-onclick="receiveGoods(${id})" style="padding: 5px 15px; background: var(--secondary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px;">Receive</button>` : ''}
                         </td>
                     </tr>
                 `;
@@ -3372,7 +3374,7 @@
                             <td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">${formatCurrency(item.cost)}</td>
                             <td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">${formatCurrency(lineTotal)}</td>
                             <td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">
-                                <button type="button" onclick="removePOItem(${i})" style="color:#c62828; background:none; border:none; cursor:pointer;"><i class="fas fa-times"></i></button>
+                                <button type="button" data-onclick="removePOItem(${i})" style="color:#c62828; background:none; border:none; cursor:pointer;"><i class="fas fa-times"></i></button>
                             </td>
                         </tr>
                     `;
@@ -3597,9 +3599,9 @@
                             <td data-label="To">${t.to_location}</td>
                             <td data-label="Status"><span class="stock-badge ${statusClass}">${status}</span></td>
                             <td data-label="Actions">
-                                <button class="action-btn btn-print" onclick="viewTransfer(${t.id})" title="View Details"><i class="fas fa-eye"></i></button>
+                                <button class="action-btn btn-print" data-onclick="viewTransfer(${t.id})" title="View Details"><i class="fas fa-eye"></i></button>
                                 <button class="action-btn ${status === 'In Transit' ? 'btn-receive' : 'btn-disabled'}"
-                                    onclick="${status === 'In Transit' ? `receiveTransfer(${t.id})` : ''}"
+                                    data-onclick="${status === 'In Transit' ? `receiveTransfer(${t.id})` : ''}"
                                     ${status !== 'In Transit' ? 'disabled' : ''}>
                                     ${status === 'In Transit' ? '<i class="fas fa-check"></i> Receive' : 'Received'}
                                 </button>
@@ -3676,7 +3678,7 @@
 
             if (matches.length > 0) {
                 box.innerHTML = matches.map(p => `
-                    <div class="suggestion-item" onclick="selectTransferProduct('${OkwUI.escapeHtml(p.barcode)}', '${p.name.replace(/'/g, "\\'")}', ${p.id})">
+                    <div class="suggestion-item" data-onclick="selectTransferProduct('${OkwUI.escapeHtml(p.barcode)}', '${p.name.replace(/'/g, "\\'")}', ${p.id})">
                         <div><strong>${OkwUI.escapeHtml(p.name)}</strong><div style="font-size:10px; color:#888;">${OkwUI.escapeHtml(p.barcode)}</div></div>
                         <div style="font-weight:bold; color:var(--primary-color); font-size:12px;">${formatCurrency(p.price)}</div>
                     </div>`).join('');
@@ -3868,6 +3870,11 @@
             reader.readAsArrayBuffer(file);
         }
 
+        function removeTransferItem(i) {
+            transferItems.splice(i, 1);
+            updateTransferList();
+        }
+
         function updateTransferList() {
             const tbody = document.getElementById('transferItemsTableBody');
             const emptyState = document.getElementById('transferEmptyState');
@@ -3884,7 +3891,7 @@
                         <td style="padding:8px; color:#666; font-size:12px;">${item.batch || 'Auto'}</td>
                         <td style="padding:8px; text-align:center;">${item.qty}</td>
                         <td style="padding:8px; text-align:center;">
-                            <button type="button" onclick="transferItems.splice(${i}, 1); updateTransferList();" style="color:#c62828; background:none; border:none; cursor:pointer;"><i class="fas fa-times"></i></button>
+                            <button type="button" data-onclick="removeTransferItem(${i})" style="color:#c62828; background:none; border:none; cursor:pointer;"><i class="fas fa-times"></i></button>
                         </td>
                     </tr>
                 `).join('');
@@ -4081,7 +4088,7 @@
                 <tr>
                     <td>${OkwUI.escapeHtml(p.name)} <br><small>${OkwUI.escapeHtml(p.barcode)}</small></td>
                     <td>${p.stock}</td>
-                    <td><input type="number" class="phys-qty" data-barcode="${OkwUI.escapeHtml(p.barcode)}" data-system="${p.stock}" value="${p.stock}" style="width:80px; padding:5px;" onchange="calcVariance(this)"></td>
+                    <td><input type="number" class="phys-qty" data-barcode="${OkwUI.escapeHtml(p.barcode)}" data-system="${p.stock}" value="${p.stock}" style="width:80px; padding:5px;" data-onchange="calcVariance(this)"></td>
                     <td class="variance">0</td>
                 </tr>
             `).join('');
@@ -4403,8 +4410,8 @@
                             data-system="${sysCount}" 
                             value="${sysCount}" 
                             style="width:100px; padding:8px; border:1px solid #ddd; border-radius:4px; text-align:center;"
-                            oninput="calculateStockVariance(this)"
-                            onfocus="this.select()">
+                            data-oninput="calculateStockVariance(this)"
+                            data-onfocus="this.select()">
                     </td>
                     <td data-label="Variance" class="variance-cell" style="font-weight:bold; color:#ccc;">0</td>
                 </tr>
@@ -4460,10 +4467,11 @@
                 html += `<tr><td>${OkwUI.escapeHtml(p.name)}</td><td>${OkwUI.escapeHtml(p.barcode)}</td><td>${OkwUI.escapeHtml(p.category || '')}</td><td class="text-right">${p.stock}</td><td></td></tr>`;
             });
             
-            html += `</tbody></table><script>window.print();<\/script></body></html>`;
+            html += `</tbody></table></body></html>`;
             printWindow.document.write(html);
             logClientActivity('PRINT_STOCK_SHEET', {});
             printWindow.document.close();
+            setTimeout(() => { printWindow.focus(); printWindow.print(); }, 300);
         }
 
         function saveStockTake() {
@@ -4769,7 +4777,7 @@
                         <td>${OkwUI.escapeHtml(p.name)}</td>
                         <td class="barcode-value">${hasBarcode ? p.barcode : '<span style="color:#999;">N/A</span>'}</td>
                         <td>
-                            <button class="action-btn btn-edit" onclick="viewBarcodeDetails(${p.id})" title="View Details" style="width: auto; padding: 0 10px;"><i class="fas fa-eye"></i> View</button>
+                            <button class="action-btn btn-edit" data-onclick="viewBarcodeDetails(${p.id})" title="View Details" style="width: auto; padding: 0 10px;"><i class="fas fa-eye"></i> View</button>
                         </td>
                     </tr>
                 `;
@@ -5184,7 +5192,7 @@
                             <span style="color: #666; font-size: 12px;">RCP${r.original_transaction_id || 'N/A'}</span>
                         </td>
                         <td data-label="Actions" style="padding: 15px; text-align: center;">
-                            <button class="action-btn btn-print" onclick="viewReturnReceipt('${OkwUI.escapeHtml(r.receipt_number)}')" title="View Receipt">
+                            <button class="action-btn btn-print" data-onclick="viewReturnReceipt('${OkwUI.escapeHtml(r.receipt_number)}')" title="View Receipt">
                                 <i class="fas fa-receipt"></i>
                             </button>
                         </td>

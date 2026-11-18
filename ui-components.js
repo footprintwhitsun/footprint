@@ -327,7 +327,7 @@
         </style></head><body>
             <div class="hdr">
                 <div class="brand-wrap">
-                    <img class="brand-logo" src="${escapeHtml(profile.logoUrl)}" alt="${escapeHtml(profile.name)}" onerror="this.style.display='none'">
+                    <img class="brand-logo" src="${escapeHtml(profile.logoUrl)}" alt="${escapeHtml(profile.name)}">
                     <div>
                         <p class="brand-name">${escapeHtml(profile.name)}</p>
                         ${detailsLine ? `<p class="brand-details">${escapeHtml(detailsLine)}</p>` : ''}
@@ -351,6 +351,13 @@
         doc.open();
         doc.write(html);
         doc.close();
+        // a logo that fails to load is hidden (done here: the print document runs no scripts of its own)
+        const logoImg = doc.querySelector('.brand-logo');
+        if (logoImg) {
+            const hideLogo = () => { logoImg.style.display = 'none'; };
+            logoImg.addEventListener('error', hideLogo);
+            if (logoImg.complete && logoImg.naturalWidth === 0) hideLogo();
+        }
         iframe.contentWindow.focus();
         setTimeout(() => { iframe.contentWindow.print(); }, 100);
     }

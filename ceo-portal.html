@@ -8,12 +8,12 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap"
-        rel="stylesheet" media="print" onload="this.media='all'">
+        rel="stylesheet" media="print" data-media-swap>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OKWESIWA LTD | CEO Portal</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
     <link rel="stylesheet" href="sidebar.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" crossorigin="anonymous" defer></script>
     <style>
@@ -1534,21 +1534,22 @@
         #tab-ops-performance .charts-grid > .chart-card:first-child { display: none; }
         #tab-ops-performance .charts-grid { grid-template-columns: 1fr !important; }
     </style>
+    <script src="/okw-events.js"></script>
 </head>
 
 <body>
-    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
+    <div class="sidebar-overlay" data-onclick="toggleSidebar()"></div>
     <div class="sidebar">
         <div class="brand">
             <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
             <span class="sidebar-role-badge">Executive Hub</span>
         </div>
         <div class="nav-links">
-            <a href="javascript:void(0)" onclick="switchTab('overview')" class="nav-item active" id="nav-overview"><i
+            <a href="javascript:void(0)" data-onclick="switchTab('overview')" class="nav-item active" id="nav-overview"><i
                     class="fas fa-chart-pie"></i> Overview</a>
-            <a href="javascript:void(0)" onclick="switchTab('operations-hub')" class="nav-item"
+            <a href="javascript:void(0)" data-onclick="switchTab('operations-hub')" class="nav-item"
                 id="nav-operations-hub"><i class="fas fa-layer-group"></i> Operations</a>
-            <a href="javascript:void(0)" onclick="switchTab('admin-hub')" class="nav-item" id="nav-admin-hub"><i
+            <a href="javascript:void(0)" data-onclick="switchTab('admin-hub')" class="nav-item" id="nav-admin-hub"><i
                     class="fas fa-shield-alt"></i> Administration</a>
         </div>
         <div class="user-profile">
@@ -1559,7 +1560,7 @@
                     <div id="userRole">Chief Executive Officer</div>
                 </div>
             </div>
-            <button class="sidebar-logout-btn" onclick="logout()" title="Logout" aria-label="Logout"><i
+            <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i
                     class="fas fa-sign-out-alt"></i></button>
         </div>
     </div>
@@ -1567,7 +1568,7 @@
     <div class="main-content">
         <div class="header">
             <div style="display: flex; align-items: center;">
-                <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
                 <div>
                     <h1 id="pageTitle">Overview</h1>
                     <p id="pageSub" style="color: #64748b; font-size: 14px; margin-top: 5px;">Revenue, branches, approvals and risks across the company.</p>
@@ -1582,7 +1583,7 @@
                         style="border:none; padding:5px; font-size:12px;">
                 </div>
                 <select id="globalBranchFilter" aria-label="Branch" class="control-select"
-                    onchange="refreshActiveTab()">
+                    data-onchange="refreshActiveTab()">
                     <option value="All Branches">All Branches</option>
                 </select>
                 <div id="liveSyncPill" class="live-sync-pill" title="Real-time background sync active">
@@ -1591,7 +1592,7 @@
                     <span style="opacity: 0.65; font-weight: normal; font-size: 11px; margin-left: 2px;"
                         id="liveSyncTime">Just now</span>
                 </div>
-                <button id="manualSyncBtn" class="btn-control btn-white" onclick="manualSyncTrigger()"><i
+                <button id="manualSyncBtn" class="btn-control btn-white" data-onclick="manualSyncTrigger()"><i
                         class="fas fa-sync" id="manualSyncIcon"></i> Sync</button>
             </div>
         </div>
@@ -1619,10 +1620,10 @@
                     <div style="display:flex; justify-content:space-between; align-items:center;">
                         <div style="font-size: 14px; opacity: 0.85;">
                             Revenue this month</div>
-                        <button onclick="openTargetModal()"
+                        <button data-onclick="openTargetModal()"
                             style="background:rgba(255,255,255,0.2); border:none; color:white; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:11px; transition:0.2s; position:relative; z-index:2;"
-                            onmouseover="this.style.background='rgba(255,255,255,0.3)'"
-                            onmouseout="this.style.background='rgba(255,255,255,0.2)'"><i class="fas fa-edit"></i>
+                            data-onmouseover="this.style.background='rgba(255,255,255,0.3)'"
+                            data-onmouseout="this.style.background='rgba(255,255,255,0.2)'"><i class="fas fa-edit"></i>
                             Edit</button>
                     </div>
                     <div style="font-size: 32px; font-weight: 700; margin-top: 5px;" id="currentRevenueDisplay">--</div>
@@ -1633,7 +1634,7 @@
                     <div class="goal-note" id="goalPaceNote"></div>
                     <div class="goal-stats">
                         <span>Progress: <span id="goalPercent">0%</span></span>
-                        <span style="cursor: pointer;" onclick="openTargetModal()" title="Edit Target">Target: <span
+                        <span style="cursor: pointer;" data-onclick="openTargetModal()" title="Edit Target">Target: <span
                                 id="goalTargetDisplay">--</span> <i class="fas fa-pencil-alt"
                                 style="font-size: 10px; margin-left: 5px;"></i></span>
                     </div>
@@ -1642,25 +1643,25 @@
 
             <!-- KPIs -->
             <div class="kpi-grid">
-                <div class="kpi-card" onclick="switchTab('overview')">
+                <div class="kpi-card" data-onclick="switchTab('overview')">
                     <div class="kpi-title">Trade-account invoices</div>
                     <div class="kpi-value" id="kpiTotalRevenue">--</div>
                     <div class="kpi-sub"><i class="fas fa-chart-line"></i> All time, company portal</div>
                     <i class="fas fa-money-bill-trend-up kpi-icon"></i>
                 </div>
-                <div class="kpi-card" onclick="switchTab('overview')">
+                <div class="kpi-card" data-onclick="switchTab('overview')">
                     <div class="kpi-title">Monthly Revenue</div>
                     <div class="kpi-value" id="kpiRevenue">--</div>
                     <div class="kpi-sub"><i class="fas fa-arrow-up"></i> Gross Sales</div>
                     <i class="fas fa-wallet kpi-icon"></i>
                 </div>
-                <div class="kpi-card" onclick="switchTab('overview')">
+                <div class="kpi-card" data-onclick="switchTab('overview')">
                     <div class="kpi-title">Monthly Net Profit</div>
                     <div class="kpi-value" id="kpiProfit">--</div>
                     <div class="kpi-sub"><i class="fas fa-check-circle"></i> Estimate: COGS at 70% of revenue</div>
                     <i class="fas fa-chart-pie kpi-icon"></i>
                 </div>
-                <div class="kpi-card" onclick="switchTab('branches')">
+                <div class="kpi-card" data-onclick="switchTab('branches')">
                     <div class="kpi-title">Active Branches</div>
                     <div class="kpi-value" id="kpiBranches">0</div>
                     <div class="kpi-sub" style="color:#666;">Operational Locations</div>
@@ -1824,8 +1825,8 @@
                         <div style="font-size:12px;color:#64748b;margin-top:2px;">Live today vs yesterday &amp; last week, cash drop threshold alerts, blind close variances, and staff flags</div>
                     </div>
                     <div style="display:flex;gap:8px;flex-wrap:wrap;">
-                        <button type="button" class="btn-control btn-white" onclick="setCeoBranchTarget()"><i class="fas fa-bullseye"></i> Set Branch Target</button>
-                        <button type="button" class="btn-control" style="background:#F9A51A;color:#0f172a;border:none;font-weight:600;" onclick="recordCeoCashDrop()"><i class="fas fa-vault"></i> Record Cash Drop</button>
+                        <button type="button" class="btn-control btn-white" data-onclick="setCeoBranchTarget()"><i class="fas fa-bullseye"></i> Set Branch Target</button>
+                        <button type="button" class="btn-control" style="background:#F9A51A;color:#0f172a;border:none;font-weight:600;" data-onclick="recordCeoCashDrop()"><i class="fas fa-vault"></i> Record Cash Drop</button>
                     </div>
                 </div>
                 <div id="ceoCashAlertBanner" style="display:none;margin:12px 0;padding:10px 14px;border-radius:8px;background:#fef3c7;color:#92400e;font-weight:600;font-size:13px;"></div>
@@ -1855,42 +1856,42 @@
         <!-- Tab: Operations Hub (Menu) -->
         <div id="tab-operations-hub" class="tab-content">
             <div class="menu-grid">
-                <div class="menu-card" onclick="switchTab('approvals')">
+                <div class="menu-card" data-onclick="switchTab('approvals')">
                     <i class="fas fa-credit-card"></i>
                     <h3>Store Credit</h3>
                     <p>Manage credit approvals and history.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('branches')">
+                <div class="menu-card" data-onclick="switchTab('branches')">
                     <i class="fas fa-building"></i>
                     <h3>Branches</h3>
                     <p>Branch performance and management.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('ops-bottlenecks')">
+                <div class="menu-card" data-onclick="switchTab('ops-bottlenecks')">
                     <i class="fas fa-exclamation-circle"></i>
                     <h3>Supply Chain Bottlenecks</h3>
                     <p>View low stock items and reorder alerts.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('ops-suppliers')">
+                <div class="menu-card" data-onclick="switchTab('ops-suppliers')">
                     <i class="fas fa-truck"></i>
                     <h3>Suppliers</h3>
                     <p>Manage supplier directory and contact info.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('ops-pos')">
+                <div class="menu-card" data-onclick="switchTab('ops-pos')">
                     <i class="fas fa-file-invoice"></i>
                     <h3>Purchase Orders</h3>
                     <p>Track recent orders and receiving status.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('ops-performance')">
+                <div class="menu-card" data-onclick="switchTab('ops-performance')">
                     <i class="fas fa-chart-bar"></i>
                     <h3>Branch Performance</h3>
                     <p>Compare top and lowest performing branches.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('ops-users')">
+                <div class="menu-card" data-onclick="switchTab('ops-users')">
                     <i class="fas fa-users-cog"></i>
                     <h3>User Management</h3>
                     <p>Manage system access and user roles.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('tax-management')">
+                <div class="menu-card" data-onclick="switchTab('tax-management')">
                     <i class="fas fa-percentage"></i>
                     <h3>Tax Management</h3>
                     <p>Configure taxes, NHIS, and levies.</p>
@@ -1901,12 +1902,12 @@
         <!-- Tab: Administration Hub (Menu) -->
         <div id="tab-admin-hub" class="tab-content">
             <div class="menu-grid">
-                <div class="menu-card" onclick="switchTab('settings')">
+                <div class="menu-card" data-onclick="switchTab('settings')">
                     <i class="fas fa-shield-alt"></i>
                     <h3>Security Settings</h3>
                     <p>Manage MFA, session timeouts, and other security preferences.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('audit')">
+                <div class="menu-card" data-onclick="switchTab('audit')">
                     <i class="fas fa-history"></i>
                     <h3>Audit Trail</h3>
                     <p>View detailed system logs.</p>
@@ -1916,15 +1917,15 @@
 
         <!-- Tab: Approvals (Menu) -->
         <div id="tab-approvals" class="tab-content">
-            <div onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
+            <div data-onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
                 Operations</div>
             <div class="menu-grid">
-                <div class="menu-card" onclick="switchTab('approvals-pending')">
+                <div class="menu-card" data-onclick="switchTab('approvals-pending')">
                     <i class="fas fa-hourglass-half"></i>
                     <h3>Pending Approvals</h3>
                     <p>Review and act on new credit customer requests.</p>
                 </div>
-                <div class="menu-card" onclick="switchTab('approvals-history')">
+                <div class="menu-card" data-onclick="switchTab('approvals-history')">
                     <i class="fas fa-history"></i>
                     <h3>Approval History</h3>
                     <p>View past approval decisions and rejected applications.</p>
@@ -1934,18 +1935,18 @@
 
         <!-- Tab: Pending Approvals -->
         <div id="tab-approvals-pending" class="tab-content">
-            <div onclick="switchTab('approvals')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Approvals
+            <div data-onclick="switchTab('approvals')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Approvals
             </div>
             <div class="search-container">
                 <i class="fas fa-search search-icon"></i>
                 <input type="text" id="pendingSearch" class="search-input"
                     placeholder="Search pending approvals by name, branch, or manager..."
-                    onkeyup="filterPendingApprovals()">
+                    data-onkeyup="filterPendingApprovals()">
             </div>
             <div class="table-card">
                 <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
                     <div class="card-title">Pending Credit Approvals</div>
-                    <button class="btn-control btn-white" onclick="loadPendingCreditApprovals()"
+                    <button class="btn-control btn-white" data-onclick="loadPendingCreditApprovals()"
                         style="padding: 8px 12px; font-size: 13px;"><i class="fas fa-sync"></i> Refresh</button>
                 </div>
                 <div class="table-scroll-wrapper">
@@ -1969,10 +1970,10 @@
                 </div>
                 <div class="pagination-controls"
                     style="display: flex; justify-content: center; flex-wrap: wrap; padding-top: 15px; gap: 10px; align-items: center;">
-                    <button class="btn-control btn-white" onclick="changePendingPage(-1)" id="btnPendingPrev" disabled
+                    <button class="btn-control btn-white" data-onclick="changePendingPage(-1)" id="btnPendingPrev" disabled
                         style="padding: 5px 10px;">Previous</button>
                     <span id="pendingPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                    <button class="btn-control btn-white" onclick="changePendingPage(1)" id="btnPendingNext" disabled
+                    <button class="btn-control btn-white" data-onclick="changePendingPage(1)" id="btnPendingNext" disabled
                         style="padding: 5px 10px;">Next</button>
                 </div>
             </div>
@@ -1980,17 +1981,17 @@
 
         <!-- Tab: Approval History -->
         <div id="tab-approvals-history" class="tab-content">
-            <div onclick="switchTab('approvals')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Approvals
+            <div data-onclick="switchTab('approvals')" class="back-link"><i class="fas fa-arrow-left"></i> Back to Approvals
             </div>
             <div class="search-container">
                 <i class="fas fa-search search-icon"></i>
                 <input type="text" id="historySearch" class="search-input" placeholder="Search approval history..."
-                    onkeyup="filterApprovalHistory()">
+                    data-onkeyup="filterApprovalHistory()">
             </div>
             <div class="table-card">
                 <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
                     <div class="card-title">Approval History</div>
-                    <button class="btn-control btn-white" onclick="loadApprovalHistory()"
+                    <button class="btn-control btn-white" data-onclick="loadApprovalHistory()"
                         style="padding: 8px 12px; font-size: 13px;"><i class="fas fa-sync"></i> Refresh</button>
                 </div>
                 <div class="table-scroll-wrapper">
@@ -2012,10 +2013,10 @@
                 </div>
                 <div class="pagination-controls"
                     style="display: flex; justify-content: center; flex-wrap: wrap; padding-top: 15px; gap: 10px; align-items: center;">
-                    <button class="btn-control btn-white" onclick="changeHistoryPage(-1)" id="btnHistoryPrev" disabled
+                    <button class="btn-control btn-white" data-onclick="changeHistoryPage(-1)" id="btnHistoryPrev" disabled
                         style="padding: 5px 10px;">Previous</button>
                     <span id="historyPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                    <button class="btn-control btn-white" onclick="changeHistoryPage(1)" id="btnHistoryNext" disabled
+                    <button class="btn-control btn-white" data-onclick="changeHistoryPage(1)" id="btnHistoryNext" disabled
                         style="padding: 5px 10px;">Next</button>
                 </div>
             </div>
@@ -2023,17 +2024,17 @@
 
         <!-- Tab 3: Branches -->
         <div id="tab-branches" class="tab-content">
-            <div onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
+            <div data-onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
                 Operations</div>
             <div class="search-container">
                 <i class="fas fa-search search-icon"></i>
                 <input type="text" id="branchSearch" class="search-input" placeholder="Search branches..."
-                    onkeyup="filterBranches()">
+                    data-onkeyup="filterBranches()">
             </div>
             <div class="table-card">
                 <div class="card-header" style="flex-wrap: wrap; gap: 10px;">
                     <div class="card-title">Branch Management & Performance</div>
-                    <button class="btn-control btn-primary" onclick="openBranchModal()"><i class="fas fa-plus"></i> Add
+                    <button class="btn-control btn-primary" data-onclick="openBranchModal()"><i class="fas fa-plus"></i> Add
                         Branch</button>
                 </div>
                 <div class="table-scroll-wrapper">
@@ -2060,7 +2061,7 @@
 
         <!-- Tab 4: Operations & Supply Chain -->
         <div id="tab-operations" class="tab-content">
-            <div onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
+            <div data-onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
                 Operations</div>
             <div class="kpi-grid">
                 <div class="kpi-card">
@@ -2086,7 +2087,7 @@
 
         <!-- Tab: Supply Chain Bottlenecks -->
         <div id="tab-ops-bottlenecks" class="tab-content">
-            <div onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
+            <div data-onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
                 Operations</div>
             <!-- Bottlenecks Summary Analytics -->
             <div class="kpi-grid" style="margin-bottom: 25px;">
@@ -2116,7 +2117,7 @@
             <div class="table-card">
                 <div class="card-header">
                     <div class="card-title">Supply Chain Bottlenecks</div>
-                    <button class="btn-control btn-white" onclick="loadOpsBottlenecks()"
+                    <button class="btn-control btn-white" data-onclick="loadOpsBottlenecks()"
                         style="padding: 8px 12px; font-size: 13px;"><i class="fas fa-sync"></i> Refresh</button>
                 </div>
                 <div class="table-scroll-wrapper">
@@ -2139,10 +2140,10 @@
                 </div>
                 <div class="pagination-controls"
                     style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center;">
-                    <button class="btn-control btn-white" onclick="changeOpsPage('bottlenecks', -1)"
+                    <button class="btn-control btn-white" data-onclick="changeOpsPage('bottlenecks', -1)"
                         id="btnBottlenecksPrev" disabled style="padding: 5px 10px;">Previous</button>
                     <span id="bottlenecksPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                    <button class="btn-control btn-white" onclick="changeOpsPage('bottlenecks', 1)"
+                    <button class="btn-control btn-white" data-onclick="changeOpsPage('bottlenecks', 1)"
                         id="btnBottlenecksNext" disabled style="padding: 5px 10px;">Next</button>
                 </div>
             </div>
@@ -2150,17 +2151,17 @@
 
         <!-- Tab: Suppliers -->
         <div id="tab-ops-suppliers" class="tab-content">
-            <div onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
+            <div data-onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
                 Operations</div>
             <div class="search-container">
                 <i class="fas fa-search search-icon"></i>
                 <input type="text" id="suppliersSearch" class="search-input" placeholder="Search suppliers..."
-                    onkeyup="filterOpsSuppliers()">
+                    data-onkeyup="filterOpsSuppliers()">
             </div>
             <div class="table-card">
                 <div class="card-header">
                     <div class="card-title">Suppliers (by Branch)</div>
-                    <button class="btn-control btn-white" onclick="loadOpsSuppliers()"
+                    <button class="btn-control btn-white" data-onclick="loadOpsSuppliers()"
                         style="padding: 8px 12px; font-size: 13px;"><i class="fas fa-sync"></i> Refresh</button>
                 </div>
                 <div class="table-scroll-wrapper">
@@ -2183,10 +2184,10 @@
                 </div>
                 <div class="pagination-controls"
                     style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center;">
-                    <button class="btn-control btn-white" onclick="changeOpsPage('suppliers', -1)" id="btnSuppliersPrev"
+                    <button class="btn-control btn-white" data-onclick="changeOpsPage('suppliers', -1)" id="btnSuppliersPrev"
                         disabled style="padding: 5px 10px;">Previous</button>
                     <span id="suppliersPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                    <button class="btn-control btn-white" onclick="changeOpsPage('suppliers', 1)" id="btnSuppliersNext"
+                    <button class="btn-control btn-white" data-onclick="changeOpsPage('suppliers', 1)" id="btnSuppliersNext"
                         disabled style="padding: 5px 10px;">Next</button>
                 </div>
             </div>
@@ -2194,17 +2195,17 @@
 
         <!-- Tab: Purchase Orders -->
         <div id="tab-ops-pos" class="tab-content">
-            <div onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
+            <div data-onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
                 Operations</div>
             <div class="search-container">
                 <i class="fas fa-search search-icon"></i>
                 <input type="text" id="posSearch" class="search-input" placeholder="Search purchase orders..."
-                    onkeyup="filterOpsPOs()">
+                    data-onkeyup="filterOpsPOs()">
             </div>
             <div class="table-card">
                 <div class="card-header">
                     <div class="card-title">Recent Purchase Orders</div>
-                    <button class="btn-control btn-white" onclick="loadOpsPOs()"
+                    <button class="btn-control btn-white" data-onclick="loadOpsPOs()"
                         style="padding: 8px 12px; font-size: 13px;"><i class="fas fa-sync"></i> Refresh</button>
                 </div>
                 <div class="table-scroll-wrapper">
@@ -2229,16 +2230,16 @@
                 <div class="pagination-controls"
                     style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                     <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                    <select id="opsPOsRowsPerPage" class="control-select" onchange="changeOpsPOsRowsPerPage()"
+                    <select id="opsPOsRowsPerPage" class="control-select" data-onchange="changeOpsPOsRowsPerPage()"
                         style="padding: 5px 10px;">
                         <option value="10">10</option>
                         <option value="25">25</option>
                         <option value="100">100</option>
                     </select>
                     <span id="posPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                    <button class="btn-control btn-white" onclick="changeOpsPage('pos', -1)" id="btnPOsPrev" disabled=""
+                    <button class="btn-control btn-white" data-onclick="changeOpsPage('pos', -1)" id="btnPOsPrev" disabled=""
                         style="padding: 5px 10px;"><i class="fas fa-chevron-left"></i></button>
-                    <button class="btn-control btn-white" onclick="changeOpsPage('pos', 1)" id="btnPOsNext" disabled=""
+                    <button class="btn-control btn-white" data-onclick="changeOpsPage('pos', 1)" id="btnPOsNext" disabled=""
                         style="padding: 5px 10px;"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
@@ -2246,7 +2247,7 @@
 
         <!-- Tab: Branch Performance -->
         <div id="tab-ops-performance" class="tab-content">
-            <div onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
+            <div data-onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
                 Operations</div>
 
             <!-- Branch KPIs -->
@@ -2316,7 +2317,7 @@
 
         <!-- Tab: User Management -->
         <div id="tab-ops-users" class="tab-content">
-            <div onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
+            <div data-onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
                 Operations</div>
             <div class="search-container"
                 style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin-bottom:15px;">
@@ -2324,10 +2325,10 @@
                     <i class="fas fa-search search-icon"
                         style="position:absolute; left:12px; top:50%; transform:translateY(-50%); color:#94a3b8;"></i>
                     <input type="text" id="usersSearch" class="search-input"
-                        placeholder="Search by name, username, email, role, or branch..." onkeyup="filterUsers()"
+                        placeholder="Search by name, username, email, role, or branch..." data-onkeyup="filterUsers()"
                         style="width:100%; padding-left:35px;">
                 </div>
-                <select id="usersRoleFilter" class="control-select" onchange="filterUsers()"
+                <select id="usersRoleFilter" class="control-select" data-onchange="filterUsers()"
                     style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;">
                     <option value="all">All Roles</option>
                     <option value="admin">Admin</option>
@@ -2335,7 +2336,7 @@
                     <option value="manager">Manager</option>
                     <option value="cashier">Cashier</option>
                 </select>
-                <select id="usersBranchFilter" class="control-select" onchange="filterUsers()"
+                <select id="usersBranchFilter" class="control-select" data-onchange="filterUsers()"
                     style="padding:8px 12px; border:1px solid #cbd5e1; border-radius:8px; font-size:13px;">
                     <option value="all">All Branches</option>
                 </select>
@@ -2345,7 +2346,7 @@
                     <div class="card-title">User Management & Access Control</div>
                     <button
                         style="background:var(--primary-color); color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:600; display:flex; align-items:center; gap:6px;"
-                        onclick="openManagerModal()"><i class="fas fa-user-plus"></i> Add New User</button>
+                        data-onclick="openManagerModal()"><i class="fas fa-user-plus"></i> Add New User</button>
                 </div>
                 <div class="table-scroll-wrapper">
                     <table class="card-table">
@@ -2369,16 +2370,16 @@
                 <div class="pagination-controls"
                     style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                     <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                    <select id="usersRowsPerPage" class="control-select" onchange="changeUsersRowsPerPage()"
+                    <select id="usersRowsPerPage" class="control-select" data-onchange="changeUsersRowsPerPage()"
                         style="padding: 5px 10px;">
                         <option value="10">10</option>
                         <option value="25">25</option>
                         <option value="100">100</option>
                     </select>
                     <span id="usersPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                    <button class="btn-control btn-white" onclick="changeUsersPage(-1)" id="btnUsersPrev" disabled=""
+                    <button class="btn-control btn-white" data-onclick="changeUsersPage(-1)" id="btnUsersPrev" disabled=""
                         style="padding: 5px 10px;"><i class="fas fa-chevron-left"></i></button>
-                    <button class="btn-control btn-white" onclick="changeUsersPage(1)" id="btnUsersNext" disabled=""
+                    <button class="btn-control btn-white" data-onclick="changeUsersPage(1)" id="btnUsersNext" disabled=""
                         style="padding: 5px 10px;"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
@@ -2386,7 +2387,7 @@
 
         <!-- Tab: Tax Management -->
         <div id="tab-tax-management" class="tab-content">
-            <div onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
+            <div data-onclick="switchTab('operations-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
                 Operations</div>
 
             <div class="grid-container"
@@ -2397,7 +2398,7 @@
                     <div class="card-header">
                         <div class="card-title">Add New Tax Rule</div>
                     </div>
-                    <form onsubmit="handleAddTax(event)">
+                    <form data-onsubmit="handleAddTax(event)">
                         <div class="form-group">
                             <label class="form-label">Tax Name</label>
                             <input type="text" id="newTaxName" class="form-input" placeholder="e.g. NHIS Levy" required>
@@ -2445,7 +2446,7 @@
                         </select>
                     </div>
                     <div style="margin-bottom: 2px;">
-                        <button onclick="generateReport()" class="btn-control btn-primary"
+                        <button data-onclick="generateReport()" class="btn-control btn-primary"
                             style="width: auto; padding: 10px 25px;"><i class="fas fa-search"></i> Generate</button>
                     </div>
                 </div>
@@ -2474,7 +2475,7 @@
 
         <!-- Tab 10: Settings & Access Control -->
         <div id="tab-settings" class="tab-content">
-            <div onclick="switchTab('admin-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
+            <div data-onclick="switchTab('admin-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
                 Administration</div>
 
             <div class="card-header">
@@ -2482,7 +2483,7 @@
             </div>
             <div
                 style="background:white; padding:30px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,0.05); max-width: 600px;">
-                <form onsubmit="updateCeoPassword(event)">
+                <form data-onsubmit="updateCeoPassword(event)">
                     <div class="form-group">
                         <label class="form-label">Current Password</label>
                         <input type="password" id="ceoCurrentPass" class="form-input" autocomplete="current-password" required>
@@ -2503,17 +2504,17 @@
 
         <!-- Tab 11: Audit Trail -->
         <div id="tab-audit" class="tab-content">
-            <div onclick="switchTab('admin-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
+            <div data-onclick="switchTab('admin-hub')" class="back-link"><i class="fas fa-arrow-left"></i> Back to
                 Administration</div>
             <div class="search-container">
                 <i class="fas fa-search search-icon"></i>
                 <input type="text" id="auditSearch" class="search-input" placeholder="Search system logs..."
-                    onkeyup="filterAuditLogs()">
+                    data-onkeyup="filterAuditLogs()">
             </div>
             <div class="table-card">
                 <div class="card-header">
                     <div class="card-title">System Audit Logs</div>
-                    <button class="btn-control btn-white" onclick="loadAuditLogs()"
+                    <button class="btn-control btn-white" data-onclick="loadAuditLogs()"
                         style="padding: 8px 12px; font-size: 13px;"><i class="fas fa-sync"></i> Refresh</button>
                 </div>
                 <div class="table-scroll-wrapper">
@@ -2538,16 +2539,16 @@
                 <div class="pagination-controls"
                     style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                     <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                    <select id="auditRowsPerPage" class="control-select" onchange="changeAuditRowsPerPage()"
+                    <select id="auditRowsPerPage" class="control-select" data-onchange="changeAuditRowsPerPage()"
                         style="padding: 5px 10px;">
                         <option value="10">10</option>
                         <option value="25">25</option>
                         <option value="100">100</option>
                     </select>
                     <span id="auditPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                    <button class="btn-control btn-white" onclick="changeAuditPage(-1)" id="btnAuditPrev" disabled=""
+                    <button class="btn-control btn-white" data-onclick="changeAuditPage(-1)" id="btnAuditPrev" disabled=""
                         style="padding: 5px 10px;"><i class="fas fa-chevron-left"></i></button>
-                    <button class="btn-control btn-white" onclick="changeAuditPage(1)" id="btnAuditNext" disabled=""
+                    <button class="btn-control btn-white" data-onclick="changeAuditPage(1)" id="btnAuditNext" disabled=""
                         style="padding: 5px 10px;"><i class="fas fa-chevron-right"></i></button>
                 </div>
             </div>
@@ -2560,14 +2561,14 @@
             <div class="modal-container">
                 <div class="modal-header">
                     <div class="modal-title">Customer Details</div>
-                    <button class="close-modal" onclick="closeCustomerDetailsModal()"><i
+                    <button class="close-modal" data-onclick="closeCustomerDetailsModal()"><i
                             class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body" id="customerDetailsBody">
                     <!-- Content populated by JS -->
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-control btn-white" onclick="closeCustomerDetailsModal()">Close</button>
+                    <button class="btn-control btn-white" data-onclick="closeCustomerDetailsModal()">Close</button>
                 </div>
             </div>
         </div>
@@ -2577,7 +2578,7 @@
             <div class="modal-container">
                 <div class="modal-header">
                     <div class="modal-title">Manage Branch</div>
-                    <button class="close-modal" onclick="closeBranchModal()"><i class="fas fa-times"></i></button>
+                    <button class="close-modal" data-onclick="closeBranchModal()"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="branchId">
@@ -2594,8 +2595,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-control btn-white" onclick="closeBranchModal()">Cancel</button>
-                    <button class="btn-control btn-primary" onclick="saveBranch(this)">Save Branch</button>
+                    <button class="btn-control btn-white" data-onclick="closeBranchModal()">Cancel</button>
+                    <button class="btn-control btn-primary" data-onclick="saveBranch(this)">Save Branch</button>
                 </div>
             </div>
         </div>
@@ -2606,7 +2607,7 @@
                 <div class="modal-header">
                     <div class="modal-title" id="userModalHeaderTitle"><i class="fas fa-user-plus"
                             style="margin-right: 8px; color: var(--primary-color);"></i> Create System User</div>
-                    <button class="close-modal" onclick="closeManagerModal()"><i class="fas fa-times"></i></button>
+                    <button class="close-modal" data-onclick="closeManagerModal()"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
@@ -2663,8 +2664,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-control btn-white" onclick="closeManagerModal()">Cancel</button>
-                    <button class="btn-control btn-primary" id="btnCreateManagerSubmit" onclick="createManager()"><i
+                    <button class="btn-control btn-white" data-onclick="closeManagerModal()">Cancel</button>
+                    <button class="btn-control btn-primary" id="btnCreateManagerSubmit" data-onclick="createManager()"><i
                             class="fas fa-check"></i> Create User</button>
                 </div>
             </div>
@@ -2675,7 +2676,7 @@
             <div class="modal-container">
                 <div class="modal-header">
                     <div class="modal-title">Edit User</div>
-                    <button class="close-modal" onclick="closeEditUserModal()"><i class="fas fa-times"></i></button>
+                    <button class="close-modal" data-onclick="closeEditUserModal()"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
                     <input type="hidden" id="editUserId">
@@ -2712,8 +2713,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-control btn-white" onclick="closeEditUserModal()">Cancel</button>
-                    <button class="btn-control btn-primary" onclick="saveUserChanges()">Save Changes</button>
+                    <button class="btn-control btn-white" data-onclick="closeEditUserModal()">Cancel</button>
+                    <button class="btn-control btn-primary" data-onclick="saveUserChanges()">Save Changes</button>
                 </div>
             </div>
         </div>
@@ -2723,7 +2724,7 @@
             <div class="modal-container" style="width: 700px;">
                 <div class="modal-header">
                     <div class="modal-title">Purchase Order Details</div>
-                    <button class="close-modal" onclick="closeOpsPOModal()"><i class="fas fa-times"></i></button>
+                    <button class="close-modal" data-onclick="closeOpsPOModal()"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
                     <div
@@ -2770,7 +2771,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-control btn-white" onclick="closeOpsPOModal()">Close</button>
+                    <button class="btn-control btn-white" data-onclick="closeOpsPOModal()">Close</button>
                 </div>
             </div>
         </div>
@@ -2780,7 +2781,7 @@
             <div class="modal-container" style="width: 400px;">
                 <div class="modal-header">
                     <div class="modal-title">Set Revenue Target</div>
-                    <button class="close-modal" onclick="closeTargetModal()"><i class="fas fa-times"></i></button>
+                    <button class="close-modal" data-onclick="closeTargetModal()"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
                     <div class="form-group">
@@ -2789,8 +2790,8 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-control btn-white" onclick="closeTargetModal()">Cancel</button>
-                    <button class="btn-control btn-primary" onclick="saveRevenueTarget()">Save Target</button>
+                    <button class="btn-control btn-white" data-onclick="closeTargetModal()">Cancel</button>
+                    <button class="btn-control btn-primary" data-onclick="saveRevenueTarget()">Save Target</button>
                 </div>
             </div>
         </div>
@@ -2799,13 +2800,13 @@
         <div id="aiModal" class="modal-overlay">
             <div class="modal-container" style="width: 400px; height: 550px; display: flex; flex-direction: column;">
                 <div class="modal-header" style="border-radius: 16px 16px 0 0;"
-                    onclick="if(document.getElementById('aiModal').classList.contains('ai-minimized')) toggleAiMinimize(event)">
+                    data-onclick="if(document.getElementById('aiModal').classList.contains('ai-minimized')) toggleAiMinimize(event)">
                     <div class="modal-title" style="display: flex; align-items: center; gap: 10px;"><i
                             class="fas fa-robot"></i> Business AI</div>
                     <div>
-                        <button class="close-modal" id="btnAiMinimize" onclick="toggleAiMinimize(event)"
+                        <button class="close-modal" id="btnAiMinimize" data-onclick="toggleAiMinimize(event)"
                             style="margin-right: 10px;" title="Minimize"><i class="fas fa-minus"></i></button>
-                        <button class="close-modal" onclick="closeAiModal(event)" title="Close"><i
+                        <button class="close-modal" data-onclick="closeAiModal(event)" title="Close"><i
                                 class="fas fa-times"></i></button>
                     </div>
                 </div>
@@ -2826,8 +2827,8 @@
                 <div class="modal-footer" style="padding: 15px; background: white; border-top: 1px solid #eee;">
                     <div style="display: flex; gap: 10px; width: 100%;">
                         <input type="text" id="aiInput" class="form-input" placeholder="Ask a question..."
-                            onkeypress="handleAiInput(event)" style="border-radius: 20px;">
-                        <button class="btn-control btn-primary" onclick="sendAiMessage()"
+                            data-onkeypress="handleAiInput(event)" style="border-radius: 20px;">
+                        <button class="btn-control btn-primary" data-onclick="sendAiMessage()"
                             style="background: var(--primary-color); border: none; border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center;"><i
                                 class="fas fa-paper-plane"></i></button>
                     </div>
@@ -2840,13 +2841,13 @@
             <div class="modal-container" style="width: 400px;">
                 <div class="modal-header">
                     <div class="modal-title" id="confirmTitle">Confirm Action</div>
-                    <button class="close-modal" onclick="closeConfirmationModal()"><i class="fas fa-times"></i></button>
+                    <button class="close-modal" data-onclick="closeConfirmationModal()"><i class="fas fa-times"></i></button>
                 </div>
                 <div class="modal-body">
                     <p id="confirmMessage" style="color: #64748b; font-size: 14px; line-height: 1.5;">Are you sure?</p>
                 </div>
                 <div class="modal-footer">
-                    <button class="btn-control btn-white" onclick="closeConfirmationModal()">Cancel</button>
+                    <button class="btn-control btn-white" data-onclick="closeConfirmationModal()">Cancel</button>
                     <button class="btn-control btn-primary" id="confirmActionBtn">Confirm</button>
                 </div>
             </div>
@@ -3461,10 +3462,10 @@
                     : '';
 
                 const setMainBtn = !isMain
-                    ? `<button class="btn-control btn-white" style="padding:4px 10px; font-size:11px;" onclick="setMainBranch(${b.id}, '${b.name.replace(/'/g, "\\'")}')" title="Make this the main branch">Make main</button>`
+                    ? `<button class="btn-control btn-white" style="padding:4px 10px; font-size:11px;" data-onclick="setMainBranch(${b.id}, '${b.name.replace(/'/g, "\\'")}')" title="Make this the main branch">Make main</button>`
                     : '';
 
-                const deleteBtn = `<button class="btn-control btn-white" style="padding:4px 10px; font-size:11px; color:#B91C1C; border-color:#F0C9C9;" onclick="confirmDeleteBranch(${b.id}, '${b.name.replace(/'/g, "\\'")}')">Delete</button>`;
+                const deleteBtn = `<button class="btn-control btn-white" style="padding:4px 10px; font-size:11px; color:#B91C1C; border-color:#F0C9C9;" data-onclick="confirmDeleteBranch(${b.id}, '${b.name.replace(/'/g, "\\'")}')">Delete</button>`;
 
                 return `
                 <tr>
@@ -3475,7 +3476,7 @@
                     <td data-label="Revenue" style="font-weight:600;">${formatCurrency(perf.revenue || 0)}</td>
                     <td data-label="Action">
                         <div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center;">
-                            <button class="btn-control btn-white" style="padding:4px 10px; font-size:11px;" onclick="editBranch(${b.id})">Edit / Set VAT</button>
+                            <button class="btn-control btn-white" style="padding:4px 10px; font-size:11px;" data-onclick="editBranch(${b.id})">Edit / Set VAT</button>
                             ${setMainBtn}
                             ${deleteBtn}
                         </div>
@@ -3587,7 +3588,7 @@
                         <div>
                             <h4>${OkwUI.escapeHtml(i.title)}</h4>
                             <p>${OkwUI.escapeHtml(i.text)}</p>
-                            ${i.href ? `<a class="insight-action" href="${i.href}">${OkwUI.escapeHtml(i.action)}</a>` : (i.onclick ? `<a class="insight-action" href="#" onclick="${i.onclick}; return false;">${OkwUI.escapeHtml(i.action)}</a>` : '')}
+                            ${i.href ? `<a class="insight-action" href="${i.href}">${OkwUI.escapeHtml(i.action)}</a>` : (i.onclick ? `<a class="insight-action" href="#" data-onclick="${i.onclick}; return false;">${OkwUI.escapeHtml(i.action)}</a>` : '')}
                         </div>
                     </div>`).join('') || '<div class="ai-insight"><div><h4>Nothing needs your attention</h4><p>No target, risk or approval is waiting.</p></div></div>';
             };
@@ -3922,10 +3923,10 @@
                     const displayName = u.fullName || u.name || u.username || u.email || `User #${u.id}`;
                     const displayUsername = u.username || (u.email ? u.email.split('@')[0] : '-');
                     const actionBtn = u.status === 'Active' || !u.status
-                        ? `<button class="btn-control btn-white" style="padding:4px 10px; font-size:11px; color:#c62828; border-color:#ffcdd2;" onclick="toggleUserStatus(${u.id}, 'Inactive')">Deactivate</button>`
-                        : `<button class="btn-control btn-white" style="padding:4px 10px; font-size:11px; color:#27ae60; border-color:#c8e6c9;" onclick="toggleUserStatus(${u.id}, 'Active')">Activate</button>`;
+                        ? `<button class="btn-control btn-white" style="padding:4px 10px; font-size:11px; color:#c62828; border-color:#ffcdd2;" data-onclick="toggleUserStatus(${u.id}, 'Inactive')">Deactivate</button>`
+                        : `<button class="btn-control btn-white" style="padding:4px 10px; font-size:11px; color:#27ae60; border-color:#c8e6c9;" data-onclick="toggleUserStatus(${u.id}, 'Active')">Activate</button>`;
 
-                    const editBtn = `<button class="btn-control btn-white" style="padding:4px 10px; font-size:11px; margin-right:5px;" onclick="openEditUserModal(${u.id})">Edit</button>`;
+                    const editBtn = `<button class="btn-control btn-white" style="padding:4px 10px; font-size:11px; margin-right:5px;" data-onclick="openEditUserModal(${u.id})">Edit</button>`;
 
                     return `
                     <tr>
@@ -4257,9 +4258,9 @@
                         <td data-label="Date">${new Date(c.created_at).toLocaleDateString()}</td>
                         <td data-label="Actions">
                             <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                                <button class="btn-control btn-white" style="padding:4px 10px; font-size:11px;" onclick="viewCustomerDetails(${c.id})"><i class="fas fa-eye"></i> View</button>
-                                <button class="btn-control btn-primary" style="padding:4px 10px; font-size:11px;" onclick="approveCreditCustomer(${c.id})">Approve</button>
-                                <button class="btn-control btn-white" style="padding:4px 10px; font-size:11px; color:#c62828; border-color:#ffcdd2;" onclick="rejectCreditCustomer(${c.id})">Reject</button>
+                                <button class="btn-control btn-white" style="padding:4px 10px; font-size:11px;" data-onclick="viewCustomerDetails(${c.id})"><i class="fas fa-eye"></i> View</button>
+                                <button class="btn-control btn-primary" style="padding:4px 10px; font-size:11px;" data-onclick="approveCreditCustomer(${c.id})">Approve</button>
+                                <button class="btn-control btn-white" style="padding:4px 10px; font-size:11px; color:#c62828; border-color:#ffcdd2;" data-onclick="rejectCreditCustomer(${c.id})">Reject</button>
                             </div>
                         </td>
                     </tr>
@@ -4356,8 +4357,8 @@
                     <div class="form-group"><label class="form-label">Branch</label><div class="form-input" style="background:#f8fafc;">${OkwUI.escapeHtml(customer.branch || 'N/A')}</div></div>
                 </div>
                 <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; display: flex; justify-content: flex-end; gap: 10px;">
-                    <button class="btn-control btn-primary" onclick="approveCreditCustomer(${customer.id}); closeCustomerDetailsModal();">Approve Request</button>
-                    <button class="btn-control btn-white" style="color:#c62828; border-color:#ffcdd2;" onclick="rejectCreditCustomer(${customer.id}); closeCustomerDetailsModal();">Reject Request</button>
+                    <button class="btn-control btn-primary" data-onclick="approveCreditCustomer(${customer.id}); closeCustomerDetailsModal();">Approve Request</button>
+                    <button class="btn-control btn-white" style="color:#c62828; border-color:#ffcdd2;" data-onclick="rejectCreditCustomer(${customer.id}); closeCustomerDetailsModal();">Reject Request</button>
                 </div>
             `;
 
@@ -4873,7 +4874,7 @@
                     const supplierName = p.supplier_name || 'Unknown';
                     const total = p.total_amount || p.total || 0;
                     const status = p.status || p.Status || 'Pending';
-                    return `<tr><td data-label="PO #">#${poId}</td><td data-label="Supplier" style="font-weight:600;">${OkwUI.escapeHtml(supplierName)}</td><td data-label="Branch">${branchName}</td><td data-label="Total">${formatCurrency(total)}</td><td data-label="Status"><span class="status-badge ${status.toLowerCase() === 'received' ? 'status-good' : 'status-warn'}">${status}</span></td><td data-label="Actions"><button class="btn-control btn-white" style="padding:4px 10px; font-size:11px;" onclick="viewOpsPO(${poId})">View</button></td></tr>`;
+                    return `<tr><td data-label="PO #">#${poId}</td><td data-label="Supplier" style="font-weight:600;">${OkwUI.escapeHtml(supplierName)}</td><td data-label="Branch">${branchName}</td><td data-label="Total">${formatCurrency(total)}</td><td data-label="Status"><span class="status-badge ${status.toLowerCase() === 'received' ? 'status-good' : 'status-warn'}">${status}</span></td><td data-label="Actions"><button class="btn-control btn-white" style="padding:4px 10px; font-size:11px;" data-onclick="viewOpsPO(${poId})">View</button></td></tr>`;
                 }).join('');
             }
             updateOpsPOsPagination();
@@ -5623,7 +5624,7 @@
                         </div>
                         <div style="display:flex; align-items:center; gap:15px;">
                             <span class="tax-badge">${vatRate}%</span>
-                            <button onclick="deleteSystemVat()" class="btn-delete" title="Remove Tax" style="background:none; border:none; color:#ef4444; cursor:pointer;">
+                            <button data-onclick="deleteSystemVat()" class="btn-delete" title="Remove Tax" style="background:none; border:none; color:#ef4444; cursor:pointer;">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
@@ -5641,7 +5642,7 @@
                         </div>
                         <div style="display:flex; align-items:center; gap:15px;">
                             <span class="tax-badge">${tax.rate}%</span>
-                            <button onclick="deleteTax(${tax.id})" class="btn-delete" title="Remove Tax" style="background:none; border:none; color:#ef4444; cursor:pointer;">
+                            <button data-onclick="deleteTax(${tax.id})" class="btn-delete" title="Remove Tax" style="background:none; border:none; color:#ef4444; cursor:pointer;">
                                 <i class="fas fa-trash"></i>
                             </button>
                         </div>
