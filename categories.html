@@ -5,12 +5,12 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OKWESIWA LTD | Categories</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
     <link rel="stylesheet" href="sidebar.css">
     <style>
         :root { 
@@ -60,6 +60,7 @@
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
     <link rel="stylesheet" href="/portal-skin.css">
+    <script src="/okw-events.js"></script>
 </head>
 <body>
     <div class="sidebar">
@@ -77,7 +78,7 @@
                 <div style="font-size: 12px; opacity: 0.7;" id="userRole">Administrator</div>
             </div>
             </div>
-            <button class="sidebar-logout-btn" onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
+            <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </div>
 
@@ -87,7 +88,7 @@
                 <a href="inventory" style="text-decoration:none; color:#666; font-size:14px;"><i class="fas fa-arrow-left"></i> Back to Inventory</a>
                 <h2 style="margin-top:10px;">Product Categories</h2>
             </div>
-            <button class="btn-add" onclick="openModal()"><i class="fas fa-plus"></i> Add Category</button>
+            <button class="btn-add" data-onclick="openModal()"><i class="fas fa-plus"></i> Add Category</button>
         </div>
 
         <div class="inventory-card">
@@ -111,7 +112,7 @@
     <div id="categoryModal" class="modal">
         <div class="modal-content">
             <h3>Add Category</h3>
-            <form onsubmit="saveCategory(event)">
+            <form data-onsubmit="saveCategory(event)">
                 <div class="form-group">
                     <label>Category Name</label>
                     <input type="text" id="catName" required placeholder="e.g. Beverages">
@@ -121,7 +122,7 @@
                     <textarea id="catDesc" rows="3" placeholder="Optional description..."></textarea>
                 </div>
                 <div class="modal-actions">
-                    <button type="button" class="btn-cancel" onclick="closeModal()">Cancel</button>
+                    <button type="button" class="btn-cancel" data-onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn-save">Save</button>
                 </div>
             </form>
@@ -153,7 +154,7 @@
                         <td>${OkwUI.escapeHtml(c.description || '-')}</td>
                         <td>${new Date(c.created_at).toLocaleDateString()}</td>
                         <td>
-                            <button class="action-btn btn-delete" onclick="deleteCategory(${c.id})" title="Delete"><i class="fas fa-trash"></i></button>
+                            <button class="action-btn btn-delete" data-onclick="deleteCategory(${c.id})" title="Delete"><i class="fas fa-trash"></i></button>
                         </td>
                     </tr>
                 `).join('');

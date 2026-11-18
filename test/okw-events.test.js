@@ -117,19 +117,20 @@ test('install delegates events, honours bubbling, return false and mouseenter ed
     assert.deepEqual(calls, ['enter']);
 });
 
-test('Converted pages have no inline handlers, load the dispatcher, and the server serves it', () => {
+test('Every page that loads the dispatcher has no inline handlers left, and the server serves the script', () => {
     const fs = require('node:fs');
     const path = require('node:path');
     const ROOT = path.resolve(__dirname, '..');
-    const converted = ['bulk-upload', 'daily-close', 'negative-stock', 'purchase-orders', 'suppliers', 'team', 'expenses', 'extras', 'operations'];
     const inline = /\son(?:click|change|input|keyup|keydown|keypress|submit|blur|focus|mouseover|mouseout|mouseenter|mouseleave|dblclick|load|error)\s*=\s*["']/i;
-    for (const name of converted) {
-        const html = fs.readFileSync(path.join(ROOT, name + '.html'), 'utf8');
-        assert.ok(!inline.test(html), `${name}.html still has an inline event handler`);
-        if (/data-on[a-z]+\s*=|data-media-swap/.test(html)) {
-            assert.ok(html.includes('<script src="/okw-events.js"></script>'), `${name}.html must load the dispatcher`);
-        }
+    const pages = fs.readdirSync(ROOT).filter((f) => f.endsWith('.html'));
+    let converted = 0;
+    for (const f of pages) {
+        const html = fs.readFileSync(path.join(ROOT, f), 'utf8');
+        const loads = html.includes('<script src="/okw-events.js"></script>');
+        if (/data-on[a-z]+\s*=|data-media-swap/.test(html)) assert.ok(loads, `${f} uses data-on* but does not load the dispatcher`);
+        if (loads) { converted++; assert.ok(!inline.test(html), `${f} loads the dispatcher but still has an inline event handler`); }
     }
+    assert.ok(converted >= 19, `expected at least 19 converted pages, found ${converted}`);
     const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
     assert.ok(server.includes("'/okw-events.js'"), 'the dispatcher must be on the client-script allow-list');
 });

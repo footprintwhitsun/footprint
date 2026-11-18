@@ -7,8 +7,8 @@
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
     <link rel="stylesheet" href="sidebar.css">
     <script src="currency.js"></script>
     <script src="telemetry-guard.js"></script>
@@ -296,10 +296,11 @@
         .kpi-cell.lead .kpi-figure { display: inline-block; font-size: 34px; font-weight: 700; color: var(--brand); border-bottom: 3px solid var(--brick); padding-bottom: 2px; }
         @media (max-width: 900px) { .kpi-strip { grid-template-columns: 1fr 1fr !important; } .kpi-cell { border-left: 0; border-top: 1px solid var(--edge); } .kpi-cell.lead { grid-column: 1 / -1; border-top: 0; } }
     </style>
+    <script src="/okw-events.js"></script>
 </head>
 <body>
-    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-    <div class="overlay" onclick="toggleSidebar()"></div>
+    <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div class="overlay" data-onclick="toggleSidebar()"></div>
 
     <!-- Sidebar -->
     <div class="sidebar">
@@ -316,7 +317,7 @@
                     <div id="userRole">Store Management</div>
                 </div>
             </div>
-            <button class="sidebar-logout-btn" onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
+            <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </div>
 
@@ -335,30 +336,30 @@
             <span id="lowStockMsg"></span>
             <span class="stock-notice-actions">
                 <a href="/inventory">Review stock</a>
-                <button type="button" onclick="closeLowStockAlert()" aria-label="Dismiss until tomorrow or until the counts change">Dismiss</button>
+                <button type="button" data-onclick="closeLowStockAlert()" aria-label="Dismiss until tomorrow or until the counts change">Dismiss</button>
             </span>
         </div>
 
         <section class="kpi-group" aria-label="Sales">
             <h2 class="kpi-group-title">Sales</h2>
             <div class="kpi-strip" style="grid-template-columns: 1.7fr 1fr 1fr 1fr 1fr;">
-                <div class="kpi-cell lead" onclick="window.location.href='/reports?tab=overview'">
+                <div class="kpi-cell lead" data-onclick="window.location.href='/reports?tab=overview'">
                     <p class="kpi-label">Total sales</p>
                     <p class="kpi-figure" id="totalSales">--</p>
                 </div>
-                <div class="kpi-cell" onclick="window.location.href='/reports?tab=overview'">
+                <div class="kpi-cell" data-onclick="window.location.href='/reports?tab=overview'">
                     <p class="kpi-label">Net sales</p>
                     <p class="kpi-figure" id="netSales">--</p>
                 </div>
-                <div class="kpi-cell" onclick="window.location.href='/stock?tab=returns'">
+                <div class="kpi-cell" data-onclick="window.location.href='/stock?tab=returns'">
                     <p class="kpi-label">Sale returns</p>
                     <p class="kpi-figure" id="totalSellReturn">--</p>
                 </div>
-                <div class="kpi-cell" onclick="window.location.href='/customers?tab=clients'">
+                <div class="kpi-cell" data-onclick="window.location.href='/customers?tab=clients'">
                     <p class="kpi-label">Invoices due</p>
                     <p class="kpi-figure due" id="invoiceDue">--</p>
                 </div>
-                <div class="kpi-cell" onclick="window.location.href='/sales?tab=all'">
+                <div class="kpi-cell" data-onclick="window.location.href='/sales?tab=all'">
                     <p class="kpi-label">Transactions</p>
                     <p class="kpi-figure" id="totalTxns">--</p>
                 </div>
@@ -368,19 +369,19 @@
         <section class="kpi-group" aria-label="Purchasing and costs">
             <h2 class="kpi-group-title">Purchasing and costs</h2>
             <div class="kpi-strip" style="grid-template-columns: repeat(4, 1fr);">
-                <div class="kpi-cell" onclick="window.location.href='/stock?tab=orders'">
+                <div class="kpi-cell" data-onclick="window.location.href='/stock?tab=orders'">
                     <p class="kpi-label">Purchases</p>
                     <p class="kpi-figure" id="totalPurchase">--</p>
                 </div>
-                <div class="kpi-cell" onclick="window.location.href='/stock?tab=suppliers'">
+                <div class="kpi-cell" data-onclick="window.location.href='/stock?tab=suppliers'">
                     <p class="kpi-label">Owed to suppliers</p>
                     <p class="kpi-figure due" id="purchaseDue">--</p>
                 </div>
-                <div class="kpi-cell" onclick="window.location.href='/stock?tab=orders'">
+                <div class="kpi-cell" data-onclick="window.location.href='/stock?tab=orders'">
                     <p class="kpi-label">Purchase returns</p>
                     <p class="kpi-figure" id="totalPurchaseReturn">--</p>
                 </div>
-                <div class="kpi-cell" onclick="window.location.href='/money?tab=expenses-list'">
+                <div class="kpi-cell" data-onclick="window.location.href='/money?tab=expenses-list'">
                     <p class="kpi-label">Expenses</p>
                     <p class="kpi-figure" id="totalExpense">--</p>
                 </div>
@@ -607,7 +608,7 @@
                 const cs = document.getElementById('cashierStatsBody'); if (cs) cs.innerHTML = '<tr><td colspan="3">Could not load cashier sales.</td></tr>';
                 const rt = document.querySelector('.recent-txn-table tbody, #recentTxnBody'); if (rt) rt.innerHTML = '<tr><td colspan="6">Could not load transactions.</td></tr>';
                 errorMessage.setAttribute('role', 'alert');
-                errorMessage.innerHTML = 'Could not load dashboard figures. <button type="button" onclick="loadDashboardData()" style="margin-left:8px;font:inherit;text-decoration:underline;background:none;border:0;cursor:pointer;color:inherit;">Try again</button>';
+                errorMessage.innerHTML = 'Could not load dashboard figures. <button type="button" data-onclick="loadDashboardData()" style="margin-left:8px;font:inherit;text-decoration:underline;background:none;border:0;cursor:pointer;color:inherit;">Try again</button>';
                 errorMessage.style.display = 'block';
                 const mc = document.querySelector('.main-content'); if (mc && errorMessage.parentNode !== mc) mc.insertBefore(errorMessage, mc.querySelector('.stats-grid') || mc.firstChild);
             } finally {

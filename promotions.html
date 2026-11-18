@@ -4,11 +4,11 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <script src="auth-guard.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OKWESIWA LTD | Promotions</title>
@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="/sidebar.css">
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
     <link rel="stylesheet" href="/portal-skin.css">
     <style>
         :root { --primary-color: #273990; --accent-color: #f9a51a; --secondary-color: #1c2b70; --accent-color: #f9a51a; --text-color: #202223; --text-secondary: #6d7175; --border-color: #e1e3e5; --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05); --gray-light: #f6f6f7; --sidebar-width: 260px; }
@@ -149,10 +149,11 @@
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
     <link rel="stylesheet" href="/portal-skin.css">
+    <script src="/okw-events.js"></script>
 </head>
 <body>
-    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-    <div class="overlay" onclick="toggleSidebar()"></div>
+    <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div class="overlay" data-onclick="toggleSidebar()"></div>
 
     <div id="notification" class="notification"></div>
 
@@ -163,7 +164,7 @@
             <h3 id="confirmTitle" style="margin-bottom: 10px;">Confirm Action</h3>
             <p id="confirmText" style="color: #666; margin-bottom: 25px;"></p>
             <div class="modal-actions">
-                <button type="button" class="btn-cancel" onclick="closeConfirmModal()">Cancel</button>
+                <button type="button" class="btn-cancel" data-onclick="closeConfirmModal()">Cancel</button>
                 <button type="button" class="btn-confirm" id="confirmActionBtn">Delete</button>
             </div>
         </div>
@@ -184,7 +185,7 @@
                 <div style="font-size: 12px; opacity: 0.7;" id="userRole">...</div>
             </div>
             </div>
-            <button class="sidebar-logout-btn" onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
+            <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
         </div>
     </div>
 
@@ -202,12 +203,12 @@
                 <label>Discount Percentage (%)</label>
                 <input type="number" id="newDiscount" placeholder="e.g. 20" min="1" max="100">
             </div>
-            <button class="btn-add" onclick="addPromotion()">Add Promo</button>
+            <button class="btn-add" data-onclick="addPromotion()">Add Promo</button>
         </div>
 
         <div class="card">
             <div style="margin-bottom: 20px;">
-                <input type="text" id="promoSearch" placeholder="Search promotions..." onkeyup="filterPromotions()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <input type="text" id="promoSearch" placeholder="Search promotions..." data-onkeyup="filterPromotions()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
             </div>
             <table class="promo-table">
                 <thead>
@@ -225,14 +226,14 @@
             </table>
             <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
                 <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="promoRowsPerPage" onchange="changePromoRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
+                <select id="promoRowsPerPage" data-onchange="changePromoRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
                 <span id="promoPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button onclick="changePromoPage(-1)" id="btnPromoPrev" aria-label="Previous page" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button onclick="changePromoPage(1)" id="btnPromoNext" aria-label="Next page" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
+                <button data-onclick="changePromoPage(-1)" id="btnPromoPrev" aria-label="Previous page" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
+                <button data-onclick="changePromoPage(1)" id="btnPromoNext" aria-label="Next page" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
             </div>
         </div>
     </div>
@@ -339,7 +340,7 @@
                             <td data-label="Total Discounted">${formatCurrency(p.total_discounted || 0)}</td>
                             <td data-label="Created At">${new Date(p.created_at).toLocaleDateString()}</td>
                             <td data-label="Action">
-                                <button class="btn-delete" onclick="deletePromotion('${p.code}')" title="Delete">
+                                <button class="btn-delete" data-onclick="deletePromotion('${p.code}')" title="Delete">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </td>

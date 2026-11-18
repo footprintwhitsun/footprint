@@ -3,17 +3,17 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <script src="auth-guard.js"></script>
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OKWESIWA LTD | Transaction History</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" onload="this.media='all'">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
     <style>
         :root {
             --primary-color: #273990; --accent-color: #f9a51a;
@@ -185,11 +185,12 @@
         .container { margin: 0 auto; }
         @media (max-width: 992px) { .main-content { margin-left: 0; padding: 16px; } }
     </style>
+    <script src="/okw-events.js"></script>
 </head>
 <body>
 
-    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-    <div class="overlay" onclick="toggleSidebar()"></div>
+    <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <div class="overlay" data-onclick="toggleSidebar()"></div>
 
     <div class="sidebar">
         <div class="brand">
@@ -223,15 +224,15 @@
         <div class="pagination-controls">
             <div style="display: flex; align-items: center; gap: 10px;">
                 <span style="font-size: 14px; color: #666;">Rows per page:</span>
-                <select id="rowsPerPage" aria-label="Rows per page" class="limit-select" onchange="changeRowsPerPage()">
+                <select id="rowsPerPage" aria-label="Rows per page" class="limit-select" data-onchange="changeRowsPerPage()">
                     <option value="10">10</option>
                     <option value="25">25</option>
                     <option value="100">100</option>
                 </select>
             </div>
             <span id="pageInfo" class="page-info">Page 1 of 1</span>
-            <button class="btn-page" id="btnPrev" aria-label="Previous page" onclick="changePage(-1)" disabled><i class="fas fa-chevron-left"></i></button>
-            <button class="btn-page" id="btnNext" aria-label="Next page" onclick="changePage(1)" disabled><i class="fas fa-chevron-right"></i></button>
+            <button class="btn-page" id="btnPrev" aria-label="Previous page" data-onclick="changePage(-1)" disabled><i class="fas fa-chevron-left"></i></button>
+            <button class="btn-page" id="btnNext" aria-label="Next page" data-onclick="changePage(1)" disabled><i class="fas fa-chevron-right"></i></button>
         </div>
     </div>
 
