@@ -39,13 +39,17 @@
     }
     // Each section shows the existing, working page for that job inside the hub.
     // The server also refuses these pages to anyone without the right role.
+    const _sp = new URLSearchParams(window.location.search);
+    const _stockQs = ['tab=stock'];
+    if (_sp.get('lowStock') === 'true') _stockQs.push('lowStock=true');
+    if (_sp.get('outOfStock') === 'true') _stockQs.push('outOfStock=true');
     OkwUI.sectionPage({
         mount: '#hub',
         title: 'Stock',
         subtitle: 'Stock, purchasing, stock movement and the product catalog.',
         defaultId: 'stock',
         sections: [
-            { id: 'stock', label: 'Stock items', group: 'Stock', embed: '/inventory?tab=stock' },
+            { id: 'stock', label: 'Stock items', group: 'Stock', embed: '/inventory?' + _stockQs.join('&') },
             { id: 'shelf', label: 'Batch and lot tracking', group: 'Stock', embed: '/inventory?tab=shelf' },
             { id: 'stocktaking', label: 'Stock taking', group: 'Stock', embed: '/inventory?tab=stocktaking' },
             { id: 'barcodes', label: 'Barcode generator', group: 'Stock', embed: '/inventory?tab=barcodes' },

@@ -3098,8 +3098,8 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
                 // Branch View or Company Portal: Show only stock for this branch
                 p.stock = branchStock;
             } else {
-                // Admin/CEO View: Show total stock
-                if (p.stock_levels && typeof p.stock_levels === 'object') {
+                // Admin/CEO View: Show total stock across branches when stock_levels has entries
+                if (p.stock_levels && typeof p.stock_levels === 'object' && Object.keys(p.stock_levels).length > 0) {
                     p.stock = p.calculated_total;
                 }
             }
@@ -3128,7 +3128,7 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
                 } else if (outOfStockOnly) {
                     return s <= 0;                    // Strictly zero or negative
                 } else if (lowStockOnly) {
-                    return s > 0 && s <= reorder;    // Positive but at or below reorder level
+                    return s <= reorder;              // All items at or below reorder level (including out of stock)
                 }
                 return true;
             });
