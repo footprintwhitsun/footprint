@@ -3,7 +3,7 @@ const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const { pool } = require('../db/pool');
-const { authenticateToken, requirePermission, MANAGER_ROLES } = require('../middleware/auth');
+const { authenticateToken, requirePermission, requireRole, PAGE_ROLES, MANAGER_ROLES } = require('../middleware/auth');
 const { logActivity } = require('../services/audit');
 
 async function runOptional(client, spName, fn) {
@@ -241,14 +241,16 @@ router.get('/api/pos/search', authenticateToken, async (req, res) => {
 });
 
 // 2. Customer search & quick-add
-router.get('/api/pos/customers/search', authenticateToken, async (req, res) => {
+router.get('/api/pos/customers/search', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     try {
         await ensurePosPhase2Schema();
         const q = (req.query.q || '').trim();
-        const params = q ? [`%${q}%`] : [];
-        const where = q
-            ? `WHERE LOWER(name) LIKE LOWER($1) OR LOWER(COALESCE(phone,'')) LIKE LOWER($1) OR LOWER(COALESCE(company_name,'')) LIKE LOWER($1)`
-            : '';
+        const params = [req.user.tenant_id || 1];
+        let where = `WHERE COALESCE(tenant_id, 1) = $1 AND deleted_at IS NULL`;
+        if (q) {
+            params.push(`%${q}%`);
+            where += ` AND (LOWER(name) LIKE LOWER($2) OR LOWER(COALESCE(phone,'')) LIKE LOWER($2) OR LOWER(COALESCE(company_name,'')) LIKE LOWER($2))`;
+        }
         const result = await pool.query(
             `SELECT id, name, phone, email, account_number, credit_limit, current_balance,
                     COALESCE(customer_type, 'Walk-in') AS customer_type,
@@ -292,14 +294,14 @@ router.post('/api/pos/customers/quick', authenticateToken, async (req, res) => {
     }
 });
 
-router.get('/api/pos/customers/:id/recent-orders', authenticateToken, async (req, res) => {
+router.get('/api/pos/customers/:id/recent-orders', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT id, receipt_number, total_amount, items, created_at
              FROM transactions
-             WHERE customer_id = $1 AND COALESCE(is_return, false) = false
+             WHERE customer_id = $1 AND COALESCE(is_return, false) = false AND COALESCE(tenant_id, 1) = $2
              ORDER BY created_at DESC LIMIT 10`,
-            [req.params.id]
+            [req.params.id, req.user.tenant_id || 1]
         );
         res.json({ orders: result.rows });
     } catch (err) {

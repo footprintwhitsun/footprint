@@ -538,3 +538,21 @@ test('The strict policy keeps every non-script rule of the live policy, and can 
     assert.equal(on['Content-Security-Policy-Report-Only'], undefined);
     assert.ok(!/script-src[^;]*unsafe-inline/.test(on['Content-Security-Policy']));
 });
+
+test('Company tax routes are company-portal only, the tax report is the caller\'s own company, and POS customer lookups are tenant-scoped', () => {
+    const server = read('server.js');
+    for (const r of ["app.get('/api/company/taxes'", "app.post('/api/company/taxes'", "app.put('/api/company/taxes/:id/toggle'", "app.delete('/api/company/taxes/:id'", "app.get('/api/company/tax-report'"]) {
+        const i = server.indexOf(r);
+        assert.ok(i > -1 && server.slice(i, i + 160).includes('requireRole(COMPANY_PORTAL_ROLES)'), `${r} is role-gated`);
+    }
+    assert.ok(!server.includes('SELECT id FROM companies ORDER BY id LIMIT 1'), 'the tax report must not use "the first company"');
+    const i = server.indexOf("app.get('/api/company/tax-report'");
+    assert.ok(server.slice(i, i + 1600).includes('company_users WHERE id'), 'a company user\'s report is scoped to their own company');
+    const ret = server.indexOf("app.get('/api/transactions/returns'");
+    assert.ok(server.slice(ret, ret + 1300).includes('COALESCE(t.tenant_id, 1) = $1'), 'returns list is tenant-scoped');
+    const pos = read('routes/pos.js');
+    const s = pos.indexOf("router.get('/api/pos/customers/search'");
+    assert.ok(pos.slice(s, s + 600).includes('COALESCE(tenant_id, 1) = $1'));
+    const r2 = pos.indexOf("router.get('/api/pos/customers/:id/recent-orders'");
+    assert.ok(pos.slice(r2, r2 + 600).includes('COALESCE(tenant_id, 1) = $2'));
+});

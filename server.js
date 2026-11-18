@@ -5150,7 +5150,7 @@ app.get('/transactions/receipt/:receiptNumber', authenticateToken, async (req, r
 });
 
 // Get All Return Transactions
-app.get('/api/transactions/returns', authenticateToken, async (req, res) => {
+app.get('/api/transactions/returns', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
 
     try {
@@ -5162,9 +5162,9 @@ app.get('/api/transactions/returns', authenticateToken, async (req, res) => {
             FROM transactions t
             LEFT JOIN users u ON t.user_id = u.id
             LEFT JOIN customers c ON t.customer_id = c.id
-            WHERE t.is_return = TRUE AND t.status = 'completed'
+            WHERE t.is_return = TRUE AND t.status = 'completed' AND COALESCE(t.tenant_id, 1) = $1
             ORDER BY t.created_at DESC
-        `);
+        `, [req.user.tenant_id || 1]);
 
         res.json({ returns: result.rows });
     } catch (err) {
@@ -5304,7 +5304,7 @@ app.get('/api/branch-mapping', authenticateToken, async (req, res) => {
         const userLocation = req.user.store_location;
 
         // Get all branches to find the matching one
-        const branchesRes = await pool.query('SELECT id, name, location FROM branches WHERE deleted_at IS NULL');
+        const branchesRes = await pool.query('SELECT id, name, location FROM branches WHERE deleted_at IS NULL AND COALESCE(tenant_id, 1) = $1', [req.user.tenant_id || 1]);
         const branches = branchesRes.rows;
 
         // Try to find a match
@@ -7260,11 +7260,12 @@ app.delete('/api/branches/:id', authenticateToken, async (req, res) => {
 app.get('/api/branches/main', authenticateToken, async (req, res) => {
     try {
         const result = await pool.query(
-            `SELECT id, name, location FROM branches WHERE is_main = TRUE AND deleted_at IS NULL LIMIT 1`
+            `SELECT id, name, location FROM branches WHERE is_main = TRUE AND deleted_at IS NULL AND COALESCE(tenant_id, 1) = $1 LIMIT 1`,
+            [req.user.tenant_id || 1]
         );
         if (result.rows.length === 0) {
             // Fallback: return branch id=1
-            const fallback = await pool.query('SELECT id, name, location FROM branches WHERE id = 1 LIMIT 1');
+            const fallback = await pool.query('SELECT id, name, location FROM branches WHERE id = 1 AND COALESCE(tenant_id, 1) = $1 LIMIT 1', [req.user.tenant_id || 1]);
             return res.json(fallback.rows[0] || { id: 1, name: 'Main Branch', location: 'Main Branch' });
         }
         res.json(result.rows[0]);
@@ -9108,7 +9109,7 @@ app.get('/api/company/sales-invoices/:id', authenticateToken, requireRole(COMPAN
 });
 
 // Company Tax Management Endpoints
-app.get('/api/company/taxes', authenticateToken, async (req, res) => {
+app.get('/api/company/taxes', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
         // Strict isolation: Only return taxes belonging to THIS company account
         const companyBranchId = req.user.store_id;
@@ -9126,7 +9127,7 @@ app.get('/api/company/taxes', authenticateToken, async (req, res) => {
     }
 });
 
-app.post('/api/company/taxes', authenticateToken, async (req, res) => {
+app.post('/api/company/taxes', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
         const { name, rate } = req.body;
 
@@ -9154,7 +9155,7 @@ app.post('/api/company/taxes', authenticateToken, async (req, res) => {
     }
 });
 
-app.put('/api/company/taxes/:id/toggle', authenticateToken, async (req, res) => {
+app.put('/api/company/taxes/:id/toggle', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
         const taxId = req.params.id;
         const companyBranchId = req.user.store_id;
@@ -9185,7 +9186,7 @@ app.put('/api/company/taxes/:id/toggle', authenticateToken, async (req, res) => 
     }
 });
 
-app.delete('/api/company/taxes/:id', authenticateToken, async (req, res) => {
+app.delete('/api/company/taxes/:id', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
         const taxId = req.params.id;
         const companyBranchId = req.user.store_id;
@@ -9208,15 +9209,29 @@ app.delete('/api/company/taxes/:id', authenticateToken, async (req, res) => {
 });
 
 // Company Tax Report from Transactions
-app.get('/api/company/tax-report', authenticateToken, async (req, res) => {
+app.get('/api/company/tax-report', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
 
-        let whereClause = 'ct.company_id = (SELECT id FROM companies ORDER BY id LIMIT 1)';
-        let params = [];
+        // A company user sees only their own company; staff see the companies of their own tenant.
+        const role = String(req.user.role || '').toLowerCase();
+        let whereClause, params;
+        if (role === 'business_client' || role === 'company' || req.user.type === 'company') {
+            let companyId = req.user.company_id;
+            if (!companyId) {
+                const cu = await pool.query('SELECT company_id FROM company_users WHERE id = $1', [req.user.id]);
+                companyId = cu.rows[0] && cu.rows[0].company_id;
+            }
+            if (!companyId) return res.status(403).json({ message: 'No company is linked to this account' });
+            whereClause = 'ct.company_id = $1';
+            params = [companyId];
+        } else {
+            whereClause = 'COALESCE(ct.tenant_id, 1) = $1';
+            params = [req.user.tenant_id || 1];
+        }
 
         if (startDate && endDate) {
-            whereClause += ` AND ct.created_at >= $1 AND ct.created_at <= $2::date + INTERVAL '1 day' - INTERVAL '1 second'`;
+            whereClause += ` AND ct.created_at >= $${params.length + 1} AND ct.created_at <= $${params.length + 2}::date + INTERVAL '1 day' - INTERVAL '1 second'`;
             params.push(startDate, endDate);
         }
 
