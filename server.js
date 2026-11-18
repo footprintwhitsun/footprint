@@ -121,6 +121,42 @@ async function logActivity(req, action, details = {}) {
     }
 }
 
+// A company document (proforma / sales invoice) is visible to users of its own company, and to staff of the
+// tenant that owns that company. Everyone else gets "not found".
+const COMPANY_DOC_TABLES = new Set(['proforma_invoices', 'sales_invoices']);
+async function companyDocAllowed(req, table, id, db) {
+    if (!COMPANY_DOC_TABLES.has(table)) return false;
+    const runner = db || pool;
+    const role = String(req.user?.role || '').toLowerCase().trim().replace(/[\s-]+/g, '_');
+    const tenantId = req.user?.tenant_id || 1;
+    if (role === 'business_client' || role === 'company' || req.user?.type === 'company') {
+        let companyId = req.user.company_id;
+        if (!companyId) {
+            const r = await runner.query('SELECT company_id FROM company_users WHERE id = $1', [req.user.id]);
+            companyId = r.rows[0]?.company_id;
+        }
+        if (!companyId) return false;
+        const r = await runner.query(`SELECT 1 FROM ${table} WHERE id = $1 AND company_id = $2`, [id, companyId]);
+        return r.rows.length > 0;
+    }
+    const r = await runner.query(
+        `SELECT 1 FROM ${table} d JOIN companies c ON c.id = d.company_id WHERE d.id = $1 AND COALESCE(c.tenant_id, 1) = $2`,
+        [id, tenantId]
+    );
+    return r.rows.length > 0;
+}
+
+// A stock take is scoped to a tenant through its branch.
+async function stockTakeInTenant(db, id, tenantId, lock) {
+    const r = await db.query(
+        `SELECT st.id, st.status, st.branch_id FROM stock_takes st
+         LEFT JOIN branches b ON b.id = st.branch_id
+         WHERE st.id = $1 AND COALESCE(b.tenant_id, 1) = $2${lock ? ' FOR UPDATE OF st' : ''}`,
+        [id, tenantId]
+    );
+    return r.rows[0] || null;
+}
+
 // Helper to resolve stock for a branch with exact, case-insensitive, and fuzzy alias matching (consistent with CEO portal)
 function resolveBranchStockFromLevels(levels, candidates) {
     if (!levels) return 0;
@@ -5208,6 +5244,7 @@ app.get('/pay/momo/status/:id', authenticateToken, (req, res) => {
 
 // --- DEBUG: Check Database Schema (admin only) ---
 app.get('/api/debug/schema/:tableName', authenticateToken, async (req, res) => {
+    if (process.env.NODE_ENV === 'production') return res.status(404).json({ message: 'Not found' });
     if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') {
         return res.status(403).json({ message: 'Unauthorized' });
     }
@@ -6355,10 +6392,10 @@ app.get('/api/shelf/inventory/:branch_id', authenticateToken, async (req, res) =
         const result = await pool.query(`
             SELECT b.*, p.name, p.selling_unit, p.stock_levels 
             FROM product_batches b 
-            JOIN products p ON b.product_barcode = p.barcode 
-            WHERE b.branch_id = $1 OR b.branch_id IS NULL OR b.branch_id = 1
+            JOIN products p ON b.product_barcode = p.barcode AND COALESCE(p.tenant_id, 1) = $2
+            WHERE (b.branch_id = $1 OR b.branch_id IS NULL OR b.branch_id = 1) AND COALESCE(b.tenant_id, 1) = $2
             ORDER BY b.created_at DESC
-        `, [branch_id]);
+        `, [branch_id, req.user.tenant_id || 1]);
 
         // Get exact branch name for stock map
         const branchRes = await pool.query('SELECT name FROM branches WHERE id = $1', [branch_id]);
@@ -6389,14 +6426,15 @@ app.get('/api/shelf/inventory/:branch_id', authenticateToken, async (req, res) =
     }
 });
 
-app.get('/api/batches', authenticateToken, async (req, res) => {
+app.get('/api/batches', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     try {
         const result = await pool.query(`
             SELECT b.*, p.name 
             FROM product_batches b 
-            JOIN products p ON b.product_barcode = p.barcode 
+            JOIN products p ON b.product_barcode = p.barcode AND COALESCE(p.tenant_id, 1) = $1
+            WHERE COALESCE(b.tenant_id, 1) = $1
             ORDER BY b.created_at DESC
-        `);
+        `, [req.user.tenant_id || 1]);
         res.json(result.rows || []);
     } catch (err) {
         console.error(err);
@@ -6405,7 +6443,7 @@ app.get('/api/batches', authenticateToken, async (req, res) => {
 });
 
 // Create or update a batch
-app.post('/api/batches', authenticateToken, async (req, res) => {
+app.post('/api/batches', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { product_barcode, batch_number, expiry_date, quantity, quantity_available } = req.body;
 
     if (!product_barcode || !batch_number) {
@@ -6539,14 +6577,17 @@ app.get('/api/stock-adjustments', authenticateToken, async (req, res) => {
 });
 
 // 11. Start stock take
-app.post('/api/stock-takes', authenticateToken, async (req, res) => {
-    const { branch_id, created_by } = req.body;
+app.post('/api/stock-takes', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
+    const { branch_id } = req.body;
     try {
+        const tenantId = req.user.tenant_id || 1;
+        const branchOk = await pool.query('SELECT 1 FROM branches WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [branch_id, tenantId]);
+        if (branchOk.rows.length === 0) return res.status(404).json({ message: 'Branch not found' });
         const result = await pool.query(`
             INSERT INTO stock_takes (stock_take_date, branch_id, created_by, status)
             VALUES (CURRENT_DATE, $1, $2, 'In Progress')
             RETURNING id
-        `, [branch_id, created_by]);
+        `, [branch_id, req.user.id]);
         await logActivity(req, 'START_STOCK_TAKE', { branch_id });
         res.json({ success: true, id: result.rows[0].id });
     } catch (err) {
@@ -6555,16 +6596,18 @@ app.post('/api/stock-takes', authenticateToken, async (req, res) => {
 });
 
 // Get Stock Takes History
-app.get('/api/stock-takes', authenticateToken, async (req, res) => {
+app.get('/api/stock-takes', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     try {
         let query = `
             SELECT st.*, u.name as created_by_name 
             FROM stock_takes st
             LEFT JOIN users u ON st.created_by = u.id
+            LEFT JOIN branches b ON b.id = st.branch_id
+            WHERE COALESCE(b.tenant_id, 1) = $1
         `;
-        let params = [];
+        let params = [req.user.tenant_id || 1];
         if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
-            query += ` WHERE st.branch_id = $1`;
+            query += ` AND st.branch_id = $2`;
             params.push(req.user.store_id);
         }
         query += ` ORDER BY st.stock_take_date DESC`;
@@ -6574,11 +6617,21 @@ app.get('/api/stock-takes', authenticateToken, async (req, res) => {
 });
 
 // 12. Record stock take item
-app.post('/api/stock-takes/:id/items', authenticateToken, async (req, res) => {
+app.post('/api/stock-takes/:id/items', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { id } = req.params;
-    const { product_barcode, physical_count, counted_by } = req.body;
+    const { product_barcode } = req.body;
+    const counted_by = req.user.id;
+    const physical_count = Number(req.body.physical_count);
+    if (!Number.isInteger(physical_count) || physical_count < 0) {
+        return res.status(400).json({ message: 'physical_count must be a whole number, 0 or more' });
+    }
     try {
-        const systemCount = await pool.query('SELECT stock FROM products WHERE barcode = $1', [product_barcode]);
+        const tenantId = req.user.tenant_id || 1;
+        const take = await stockTakeInTenant(pool, id, tenantId, false);
+        if (!take) return res.status(404).json({ message: 'Stock take not found' });
+        if ((take.status || '').toLowerCase() === 'approved') return res.status(409).json({ message: 'Stock take has already been approved' });
+        const systemCount = await pool.query('SELECT stock FROM products WHERE barcode = $1 AND tenant_id = $2 AND deleted_at IS NULL', [product_barcode, tenantId]);
+        if (systemCount.rows.length === 0) return res.status(404).json({ message: 'Product not found' });
         const variance = physical_count - systemCount.rows[0].stock;
 
         await pool.query(`
@@ -6593,15 +6646,16 @@ app.post('/api/stock-takes/:id/items', authenticateToken, async (req, res) => {
 });
 
 // 13. Approve stock take
-app.post('/api/stock-takes/:id/approve', authenticateToken, async (req, res) => {
+app.post('/api/stock-takes/:id/approve', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
 
         // Lock the count itself: without FOR UPDATE two concurrent approvals both read a
-        // pending row and apply the same variance twice.
-        const lockRes = await client.query('SELECT id, status, branch_id FROM stock_takes WHERE id = $1 FOR UPDATE', [id]);
+        // pending row and apply the same variance twice. The count must belong to this tenant.
+        const lockRow = await stockTakeInTenant(client, id, req.user.tenant_id || 1, true);
+        const lockRes = { rows: lockRow ? [lockRow] : [] };
         if (lockRes.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Stock take not found' });
@@ -6701,24 +6755,46 @@ app.get('/api/reorder/alerts/:branch_id', authenticateToken, async (req, res) =>
 });
 
 // 16. Confirm transfer receipt
-app.post('/api/transfers/:id/confirm', authenticateToken, async (req, res) => {
+app.post('/api/transfers/:id/confirm', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { id } = req.params;
-    const { confirmed_by, items_received } = req.body;
+    const items_received = Array.isArray(req.body.items_received) ? req.body.items_received : [];
+    const client = await pool.connect();
     try {
-        for (const item of items_received) {
-            await pool.query(`
-                UPDATE stock_transfer_items SET quantity_received = $1 WHERE id = $2
-            `, [item.quantity_received, item.id]);
+        await client.query('BEGIN');
+        const tr = await client.query(
+            'SELECT id, status FROM stock_transfers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 FOR UPDATE',
+            [id, req.user.tenant_id || 1]
+        );
+        if (tr.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Transfer not found' });
         }
-        await pool.query(`
-            UPDATE stock_transfers SET status = 'Confirmed', confirmed_by = $1, confirmed_at = CURRENT_TIMESTAMP
-            WHERE id = $2
-        `, [confirmed_by, id]);
+        if ((tr.rows[0].status || '').toLowerCase() === 'confirmed') {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ message: 'Transfer has already been confirmed' });
+        }
+        for (const item of items_received) {
+            const qty = Number(item.quantity_received);
+            if (!Number.isInteger(qty) || qty < 0) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({ message: 'quantity_received must be a whole number, 0 or more' });
+            }
+            await client.query(
+                'UPDATE stock_transfer_items SET quantity_received = $1 WHERE id = $2 AND transfer_id = $3',
+                [qty, item.id, id]
+            );
+        }
+        await client.query(
+            `UPDATE stock_transfers SET status = 'Confirmed', confirmed_by = $1, confirmed_at = CURRENT_TIMESTAMP WHERE id = $2`,
+            [req.user.id, id]
+        );
+        await client.query('COMMIT');
         await logActivity(req, 'CONFIRM_TRANSFER', { id });
         res.json({ success: true, message: 'Transfer confirmed' });
     } catch (err) {
+        try { await client.query('ROLLBACK'); } catch (_) {}
         res.status(500).json({ message: 'Error confirming transfer' });
-    }
+    } finally { client.release(); }
 });
 
 // 17. Low stock report
@@ -6789,10 +6865,10 @@ app.get('/api/reports/stock-summary/:branch_id', authenticateToken, async (req, 
 });
 
 // 21. Get product for POS with FEFO/FIFO batch selection
-app.get('/api/pos/product/:barcode', authenticateToken, async (req, res) => {
+app.get('/api/pos/product/:barcode', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { barcode } = req.params;
     try {
-        const product = await pool.query('SELECT * FROM products WHERE barcode = $1', [barcode]);
+        const product = await pool.query('SELECT * FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL', [barcode, req.user.tenant_id || 1]);
         if (product.rows.length === 0) {
             return res.status(404).json({ message: 'Product not found' });
         }
@@ -7548,7 +7624,7 @@ app.get('/api/customers/:id/statement', authenticateToken, async (req, res) => {
 });
 
 // New endpoint for detailed statement data (with transaction-level debit/credit/balance)
-app.get('/api/customers/:id/statement-data', authenticateToken, async (req, res) => {
+app.get('/api/customers/:id/statement-data', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     try {
         const customerId = req.params.id;
         const month = req.query.month || new Date().getMonth() + 1;
@@ -7558,7 +7634,7 @@ app.get('/api/customers/:id/statement-data', authenticateToken, async (req, res)
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
         // Get Customer
-        const custRes = await pool.query('SELECT * FROM customers WHERE id = $1 AND deleted_at IS NULL', [customerId]);
+        const custRes = await pool.query('SELECT * FROM customers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL', [customerId, req.user.tenant_id || 1]);
         if (custRes.rows.length === 0) {
             return res.status(404).json({ message: 'Customer not found' });
         }
@@ -7617,7 +7693,7 @@ app.get('/api/customers/:id/statement-data', authenticateToken, async (req, res)
     }
 });
 
-app.post('/api/customers/:id/email-statement', authenticateToken, async (req, res) => {
+app.post('/api/customers/:id/email-statement', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     try {
         const customerId = req.params.id;
         let { month, year, pdfData: clientPdf } = req.body;
@@ -7650,7 +7726,7 @@ app.post('/api/customers/:id/email-statement', authenticateToken, async (req, re
         const endDate = new Date(year, month, 0).toISOString().split('T')[0];
 
         // Get Customer
-        const custRes = await pool.query('SELECT * FROM customers WHERE id = $1 AND deleted_at IS NULL', [customerId]);
+        const custRes = await pool.query('SELECT * FROM customers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL', [customerId, req.user.tenant_id || 1]);
         if (custRes.rows.length === 0) {
             return res.status(404).json({ message: 'Customer not found' });
         }
@@ -8867,10 +8943,13 @@ app.post('/api/company/quick-sale', authenticateToken, requireRole(COMPANY_PORTA
 });
 
 // Convert Proforma to Sales Invoice
-app.post('/api/company/proforma-invoices/:id/convert', authenticateToken, async (req, res) => {
+app.post('/api/company/proforma-invoices/:id/convert', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect();
     try {
+        if (!(await companyDocAllowed(req, 'proforma_invoices', id, client))) {
+            return res.status(404).json({ message: 'Proforma not found' });
+        }
         await client.query('BEGIN');
 
         const proRes = await client.query('SELECT * FROM proforma_invoices WHERE id = $1', [id]);
@@ -8911,8 +8990,9 @@ app.post('/api/company/proforma-invoices/:id/convert', authenticateToken, async 
 });
 
 // Update Proforma Status to Sent
-app.post('/api/company/proforma-invoices/:id/send', authenticateToken, async (req, res) => {
+app.post('/api/company/proforma-invoices/:id/send', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
+        if (!(await companyDocAllowed(req, 'proforma_invoices', req.params.id))) return res.status(404).json({ message: 'Proforma not found' });
         await pool.query("UPDATE proforma_invoices SET status = 'Sent' WHERE id = $1", [req.params.id]);
         await logActivity(req, 'COMPANY_PROFORMA_SENT', { proforma_id: req.params.id });
         res.json({ success: true });
@@ -8922,7 +9002,7 @@ app.post('/api/company/proforma-invoices/:id/send', authenticateToken, async (re
 });
 
 // Record Payment for Sales Invoice
-app.post('/api/company/sales-invoices/:id/payment', authenticateToken, async (req, res) => {
+app.post('/api/company/sales-invoices/:id/payment', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     const { id } = req.params;
     const paid = parseFloat(req.body.amount);
     if (!Number.isFinite(paid) || paid <= 0) {
@@ -8930,6 +9010,9 @@ app.post('/api/company/sales-invoices/:id/payment', authenticateToken, async (re
     }
     const client = await pool.connect();
     try {
+        if (!(await companyDocAllowed(req, 'sales_invoices', id, client))) {
+            return res.status(404).json({ message: 'Invoice not found' });
+        }
         await client.query('BEGIN');
         // Locking the invoice makes concurrent payments additive rather than last-write-wins.
         const invRes = await client.query(
@@ -8968,9 +9051,10 @@ app.post('/api/company/sales-invoices/:id/payment', authenticateToken, async (re
 });
 
 // Get Single Proforma Detail
-app.get('/api/company/proforma-invoices/:id', authenticateToken, async (req, res) => {
+app.get('/api/company/proforma-invoices/:id', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
         const id = req.params.id;
+        if (!(await companyDocAllowed(req, 'proforma_invoices', id))) return res.status(404).json({ message: 'Proforma not found' });
         const mainRes = await pool.query('SELECT * FROM proforma_invoices WHERE id = $1', [id]);
         if (mainRes.rows.length === 0) return res.status(404).json({ message: 'Proforma not found' });
 
@@ -8984,9 +9068,10 @@ app.get('/api/company/proforma-invoices/:id', authenticateToken, async (req, res
 });
 
 // Get Single Sales Invoice Detail
-app.get('/api/company/sales-invoices/:id', authenticateToken, async (req, res) => {
+app.get('/api/company/sales-invoices/:id', authenticateToken, requireRole(COMPANY_PORTAL_ROLES), async (req, res) => {
     try {
         const id = req.params.id;
+        if (!(await companyDocAllowed(req, 'sales_invoices', id))) return res.status(404).json({ message: 'Invoice not found' });
         const mainRes = await pool.query('SELECT * FROM sales_invoices WHERE id = $1', [id]);
         if (mainRes.rows.length === 0) return res.status(404).json({ message: 'Invoice not found' });
 

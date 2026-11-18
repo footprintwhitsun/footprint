@@ -401,3 +401,37 @@ test('Checkout rounds every line, the discount and the taxable base to the pesew
     assert.ok(pos.includes('const requestedDiscount = Math.round((Number(discount_amount || 0) + Number.EPSILON) * 100) / 100'));
     assert.ok(pos.includes('const taxableBase = Math.round(Math.max(0, itemsSubtotal - requestedDiscount) * 100) / 100'));
 });
+
+test('Stock takes, transfers and batches are role-gated and tenant-scoped', () => {
+    const server = read('server.js');
+    assert.match(server, /app\.post\('\/api\/stock-takes\/:id\/approve',\s*authenticateToken,\s*requireRole\(MANAGER_ROLES\)/);
+    assert.match(server, /app\.post\('\/api\/stock-takes\/:id\/items',\s*authenticateToken,\s*requireRole\(PAGE_ROLES\.STAFF_ALL\)/);
+    assert.match(server, /app\.post\('\/api\/transfers\/:id\/confirm',\s*authenticateToken,\s*requireRole\(PAGE_ROLES\.STAFF_ALL\)/);
+    assert.match(server, /app\.get\('\/api\/batches',\s*authenticateToken,\s*requireRole\(PAGE_ROLES\.STAFF_ALL\)/);
+    assert.ok(server.includes('stockTakeInTenant(client, id, req.user.tenant_id || 1, true)'), 'approve must scope the stock take to the tenant');
+    assert.ok(server.includes('FROM stock_transfers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 FOR UPDATE'), 'transfer confirm must be tenant-scoped');
+    assert.ok(!/confirmed_by\s*\}\s*=\s*req\.body/.test(server), 'confirmed_by must come from the session, not the request body');
+});
+
+test('Company invoices and proformas are only reachable by their own company or tenant staff', () => {
+    const server = read('server.js');
+    for (const route of [
+        "app.get('/api/company/proforma-invoices/:id'",
+        "app.get('/api/company/sales-invoices/:id'",
+        "app.post('/api/company/proforma-invoices/:id/send'",
+        "app.post('/api/company/proforma-invoices/:id/convert'",
+        "app.post('/api/company/sales-invoices/:id/payment'"
+    ]) {
+        const i = server.indexOf(route);
+        assert.ok(i > -1, `${route} exists`);
+        const head = server.slice(i, i + 700);
+        assert.ok(head.includes('requireRole(COMPANY_PORTAL_ROLES)'), `${route} is role-gated`);
+        assert.ok(head.includes('companyDocAllowed('), `${route} checks document ownership`);
+    }
+});
+
+test('The schema debug endpoint is not available in production', () => {
+    const server = read('server.js');
+    const i = server.indexOf("app.get('/api/debug/schema/:tableName'");
+    assert.ok(server.slice(i, i + 400).includes("NODE_ENV === 'production'"));
+});
