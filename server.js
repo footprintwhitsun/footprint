@@ -1489,7 +1489,8 @@ const embeddedPage = (file, roles, hubUrl) => {
         res.redirect = (...args) => {
             const target = String(args[args.length - 1]);
             if (!target.startsWith('/')) return redirect(...args);
-            return res.status(200).type('html').send(`<script>(window.top || window).location.replace(${JSON.stringify(target)});</script>`);
+            const safeTarget = target.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return res.status(200).type('html').send(`<!doctype html><meta charset="utf-8"><script src="/top-redirect.js" data-target="${safeTarget}"></script>`);
         };
         return guard(req, res, next);
     };
@@ -9277,6 +9278,7 @@ app.use((req, res, next) => {
             '/offline-queue.js',
             '/lazy-libs.js',
             '/okw-events.js',
+            '/top-redirect.js',
             '/layout.js',
             '/ui-components.js',
             '/pos-upgrade.js'

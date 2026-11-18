@@ -209,7 +209,8 @@ test('Cash account balances are manager-only, and embedded pages cannot trap the
     const i = extras.indexOf("router.get('/api/accounts'");
     assert.ok(i > -1 && extras.slice(i, i + 300).includes('MANAGER_ROLES.includes'), 'GET /api/accounts must check the role');
     const server = read('server.js');
-    assert.ok(server.includes("(window.top || window).location.replace(${JSON.stringify(target)})"), 'embedded auth redirects must leave the frame');
+    assert.ok(server.includes('src="/top-redirect.js" data-target="${safeTarget}"'), 'embedded auth redirects must leave the frame');
+    assert.ok(read('top-redirect.js').includes('(window.top || window).location.replace(target)'), 'the redirect script must target the whole window');
     assert.ok(read('layout.js').includes("a.target = '_top'"), 'links inside a frame must open in the whole window');
     for (const f of ['auth-guard.js', 'customers.html', 'credit-customers.html', 'inventory.html', 'transactions.html']) {
         assert.ok(!/(^|[^.\w)])window\.location\.(replace\('\/login|href = '\/login)/.test(read(f)), `${f} must send the whole window to the login page`);

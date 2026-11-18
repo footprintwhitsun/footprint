@@ -130,7 +130,7 @@ test('Every page that loads the dispatcher has no inline handlers left, and the 
         if (/data-on[a-z]+\s*=|data-media-swap/.test(html)) assert.ok(loads, `${f} uses data-on* but does not load the dispatcher`);
         if (loads) { converted++; assert.ok(!inline.test(html), `${f} loads the dispatcher but still has an inline event handler`); }
     }
-    assert.ok(converted >= 18, `expected at least 18 converted pages, found ${converted}`);
+    assert.ok(converted >= 24, `expected at least 24 converted pages, found ${converted}`);
     const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
     assert.ok(server.includes("'/okw-events.js'"), 'the dispatcher must be on the client-script allow-list');
 });
@@ -200,4 +200,34 @@ test('Every handler on every converted page executes in the interpreter (stand-i
     }
     assert.ok(checked > 400, `expected hundreds of handlers, checked ${checked}`);
     assert.deepEqual(failures, []);
+});
+
+test('The whole project is ready for a strict policy: no inline handlers, no javascript: URLs, no inline script in server pages', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const ROOT = path.resolve(__dirname, '..');
+    const inline = /\son(?:click|change|input|keyup|keydown|keypress|submit|blur|focus|mouseover|mouseout|mouseenter|mouseleave|dblclick|load|error)\s*=\s*["']/i;
+    const sources = [...fs.readdirSync(ROOT).filter((f) => /\.(html|js)$/.test(f) && !/^(initialize|create_|setup_|seed|hash-|clean_|emulator)/.test(f) && f !== 'okw-events.js')];
+    for (const f of sources) {
+        const text = fs.readFileSync(path.join(ROOT, f), 'utf8');
+        assert.ok(!inline.test(text), `${f} still has an inline event handler`);
+        assert.ok(!/(href|action|src)\s*=\s*["']\s*javascript:/i.test(text), `${f} still has a javascript: URL`);
+    }
+    const server = fs.readFileSync(path.join(ROOT, 'server.js'), 'utf8');
+    assert.ok(!/send\(`<script>/.test(server), 'server-generated pages must not carry inline scripts');
+});
+
+test('top-redirect.js only ever sends the window to a same-site path', () => {
+    const fs = require('node:fs');
+    const path = require('node:path');
+    const code = fs.readFileSync(path.join(__dirname, '..', 'top-redirect.js'), 'utf8');
+    const run = (target) => {
+        const seen = [];
+        const win = { location: { replace: (u) => seen.push(u) } };
+        win.top = win;
+        new Function('window', 'document', code)(win, { currentScript: { getAttribute: () => target } });
+        return seen;
+    };
+    assert.deepEqual(run('/login?unauthorized=true'), ['/login?unauthorized=true']);
+    for (const bad of ['//evil.com', 'https://evil.com', 'javascript:alert(1)', '/\\evil.com', '', null]) assert.deepEqual(run(bad), [], String(bad));
 });
