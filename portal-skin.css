@@ -2187,6 +2187,44 @@ td .okw-btn-danger:hover, tbody .okw-btn-danger:hover { background: #FDE8E8 !imp
     background: var(--bad-bg) !important;
 }
 
+/* ---- Utility classes for CSP-clean hub sections (no inline style="") ---- */
+.okw-hub-footer { text-align: center; padding: 16px 24px; color: var(--muted); font-size: 13px; border-top: 1px solid var(--edge); }
+.okw-mb-16 { margin-bottom: 16px; }
+.okw-mt-12 { margin-top: 12px; }
+.okw-flex-between { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; }
+.okw-flex-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.okw-h2-sm { margin: 0 0 10px; font-size: 16px; }
+.okw-h2-tight { margin: 0; font-size: 16px; }
+.okw-h3-sm { margin: 0 0 10px; font-size: 15px; }
+.okw-sub-note { font-size: 12.5px; color: var(--muted); }
+.okw-sub-xs { font-size: 11.5px; color: var(--muted); }
+.okw-scroll-x { overflow-x: auto; }
+.okw-w-full { width: 100%; }
+.okw-num { text-align: right; }
+.okw-cap-muted { text-transform: capitalize; color: var(--muted); }
+.okw-lbl-sm { font-weight: 600; font-size: 13px; display: block; margin-bottom: 4px; }
+.okw-w-100 { width: 100px; }
+.okw-w-110 { width: 110px; }
+.okw-w-130 { width: 130px; }
+.okw-w-180 { max-width: 180px; }
+.okw-min-240 { min-width: 240px; }
+.okw-chk-block { font-size: 12px; display: block; }
+.okw-grid-coa { display: grid; grid-template-columns: 120px 1fr 160px auto; gap: 8px; align-items: center; }
+.okw-grid-je-head { display: grid; grid-template-columns: 160px 180px 1fr; gap: 8px; margin-bottom: 10px; }
+.okw-grid-je-line { display: grid; grid-template-columns: 1.5fr 1.2fr 130px 130px auto; gap: 6px; align-items: center; }
+.okw-je-lines { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.okw-je-entry { border-bottom: 1px solid var(--edge); padding: 12px 0; }
+.okw-je-totals { font-size: 13px; font-weight: 600; }
+.okw-text-ok { color: var(--ok); margin-left: 6px; }
+.okw-text-bad { color: var(--bad); margin-left: 6px; }
+.okw-grid-rec { display: grid; grid-template-columns: 150px 1fr 140px 130px auto; gap: 8px; align-items: center; }
+.okw-grid-rec-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 8px; align-items: end; margin-top: 10px; }
+.okw-dropzone { border: 1.5px dashed var(--edge-strong); border-radius: 10px; padding: 12px 14px; background: var(--sheet-2); margin-top: 12px; }
+.okw-hidden { display: none; }
+@media (max-width: 760px) {
+    .okw-grid-coa, .okw-grid-je-head, .okw-grid-je-line, .okw-grid-rec { grid-template-columns: 1fr; }
+}
+
 /* ---- Phone: use the width, never break a figure, let wide tables scroll ---- */
 @media (max-width: 700px) {
     .page-wrap { padding: 12px !important; }

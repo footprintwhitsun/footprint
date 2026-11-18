@@ -6,17 +6,11 @@
     <title>Money - OKWESIWA LTD</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="stylesheet" href="/sidebar.css">
+    <script src="/vendor/xlsx-0.20.2.full.min.js" defer></script>
     <script src="/auth-guard.js"></script>
     <script src="/currency.js"></script>
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
-    <style>
-        .app-shell { display: flex; min-height: 100vh; }
-        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
-        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
-        .page-wrap { flex: 1; padding: 24px; max-width: 1360px; width: 100%; margin: 0 auto; box-sizing: border-box; }
-        @media (max-width: 900px) { .main-content { margin-left: 0; } }
-    </style>
     <link rel="stylesheet" href="/portal-skin.css">
 </head>
 <body>
@@ -28,7 +22,7 @@
 
     <main class="main-content">
         <div class="page-wrap" id="hub"></div>
-        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA LTD</footer>
+        <footer class="okw-hub-footer">© 2026 OKWESIWA LTD</footer>
     </main>
 </div>
 
@@ -46,11 +40,32 @@
         return data;
     }
 
+    function normalizeDate(val) {
+        if (!val) return new Date().toISOString().slice(0, 10);
+        if (typeof val === 'number' && val > 20000 && val < 80000) {
+            const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+            return d.toISOString().slice(0, 10);
+        }
+        const s = String(val).trim();
+        if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+        const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+        if (m) return `${m[3]}-${m[2].padStart(2, '0')}-${m[1].padStart(2, '0')}`;
+        const parsed = new Date(s);
+        return Number.isNaN(parsed.getTime()) ? new Date().toISOString().slice(0, 10) : parsed.toISOString().slice(0, 10);
+    }
+
+    function parseNum(val) {
+        if (typeof val === 'number') return Number.isFinite(val) ? val : 0;
+        const cleaned = String(val || '').replace(/[^0-9.\-]/g, '');
+        const n = parseFloat(cleaned);
+        return Number.isFinite(n) ? n : 0;
+    }
+
     function mountCoa(panel) {
         panel.innerHTML = `
-            <div class="okw-card" style="margin-bottom:16px;">
-                <h2 style="margin:0 0 10px;font-size:16px;">Add Ledger Account</h2>
-                <div style="display:grid;grid-template-columns:120px 1fr 160px auto;gap:8px;align-items:center;">
+            <div class="okw-card okw-mb-16">
+                <h2 class="okw-h2-sm">Add Ledger Account</h2>
+                <div class="okw-grid-coa">
                     <input id="coa-code" class="okw-input" placeholder="Code (e.g. 1050)">
                     <input id="coa-name" class="okw-input" placeholder="Account name (e.g. Petty Cash)">
                     <select id="coa-type" class="okw-select">
@@ -70,19 +85,19 @@
             try {
                 const { accounts } = await api('/api/gl/accounts');
                 host.innerHTML = `
-                    <div style="overflow-x:auto;">
-                        <table class="okw-table" style="width:100%;">
-                            <thead><tr><th>Code</th><th>Account Name</th><th>Type</th><th>Normal</th><th style="text-align:right;">Debits</th><th style="text-align:right;">Credits</th><th style="text-align:right;">Balance</th></tr></thead>
+                    <div class="okw-scroll-x">
+                        <table class="okw-table okw-w-full">
+                            <thead><tr><th>Code</th><th>Account Name</th><th>Type</th><th>Normal</th><th class="okw-num">Debits</th><th class="okw-num">Credits</th><th class="okw-num">Balance</th></tr></thead>
                             <tbody>
                                 ${accounts.map(a => `
                                     <tr>
                                         <td><strong>${esc(a.code)}</strong></td>
                                         <td>${esc(a.name)}</td>
                                         <td>${OkwUI.badge(a.type, a.type === 'Asset' ? 'info' : (a.type === 'Revenue' ? 'success' : (a.type === 'Expense' ? 'warning' : 'neutral')))}</td>
-                                        <td style="text-transform:capitalize;color:var(--muted);">${esc(a.normal_balance)}</td>
-                                        <td style="text-align:right;">${fmt(a.total_debit)}</td>
-                                        <td style="text-align:right;">${fmt(a.total_credit)}</td>
-                                        <td style="text-align:right;"><strong>${fmt(a.balance)}</strong></td>
+                                        <td class="okw-cap-muted">${esc(a.normal_balance)}</td>
+                                        <td class="okw-num">${fmt(a.total_debit)}</td>
+                                        <td class="okw-num">${fmt(a.total_credit)}</td>
+                                        <td class="okw-num"><strong>${fmt(a.balance)}</strong></td>
                                     </tr>`).join('')}
                             </tbody>
                         </table>
@@ -114,17 +129,17 @@
     function mountJournal(panel) {
         const today = new Date().toISOString().slice(0, 10);
         panel.innerHTML = `
-            <div class="okw-card" style="margin-bottom:16px;">
-                <h2 style="margin:0 0 10px;font-size:16px;">Post Double-Entry Journal</h2>
-                <div style="display:grid;grid-template-columns:160px 180px 1fr;gap:8px;margin-bottom:10px;">
+            <div class="okw-card okw-mb-16">
+                <h2 class="okw-h2-sm">Post Double-Entry Journal</h2>
+                <div class="okw-grid-je-head">
                     <input id="je-date" type="date" class="okw-input" value="${today}">
                     <input id="je-ref" class="okw-input" placeholder="Reference (optional)">
                     <input id="je-memo" class="okw-input" placeholder="Memo / description">
                 </div>
-                <div id="je-lines" style="display:flex;flex-direction:column;gap:6px;margin-bottom:10px;"></div>
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                <div id="je-lines" class="okw-je-lines"></div>
+                <div class="okw-flex-between">
                     <button id="je-add-line" class="okw-btn okw-btn-outline" type="button">+ Add Line</button>
-                    <div id="je-totals" style="font-size:13px;font-weight:600;">Debits: GH₵ 0.00 · Credits: GH₵ 0.00</div>
+                    <div id="je-totals" class="okw-je-totals">Debits: GH₵ 0.00 · Credits: GH₵ 0.00</div>
                     <button id="je-post" class="okw-btn okw-btn-primary" type="button">Post Journal Entry</button>
                 </div>
             </div>
@@ -134,8 +149,7 @@
         function addLineRow() {
             const wrap = panel.querySelector('#je-lines');
             const row = document.createElement('div');
-            row.className = 'je-line-row';
-            row.style.cssText = 'display:grid;grid-template-columns:1.5fr 1.2fr 130px 130px auto;gap:6px;align-items:center;';
+            row.className = 'je-line-row okw-grid-je-line';
             row.innerHTML = `
                 <select class="okw-select je-acc">${accounts.map(a => `<option value="${a.id}">${esc(a.code + ' — ' + a.name)}</option>`).join('')}</select>
                 <input class="okw-input je-desc" placeholder="Line memo">
@@ -154,7 +168,7 @@
                 c += Number(r.querySelector('.je-cred').value || 0);
             });
             const bal = Math.abs(d - c) < 0.01 && d > 0;
-            panel.querySelector('#je-totals').innerHTML = `Debits: ${fmt(d)} · Credits: ${fmt(c)} ${bal ? '<span style="color:var(--ok);margin-left:6px;">✓ Balanced</span>' : '<span style="color:var(--bad);margin-left:6px;">Out of balance</span>'}`;
+            panel.querySelector('#je-totals').innerHTML = `Debits: ${fmt(d)} · Credits: ${fmt(c)} ${bal ? '<span class="okw-text-ok">✓ Balanced</span>' : '<span class="okw-text-bad">Out of balance</span>'}`;
         }
 
         async function load() {
@@ -167,19 +181,19 @@
                 const entries = jeData.entries || [];
                 if (!entries.length) { host.innerHTML = '<div class="okw-empty">No journal entries posted yet.</div>'; return; }
                 host.innerHTML = entries.map(e => `
-                    <div style="border-bottom:1px solid var(--edge);padding:12px 0;">
-                        <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:6px;">
+                    <div class="okw-je-entry">
+                        <div class="okw-flex-between">
                             <strong>${esc(e.entry_number)} · ${esc(String(e.entry_date).slice(0, 10))}</strong>
-                            <span style="font-size:12.5px;color:var(--muted);">${esc(e.reference || '')} ${e.memo ? '— ' + esc(e.memo) : ''} (${esc(e.source)})</span>
+                            <span class="okw-sub-note">${esc(e.reference || '')} ${e.memo ? '— ' + esc(e.memo) : ''} (${esc(e.source)})</span>
                         </div>
-                        <table class="okw-table" style="width:100%;">
+                        <table class="okw-table okw-w-full">
                             <tbody>
                                 ${(e.lines || []).map(l => `
                                     <tr>
-                                        <td style="width:45%;">${esc(l.account_code + ' — ' + l.account_name)}</td>
-                                        <td style="color:var(--muted);">${esc(l.description || '')}</td>
-                                        <td style="text-align:right;width:130px;">${Number(l.debit) > 0 ? fmt(l.debit) : '—'}</td>
-                                        <td style="text-align:right;width:130px;">${Number(l.credit) > 0 ? fmt(l.credit) : '—'}</td>
+                                        <td>${esc(l.account_code + ' — ' + l.account_name)}</td>
+                                        <td class="okw-sub-note">${esc(l.description || '')}</td>
+                                        <td class="okw-num okw-w-130">${Number(l.debit) > 0 ? fmt(l.debit) : '—'}</td>
+                                        <td class="okw-num okw-w-130">${Number(l.credit) > 0 ? fmt(l.credit) : '—'}</td>
                                     </tr>`).join('')}
                             </tbody>
                         </table>
@@ -219,12 +233,12 @@
     function mountTrialBalance(panel) {
         const today = new Date().toISOString().slice(0, 10);
         panel.innerHTML = `
-            <div class="okw-card" style="margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
-                <label style="font-weight:600;font-size:13px;">As of Date:</label>
-                <input id="tb-date" type="date" class="okw-input" value="${today}" style="max-width:180px;">
+            <div class="okw-card okw-mb-16 okw-flex-row">
+                <label class="okw-lbl-sm">As of Date:</label>
+                <input id="tb-date" type="date" class="okw-input okw-w-180" value="${today}">
                 <button id="tb-run" class="okw-btn okw-btn-primary" type="button">Refresh</button>
             </div>
-            <div class="okw-kpi-row" id="tb-bs-kpis" style="margin-bottom:16px;"></div>
+            <div class="okw-kpi-row okw-mb-16" id="tb-bs-kpis"></div>
             <div class="okw-card" id="tb-table"><div class="okw-empty">Loading Trial Balance...</div></div>`;
 
         async function load() {
@@ -239,18 +253,18 @@
                     OkwUI.kpiCard({ label: 'Trial Balance', value: d.totals.balanced ? 'Balanced' : 'Unbalanced', subtext: `DR ${fmt(d.totals.debit)} / CR ${fmt(d.totals.credit)}`, tone: d.totals.balanced ? 'success' : 'danger' })
                 ].join('');
                 panel.querySelector('#tb-table').innerHTML = `
-                    <div style="overflow-x:auto;">
-                        <table class="okw-table" style="width:100%;">
-                            <thead><tr><th>Code</th><th>Account</th><th>Type</th><th style="text-align:right;">Debits</th><th style="text-align:right;">Credits</th><th style="text-align:right;">Net Balance</th></tr></thead>
+                    <div class="okw-scroll-x">
+                        <table class="okw-table okw-w-full">
+                            <thead><tr><th>Code</th><th>Account</th><th>Type</th><th class="okw-num">Debits</th><th class="okw-num">Credits</th><th class="okw-num">Net Balance</th></tr></thead>
                             <tbody>
                                 ${(d.rows || []).map(r => `
                                     <tr>
                                         <td><strong>${esc(r.code)}</strong></td>
                                         <td>${esc(r.name)}</td>
                                         <td>${esc(r.type)}</td>
-                                        <td style="text-align:right;">${fmt(r.debit)}</td>
-                                        <td style="text-align:right;">${fmt(r.credit)}</td>
-                                        <td style="text-align:right;"><strong>${fmt(r.net_balance)}</strong></td>
+                                        <td class="okw-num">${fmt(r.debit)}</td>
+                                        <td class="okw-num">${fmt(r.credit)}</td>
+                                        <td class="okw-num"><strong>${fmt(r.net_balance)}</strong></td>
                                     </tr>`).join('')}
                             </tbody>
                         </table>
@@ -264,21 +278,148 @@
     function mountReconcile(panel) {
         const today = new Date().toISOString().slice(0, 10);
         panel.innerHTML = `
-            <div class="okw-card" style="margin-bottom:16px;">
-                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px;">
-                    <label style="font-weight:600;font-size:13px;">Bank / MoMo / Cash Account:</label>
-                    <select id="rec-acc" class="okw-select" style="min-width:240px;"></select>
+            <div class="okw-card okw-mb-16">
+                <div class="okw-flex-row okw-mb-16">
+                    <label class="okw-lbl-sm">Bank / MoMo / Cash Account:</label>
+                    <select id="rec-acc" class="okw-select okw-min-240"></select>
                 </div>
-                <div style="display:grid;grid-template-columns:150px 1fr 140px 130px auto;gap:8px;align-items:center;">
+                <div class="okw-grid-rec">
                     <input id="rec-date" type="date" class="okw-input" value="${today}">
                     <input id="rec-desc" class="okw-input" placeholder="Statement description">
                     <input id="rec-ref" class="okw-input" placeholder="Ref">
                     <input id="rec-amt" type="number" step="0.01" class="okw-input" placeholder="Amount (+/-)">
-                    <button id="rec-add" class="okw-btn okw-btn-primary" type="button">+ Add Statement Line</button>
+                    <button id="rec-add" class="okw-btn okw-btn-primary" type="button">+ Add Line</button>
+                </div>
+                <div class="okw-dropzone">
+                    <div class="okw-flex-between">
+                        <div>
+                            <strong>Import Bank / MoMo Statement (CSV or Excel)</strong>
+                            <div class="okw-sub-note">Upload a bank or MTN MoMo merchant export (.csv, .xlsx, .xls) and map the columns.</div>
+                        </div>
+                        <input id="rec-file" type="file" accept=".csv,.xlsx,.xls" class="okw-input">
+                    </div>
+                    <div id="rec-mapper" class="okw-hidden">
+                        <div class="okw-grid-rec-map">
+                            <div><label class="okw-lbl-sm">Date column</label><select id="map-date" class="okw-select okw-w-full"></select></div>
+                            <div><label class="okw-lbl-sm">Description column</label><select id="map-desc" class="okw-select okw-w-full"></select></div>
+                            <div><label class="okw-lbl-sm">Reference column</label><select id="map-ref" class="okw-select okw-w-full"></select></div>
+                            <div><label class="okw-lbl-sm">Amount (+/-) column</label><select id="map-amt" class="okw-select okw-w-full"></select></div>
+                            <div><label class="okw-lbl-sm">Or Credit (+) column</label><select id="map-credit" class="okw-select okw-w-full"></select></div>
+                            <div><label class="okw-lbl-sm">And Debit (-) column</label><select id="map-debit" class="okw-select okw-w-full"></select></div>
+                        </div>
+                        <div id="rec-preview" class="okw-mt-12"></div>
+                        <div class="okw-flex-row okw-mt-12">
+                            <button id="rec-import-go" type="button" class="okw-btn okw-btn-primary">Import Statement Lines</button>
+                            <button id="rec-import-cancel" type="button" class="okw-btn okw-btn-outline">Cancel</button>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="okw-kpi-row" id="rec-kpis" style="margin-bottom:16px;"></div>
+            <div class="okw-kpi-row okw-mb-16" id="rec-kpis"></div>
             <div class="okw-card" id="rec-list"><div class="okw-empty">Loading reconciliation...</div></div>`;
+
+        let parsedRows = [];
+        let parsedHeaders = [];
+
+        function fillSelect(sel, headers, allowNone, matchRegex) {
+            sel.innerHTML = (allowNone ? '<option value="">(None)</option>' : '') +
+                headers.map(h => `<option value="${esc(h)}">${esc(h)}</option>`).join('');
+            const hit = headers.find(h => matchRegex.test(h));
+            if (hit) sel.value = hit;
+        }
+
+        function buildMappedLines() {
+            const dCol = panel.querySelector('#map-date').value;
+            const descCol = panel.querySelector('#map-desc').value;
+            const refCol = panel.querySelector('#map-ref').value;
+            const amtCol = panel.querySelector('#map-amt').value;
+            const crCol = panel.querySelector('#map-credit').value;
+            const drCol = panel.querySelector('#map-debit').value;
+            return parsedRows.map(r => {
+                const desc = String(r[descCol] || '').trim();
+                let amount = 0;
+                if (amtCol && r[amtCol] !== undefined && r[amtCol] !== '') {
+                    amount = parseNum(r[amtCol]);
+                } else {
+                    amount = parseNum(crCol ? r[crCol] : 0) - parseNum(drCol ? r[drCol] : 0);
+                }
+                return {
+                    txn_date: normalizeDate(r[dCol]),
+                    description: desc,
+                    reference: refCol ? String(r[refCol] || '').trim() : '',
+                    amount: Number(amount.toFixed(2))
+                };
+            }).filter(x => x.description && Number.isFinite(x.amount) && x.amount !== 0);
+        }
+
+        function renderPreview() {
+            const lines = buildMappedLines();
+            const previewEl = panel.querySelector('#rec-preview');
+            const goBtn = panel.querySelector('#rec-import-go');
+            goBtn.textContent = `Import ${lines.length} Statement Lines`;
+            if (!lines.length) {
+                previewEl.innerHTML = '<div class="okw-sub-note">No valid non-zero rows matched with the selected columns.</div>';
+                return;
+            }
+            previewEl.innerHTML = `
+                <div class="okw-sub-note">Preview (first ${Math.min(5, lines.length)} of ${lines.length} rows):</div>
+                <div class="okw-scroll-x">
+                    <table class="okw-table okw-w-full">
+                        <thead><tr><th>Date</th><th>Description</th><th>Ref</th><th class="okw-num">Amount</th></tr></thead>
+                        <tbody>${lines.slice(0, 5).map(l => `<tr><td>${esc(l.txn_date)}</td><td>${esc(l.description)}</td><td>${esc(l.reference || '—')}</td><td class="okw-num">${fmt(l.amount)}</td></tr>`).join('')}</tbody>
+                    </table>
+                </div>`;
+        }
+
+        panel.querySelector('#rec-file').addEventListener('change', async (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            if (typeof XLSX === 'undefined') { OkwUI.toast('Spreadsheet parser is still loading, try again in a second', 'warning'); return; }
+            try {
+                const buf = await file.arrayBuffer();
+                const wb = XLSX.read(buf, { type: 'array' });
+                const sheet = wb.Sheets[wb.SheetNames[0]];
+                const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+                if (!rows.length) { OkwUI.toast('File has no data rows', 'warning'); return; }
+                parsedRows = rows;
+                parsedHeaders = Object.keys(rows[0]);
+                fillSelect(panel.querySelector('#map-date'), parsedHeaders, false, /date|time/i);
+                fillSelect(panel.querySelector('#map-desc'), parsedHeaders, false, /desc|narr|detail|memo|particular/i);
+                fillSelect(panel.querySelector('#map-ref'), parsedHeaders, true, /ref|trans|id|cheque/i);
+                fillSelect(panel.querySelector('#map-amt'), parsedHeaders, true, /^amount$|net|value/i);
+                fillSelect(panel.querySelector('#map-credit'), parsedHeaders, true, /credit|deposit|inflow/i);
+                fillSelect(panel.querySelector('#map-debit'), parsedHeaders, true, /debit|withdraw|outflow/i);
+                panel.querySelector('#rec-mapper').classList.remove('okw-hidden');
+                renderPreview();
+            } catch (err) {
+                OkwUI.toast('Could not read file: ' + err.message, 'danger');
+            }
+        });
+
+        ['#map-date', '#map-desc', '#map-ref', '#map-amt', '#map-credit', '#map-debit'].forEach(id => {
+            panel.querySelector(id).addEventListener('change', renderPreview);
+        });
+
+        panel.querySelector('#rec-import-cancel').onclick = () => {
+            parsedRows = [];
+            panel.querySelector('#rec-file').value = '';
+            panel.querySelector('#rec-mapper').classList.add('okw-hidden');
+        };
+
+        panel.querySelector('#rec-import-go').onclick = async () => {
+            const lines = buildMappedLines();
+            if (!lines.length) { OkwUI.toast('No valid rows to import', 'warning'); return; }
+            try {
+                const out = await api('/api/gl/reconcile/import', {
+                    method: 'POST',
+                    body: JSON.stringify({ account_id: Number(panel.querySelector('#rec-acc').value), lines })
+                });
+                OkwUI.toast(`Imported ${out.inserted || lines.length} statement lines`, 'success');
+                panel.querySelector('#rec-file').value = '';
+                panel.querySelector('#rec-mapper').classList.add('okw-hidden');
+                load();
+            } catch (err) { OkwUI.toast(err.message, 'danger'); }
+        };
 
         async function initAccounts() {
             const { accounts } = await api('/api/gl/accounts');
@@ -305,16 +446,16 @@
                 const host = panel.querySelector('#rec-list');
                 if (!rows.length) { host.innerHTML = '<div class="okw-empty">No statement lines imported for this account yet.</div>'; return; }
                 host.innerHTML = `
-                    <div style="overflow-x:auto;">
-                        <table class="okw-table" style="width:100%;">
-                            <thead><tr><th>Date</th><th>Description</th><th>Ref</th><th style="text-align:right;">Amount</th><th>Status</th><th>Action</th></tr></thead>
+                    <div class="okw-scroll-x">
+                        <table class="okw-table okw-w-full">
+                            <thead><tr><th>Date</th><th>Description</th><th>Ref</th><th class="okw-num">Amount</th><th>Status</th><th>Action</th></tr></thead>
                             <tbody>
                                 ${rows.map(r => `
                                     <tr>
                                         <td>${esc(String(r.txn_date).slice(0, 10))}</td>
                                         <td>${esc(r.description)}</td>
                                         <td>${esc(r.reference || '—')}</td>
-                                        <td style="text-align:right;"><strong>${fmt(r.amount)}</strong></td>
+                                        <td class="okw-num"><strong>${fmt(r.amount)}</strong></td>
                                         <td>${OkwUI.badge(r.status, r.status === 'matched' ? 'success' : 'warning')}</td>
                                         <td><button type="button" class="okw-btn okw-btn-outline rec-toggle" data-id="${r.id}">${r.status === 'matched' ? 'Unmatch' : 'Mark Matched'}</button></td>
                                     </tr>`).join('')}

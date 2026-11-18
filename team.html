@@ -10,13 +10,6 @@
     <script src="/currency.js"></script>
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
-    <style>
-        .app-shell { display: flex; min-height: 100vh; }
-        .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
-        body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
-        .page-wrap { flex: 1; padding: 24px; max-width: 1360px; width: 100%; margin: 0 auto; box-sizing: border-box; }
-        @media (max-width: 900px) { .main-content { margin-left: 0; } }
-    </style>
     <link rel="stylesheet" href="/portal-skin.css">
 </head>
 <body>
@@ -28,7 +21,7 @@
 
     <main class="main-content">
         <div class="page-wrap" id="hub"></div>
-        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA LTD</footer>
+        <footer class="okw-hub-footer">© 2026 OKWESIWA LTD</footer>
     </main>
 </div>
 
@@ -50,20 +43,20 @@
         const curMonth = new Date().toISOString().slice(0, 7);
         const today = new Date().toISOString().slice(0, 10);
         panel.innerHTML = `
-            <div class="okw-card" style="margin-bottom:16px;">
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div class="okw-card okw-mb-16">
+                <div class="okw-flex-between">
                     <div>
-                        <h2 style="margin:0;font-size:16px;">Run Monthly Payroll</h2>
-                        <div style="font-size:12.5px;color:var(--muted);">Computes Gross Pay, Employee SSNIT (5.5%), GRA PAYE bands, Employer SSNIT (13%), Net Pay, and posts to General Ledger.</div>
+                        <h2 class="okw-h2-tight">Run Monthly Payroll</h2>
+                        <div class="okw-sub-note">Computes Gross Pay, Employee SSNIT (5.5%), GRA PAYE bands, Employer SSNIT (13%), Net Pay, and posts to General Ledger.</div>
                     </div>
-                    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                    <div class="okw-flex-row">
                         <input id="pay-period" type="month" class="okw-input" value="${curMonth}">
                         <input id="pay-date" type="date" class="okw-input" value="${today}">
                         <button id="pay-run-btn" class="okw-btn okw-btn-primary" type="button">Post Payroll Run</button>
                     </div>
                 </div>
             </div>
-            <div class="okw-card" style="margin-bottom:16px;" id="pay-profiles"><div class="okw-empty">Loading staff salary profiles...</div></div>
+            <div class="okw-card okw-mb-16" id="pay-profiles"><div class="okw-empty">Loading staff salary profiles...</div></div>
             <div class="okw-card" id="pay-runs"><div class="okw-empty">Loading payroll history...</div></div>`;
 
         async function load() {
@@ -71,23 +64,23 @@
                 const [{ profiles }, { runs }] = await Promise.all([api('/api/payroll/profiles'), api('/api/payroll/runs')]);
                 const pHost = panel.querySelector('#pay-profiles');
                 pHost.innerHTML = `
-                    <h3 style="margin:0 0 10px;font-size:15px;">Staff Salary &amp; Statutory Setup</h3>
-                    <div style="overflow-x:auto;">
-                        <table class="okw-table" style="width:100%;">
-                            <thead><tr><th>Staff</th><th>Role</th><th>Basic Salary</th><th>Allowances</th><th>SSNIT / PAYE</th><th>Bank / MoMo</th><th style="text-align:right;">Est. Net</th><th>Save</th></tr></thead>
+                    <h3 class="okw-h3-sm">Staff Salary &amp; Statutory Setup</h3>
+                    <div class="okw-scroll-x">
+                        <table class="okw-table okw-w-full">
+                            <thead><tr><th>Staff</th><th>Role</th><th>Basic Salary</th><th>Allowances</th><th>SSNIT / PAYE</th><th>Bank / MoMo</th><th class="okw-num">Est. Net</th><th>Save</th></tr></thead>
                             <tbody>
                                 ${profiles.map(p => `
                                     <tr data-uid="${p.user_id}">
-                                        <td><strong>${esc(p.staff_name)}</strong><div style="font-size:11.5px;color:var(--muted);">@${esc(p.username || '')}</div></td>
+                                        <td><strong>${esc(p.staff_name)}</strong><div class="okw-sub-xs">@${esc(p.username || '')}</div></td>
                                         <td>${esc(p.role || '')}</td>
-                                        <td><input type="number" step="0.01" min="0" class="okw-input pp-base" value="${Number(p.base_salary || 0)}" style="width:110px;"></td>
-                                        <td><input type="number" step="0.01" min="0" class="okw-input pp-allow" value="${Number(p.allowances || 0)}" style="width:100px;"></td>
+                                        <td><input type="number" step="0.01" min="0" class="okw-input pp-base okw-w-110" value="${Number(p.base_salary || 0)}"></td>
+                                        <td><input type="number" step="0.01" min="0" class="okw-input pp-allow okw-w-100" value="${Number(p.allowances || 0)}"></td>
                                         <td>
-                                            <label style="font-size:12px;display:block;"><input type="checkbox" class="pp-ssnit" ${p.ssnit_enabled ? 'checked' : ''}> SSNIT 5.5%</label>
-                                            <label style="font-size:12px;display:block;"><input type="checkbox" class="pp-paye" ${p.paye_enabled ? 'checked' : ''}> PAYE</label>
+                                            <label class="okw-chk-block"><input type="checkbox" class="pp-ssnit" ${p.ssnit_enabled ? 'checked' : ''}> SSNIT 5.5%</label>
+                                            <label class="okw-chk-block"><input type="checkbox" class="pp-paye" ${p.paye_enabled ? 'checked' : ''}> PAYE</label>
                                         </td>
-                                        <td><input type="text" class="okw-input pp-momo" placeholder="Bank or MoMo #" value="${esc(p.momo_number || p.account_number || '')}" style="width:130px;"></td>
-                                        <td style="text-align:right;"><strong>${fmt(p.preview?.net_pay || 0)}</strong><div style="font-size:11px;color:var(--muted);">PAYE: ${fmt(p.preview?.paye_tax || 0)}</div></td>
+                                        <td><input type="text" class="okw-input pp-momo okw-w-130" placeholder="Bank or MoMo #" value="${esc(p.momo_number || p.account_number || '')}"></td>
+                                        <td class="okw-num"><strong>${fmt(p.preview?.net_pay || 0)}</strong><div class="okw-sub-xs">PAYE: ${fmt(p.preview?.paye_tax || 0)}</div></td>
                                         <td><button type="button" class="okw-btn okw-btn-outline pp-save">Save</button></td>
                                     </tr>`).join('')}
                             </tbody>
@@ -118,20 +111,20 @@
                 const rHost = panel.querySelector('#pay-runs');
                 if (!runs.length) { rHost.innerHTML = '<div class="okw-empty">No payroll runs posted yet.</div>'; return; }
                 rHost.innerHTML = `
-                    <h3 style="margin:0 0 10px;font-size:15px;">Payroll Runs &amp; Payslips</h3>
-                    <div style="overflow-x:auto;">
-                        <table class="okw-table" style="width:100%;">
-                            <thead><tr><th>Run #</th><th>Period</th><th>Pay Date</th><th style="text-align:right;">Gross</th><th style="text-align:right;">SSNIT (Emp)</th><th style="text-align:right;">PAYE</th><th style="text-align:right;">Net Pay</th><th>Payslips</th></tr></thead>
+                    <h3 class="okw-h3-sm">Payroll Runs &amp; Payslips</h3>
+                    <div class="okw-scroll-x">
+                        <table class="okw-table okw-w-full">
+                            <thead><tr><th>Run #</th><th>Period</th><th>Pay Date</th><th class="okw-num">Gross</th><th class="okw-num">SSNIT (Emp)</th><th class="okw-num">PAYE</th><th class="okw-num">Net Pay</th><th>Payslips</th></tr></thead>
                             <tbody>
                                 ${runs.map(r => `
                                     <tr>
                                         <td><strong>${esc(r.run_number)}</strong></td>
                                         <td>${esc(r.pay_period)}</td>
                                         <td>${esc(String(r.pay_date).slice(0, 10))}</td>
-                                        <td style="text-align:right;">${fmt(r.total_gross)}</td>
-                                        <td style="text-align:right;">${fmt(r.total_ssnit_emp)}</td>
-                                        <td style="text-align:right;">${fmt(r.total_paye)}</td>
-                                        <td style="text-align:right;"><strong>${fmt(r.total_net)}</strong></td>
+                                        <td class="okw-num">${fmt(r.total_gross)}</td>
+                                        <td class="okw-num">${fmt(r.total_ssnit_emp)}</td>
+                                        <td class="okw-num">${fmt(r.total_paye)}</td>
+                                        <td class="okw-num"><strong>${fmt(r.total_net)}</strong></td>
                                         <td><button type="button" class="okw-btn okw-btn-outline pr-view" data-id="${r.id}">View / Print</button></td>
                                     </tr>`).join('')}
                             </tbody>
@@ -143,11 +136,10 @@
                         const { run, items } = await api('/api/payroll/runs/' + btn.dataset.id);
                         const w = window.open('', '_blank', 'width=860,height=720');
                         if (!w) { OkwUI.toast('Allow popups to print payslips', 'warning'); return; }
-                        w.document.write(`<!doctype html><html><head><title>Payslips ${esc(run.pay_period)}</title><style>body{font-family:Inter,system-ui,sans-serif;padding:24px;color:#0f172a} .slip{border:1px solid #cbd5e1;border-radius:10px;padding:18px;margin-bottom:20px;page-break-inside:avoid} table{width:100%;border-collapse:collapse;margin-top:8px} td,th{padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:left;font-size:13px} .num{text-align:right}</style></head><body><button id="okw-print-btn" style="margin-bottom:16px;padding:8px 16px;">Print Payslips</button>${items.map(it => `<div class="slip"><h3 style="margin:0 0 4px;">OKWESIWA LTD — Payslip (${esc(run.pay_period)})</h3><div style="font-size:13px;color:#475569;">Employee: <strong>${esc(it.staff_name)}</strong> (${esc(it.staff_role)}) · Pay Date: ${esc(String(run.pay_date).slice(0, 10))} · Method: ${esc(it.payment_method)}</div><table><tr><th>Earnings / Deductions</th><th class="num">Amount</th></tr><tr><td>Basic Salary</td><td class="num">${fmt(it.base_salary)}</td></tr><tr><td>Allowances</td><td class="num">${fmt(it.allowances)}</td></tr><tr><td><strong>Gross Pay</strong></td><td class="num"><strong>${fmt(it.gross_pay)}</strong></td></tr><tr><td>Employee SSNIT (5.5%)</td><td class="num">-${fmt(it.ssnit_employee)}</td></tr><tr><td>PAYE Income Tax</td><td class="num">-${fmt(it.paye_tax)}</td></tr><tr><td><strong>Net Pay</strong></td><td class="num"><strong>${fmt(it.net_pay)}</strong></td></tr></table></div>`).join('')}</body></html>`);
+                        w.document.write(`<!doctype html><html><head><title>Payslips ${esc(run.pay_period)}</title><style>body{font-family:Inter,system-ui,sans-serif;padding:24px;color:#0f172a} .slip{border:1px solid #cbd5e1;border-radius:10px;padding:18px;margin-bottom:20px;page-break-inside:avoid} table{width:100%;border-collapse:collapse;margin-top:8px} td,th{padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:left;font-size:13px} .num{text-align:right}</style></head><body><button id="print-slips-btn" type="button" style="margin-bottom:16px;padding:8px 16px;">Print Payslips</button>${items.map(it => `<div class="slip"><h3 style="margin:0 0 4px;">OKWESIWA LTD — Payslip (${esc(run.pay_period)})</h3><div style="font-size:13px;color:#475569;">Employee: <strong>${esc(it.staff_name)}</strong> (${esc(it.staff_role)}) · Pay Date: ${esc(String(run.pay_date).slice(0, 10))} · Method: ${esc(it.payment_method)}</div><table><tr><th>Earnings / Deductions</th><th class="num">Amount</th></tr><tr><td>Basic Salary</td><td class="num">${fmt(it.base_salary)}</td></tr><tr><td>Allowances</td><td class="num">${fmt(it.allowances)}</td></tr><tr><td><strong>Gross Pay</strong></td><td class="num"><strong>${fmt(it.gross_pay)}</strong></td></tr><tr><td>Employee SSNIT (5.5%)</td><td class="num">-${fmt(it.ssnit_employee)}</td></tr><tr><td>PAYE Income Tax</td><td class="num">-${fmt(it.paye_tax)}</td></tr><tr><td><strong>Net Pay</strong></td><td class="num"><strong>${fmt(it.net_pay)}</strong></td></tr></table></div>`).join('')}</body></html>`);
                         w.document.close();
-                        // the print window has no page scripts of its own: wire the button from here
-                        const printBtn = w.document.getElementById('okw-print-btn');
-                        if (printBtn) printBtn.addEventListener('click', () => w.print());
+                        const pb = w.document.getElementById('print-slips-btn');
+                        if (pb) pb.addEventListener('click', () => w.print());
                     };
                 });
             } catch (e) { panel.querySelector('#pay-profiles').innerHTML = `<div class="okw-empty">${esc(e.message)}</div>`; }
