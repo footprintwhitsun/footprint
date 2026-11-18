@@ -94,9 +94,23 @@ app.get('/manifest.json', (req, res) => {
 // Shared PostgreSQL pool & RLS context live in ./db/pool (imported above).
 
 // Audit Logging Helper
+// Read-only VIEW_* events are recorded at most once per user+action per minute: the audit trail still shows
+// who looked at what, without an extra database write on the critical path of every page load.
+const recentViewLogs = new Map();
+const VIEW_LOG_INTERVAL_MS = 60 * 1000;
 async function logActivity(req, action, details = {}) {
     try {
         const userId = req.user?.id || req.session?.user?.id || null;
+        if (typeof action === 'string' && action.startsWith('VIEW_')) {
+            const key = userId + '|' + action;
+            const now = Date.now();
+            const last = recentViewLogs.get(key);
+            if (last && now - last < VIEW_LOG_INTERVAL_MS) return;
+            recentViewLogs.set(key, now);
+            if (recentViewLogs.size > 5000) {
+                for (const [k, t] of recentViewLogs) if (now - t > VIEW_LOG_INTERVAL_MS) recentViewLogs.delete(k);
+            }
+        }
         const ip = req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress || '0.0.0.0';
         await pool.query(
             'INSERT INTO activity_logs (user_id, action, details, ip_address) VALUES ($1, $2, $3, $4)',
