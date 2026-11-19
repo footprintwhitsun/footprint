@@ -1,6 +1,7 @@
 {
   "version": 2,
   "framework": null,
+  "regions": ["lhr1"],
   "functions": {
     "api/index.js": {
       "includeFiles": "{*.html,*.css,*.png,*.ico,*.svg,*.js,vendor/**,migrations/**,db/**,middleware/**,routes/**,services/**}",
@@ -8,6 +9,26 @@
       "excludeFiles": "{seed.js,create_company_user.js,create_new_users.js,init_db_and_users.js,initialize_complete_database.js,setup_hardware_db.js,setup_momo.js,hash-passwords.js,clean_mock_data.js,emulator.js,test/**,scripts/**,*.md,*.txt,*.sql,.env*}"
     }
   },
+  "headers": [
+    {
+      "source": "/vendor/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/(.*\\.(?:css|js))",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=300, s-maxage=600, stale-while-revalidate=86400" }
+      ]
+    },
+    {
+      "source": "/(.*\\.(?:svg|png|ico|woff2))",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=86400, s-maxage=86400, immutable" }
+      ]
+    }
+  ],
   "crons": [
     {
       "path": "/api/cron/nightly-backup",

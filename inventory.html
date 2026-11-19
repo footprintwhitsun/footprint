@@ -2160,9 +2160,9 @@
                 if (cb) cb.checked = true;
             }
 
-            // Load background lookups
+            // Load background lookups (only categories needed on Stock; suppliers/POs/transfers load via ensureTabData)
             loadCategories();
-            loadSuppliers();
+            if (tab === 'suppliers' || tab === 'orders' || tab === 'receiving') loadSuppliers();
             // loadPOs() / loadTransfers() now run from switchTab -> ensureTabData for the tabs that need them
 
             // Single unified activation point for the initial tab
