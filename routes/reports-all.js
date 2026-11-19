@@ -513,7 +513,8 @@ router.get('/api/reports/today-profit', authenticateToken, async (req, res) => {
 });
 
 router.get('/api/notifications/feed', authenticateToken, async (req, res) => {
-    if (!MANAGER_ROLES.includes((req.user.role || '').toLowerCase())) {
+    const normRole = (req.user.role || '').toLowerCase().replace(/[\s-]+/g, '_');
+    if (!MANAGER_ROLES.includes(normRole)) {
         return res.status(403).json({ message: 'Manager or CEO access required' });
     }
     try {

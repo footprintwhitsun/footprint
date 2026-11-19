@@ -458,36 +458,48 @@
         const badge = topbar.querySelector('#okw-notif-badge');
         if (!btn || !dd || !body) return;
 
-        let loadedOnce = false;
-        const user = getCurrentUser();
-        const role = (user && user.role ? user.role : '').toLowerCase().replace(/[\s-]+/g, '_');
-        const canReadFeed = ['super_admin', 'ceo', 'admin', 'manager', 'store_manager'].includes(role);
+        const NON_MANAGER_ROLES = ['cashier', 'teller', 'storekeeper', 'driver', 'company', 'business_client'];
+        const SEEN_KEY = 'okw_notif_seen_ts';
+        let latestTs = 0;
+
+        function updateBadge(list) {
+            if (!badge) return;
+            const seenTs = Number(localStorage.getItem(SEEN_KEY) || 0);
+            const unread = seenTs > 0
+                ? list.filter(it => Number(it.ts || 0) > seenTs).length
+                : list.length;
+            badge.textContent = unread > 99 ? '99+' : String(unread);
+            badge.style.display = unread > 0 ? 'inline-block' : 'none';
+        }
+
         async function loadFeed() {
-            if (!canReadFeed) {
+            const user = getCurrentUser();
+            const role = (user && user.role ? user.role : '').toLowerCase().replace(/[\s-]+/g, '_');
+            if (role && NON_MANAGER_ROLES.includes(role)) {
+                if (badge) badge.style.display = 'none';
                 body.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--muted);">No recent alerts.</div>';
                 return;
             }
             const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
-            if (!token) return;
+            const headers = token ? { Authorization: `Bearer ${token}` } : {};
             try {
-                const res = await fetch('/api/notifications/feed', { headers: { Authorization: `Bearer ${token}` }, credentials: 'include' });
+                const res = await fetch('/api/notifications/feed', { headers, credentials: 'include' });
                 if (!res.ok) {
+                    if (badge) badge.style.display = 'none';
                     body.innerHTML = '<div style="padding:14px;font-size:12px;color:var(--muted);">No notifications available.</div>';
                     return;
                 }
                 const data = await res.json();
                 const list = data.items || [];
-                if (badge) {
-                    badge.textContent = list.length > 99 ? '99+' : String(list.length);
-                    badge.style.display = list.length ? 'inline-block' : 'none';
-                }
+                latestTs = list.reduce((m, it) => Math.max(m, Number(it.ts || 0)), 0);
+                updateBadge(list);
                 if (!list.length) {
                     body.innerHTML = '<div style="padding:16px;text-align:center;font-size:12px;color:var(--muted);">No recent alerts.</div>';
                     return;
                 }
                 const toneColor = (t) => t === 'danger' ? '#dc2626' : (t === 'warning' ? '#d97706' : (t === 'success' ? '#16a34a' : '#2563eb'));
                 body.innerHTML = list.map(it => `
-                    <a href="${it.link || '/activity-log'}" style="display:block;padding:10px 14px;border-bottom:1px solid var(--edge,#e2e8f0);text-decoration:none;color:inherit;">
+                    <a href="${it.link || '/settings?tab=activity'}" style="display:block;padding:10px 14px;border-bottom:1px solid var(--edge,#e2e8f0);text-decoration:none;color:inherit;">
                         <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:2px;">
                             <span style="font-size:10px;font-weight:700;text-transform:uppercase;color:${toneColor(it.tone)};">${it.category || 'Alert'}</span>
                             <span style="font-size:10px;color:var(--muted,#64748b);">${it.time || ''}</span>
@@ -501,13 +513,21 @@
             }
         }
 
-        // the alerts feed is not needed to paint the page; fetch it once the page has settled
-        setTimeout(loadFeed, 2500);
+        setTimeout(loadFeed, 400);
+        setInterval(() => { if (!document.hidden) loadFeed(); }, 60000);
         btn.addEventListener('click', (e) => {
             e.stopPropagation();
+            const userDd = topbar.querySelector('#okw-user-dropdown');
+            if (userDd) userDd.classList.remove('open');
             const open = dd.style.display === 'flex';
             dd.style.display = open ? 'none' : 'flex';
-            if (!open && !loadedOnce) { loadedOnce = true; loadFeed(); }
+            if (!open) {
+                loadFeed();
+                if (latestTs > 0) {
+                    try { localStorage.setItem(SEEN_KEY, String(latestTs)); } catch (_) { }
+                    if (badge) badge.style.display = 'none';
+                }
+            }
         });
         dd.addEventListener('click', (e) => e.stopPropagation());
         document.addEventListener('click', () => { dd.style.display = 'none'; });
