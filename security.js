@@ -76,7 +76,9 @@ const buildStrictPolicy = (hashes) => [
     `script-src 'self'${hashes && hashes.length ? ' ' + hashes.map((h) => `'${h}'`).join(' ') : ''}`,
     "script-src-attr 'none'",
     ...commonPolicyParts,
-    ...(isProduction ? ['upgrade-insecure-requests'] : []),
+    // upgrade-insecure-requests is ignored (and logs a console warning) in a report-only policy,
+    // so it is only added once the strict policy is enforced. The enforced helmet policy already carries it.
+    ...(isProduction && String(process.env.CSP_ENFORCE_STRICT || '').toLowerCase() === 'true' ? ['upgrade-insecure-requests'] : []),
     'report-uri /api/csp-report'
 ].join('; ');
 
