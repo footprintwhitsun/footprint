@@ -432,6 +432,20 @@
         renderCustomerChip();
     }
 
+    async function searchProductsOffline(term) {
+        const q = term.toLowerCase();
+        let source = Array.isArray(window.products) && window.products.length ? window.products : [];
+        if (!source.length && typeof OfflineQueue !== 'undefined' && OfflineQueue && typeof OfflineQueue.getAllCachedProducts === 'function') {
+            source = await OfflineQueue.getAllCachedProducts();
+        }
+        return source.filter(p =>
+            String(p.name || '').toLowerCase().includes(q) ||
+            String(p.barcode || '').toLowerCase().includes(q) ||
+            String(p.brand || '').toLowerCase().includes(q) ||
+            String(p.category || '').toLowerCase().includes(q)
+        ).slice(0, 25);
+    }
+
     async function searchProducts(q) {
         const box = document.getElementById('okw-search-results');
         if (!box) return;
@@ -440,11 +454,17 @@
             collapseSearchResults();
             return;
         }
+        let list = [];
         try {
-            const res = await fetch(`/api/pos/search?q=${encodeURIComponent(term)}`, { headers: authHeaders() });
-            if (!res.ok) return;
+            if (!navigator.onLine) throw new Error('offline');
+            const res = await fetch(`/api/pos/search?q=${encodeURIComponent(term)}`, { headers: authHeaders(), credentials: 'include' });
+            if (!res.ok) throw new Error('search failed');
             const data = await res.json();
-            const list = data.products || [];
+            list = data.products || [];
+        } catch (e) {
+            list = await searchProductsOffline(term);
+        }
+        try {
             box.style.display = 'block';
             if (!list.length) {
                 box.innerHTML = `
@@ -847,14 +867,8 @@
                     btn.textContent = origText;
                 }
             } catch (err) {
-                if (!navigator.onLine) {
-                    queueOffline();
-                    return;
-                }
-                OkwUI.toast('Network error completing sale', 'danger');
-                submitting = false;
-                btn.disabled = false;
-                btn.textContent = origText;
+                queueOffline();
+                return;
             }
         };
 

@@ -172,6 +172,7 @@
                 try {
                     const res = await fetch(record.url || '/api/transactions', {
                         method: record.method || 'POST',
+                        credentials: 'include',
                         headers: {
                             'Content-Type': 'application/json',
                             'Authorization': `Bearer ${token}`,
@@ -276,6 +277,21 @@
         }
     }
 
+    async function getAllCachedProducts() {
+        try {
+            const db = await openDb();
+            return new Promise((resolve) => {
+                const tx = db.transaction(CATALOG_STORE, 'readonly');
+                const store = tx.objectStore(CATALOG_STORE);
+                const req = store.getAll();
+                req.onsuccess = () => resolve(Array.isArray(req.result) ? req.result : []);
+                req.onerror = () => resolve([]);
+            });
+        } catch (e) {
+            return [];
+        }
+    }
+
     // Auto-sync on connection recovery
     window.addEventListener('online', () => {
         setTimeout(() => syncOfflineQueue(), 1200);
@@ -299,6 +315,7 @@
         syncOfflineQueue,
         cacheProducts,
         getCachedProduct,
+        getAllCachedProducts,
         generateUUID
     };
 
