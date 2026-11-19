@@ -131,6 +131,7 @@
                     <tr>
                         <th>Product</th>
                         <th>Category</th>
+                        <th>Location</th>
                         <th>Current Stock</th>
                         <th>Units Owed</th>
                         <th>Cost Price</th>
@@ -196,6 +197,7 @@
                         <div style="font-size: 11px; color: #888;">${OkwUI.escapeHtml(item.barcode)}</div>
                     </td>
                     <td>${OkwUI.escapeHtml(item.category || 'General')}</td>
+                    <td>${OkwUI.escapeHtml(item.location || '-')}</td>
                     <td><span class="badge badge-danger">${item.stock}</span></td>
                     <td class="units-owed">${item.units_owed}</td>
                     <td>₵${parseFloat(item.cost_price || 0).toFixed(2)}</td>

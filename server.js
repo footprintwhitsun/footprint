@@ -4716,33 +4716,44 @@ app.get('/api/inventory/negative-analysis', authenticateToken, async (req, res) 
 
         // Fetch all products to safely parse JSON levels in Node.js
         const result = await pool.query(
-            `SELECT id, barcode, name, stock, stock_levels, reorder_level, category FROM products WHERE deleted_at IS NULL AND tenant_id = $1`,
+            `SELECT id, barcode, name, stock, stock_levels, reorder_level, category, cost_price FROM products WHERE deleted_at IS NULL AND tenant_id = $1`,
             [req.user.tenant_id]
         );
 
         let items = [];
+        const pushItem = (row, qty, location) => {
+            const cost = Number(row.cost_price || 0);
+            items.push({
+                id: row.id,
+                name: row.name,
+                barcode: row.barcode,
+                category: row.category,
+                location,
+                stock: qty,
+                units_owed: Math.abs(qty),
+                cost_price: cost,
+                debt_value: Number((Math.abs(qty) * cost).toFixed(2))
+            });
+        };
 
         result.rows.forEach(row => {
             const levels = typeof row.stock_levels === 'string' ? JSON.parse(row.stock_levels) : (row.stock_levels || {});
-            let checkStock = 0;
+            const keys = Object.keys(levels);
 
             if (isCompany || !isAdmin) {
+                // Branch staff: only their own branch
                 const candidates = [userBranch, branchStockKey, branchRes.rows[0]?.location].filter(Boolean);
-                checkStock = resolveBranchStockFromLevels(levels, candidates);
-            } else {
-                checkStock = toQty(row.stock); // Admins check global stock
-            }
-
-            if (checkStock < 0) {
-                items.push({
-                    id: row.id,
-                    name: row.name,
-                    barcode: row.barcode,
-                    category: row.category,
-                    stock: checkStock,
-                    units_owed: Math.abs(checkStock),
-                    debt_value: Math.abs(checkStock) * 10 // Estimated value
+                const q = resolveBranchStockFromLevels(levels, candidates);
+                if (q < 0) pushItem(row, q, branchStockKey);
+            } else if (keys.length) {
+                // Admin/CEO: every location that has gone below zero, even when the all-location total is positive
+                keys.forEach(k => {
+                    const q = toQty(levels[k]);
+                    if (q < 0) pushItem(row, q, k);
                 });
+            } else {
+                const q = toQty(row.stock);
+                if (q < 0) pushItem(row, q, 'All locations');
             }
         });
 
