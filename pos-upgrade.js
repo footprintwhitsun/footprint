@@ -1,5 +1,5 @@
 /* ==========================================================================
-   OKWESIWA LTD POS — Phase 2 Till Upgrade (pos-upgrade.js)
+   OKWESIWA CO LTD POS — Phase 2 Till Upgrade (pos-upgrade.js)
    Clean uncrowded POS workspace:
    - True isolated multi-tab sale sheets (Sale 1..5 + "+ Tab")
    - Collapsible product search dropdown (collapsed until user types; no Camera button)
@@ -1236,7 +1236,7 @@
             rows: discRows,
             searchPlaceholder: 'Search receipt, customer, staff, or promo…',
             exportFilename: 'okwesiwa-pos-discounts.xlsx',
-            printTitle: 'OKWESIWA LTD — Discounted Transactions',
+            printTitle: 'OKWESIWA CO LTD — Discounted Transactions',
             emptyText: 'No discounted sales recorded yet.'
         });
 
@@ -1261,7 +1261,7 @@
             rows: appRows,
             searchPlaceholder: 'Search approver or reason…',
             exportFilename: 'okwesiwa-manager-approvals.xlsx',
-            printTitle: 'OKWESIWA LTD — Manager PIN Approval Log',
+            printTitle: 'OKWESIWA CO LTD — Manager PIN Approval Log',
             emptyText: 'No manager PIN overrides logged yet.'
         });
     }

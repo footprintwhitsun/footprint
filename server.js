@@ -192,7 +192,7 @@ function resolveBranchStockFromLevels(levels, candidates) {
         let key = keys.find(k => k === candTrim);
         // 2. Case-insensitive exact match
         if (!key) key = keys.find(k => k.trim().toLowerCase() === candLower);
-        // 3. Substring/fuzzy fallback (e.g. 'OKWESIWA LTD Ent Dzorwulu' <-> 'Dzorwulu')
+        // 3. Substring/fuzzy fallback (e.g. 'OKWESIWA CO LTD Ent Dzorwulu' <-> 'Dzorwulu')
         if (!key) key = keys.find(k => {
             const kl = k.trim().toLowerCase();
             return kl.includes(candLower) || candLower.includes(kl);
@@ -1363,7 +1363,7 @@ app.use((req, res, next) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Configuration Required - OKWESIWA LTD</title>
+    <title>Configuration Required - OKWESIWA CO LTD</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #f3f4f6; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 24px; box-sizing: border-box; }
         .card { background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 36px; max-width: 600px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }
@@ -1384,7 +1384,7 @@ app.use((req, res, next) => {
     <div class="card">
         <div class="badge">Vercel Deployment Notice</div>
         <h1>Environment Variables Required</h1>
-        <p>Your OKWESIWA LTD serverless function is running, but the following required environment variable(s) have not been added to your Vercel Project Settings:</p>
+        <p>Your OKWESIWA CO LTD serverless function is running, but the following required environment variable(s) have not been added to your Vercel Project Settings:</p>
         <div class="missing-box">
             <strong style="color: #ef4444; font-size: 13px;">MISSING IN VERCEL SETTINGS:</strong>
             <ul>${missingList}</ul>
@@ -1652,16 +1652,16 @@ app.post('/forgot-password', authLimiter, async (req, res) => {
 
         // Email content
         const mailOptions = {
-            from: `"OKWESIWA LTD" <${process.env.ADMIN_EMAIL}>`,
+            from: `"OKWESIWA CO LTD" <${process.env.ADMIN_EMAIL}>`,
             to: user.email,
             subject: 'Your Password Reset Request',
             html: `
                 <p>Hello ${user.name},</p>
-                <p>You requested a password reset for your OKWESIWA LTD account.</p>
+                <p>You requested a password reset for your OKWESIWA CO LTD account.</p>
                 <p>Please click the following link to reset your password. This link is valid for 1 hour:</p>
                 <a href="${resetLink}" style="background-color: #1a2a6c; color: white; padding: 10px 15px; text-decoration: none; border-radius: 5px;">Reset Password</a>
                 <p>If you did not request a password reset, please ignore this email.</p>
-                <p>Thank you,<br>The OKWESIWA LTD Team</p>
+                <p>Thank you,<br>The OKWESIWA CO LTD Team</p>
             `
         };
 
@@ -5612,7 +5612,7 @@ app.post('/api/ceo/target', authenticateToken, async (req, res) => {
     try {
         await pool.query(`
             INSERT INTO system_settings (id, branch_id, store_name, currency_symbol, vat_rate, receipt_footer, monthly_target)
-            VALUES (1, 1, 'OKWESIWA LTD', '₵ (GHS)', 0.00, 'Thank you!', $1)
+            VALUES (1, 1, 'OKWESIWA CO LTD', '₵ (GHS)', 0.00, 'Thank you!', $1)
             ON CONFLICT (id) DO UPDATE SET monthly_target = $1
         `, [target]);
         await logActivity(req, 'UPDATE_REVENUE_TARGET', { target });
@@ -7468,7 +7468,7 @@ app.post('/api/settings/auth-code', authenticateToken, requireRole(MANAGER_ROLES
         } else {
             await pool.query(`
                 INSERT INTO system_settings (branch_id, tenant_id, credit_auth_code, credit_auth_code_expiry, store_name, currency_symbol, vat_rate)
-                VALUES ($1, $2, $3, $4, 'OKWESIWA LTD', '₵ (GHS)', 0.00)
+                VALUES ($1, $2, $3, $4, 'OKWESIWA CO LTD', '₵ (GHS)', 0.00)
             `, [branchId, tenantId, code, expiry]);
         }
 
@@ -8124,7 +8124,7 @@ app.post('/api/customers/:id/email-statement', authenticateToken, requireRole(PA
         const emailHtml = `
             <div style="font-family: 'Arial', sans-serif; line-height: 1.6; color: #333; max-width: 600px;">
                 <div style="background: linear-gradient(135deg, #1a2a6c, #b21f1f); padding: 30px; border-radius: 8px 8px 0 0; color: white; text-align: center;">
-                    <h1 style="margin: 0; font-size: 28px;">OKWESIWA LTD</h1>
+                    <h1 style="margin: 0; font-size: 28px;">OKWESIWA CO LTD</h1>
                     <p style="margin: 10px 0 0 0; font-size: 14px; opacity: 0.9;">Account Statement</p>
                 </div>
                 
@@ -8162,14 +8162,14 @@ app.post('/api/customers/:id/email-statement', authenticateToken, requireRole(PA
                     
                     <p style="font-size: 12px; color: #999; margin-top: 30px; border-top: 1px solid #eee; padding-top: 20px;">
                         This is an automated message. Please do not reply to this email.<br>
-                        © 2026 OKWESIWA LTD. All rights reserved.
+                        © 2026 OKWESIWA CO LTD. All rights reserved.
                     </p>
                 </div>
             </div>
         `;
 
         const mailOptions = {
-            from: `"OKWESIWA LTD Accounts" <${process.env.ADMIN_EMAIL}>`,
+            from: `"OKWESIWA CO LTD Accounts" <${process.env.ADMIN_EMAIL}>`,
             to: customer.email,
             subject: `Account Statement - ${monthName} ${year}`,
             html: emailHtml,

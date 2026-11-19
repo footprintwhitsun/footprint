@@ -107,7 +107,7 @@ function buildBackupDocx(row) {
     const suppliers = Array.isArray(payload.suppliers) ? payload.suppliers : [];
 
     const bodyXml = [
-        p('OKWESIWA LTD — System Backup Snapshot', true, 32),
+        p('OKWESIWA CO LTD — System Backup Snapshot', true, 32),
         p(`File: ${row.filename}   |   Generated: ${payload.generated_at || new Date().toISOString()}`, false, 20),
         p(`Summary: ${products.length} Products · ${customers.length} Customers · ${sales.length} Sales · ${suppliers.length} Suppliers`, true, 22),
         p(''),
@@ -181,7 +181,7 @@ async function createBackupSnapshot({ tenantId = 1, backupType = 'manual', creat
 
     const payload = {
         meta: {
-            brand: 'OKWESIWA LTD',
+            brand: 'OKWESIWA CO LTD',
             created_at: new Date().toISOString(),
             backup_type: backupType,
             tenant_id: tenantId
@@ -375,7 +375,7 @@ router.get('/api/backups/export-pdf', authenticateToken, async (req, res) => {
         const doc = new PDFDocument({ margin: 40, size: 'A4' });
         doc.pipe(res);
 
-        doc.fontSize(18).fillColor('#273990').text('OKWESIWA LTD — Full Data Export', { align: 'left' });
+        doc.fontSize(18).fillColor('#273990').text('OKWESIWA CO LTD — Full Data Export', { align: 'left' });
         doc.fontSize(10).fillColor('#475569').text(`Generated: ${new Date().toLocaleString()}   |   Products: ${products.length}   |   Customers: ${customers.length}   |   Sales: ${sales.length}   |   Suppliers: ${suppliers.length}`);
         doc.moveDown(1);
 
@@ -424,9 +424,9 @@ async function sendBackupOffsite(backupId) {
         auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
     });
     await transporter.sendMail({
-        from: `"OKWESIWA LTD" <${process.env.ADMIN_EMAIL}>`,
+        from: `"OKWESIWA CO LTD" <${process.env.ADMIN_EMAIL}>`,
         to,
-        subject: `OKWESIWA LTD nightly backup — ${row.filename}`,
+        subject: `OKWESIWA CO LTD nightly backup — ${row.filename}`,
         text: 'Attached is the gzipped nightly database backup. Keep this email as an off-site copy.',
         attachments: [{ filename: `${row.filename}.gz`, content: zlib.gzipSync(JSON.stringify(row.payload)) }]
     });

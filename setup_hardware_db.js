@@ -53,7 +53,7 @@ async function setupDatabase() {
             CREATE TABLE IF NOT EXISTS system_settings (
                 id INT PRIMARY KEY,
                 branch_id INT UNIQUE DEFAULT 1,
-                store_name VARCHAR(255) DEFAULT 'OKWESIWA LTD',
+                store_name VARCHAR(255) DEFAULT 'OKWESIWA CO LTD',
                 currency_symbol VARCHAR(50) DEFAULT 'GH₵',
                 vat_rate DECIMAL(5,2) DEFAULT 0.00,
                 receipt_footer TEXT DEFAULT 'Thank you for your business!',
@@ -72,7 +72,7 @@ async function setupDatabase() {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             INSERT INTO system_settings (id, branch_id, store_name, currency_symbol, vat_rate, monthly_target)
-            VALUES (1, 1, 'OKWESIWA LTD', 'GH₵', 0.00, 50000.00)
+            VALUES (1, 1, 'OKWESIWA CO LTD', 'GH₵', 0.00, 50000.00)
             ON CONFLICT (id) DO NOTHING;
 
             -- Users Table
@@ -657,21 +657,21 @@ async function setupDatabase() {
 
         const defaultUsers = [
             {
-                name: 'OKWESIWA LTD Admin',
+                name: 'OKWESIWA CO LTD Admin',
                 email: 'admin@footprintpos.com',
                 password: requirePass('DEFAULT_ADMIN_PASS'),
                 role: 'admin',
                 location: 'Amasaman'
             },
             {
-                name: 'OKWESIWA LTD Cashier',
+                name: 'OKWESIWA CO LTD Cashier',
                 email: 'cashier@footprintpos.com',
                 password: requirePass('DEFAULT_CASHIER_PASS'),
                 role: 'cashier',
                 location: 'Amasaman'
             },
             {
-                name: 'OKWESIWA LTD Manager',
+                name: 'OKWESIWA CO LTD Manager',
                 email: 'manager@footprintpos.com',
                 password: requirePass('DEFAULT_MANAGER_PASS'),
                 role: 'manager',
@@ -692,7 +692,7 @@ async function setupDatabase() {
                 location: 'Amasaman'
             },
             {
-                name: 'OKWESIWA LTD Admin',
+                name: 'OKWESIWA CO LTD Admin',
                 email: 'admin@okwesiwaltd.com',
                 password: requirePass('DEFAULT_ADMIN_PASS'),
                 role: 'admin',

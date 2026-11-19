@@ -1,7 +1,7 @@
 @import url('/tokens.css');
 
 /* ==========================================================================
-   OKWESIWA LTD - UNIFIED DESIGN SYSTEM (SIDEBAR, TOPBAR & TABLES)
+   OKWESIWA CO LTD - UNIFIED DESIGN SYSTEM (SIDEBAR, TOPBAR & TABLES)
    Uses Steel Navy (#1F3A60) & Brick Orange (#E8772E) from tokens.css
    ========================================================================== */
 
@@ -64,7 +64,7 @@
     -webkit-font-smoothing: antialiased !important;
 }
 
-/* Brand Header Area - OKWESIWA LTD Aesthetic */
+/* Brand Header Area - OKWESIWA CO LTD Aesthetic */
 .sidebar .brand {
     padding: 20px 16px 16px !important;
     border-bottom: 1px solid var(--p-sidebar-border) !important;
@@ -429,7 +429,7 @@ footer a:hover,
 
 /* ==========================================================================
    SHOPIFY POLARIS DATATABLE & INDEXTABLE DESIGN SYSTEM
-   Standardizes all tables across OKWESIWA LTD to match authentic
+   Standardizes all tables across OKWESIWA CO LTD to match authentic
    Shopify admin table aesthetics: crisp border-bottoms, subdued uppercase
    headers, Polaris 13.5px body text, subtle row hover, and pill badges.
    ========================================================================== */
@@ -623,7 +623,7 @@ table .status-processing {
 }
 
 /* ==========================================================================
-   COLLAPSIBLE SIDEBAR & UNIFIED TOP BAR (OKWESIWA LTD)
+   COLLAPSIBLE SIDEBAR & UNIFIED TOP BAR (OKWESIWA CO LTD)
    ========================================================================== */
 .sidebar.collapsed {
     width: var(--sidebar-collapsed-width) !important;

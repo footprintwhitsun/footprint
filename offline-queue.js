@@ -1,6 +1,6 @@
 /**
  * OfflineQueue - IndexedDB Transaction & Catalog Resilience Engine
- * OKWESIWA LTD Enterprise POS
+ * OKWESIWA CO LTD Enterprise POS
  * 
  * Features:
  * - Persistent IndexedDB store for offline checkouts

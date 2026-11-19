@@ -1,7 +1,7 @@
 {
   "name": "okwesiwa-ltd",
   "version": "1.0.0",
-  "description": "OKWESIWA LTD Retail System — Designed by Footprint",
+  "description": "OKWESIWA CO LTD Retail System — Designed by Footprint",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

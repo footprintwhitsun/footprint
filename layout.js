@@ -1,5 +1,5 @@
 /* ==========================================================================
-   OKWESIWA LTD — Unified Shell, Topbar, Ctrl+K Search & Theme Manager
+   OKWESIWA CO LTD — Unified Shell, Topbar, Ctrl+K Search & Theme Manager
    ========================================================================== */
 (function (global) {
     'use strict';
@@ -397,7 +397,7 @@
         const currentFull = currentPath + (window.location.search || '');
         const match = MODULES.find(m => m.url === currentFull) || MODULES.find(m => m.url.split('?')[0] === currentPath);
         if (match) return match.label;
-        const raw = (document.title || 'Manager Portal').replace(/OKWESIWA LTD\s*\|\s*/i, '').replace(/\s*-\s*OKWESIWA LTD/i, '').trim();
+        const raw = (document.title || 'Manager Portal').replace(/OKWESIWA CO LTD\s*\|\s*/i, '').replace(/\s*-\s*OKWESIWA CO LTD/i, '').trim();
         return raw || 'Portal';
     }
 

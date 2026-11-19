@@ -1,5 +1,5 @@
 /* ==========================================================================
-   OKWESIWA LTD POS — Shared UI Components (ui-components.js)
+   OKWESIWA CO LTD POS — Shared UI Components (ui-components.js)
    Number cards, data tables (search/filter/export Excel & PDF/print),
    date-range picker, status badges, forms, toasts & confirmation modals.
    ========================================================================== */
@@ -184,7 +184,7 @@
             try {
                 const raw = JSON.parse(localStorage.getItem('posSettings') || '{}');
                 _companyProfileCache = {
-                    name: raw.store_name || 'OKWESIWA LTD',
+                    name: raw.store_name || 'OKWESIWA CO LTD',
                     address: raw.address || '',
                     phone: raw.phone || '',
                     email: raw.email || '',
@@ -192,7 +192,7 @@
                     logoUrl: raw.logo_url || '/okwesiwa-logo.svg'
                 };
             } catch (_) {
-                _companyProfileCache = { name: 'OKWESIWA LTD', address: '', phone: '', email: '', taxId: '', logoUrl: '/okwesiwa-logo.svg' };
+                _companyProfileCache = { name: 'OKWESIWA CO LTD', address: '', phone: '', email: '', taxId: '', logoUrl: '/okwesiwa-logo.svg' };
             }
         }
         if (!_companyFetchStarted && typeof fetch === 'function') {
@@ -204,7 +204,7 @@
                     .then(s => {
                         if (!s || typeof s !== 'object') return;
                         _companyProfileCache = {
-                            name: s.store_name || _companyProfileCache.name || 'OKWESIWA LTD',
+                            name: s.store_name || _companyProfileCache.name || 'OKWESIWA CO LTD',
                             address: s.address || _companyProfileCache.address || '',
                             phone: s.phone || _companyProfileCache.phone || '',
                             email: s.email || _companyProfileCache.email || '',
@@ -243,7 +243,7 @@
             return v === null || v === undefined ? '' : v;
         }));
         const detailsLine = formatCompanyDetailsLine(profile);
-        const bannerRow1 = [`★  ${String(profile.name || 'OKWESIWA LTD').toUpperCase()}`];
+        const bannerRow1 = [`★  ${String(profile.name || 'OKWESIWA CO LTD').toUpperCase()}`];
         const bannerRow2 = [detailsLine || 'Official Business Report'];
         const bannerRow3 = [`Report: ${title}   |   Generated: ${new Date().toLocaleString()}   |   Total Records: ${rows.length}`];
         const sheetRows = [bannerRow1, bannerRow2, bannerRow3, [], headers, ...data];
@@ -564,7 +564,7 @@
 
         table.dataset.okwToolsAttached = '1';
         const hiddenIdx = new Set();
-        const pageTitle = opts.title || (document.title || 'Report').replace(/OKWESIWA LTD\s*\|\s*/i, '').replace(/\s*-\s*OKWESIWA LTD/i, '').trim() || 'Report';
+        const pageTitle = opts.title || (document.title || 'Report').replace(/OKWESIWA CO LTD\s*\|\s*/i, '').replace(/\s*-\s*OKWESIWA CO LTD/i, '').trim() || 'Report';
         const baseSlug = pageTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'report';
         const filename = opts.filename || `okwesiwa-${baseSlug}.xlsx`;
 

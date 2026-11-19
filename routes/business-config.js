@@ -42,7 +42,7 @@ async function ensureBusinessConfigSchema() {
 }
 
 const DEFAULT_BUSINESS_CONFIG = {
-    business_name: 'OKWESIWA LTD',
+    business_name: 'OKWESIWA CO LTD',
     start_date: '',
     default_profit_percent: 25,
     currency: 'GHS (₵)',
@@ -237,8 +237,8 @@ router.post('/api/notification-templates/test-email', authenticateToken, require
         await transporter.sendMail({
             from: process.env.EMAIL_FROM || user || 'no-reply@okwesiwa.local',
             to: String(to).trim(),
-            subject: String(subject || 'OKWESIWA LTD Notification Preview'),
-            text: String(body || 'Sample notification message from OKWESIWA LTD.')
+            subject: String(subject || 'OKWESIWA CO LTD Notification Preview'),
+            text: String(body || 'Sample notification message from OKWESIWA CO LTD.')
         });
         await logActivity(req, 'NOTIFICATION_TEST_EMAIL_SENT', { to });
         res.json({ success: true, message: `Test email sent to ${to}` });

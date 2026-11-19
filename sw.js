@@ -1,6 +1,6 @@
 /**
  * Service Worker: Offline Cache & Performance Accelerator
- * OKWESIWA LTD Enterprise POS & ERP
+ * OKWESIWA CO LTD Enterprise POS & ERP
  */
 
 const CACHE_NAME = 'okwesiwa-v6';

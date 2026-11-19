@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Reports - OKWESIWA LTD</title>
+    <title>Reports - OKWESIWA CO LTD</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="stylesheet" href="/sidebar.css">
     <script src="/lazy-libs.js"></script>
@@ -25,13 +25,13 @@
 <body>
 <div class="app-shell">
     <aside class="sidebar">
-        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD"></div>
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD"></div>
         <nav class="nav-links"></nav>
     </aside>
 
     <main class="main-content">
         <div class="page-wrap" id="hub"></div>
-        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA LTD</footer>
+        <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA CO LTD</footer>
     </main>
 </div>
 
@@ -368,7 +368,7 @@
                             rows: filtered,
                             searchPlaceholder: "Search receipt, item, or staff...",
                             exportFilename: "okwesiwa-transactions-report.xlsx",
-                            printTitle: "OKWESIWA LTD — Transaction History"
+                            printTitle: "OKWESIWA CO LTD — Transaction History"
                         });
                         return;
                     }
@@ -403,7 +403,7 @@
                             rows: filtered,
                             searchPlaceholder: "Search staff or status...",
                             exportFilename: "okwesiwa-shift-reports.xlsx",
-                            printTitle: "OKWESIWA LTD — Shift Reports"
+                            printTitle: "OKWESIWA CO LTD — Shift Reports"
                         });
                         return;
                     }
@@ -429,7 +429,7 @@
                                 { key: "cost", label: "Cost", numeric: true, render: fmt },
                                 { key: "profit", label: "Profit", numeric: true, render: fmt }
                             ],
-                            rows: d.salesByCategory || [], exportFilename: "okwesiwa-sales-by-category.xlsx", printTitle: "OKWESIWA LTD — Sales by Category"
+                            rows: d.salesByCategory || [], exportFilename: "okwesiwa-sales-by-category.xlsx", printTitle: "OKWESIWA CO LTD — Sales by Category"
                         });
                     } else if (reportType === "daily") {
                         OkwUI.dataTable(host, {
@@ -440,7 +440,7 @@
                                 { key: "profit", label: "Profit", numeric: true, render: fmt },
                                 { key: "avg_sale", label: "Avg Sale", numeric: true, render: fmt }
                             ],
-                            rows: d.dailySummary || [], exportFilename: "okwesiwa-daily-summary.xlsx", printTitle: "OKWESIWA LTD — Daily Summary"
+                            rows: d.dailySummary || [], exportFilename: "okwesiwa-daily-summary.xlsx", printTitle: "OKWESIWA CO LTD — Daily Summary"
                         });
                     } else if (reportType === "teller") {
                         OkwUI.dataTable(host, {
@@ -451,7 +451,7 @@
                                 { key: "discounts", label: "Discounts Given", numeric: true, render: fmt },
                                 { key: "voids", label: "Voids/Returns", numeric: true }
                             ],
-                            rows: d.salesByTeller || [], exportFilename: "okwesiwa-sales-by-teller.xlsx", printTitle: "OKWESIWA LTD — Sales by Teller"
+                            rows: d.salesByTeller || [], exportFilename: "okwesiwa-sales-by-teller.xlsx", printTitle: "OKWESIWA CO LTD — Sales by Teller"
                         });
                     } else if (reportType === "method") {
                         OkwUI.dataTable(host, {
@@ -463,7 +463,7 @@
                                 { key: "bank", label: "Bank/Cheque", numeric: true, render: fmt },
                                 { key: "credit", label: "Credit", numeric: true, render: fmt }
                             ],
-                            rows: d.salesByPaymentMethod || [], exportFilename: "okwesiwa-payment-methods.xlsx", printTitle: "OKWESIWA LTD — Sales by Payment Method"
+                            rows: d.salesByPaymentMethod || [], exportFilename: "okwesiwa-payment-methods.xlsx", printTitle: "OKWESIWA CO LTD — Sales by Payment Method"
                         });
                     } else if (reportType === "hourly") {
                         OkwUI.dataTable(host, {
@@ -472,7 +472,7 @@
                                 { key: "receipts", label: "Receipts", numeric: true },
                                 { key: "sales", label: "Sales", numeric: true, render: fmt }
                             ],
-                            rows: d.hourlySales || [], exportFilename: "okwesiwa-hourly-sales.xlsx", printTitle: "OKWESIWA LTD — Hourly Sales"
+                            rows: d.hourlySales || [], exportFilename: "okwesiwa-hourly-sales.xlsx", printTitle: "OKWESIWA CO LTD — Hourly Sales"
                         });
                     } else if (reportType === "quotes") {
                         OkwUI.dataTable(host, {
@@ -482,7 +482,7 @@
                                 { key: "total_amount", label: "Total", numeric: true, render: fmt },
                                 { key: "status", label: "Status" }
                             ],
-                            rows: (d.quotations && d.quotations.rows) || [], exportFilename: "okwesiwa-quotations.xlsx", printTitle: "OKWESIWA LTD — Quotations"
+                            rows: (d.quotations && d.quotations.rows) || [], exportFilename: "okwesiwa-quotations.xlsx", printTitle: "OKWESIWA CO LTD — Quotations"
                         });
                     } else if (reportType === "fast_movers" || reportType === "trending") {
                         OkwUI.dataTable(host, {
@@ -701,7 +701,7 @@
                                 { key: "stock", label: "Stock on Hand", numeric: true },
                                 { key: "stock_value", label: "Stock Value", numeric: true, render: (v, r) => fmt(v ?? (Math.max(0, Number(r.stock || 0)) * Number(r.cost_price || 0))) }
                             ],
-                            rows: smRows, exportFilename: "okwesiwa-slow-movers.xlsx", printTitle: "OKWESIWA LTD — Slow Movers & Tied Capital"
+                            rows: smRows, exportFilename: "okwesiwa-slow-movers.xlsx", printTitle: "OKWESIWA CO LTD — Slow Movers & Tied Capital"
                         });
                     } else if (reportType === "pnl") {
                         const p = d.profitAndLoss || {};
@@ -736,7 +736,7 @@
                                 { key: "profit", label: "Profit", numeric: true, render: fmt },
                                 { key: "margin_pct", label: "Margin %", numeric: true, render: v => v < 10 ? OkwUI.badge(v + "% Low", "danger") : (v + "%") }
                             ],
-                            rows: d.profitByItem || [], exportFilename: "okwesiwa-profit-by-item.xlsx", printTitle: "OKWESIWA LTD — Profit by Item"
+                            rows: d.profitByItem || [], exportFilename: "okwesiwa-profit-by-item.xlsx", printTitle: "OKWESIWA CO LTD — Profit by Item"
                         });
                     } else if (reportType === "tax") {
                         OkwUI.dataTable(host, {
@@ -745,7 +745,7 @@
                                 { key: "rate", label: "Rate %", numeric: true },
                                 { key: "collected", label: "Collected", numeric: true, render: fmt }
                             ],
-                            rows: d.taxReport || [], exportFilename: "okwesiwa-tax-report.xlsx", printTitle: "OKWESIWA LTD — Tax Report"
+                            rows: d.taxReport || [], exportFilename: "okwesiwa-tax-report.xlsx", printTitle: "OKWESIWA CO LTD — Tax Report"
                         });
                     } else if (reportType === "adj") {
                         OkwUI.dataTable(host, {
@@ -757,7 +757,7 @@
                                 { key: "variance_value", label: "Cost Impact", numeric: true, render: fmt },
                                 { key: "reason", label: "Reason" }
                             ],
-                            rows: d.stockAdjustments || [], exportFilename: "okwesiwa-stock-adjustments.xlsx", printTitle: "OKWESIWA LTD — Stock Adjustments"
+                            rows: d.stockAdjustments || [], exportFilename: "okwesiwa-stock-adjustments.xlsx", printTitle: "OKWESIWA CO LTD — Stock Adjustments"
                         });
                     } else if (reportType === "variance") {
                         const vRows = d.stockVariance || d.stockAdjustments || [];
@@ -777,7 +777,7 @@
                                 { key: "variance_value", label: "Cost Impact", numeric: true, render: fmt },
                                 { key: "reason", label: "Reason" }
                             ],
-                            rows: vRows, exportFilename: "okwesiwa-stock-variance.xlsx", printTitle: "OKWESIWA LTD — Stock Count Variance"
+                            rows: vRows, exportFilename: "okwesiwa-stock-variance.xlsx", printTitle: "OKWESIWA CO LTD — Stock Count Variance"
                         });
                     }
                 } catch (err) {

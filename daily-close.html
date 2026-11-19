@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Daily Close - OKWESIWA LTD</title>
+    <title>Daily Close - OKWESIWA CO LTD</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="stylesheet" href="/sidebar.css">
     <script src="/auth-guard.js"></script>
@@ -38,7 +38,7 @@
 <div class="app-shell">
     <aside class="sidebar">
         <div class="brand">
-            <img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD">
             <span class="sidebar-role-badge">Daily Close</span>
         </div>
         <nav class="nav-links">
@@ -193,8 +193,8 @@
         const res = await fetch(`/api/daily-close?date=${encodeURIComponent(date)}&branch=${encodeURIComponent(branch)}`, { headers });
         if (!res.ok) return OkwUI.toast('Failed to load daily close data', 'danger');
         currentData = await res.json();
-        document.getElementById('inv-sheet-meta').textContent = `OKWESIWA LTD · ${currentData.branch || 'All branches'} · ${currentData.date}`;
-        document.getElementById('sales-sheet-meta').textContent = `OKWESIWA LTD · ${currentData.branch || 'All branches'} · ${currentData.date}`;
+        document.getElementById('inv-sheet-meta').textContent = `OKWESIWA CO LTD · ${currentData.branch || 'All branches'} · ${currentData.date}`;
+        document.getElementById('sales-sheet-meta').textContent = `OKWESIWA CO LTD · ${currentData.branch || 'All branches'} · ${currentData.date}`;
         renderInventorySheet();
         renderSalesSheet();
     }

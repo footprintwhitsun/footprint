@@ -24,7 +24,7 @@ module.exports = (req, res) => {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Server Initialization Error - OKWESIWA LTD</title>
+    <title>Server Initialization Error - OKWESIWA CO LTD</title>
     <style>
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: #0b0f19; color: #f3f4f6; display: flex; align-items: center; justify-content: center; min-height: 100vh; margin: 0; padding: 24px; box-sizing: border-box; }
         .card { background: #111827; border: 1px solid #1f2937; border-radius: 16px; padding: 36px; max-width: 650px; width: 100%; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); }

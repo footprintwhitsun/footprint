@@ -367,11 +367,11 @@ router.post('/api/daily-close/email-ceo', authenticateToken, requireRole(['ceo',
             auth: { user: process.env.SMTP_USER, pass: process.env.SMTP_PASS }
         });
         await transporter.sendMail({
-            from: `"OKWESIWA LTD" <${process.env.ADMIN_EMAIL}>`,
+            from: `"OKWESIWA CO LTD" <${process.env.ADMIN_EMAIL}>`,
             to: recipient,
             subject: `Daily Close Report — ${branch} (${date})`,
             html: `
-                <h2>OKWESIWA LTD — Daily Close (${date})</h2>
+                <h2>OKWESIWA CO LTD — Daily Close (${date})</h2>
                 <p><strong>Branch:</strong> ${branch}</p>
                 <p><strong>Total Sales:</strong> GH₵ ${data.totals.total_sales.toFixed(2)}</p>
                 <p><strong>Total Profit:</strong> GH₵ ${data.totals.total_profit.toFixed(2)}</p>

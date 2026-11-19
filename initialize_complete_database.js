@@ -58,10 +58,10 @@ async function runInitialization() {
             CREATE TABLE IF NOT EXISTS system_settings (
                 id INT PRIMARY KEY,
                 branch_id INT UNIQUE DEFAULT 1,
-                store_name VARCHAR(255) DEFAULT 'OKWESIWA LTD',
+                store_name VARCHAR(255) DEFAULT 'OKWESIWA CO LTD',
                 currency_symbol VARCHAR(50) DEFAULT 'GH₵',
                 vat_rate DECIMAL(5,2) DEFAULT 0.00,
-                receipt_footer TEXT DEFAULT 'Thank you for your business with OKWESIWA LTD!',
+                receipt_footer TEXT DEFAULT 'Thank you for your business with OKWESIWA CO LTD!',
                 tax_id VARCHAR(50),
                 phone VARCHAR(50),
                 bank_name VARCHAR(255),
@@ -77,8 +77,8 @@ async function runInitialization() {
                 updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
             INSERT INTO system_settings (id, branch_id, store_name, currency_symbol, vat_rate, monthly_target)
-            VALUES (1, 1, 'OKWESIWA LTD', 'GH₵', 0.00, 50000.00)
-            ON CONFLICT (id) DO UPDATE SET store_name = 'OKWESIWA LTD';
+            VALUES (1, 1, 'OKWESIWA CO LTD', 'GH₵', 0.00, 50000.00)
+            ON CONFLICT (id) DO UPDATE SET store_name = 'OKWESIWA CO LTD';
 
             -- Users Table
             CREATE TABLE IF NOT EXISTS users (
@@ -673,13 +673,13 @@ async function runInitialization() {
         // 4. COMPANY PORTAL (B2B CLIENT)
         // Ensure Company Record exists
         let companyId = 1;
-        const compRes = await client.query("SELECT id FROM companies WHERE name ILIKE '%OKWESIWA LTD%' LIMIT 1");
+        const compRes = await client.query("SELECT id FROM companies WHERE name ILIKE '%OKWESIWA CO LTD%' LIMIT 1");
         if (compRes.rows.length > 0) {
             companyId = compRes.rows[0].id;
         } else {
             const insComp = await client.query(`
                 INSERT INTO companies (name, email, contact_person, phone, status, credit_limit)
-                VALUES ('OKWESIWA LTD B2B Enterprise', 'company@okwesiwaltd.com', 'Corporate Client Admin', '+233 20 000 0000', 'Active', 50000.00)
+                VALUES ('OKWESIWA CO LTD B2B Enterprise', 'company@okwesiwaltd.com', 'Corporate Client Admin', '+233 20 000 0000', 'Active', 50000.00)
                 RETURNING id;
             `);
             companyId = insComp.rows[0].id;
@@ -688,12 +688,12 @@ async function runInitialization() {
         const companyUserHash = await bcrypt.hash(requirePass('DEFAULT_COMPANY_PASS'), salt);
         await client.query(`
             INSERT INTO company_users (company_id, company_name, contact_person, email, password, role, status)
-            VALUES ($1, 'OKWESIWA LTD B2B Enterprise', 'Corporate Client Admin', 'company@okwesiwaltd.com', $2, 'business_client', 'Active')
+            VALUES ($1, 'OKWESIWA CO LTD B2B Enterprise', 'Corporate Client Admin', 'company@okwesiwaltd.com', $2, 'business_client', 'Active')
             ON CONFLICT (email) DO UPDATE SET
                 company_id = $1,
                 password = $2,
                 role = 'business_client',
-                company_name = 'OKWESIWA LTD B2B Enterprise',
+                company_name = 'OKWESIWA CO LTD B2B Enterprise',
                 contact_person = 'Corporate Client Admin',
                 status = 'Active';
         `, [companyId, companyUserHash]);

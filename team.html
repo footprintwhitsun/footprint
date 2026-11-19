@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Team - OKWESIWA LTD</title>
+    <title>Team - OKWESIWA CO LTD</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="stylesheet" href="/sidebar.css">
     <script src="/auth-guard.js"></script>
@@ -15,13 +15,13 @@
 <body>
 <div class="app-shell">
     <aside class="sidebar">
-        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA LTD"></div>
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD"></div>
         <nav class="nav-links"></nav>
     </aside>
 
     <main class="main-content">
         <div class="page-wrap" id="hub"></div>
-        <footer class="okw-hub-footer">© 2026 OKWESIWA LTD</footer>
+        <footer class="okw-hub-footer">© 2026 OKWESIWA CO LTD</footer>
     </main>
 </div>
 
@@ -136,7 +136,7 @@
                         const { run, items } = await api('/api/payroll/runs/' + btn.dataset.id);
                         const w = window.open('', '_blank', 'width=860,height=720');
                         if (!w) { OkwUI.toast('Allow popups to print payslips', 'warning'); return; }
-                        w.document.write(`<!doctype html><html><head><title>Payslips ${esc(run.pay_period)}</title><style>body{font-family:Inter,system-ui,sans-serif;padding:24px;color:#0f172a} .slip{border:1px solid #cbd5e1;border-radius:10px;padding:18px;margin-bottom:20px;page-break-inside:avoid} table{width:100%;border-collapse:collapse;margin-top:8px} td,th{padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:left;font-size:13px} .num{text-align:right}</style></head><body><button id="print-slips-btn" type="button" style="margin-bottom:16px;padding:8px 16px;">Print Payslips</button>${items.map(it => `<div class="slip"><h3 style="margin:0 0 4px;">OKWESIWA LTD — Payslip (${esc(run.pay_period)})</h3><div style="font-size:13px;color:#475569;">Employee: <strong>${esc(it.staff_name)}</strong> (${esc(it.staff_role)}) · Pay Date: ${esc(String(run.pay_date).slice(0, 10))} · Method: ${esc(it.payment_method)}</div><table><tr><th>Earnings / Deductions</th><th class="num">Amount</th></tr><tr><td>Basic Salary</td><td class="num">${fmt(it.base_salary)}</td></tr><tr><td>Allowances</td><td class="num">${fmt(it.allowances)}</td></tr><tr><td><strong>Gross Pay</strong></td><td class="num"><strong>${fmt(it.gross_pay)}</strong></td></tr><tr><td>Employee SSNIT (5.5%)</td><td class="num">-${fmt(it.ssnit_employee)}</td></tr><tr><td>PAYE Income Tax</td><td class="num">-${fmt(it.paye_tax)}</td></tr><tr><td><strong>Net Pay</strong></td><td class="num"><strong>${fmt(it.net_pay)}</strong></td></tr></table></div>`).join('')}</body></html>`);
+                        w.document.write(`<!doctype html><html><head><title>Payslips ${esc(run.pay_period)}</title><style>body{font-family:Inter,system-ui,sans-serif;padding:24px;color:#0f172a} .slip{border:1px solid #cbd5e1;border-radius:10px;padding:18px;margin-bottom:20px;page-break-inside:avoid} table{width:100%;border-collapse:collapse;margin-top:8px} td,th{padding:6px 8px;border-bottom:1px solid #e2e8f0;text-align:left;font-size:13px} .num{text-align:right}</style></head><body><button id="print-slips-btn" type="button" style="margin-bottom:16px;padding:8px 16px;">Print Payslips</button>${items.map(it => `<div class="slip"><h3 style="margin:0 0 4px;">OKWESIWA CO LTD — Payslip (${esc(run.pay_period)})</h3><div style="font-size:13px;color:#475569;">Employee: <strong>${esc(it.staff_name)}</strong> (${esc(it.staff_role)}) · Pay Date: ${esc(String(run.pay_date).slice(0, 10))} · Method: ${esc(it.payment_method)}</div><table><tr><th>Earnings / Deductions</th><th class="num">Amount</th></tr><tr><td>Basic Salary</td><td class="num">${fmt(it.base_salary)}</td></tr><tr><td>Allowances</td><td class="num">${fmt(it.allowances)}</td></tr><tr><td><strong>Gross Pay</strong></td><td class="num"><strong>${fmt(it.gross_pay)}</strong></td></tr><tr><td>Employee SSNIT (5.5%)</td><td class="num">-${fmt(it.ssnit_employee)}</td></tr><tr><td>PAYE Income Tax</td><td class="num">-${fmt(it.paye_tax)}</td></tr><tr><td><strong>Net Pay</strong></td><td class="num"><strong>${fmt(it.net_pay)}</strong></td></tr></table></div>`).join('')}</body></html>`);
                         w.document.close();
                         const pb = w.document.getElementById('print-slips-btn');
                         if (pb) pb.addEventListener('click', () => w.print());
