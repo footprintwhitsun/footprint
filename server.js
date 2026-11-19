@@ -2154,7 +2154,7 @@ app.post('/api/users', authenticateToken, async (req, res) => {
 
     try {
         const userRole = req.user.role;
-        if (userRole !== 'admin' && userRole !== 'manager' && userRole !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+        if (!['super_admin', 'admin', 'manager', 'store_manager', 'ceo'].includes(userRole)) return res.status(403).json({ message: 'Unauthorized' });
 
         // Managers cannot create CEO or Administrator accounts
         if ((userRole === 'manager' || userRole === 'store_manager') && (role.toLowerCase() === 'ceo' || role.toLowerCase() === 'admin')) {
@@ -2198,7 +2198,7 @@ app.post('/api/users', authenticateToken, async (req, res) => {
 app.put('/api/users/:id', authenticateToken, async (req, res) => {
     const { id } = req.params;
     const userRole = req.user.role;
-    if (userRole !== 'admin' && userRole !== 'manager' && userRole !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
+    if (!['super_admin', 'admin', 'manager', 'store_manager', 'ceo'].includes(userRole)) return res.status(403).json({ message: 'Unauthorized' });
     const { fullName, username, email, phone, role, store, status } = req.body;
 
     const tenantId = userTenantScope(req);
@@ -7076,9 +7076,9 @@ app.get('/api/settings', authenticateToken, async (req, res) => {
 
 
 app.post('/api/settings', authenticateToken, async (req, res) => {
-    // Allow admin, ceo, manager, store_manager, or company users
-    const userRole = (req.user.role || '').toLowerCase();
-    if (userRole !== 'admin' && userRole !== 'ceo' && req.user.type !== 'company' && userRole !== 'manager' && userRole !== 'store_manager') {
+    // Allow super_admin, admin, ceo, manager, store_manager, or company users
+    const userRole = (req.user.role || '').toLowerCase().replace(/[\s-]+/g, '_');
+    if (!['super_admin', 'admin', 'ceo', 'manager', 'store_manager'].includes(userRole) && req.user.type !== 'company') {
         return res.status(403).json({ message: 'Unauthorized. Only authorized users can change settings.' });
     }
 
