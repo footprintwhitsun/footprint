@@ -438,6 +438,9 @@
         if (!source.length && typeof OfflineQueue !== 'undefined' && OfflineQueue && typeof OfflineQueue.getAllCachedProducts === 'function') {
             source = await OfflineQueue.getAllCachedProducts();
         }
+        if (!source.length) {
+            try { source = JSON.parse(localStorage.getItem('okw_pos_catalog_cache') || '[]'); } catch (_) { source = []; }
+        }
         return source.filter(p =>
             String(p.name || '').toLowerCase().includes(q) ||
             String(p.barcode || '').toLowerCase().includes(q) ||

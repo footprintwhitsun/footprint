@@ -4095,9 +4095,8 @@
             try {
                 const token = localStorage.getItem('authToken');
                 const response = await fetch(window.location.origin + '/api/products/full?limit=all', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
+                    credentials: 'include',
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
                 });
 
                 if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
@@ -4109,8 +4108,8 @@
                 products = data.map(p => {
                     const item = {
                         ...p,
-                        price: parseFloat(p.price),
-                        stock: parseInt(p.stock) || 0
+                        price: parseFloat(p.price) || 0,
+                        stock: parseFloat(p.stock) || 0
                     };
 
                     if (!isFirstLoad) {
@@ -4129,6 +4128,11 @@
                     lastProductSnapshot.set(p.id, { price: item.price, stock: item.stock });  // Use ID instead of barcode
                     return item;
                 });
+                window.products = products;
+                if (window.OfflineQueue && typeof window.OfflineQueue.cacheProducts === 'function') {
+                    window.OfflineQueue.cacheProducts(products);
+                }
+                try { localStorage.setItem('okw_pos_catalog_cache', JSON.stringify(products)); } catch (_) {}
                 console.log(`Successfully loaded ${products.length} products:`, products);
                 renderQuickPicks();
 
@@ -4138,7 +4142,22 @@
 
                 return products;
             } catch (error) {
-                console.error("Failed to load products:", error);
+                console.error("Failed to load products from server, trying offline cache:", error);
+                let cached = [];
+                if (window.OfflineQueue && typeof window.OfflineQueue.getAllCachedProducts === 'function') {
+                    cached = await window.OfflineQueue.getAllCachedProducts();
+                }
+                if (!cached.length) {
+                    try { cached = JSON.parse(localStorage.getItem('okw_pos_catalog_cache') || '[]'); } catch (_) { cached = []; }
+                }
+                if (cached.length) {
+                    products = cached;
+                    window.products = products;
+                    renderQuickPicks();
+                    scanResult.innerHTML = `Offline catalog: ${products.length} products ready`;
+                    setTimeout(() => scanResult.innerHTML = '', 3000);
+                    return products;
+                }
                 const errorMsg = "Failed to load products.";
                 scanResult.innerHTML = `${errorMsg}`;
                 notify(errorMsg, "error");
