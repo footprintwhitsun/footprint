@@ -2255,9 +2255,11 @@
 
         function inventoryDisplayStock(p) {
             const u = currentUser || window.currentUser;
-            let n = (p.stock_for_branch !== undefined && p.stock_for_branch !== null)
-                ? Number(p.stock_for_branch)
-                : Number(p.stock);
+            let n = (p.stock_display !== undefined && p.stock_display !== null)
+                ? Number(p.stock_display)
+                : ((p.stock_for_branch !== undefined && p.stock_for_branch !== null)
+                    ? Number(p.stock_for_branch)
+                    : Number(p.stock));
             return Number.isNaN(n) ? 0 : n;
         }
 

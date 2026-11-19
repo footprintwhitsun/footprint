@@ -3260,6 +3260,9 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
             } else if (p.stock_levels && typeof p.stock_levels === 'object' && Object.keys(p.stock_levels).length > 0) {
                 p.stock = p.calculated_total;
             }
+            // The number the stock table shows and the Low/Out filters use: the branch's stock for branch staff,
+            // the all-branch total for admin/CEO (matches what the POS shows for the same product).
+            p.stock_display = Number(p.stock ?? 0);
             return p;
         };
 
@@ -3268,9 +3271,7 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
             // Same rule as before (p.stock as displayed vs reorder level), but on light rows only.
             const matched = idFilterRows.filter(p => {
                 displayStock(p);
-                const s = (p.stock_for_branch !== undefined && p.stock_for_branch !== null)
-                    ? Number(p.stock_for_branch)
-                    : Number(p.stock ?? 0);
+                const s = Number(p.stock_display ?? p.stock ?? 0);
                 const reorder = (p.reorder_level !== null && p.reorder_level !== undefined) ? Number(p.reorder_level) : 10;
                 if (outOfStockOnly && !lowStockOnly) return s <= 0;
                 return s <= reorder;
