@@ -557,7 +557,10 @@
                     </div>
                 </div>
                 <button type="button" class="okw-icon-btn" id="okw-theme-toggle"></button>
-                <a href="/profile" class="okw-topbar-avatar" id="okw-topbar-user" title="${String(displayName).replace(/"/g, '&quot;')} — My Profile" aria-label="My Profile">${initials}</a>
+                <div class="okw-user-wrap">
+                    <button type="button" class="okw-topbar-avatar" id="okw-topbar-user" title="${String(displayName).replace(/"/g, '&quot;')}" aria-label="Account menu" aria-haspopup="true" aria-expanded="false">${initials}</button>
+                    <div id="okw-user-dropdown" class="okw-user-dropdown" role="menu"></div>
+                </div>
             </div>
         `;
         main.insertBefore(topbar, main.firstChild);
@@ -570,6 +573,97 @@
         const tpBtn = topbar.querySelector('#okw-today-profit-btn');
         if (tpBtn) tpBtn.addEventListener('click', openTodayProfitModal);
         setupNotificationsDropdown(topbar);
+        setupUserAvatarDropdown(topbar, user, role, displayName);
+    }
+
+    function setupUserAvatarDropdown(topbar, user, role, displayName) {
+        const btn = topbar.querySelector('#okw-topbar-user');
+        const dd = topbar.querySelector('#okw-user-dropdown');
+        if (!btn || !dd) return;
+
+        const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const isCompany = role === 'company' || role === 'business_client' || (user && user.type === 'company');
+        const isCeo = role === 'ceo';
+        const isAdmin = role === 'super_admin' || role === 'admin';
+        const isManager = role === 'manager' || role === 'store_manager';
+        const isCashier = role === 'cashier' || role === 'teller';
+
+        const items = [];
+        if (isCompany) {
+            items.push({ label: 'Company dashboard', href: '/company-portal' });
+            items.push({ label: 'Proforma invoices', href: '/company-portal?tab=proforma' });
+            items.push({ label: 'Company profile', href: '/company-portal?tab=company-profile' });
+            items.push({ label: 'Company settings', href: '/company-portal?tab=settings' });
+        } else if (isAdmin || isCeo) {
+            items.push({ label: 'CEO overview', href: '/ceo-portal?tab=overview' });
+            if (isAdmin) items.push({ label: 'Manager dashboard', href: '/dashboard' });
+            items.push({ label: 'Reports overview', href: '/reports?tab=overview' });
+            items.push({ label: 'Settings', href: '/settings?tab=store' });
+            items.push({ label: 'My profile & password', href: '/profile' });
+        } else if (isManager) {
+            items.push({ label: 'Dashboard', href: '/dashboard' });
+            items.push({ label: 'POS', href: '/pos' });
+            items.push({ label: 'Reports overview', href: '/reports?tab=overview' });
+            items.push({ label: 'Settings', href: '/settings?tab=store' });
+            items.push({ label: 'My profile & password', href: '/profile' });
+        } else if (isCashier) {
+            items.push({ label: 'POS', href: '/pos' });
+            items.push({ label: 'Close shift', href: '/till?tab=close' });
+            items.push({ label: 'Reserved Orders (Part-Pay)', href: '/extras' });
+            items.push({ label: 'My profile & password', href: '/profile' });
+        } else {
+            items.push({ label: 'Deliveries and counts', href: '/operations' });
+            items.push({ label: 'My profile & password', href: '/profile' });
+        }
+
+        const roleLabel = (role || 'staff').replace(/_/g, ' ').toUpperCase();
+        const branchLabel = user && user.store_location ? ` · ${user.store_location}` : '';
+        dd.innerHTML = `
+            <div class="okw-user-dd-head">
+                <div class="okw-user-dd-name">${esc(displayName)}</div>
+                <div class="okw-user-dd-meta">${esc(roleLabel + branchLabel)}</div>
+            </div>
+            <div class="okw-user-dd-list">
+                ${items.map(it => `<a class="okw-user-dd-item" role="menuitem" href="${it.href}">${esc(it.label)}</a>`).join('')}
+                <div class="okw-user-dd-sep"></div>
+                <button type="button" class="okw-user-dd-item okw-user-dd-danger" id="okw-user-logout" role="menuitem">Sign out</button>
+            </div>
+        `;
+
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const notifDd = topbar.querySelector('#okw-notif-dropdown');
+            if (notifDd) notifDd.style.display = 'none';
+            const open = dd.classList.toggle('open');
+            btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        dd.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', () => {
+            dd.classList.remove('open');
+            btn.setAttribute('aria-expanded', 'false');
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                dd.classList.remove('open');
+                btn.setAttribute('aria-expanded', 'false');
+            }
+        });
+
+        const logoutBtn = dd.querySelector('#okw-user-logout');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    const token = localStorage.getItem('authToken') || localStorage.getItem('companyToken') || localStorage.getItem('token');
+                    await fetch(isCompany ? '/api/company/logout' : '/api/logout', {
+                        method: 'POST',
+                        headers: token ? { Authorization: 'Bearer ' + token } : {},
+                        credentials: 'include'
+                    }).catch(() => { });
+                } catch (_) { }
+                try { localStorage.clear(); sessionStorage.clear(); } catch (_) { }
+                window.location.replace('/login?logout=true');
+            });
+        }
     }
 
     function defaultLogout() {
