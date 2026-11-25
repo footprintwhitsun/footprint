@@ -783,7 +783,7 @@
                             <th>Product Name</th>
                             <th>Category</th>
                             <th>Price</th>
-                            <th id="stockColumnHeader">Quantity</th>
+                            <th id="stockColumnHeader">Current Stock</th>
                             <th>Batch Number</th>
                             <th>Expiry Date</th>
                             <th>Actions</th>
@@ -1635,7 +1635,10 @@
             <form data-onsubmit="createPO(event)">
                 <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:14px;">
                     <div class="form-group" style="margin:0;">
-                        <label>Supplier *</label>
+                        <label style="display:flex;justify-content:space-between;align-items:center;">
+                            <span>Supplier *</span>
+                            <button type="button" data-onclick="openSupplierModal()" style="background:none;border:0;color:var(--primary-color,#273990);font-size:12px;font-weight:600;cursor:pointer;padding:0;">+ Add Supplier</button>
+                        </label>
                         <select id="poSupplier" required style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;"></select>
                     </div>
                     <div class="form-group" style="margin:0;">
@@ -2174,6 +2177,10 @@
             // Load data specific to activated tab
             if (tabId === 'stock') {
                 loadInventory();
+            } else if (tabId === 'suppliers') {
+                loadSuppliers();
+            } else if (tabId === 'orders' || tabId === 'receiving') {
+                loadSuppliers();
             } else if (tabId === 'stocktaking') {
                 await loadInventory();
                 loadStockTaking();
@@ -2437,7 +2444,7 @@
             
             // Update header
             const stockHeader = document.getElementById('stockColumnHeader');
-            if(stockHeader) stockHeader.textContent = `Quantity`;
+            if(stockHeader) stockHeader.textContent = `Current Stock`;
 
             // Server-side paginated render
             filteredStock = products; // Directly use server slice

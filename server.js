@@ -4098,14 +4098,16 @@ app.delete('/api/categories/:id', authenticateToken, requireRole(MANAGER_ROLES),
 // --- SUPPLIER MANAGEMENT ---
 app.get('/api/suppliers', authenticateToken, async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id || 1;
         let query = `SELECT s.*, b.name as branch_name, b.location as branch_location 
             FROM suppliers s
             LEFT JOIN branches b ON s.branch_id = b.id
-            WHERE s.tenant_id = $1 AND s.deleted_at IS NULL`;
-        let params = [req.user.tenant_id];
+            WHERE COALESCE(s.tenant_id, 1) = $1 AND s.deleted_at IS NULL`;
+        let params = [tenantId];
 
-        if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
-            query += ' AND s.branch_id = $2';
+        const role = String(req.user.role || '').toLowerCase();
+        if (role !== 'super_admin' && role !== 'admin' && role !== 'ceo' && req.user.store_id) {
+            query += ' AND (s.branch_id = $2 OR s.branch_id IS NULL)';
             params.push(req.user.store_id);
         }
         query += ' ORDER BY s.name';

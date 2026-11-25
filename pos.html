@@ -2334,11 +2334,16 @@
 
             // Populate product options
             productList.forEach((product, index) => {
+                const isOut = Number(product.stock || 0) <= 0;
                 const optionDiv = document.createElement('div');
                 optionDiv.className = 'product-option';
-                optionDiv.onclick = () => selectProduct(product);
+                if (isOut) {
+                    optionDiv.style.cssText = 'opacity:0.42;cursor:not-allowed;pointer-events:none;background:#f8fafc;';
+                } else {
+                    optionDiv.onclick = () => selectProduct(product);
+                }
 
-                const stockInfo = product.stock > 0 ? `Stock: ${product.stock}` : 'Out of stock';
+                const stockInfo = !isOut ? `Current Stock: ${product.stock}` : 'Out of Stock';
                 const categoryInfo = product.category || 'No category';
 
                 optionDiv.innerHTML = `
@@ -2346,7 +2351,7 @@
                 <div class="product-name">${window.escapeHtml(product.name)}</div>
                 <div class="product-details">${window.escapeHtml(categoryInfo)} | ${stockInfo}</div>
             </div>
-            <div class="product-price">${formatCurrency(product.price)}</div>
+            <div class="product-price">${isOut ? 'Out of Stock' : formatCurrency(product.price)}</div>
         `;
 
                 optionsContainer.appendChild(optionDiv);
@@ -2745,8 +2750,9 @@
             const price = parseFloat(product.price) || 0;
             const safeProduct = { ...product, price: price };
 
-            if (safeProduct.stock <= 0) {
-                notify(`Notice: ${safeProduct.name} is out of stock. Selling into negative.`, "warning");
+            if (Number(safeProduct.stock || 0) <= 0) {
+                notify(`${safeProduct.name} is out of stock and cannot be sold.`, "error");
+                return;
             }
 
             const existingItem = cart.find(item => item.id === safeProduct.id);

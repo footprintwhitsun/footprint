@@ -682,7 +682,10 @@
 
         function render() {
             const visCols = getVisibleCols();
-            theadRow.innerHTML = visCols.map(c => `<th data-sort="${escapeHtml(c.key)}" class="${c.numeric ? 'numeric' : ''}" style="cursor:pointer;">${escapeHtml(c.label)}</th>`).join('');
+            theadRow.innerHTML = visCols.map(c => {
+                const arrow = sortKey === c.key ? (sortDir === 1 ? ' ▲' : ' ▼') : '';
+                return `<th data-sort="${escapeHtml(c.key)}" class="${c.numeric ? 'numeric' : ''}" style="cursor:pointer;user-select:none;">${escapeHtml(c.label)}<span style="opacity:0.65;font-size:10px;">${arrow}</span></th>`;
+            }).join('');
             theadRow.querySelectorAll('th[data-sort]').forEach(th => {
                 th.addEventListener('click', () => {
                     const key = th.dataset.sort;
@@ -793,6 +796,60 @@
 
         table.dataset.okwToolsAttached = '1';
         const hiddenIdx = new Set();
+
+        // Universal click-to-sort (ascending / descending / alphabetical / numeric / date) on every native table
+        if (table.dataset.okwSortable !== '1') {
+            table.dataset.okwSortable = '1';
+            let activeSortCol = -1;
+            let activeSortDir = 1;
+            const parseCellVal = (str) => {
+                const s = String(str || '').trim();
+                if (!s || s === '—' || s === '-') return { kind: 'empty', val: '' };
+                const cleaned = s.replace(/^(GH₵|GHS|¢|\$|€|£)\s*/i, '').replace(/,/g, '').replace(/%$/, '').trim();
+                if (/^-?\d+(\.\d+)?$/.test(cleaned)) return { kind: 'num', val: parseFloat(cleaned) };
+                if (/^\d{4}-\d{2}-\d{2}/.test(s) || /^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(s)) {
+                    const ts = Date.parse(s);
+                    if (!Number.isNaN(ts)) return { kind: 'num', val: ts };
+                }
+                return { kind: 'str', val: s.toLowerCase() };
+            };
+            ths.forEach((th, colIdx) => {
+                if (th.querySelector('input[type="checkbox"]')) return;
+                const labelText = (th.textContent || '').trim();
+                if (!labelText || /^(action|actions|inspect)$/i.test(labelText)) return;
+                th.style.cursor = 'pointer';
+                th.style.userSelect = 'none';
+                th.title = 'Click to sort';
+                th.addEventListener('click', (e) => {
+                    if (e.target.closest('input, button, select, a')) return;
+                    if (activeSortCol === colIdx) activeSortDir *= -1;
+                    else { activeSortCol = colIdx; activeSortDir = 1; }
+                    ths.forEach((h, i) => {
+                        let ind = h.querySelector('.okw-sort-ind');
+                        if (!ind) {
+                            ind = document.createElement('span');
+                            ind.className = 'okw-sort-ind';
+                            ind.style.cssText = 'margin-left:4px;font-size:10px;opacity:0.65;';
+                            h.appendChild(ind);
+                        }
+                        ind.textContent = i === activeSortCol ? (activeSortDir === 1 ? '▲' : '▼') : '';
+                    });
+                    const trs = Array.from(tbody.querySelectorAll('tr')).filter(tr => {
+                        const cells = tr.querySelectorAll('td');
+                        return cells.length > 1 || (cells.length === 1 && Number(cells[0].getAttribute('colspan') || 1) <= 1);
+                    });
+                    trs.sort((ra, rb) => {
+                        const a = parseCellVal(ra.cells[colIdx]?.innerText);
+                        const b = parseCellVal(rb.cells[colIdx]?.innerText);
+                        if (a.kind === 'empty' && b.kind !== 'empty') return 1;
+                        if (b.kind === 'empty' && a.kind !== 'empty') return -1;
+                        if (a.kind === 'num' && b.kind === 'num') return (a.val - b.val) * activeSortDir;
+                        return String(a.val).localeCompare(String(b.val), undefined, { numeric: true, sensitivity: 'base' }) * activeSortDir;
+                    });
+                    trs.forEach(tr => tbody.appendChild(tr));
+                });
+            });
+        }
         const pageTitle = opts.title || (document.title || 'Report').replace(/OKWESIWA CO LTD\s*\|\s*/i, '').replace(/\s*-\s*OKWESIWA CO LTD/i, '').trim() || 'Report';
         const baseSlug = pageTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'report';
         const filename = opts.filename || `okwesiwa-${baseSlug}.xlsx`;

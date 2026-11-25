@@ -261,11 +261,6 @@
                 <div style="position:relative;" id="okw-search-container">
                     <div style="display:flex;flex-wrap:nowrap;gap:6px;align-items:center;">
                         <input type="search" id="okw-pos-search" aria-label="Search item or barcode" class="okw-input" placeholder="Search product or scan barcode…" style="flex:1;min-width:160px;height:38px;">
-                        <select id="okw-price-group" class="okw-select" title="Price Tier" style="height:38px;padding:0 10px;font-size:12.5px;">
-                            <option value="retail">Retail</option>
-                            <option value="contractor">Contractor</option>
-                            <option value="wholesale">Wholesale</option>
-                        </select>
                         <button type="button" class="pos-btn-action" data-onclick="if(window.openReceiptSearch)openReceiptSearch()" title="Find Receipt" style="height:38px;padding:0 12px;font-size:12.5px;"><i class="fas fa-receipt"></i> <span>Receipt</span></button>
                         <button type="button" class="pos-btn-action" id="refreshProducts" title="Sync Catalog" style="height:38px;padding:0 12px;font-size:12.5px;"><i class="fas fa-sync-alt"></i> <span>Sync</span></button>
                     </div>
@@ -488,9 +483,10 @@
                 </div>
             ` + list.map(p => {
                 const price = resolveUnitPrice(p, t.priceGroup, 1, 1);
+                const isOut = Number(p.stock || 0) <= 0;
                 return `
-                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-bottom:1px solid #f1f5f9;">
-                        <div style="min-width:0;flex:1;cursor:pointer;" data-add-prod="${p.barcode}">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 12px;border-bottom:1px solid #f1f5f9;${isOut ? 'opacity:0.42;background:#f8fafc;cursor:not-allowed;' : ''}">
+                        <div style="min-width:0;flex:1;${isOut ? 'cursor:not-allowed;' : 'cursor:pointer;'}" ${isOut ? '' : `data-add-prod="${p.barcode}"`}>
                             <div style="font-weight:600;font-size:13.5px;color:#0f172a;">${OkwUI.escapeHtml(p.name)}</div>
                             <div style="font-size:11.5px;color:#64748b;">
                                 ${p.brand ? OkwUI.escapeHtml(p.brand) + ' · ' : ''}<span class="mono">${OkwUI.escapeHtml(p.barcode)}</span> · ${OkwUI.escapeHtml(p.selling_unit || 'Unit')}
@@ -498,7 +494,10 @@
                         </div>
                         <div style="display:flex;align-items:center;gap:8px;">
                             ${stockBadgeHtml(p)}
-                            <button type="button" class="okw-btn okw-btn-primary" data-add-prod="${p.barcode}" style="padding:5px 11px;min-height:30px;font-size:12.5px;">${fmt(price)}</button>
+                            ${isOut
+                                ? `<button type="button" class="okw-btn okw-btn-outline" disabled style="padding:5px 11px;min-height:30px;font-size:12px;opacity:0.75;cursor:not-allowed;">Out of Stock</button>`
+                                : `<button type="button" class="okw-btn okw-btn-primary" data-add-prod="${p.barcode}" style="padding:5px 11px;min-height:30px;font-size:12.5px;">${fmt(price)}</button>`
+                            }
                         </div>
                     </div>
                 `;
@@ -529,6 +528,10 @@
     }
 
     function addProductToCart(product, qty = 1) {
+        if (Number(product.stock || 0) <= 0) {
+            OkwUI.toast(`${product.name || 'This item'} is out of stock and cannot be sold.`, 'danger');
+            return;
+        }
         const t = activeTab();
         const unitPrice = resolveUnitPrice(product, t.priceGroup, 1, qty);
         if (typeof window.addToCart === 'function') {
@@ -1401,7 +1404,8 @@
             }
         });
 
-        document.getElementById('okw-price-group').addEventListener('change', (e) => {
+        const pgSelEl = document.getElementById('okw-price-group');
+        if (pgSelEl) pgSelEl.addEventListener('change', (e) => {
             const t = syncTabFromTillCart();
             t.priceGroup = e.target.value;
             t.items.forEach(it => {

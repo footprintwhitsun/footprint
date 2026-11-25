@@ -86,12 +86,12 @@
         { label: 'Transactions', url: '/transactions', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Cash Register', icon: 'receipt' },
         { label: 'Reserved Orders (Part-Pay)', url: '/extras', roles: ['cashier', 'teller'], group: 'Cash Register', icon: 'layers' },
 
-        // Inventory (Stock, Purchasing, Movement, Catalog)
-        { label: 'Stock Items', url: '/inventory?tab=stock', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Stock', icon: 'package' },
-        { label: 'Batch & Lot Tracking', url: '/inventory?tab=shelf', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Stock', icon: 'layers' },
-        { label: 'Stock Taking', url: '/inventory?tab=stocktaking', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Stock', icon: 'clipboardCheck' },
-        { label: 'Barcode Generator', url: '/inventory?tab=barcodes', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Stock', icon: 'tag' },
-        { label: 'Negative Stock', url: '/negative-stock', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Stock', icon: 'activity' },
+        // Inventory (Current Stock, Purchasing, Movement, Catalog)
+        { label: 'Current Stock', url: '/inventory?tab=stock', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Current Stock', icon: 'package' },
+        { label: 'Batch & Lot Tracking', url: '/inventory?tab=shelf', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Current Stock', icon: 'layers' },
+        { label: 'Stock Taking', url: '/inventory?tab=stocktaking', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Current Stock', icon: 'clipboardCheck' },
+        { label: 'Barcode Generator', url: '/inventory?tab=barcodes', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Current Stock', icon: 'tag' },
+        { label: 'Negative Stock', url: '/negative-stock', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Current Stock', icon: 'activity' },
         { label: 'Purchase Orders', url: '/inventory?tab=orders', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'shoppingCart' },
         { label: 'Goods Receiving', url: '/inventory?tab=receiving', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'clipboardCheck' },
         { label: 'Suppliers', url: '/inventory?tab=suppliers', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'truck' },
@@ -107,10 +107,11 @@
         { label: 'Brands, Units & Prices', url: '/catalog-ops', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Catalog', icon: 'tag' },
         { label: 'Bulk Import', url: '/bulk-upload', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Catalog', icon: 'upload' },
 
-        // Customers
-        { label: 'All Customers', url: '/customers', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Customers', icon: 'users' },
-        { label: 'Credit Clients', url: '/credit-customers?tab=clients', roles: ['admin', 'manager', 'store_manager'], group: 'Customers', icon: 'creditCard' },
-        { label: 'Manager Authorization', url: '/credit-customers?tab=auth', roles: ['admin', 'manager', 'store_manager'], group: 'Customers', icon: 'lock' },
+        // Customers & Suppliers
+        { label: 'All Customers', url: '/customers', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Customers & Suppliers', icon: 'users' },
+        { label: 'Credit Clients', url: '/credit-customers?tab=clients', roles: ['admin', 'manager', 'store_manager'], group: 'Customers & Suppliers', icon: 'creditCard' },
+        { label: 'Manager Authorization', url: '/credit-customers?tab=auth', roles: ['admin', 'manager', 'store_manager'], group: 'Customers & Suppliers', icon: 'lock' },
+        { label: 'Suppliers', url: '/inventory?tab=suppliers', roles: ['admin', 'manager', 'store_manager'], group: 'Customers & Suppliers', icon: 'truck' },
 
         // Expenses & Accounts (Money)
         { label: 'Expenses', url: '/expenses?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'dollarSign' },
@@ -841,7 +842,7 @@
                 'Sales': 'shoppingBag',
                 'Cash Register': 'clock',
                 'Inventory': 'package',
-                'Customers': 'users',
+                'Customers & Suppliers': 'users',
                 'Expenses & Accounts': 'dollarSign',
                 'Reports': 'barChart',
                 'Quick Reports': 'trendingUp',
