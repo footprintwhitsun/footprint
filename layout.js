@@ -47,6 +47,10 @@
     const MODULES = [
         { label: 'Home', url: '/dashboard', roles: ['ceo', 'admin', 'manager', 'store_manager', 'company', 'business_client'], group: 'Core', icon: 'home' },
 
+        // User Management (immediately under Home)
+        { label: 'Users', url: '/pos-register?tab=users', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'User Management', icon: 'users' },
+        { label: 'Roles', url: '/roles', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'User Management', icon: 'lock' },
+
         { label: 'Pending Approvals', url: '/ceo-portal?tab=approvals-pending', roles: ['ceo', 'admin'], group: 'CEO', icon: 'clock' },
         { label: 'Approval History', url: '/ceo-portal?tab=approvals-history', roles: ['ceo', 'admin'], group: 'CEO', icon: 'fileCheck' },
         { label: 'Branches', url: '/ceo-portal?tab=branches', roles: ['ceo', 'admin'], group: 'CEO', icon: 'mapPin' },
@@ -165,9 +169,7 @@
         { label: 'Stock on Hand', url: '/reports?tab=drilldown&view=stock_on_hand', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Insights', icon: 'package' },
 
         // Staff & Payroll (Team)
-        { label: 'Users', url: '/pos-register?tab=users', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'users' },
         { label: 'Onboard New Staff', url: '/pos-register?tab=register', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'user' },
-        { label: 'Roles & Permissions', url: '/roles', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'lock' },
         { label: 'Attendance', url: '/extras?tab=attendance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'clock' },
         { label: 'Payroll & Salaries', url: '/team?tab=payroll', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'dollarSign' },
 
@@ -1080,6 +1082,7 @@
                 groupMap.get(m.group).push(m);
             }
             const GROUP_ICONS = {
+                'User Management': 'users',
                 'CEO': 'shield',
                 'Company': 'layers',
                 'Sales': 'shoppingBag',
