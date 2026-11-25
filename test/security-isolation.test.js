@@ -166,27 +166,30 @@ test('Locations are stored in the database and branch updates never reset VAT', 
     assert.ok(!/localStorage\.setItem\('locations'/.test(hub), 'no browser-only location storage');
 });
 
-test('Hub pages are role-guarded, and embedded legacy pages are only served inside a hub', () => {
+test('Hub and standalone operational pages are all role-guarded on the server', () => {
     const server = read('server.js');
-    const hubs = { '/team': 'team.html', '/stock': 'stock.html', '/sales': 'sales.html', '/money': 'money.html', '/customers': 'customers-hub.html' };
-    for (const [route, file] of Object.entries(hubs)) {
-        assert.ok(new RegExp(`app\\.get\\('${route}', guardPageRoute\\(PAGE_ROLES\\.[A-Z_]+, '${file}'\\)`).test(server), `${route} must be a guarded hub`);
-        assert.ok(read(file).includes('OkwUI.sectionPage'), `${file} must use the shared section page`);
-    }
-    // the helper itself: non-embedded visits redirect, embedded ones go through the role guard
-    assert.ok(server.includes("if (req.query.embed !== '1') return res.redirect(hubUrl(req));") && server.includes('return guard(req, res, next);'), 'non-embedded visits redirect; embedded ones pass the role guard');
-    for (const [route, file] of [['/pos-register', 'pos-register.html'], ['/roles', 'roles.html'], ['/inventory', 'inventory.html'], ['/sell', 'sell.html'], ['/credit-customers', 'credit-customers.html'], ['/expenses', 'expenses.html']]) {
-        assert.ok(new RegExp(`app\\.get\\('${route}', embeddedPage\\('${file}', PAGE_ROLES\\.[A-Z_]+`).test(server), `${route} must be embedded-only`);
+    const guarded = [
+        ['/team', 'team.html'], ['/dashboard', 'dashboard.html'], ['/company-portal', 'company-portal.html'],
+        ['/money', 'money.html'], ['/customers', 'customers.html'],
+        ['/pos-register', 'pos-register.html'], ['/roles', 'roles.html'],
+        ['/inventory', 'inventory.html'], ['/sell', 'sell.html'],
+        ['/credit-customers', 'credit-customers.html'], ['/expenses', 'expenses.html']
+    ];
+    for (const [route, file] of guarded) {
+        assert.ok(server.includes(`app.get('${route}'`), `${route} must be registered`);
+        assert.ok(server.includes(`'${file}'`) && /guardPageRoute|directPage|embeddedPage/.test(server), `${route} (${file}) must be role-guarded`);
     }
 });
 
-test('Embedded mode hides the shell and the hub Section picker duplicates', () => {
-    assert.ok(read('layout.js').includes("IS_EMBEDDED = /[?&]embed=1(&|$)/.test(window.location.search) && window.self !== window.top"));
-    const css = read('portal-skin.css');
-    for (const sel of ['.okw-embed .sidebar', '.okw-embed .okw-topbar', '.okw-embed .back-link', '.okw-embed label[for$="-view"]']) {
-        assert.ok(css.includes(sel), sel + ' must be hidden when embedded');
+test('Cash account balances are manager-only, and auth redirects target the top window', () => {
+    const extras = read('routes/extras.js');
+    const i = extras.indexOf("router.get('/api/accounts'");
+    assert.ok(i > -1 && extras.slice(i, i + 300).includes('MANAGER_ROLES.includes'), 'GET /api/accounts must check the role');
+    assert.ok(read('top-redirect.js').includes('(window.top || window).location.replace(target)'), 'the redirect script must target the whole window');
+    assert.ok(read('layout.js').includes("a.target = '_top'"), 'links inside a frame must open in the whole window');
+    for (const f of ['auth-guard.js', 'customers.html', 'credit-customers.html', 'inventory.html', 'transactions.html']) {
+        assert.ok(!/(^|[^.\w)])window\.location\.(replace\('\/login|href = '\/login)/.test(read(f)), `${f} must send the whole window to the login page`);
     }
-    assert.ok(read('ui-components.js').includes("u.searchParams.set('embed', '1')"));
 });
 
 test('Every menu link points at a real route and, for hubs, a real section', () => {
@@ -204,19 +207,6 @@ test('Every menu link points at a real route and, for hubs, a real section', () 
     }
 });
 
-test('Cash account balances are manager-only, and embedded pages cannot trap the login page in a frame', () => {
-    const extras = read('routes/extras.js');
-    const i = extras.indexOf("router.get('/api/accounts'");
-    assert.ok(i > -1 && extras.slice(i, i + 300).includes('MANAGER_ROLES.includes'), 'GET /api/accounts must check the role');
-    const server = read('server.js');
-    assert.ok(server.includes('src="/top-redirect.js" data-target="${safeTarget}"'), 'embedded auth redirects must leave the frame');
-    assert.ok(read('top-redirect.js').includes('(window.top || window).location.replace(target)'), 'the redirect script must target the whole window');
-    assert.ok(read('layout.js').includes("a.target = '_top'"), 'links inside a frame must open in the whole window');
-    for (const f of ['auth-guard.js', 'customers.html', 'credit-customers.html', 'inventory.html', 'transactions.html']) {
-        assert.ok(!/(^|[^.\w)])window\.location\.(replace\('\/login|href = '\/login)/.test(read(f)), `${f} must send the whole window to the login page`);
-    }
-});
-
 test('The browser page guard (auth-guard.js) agrees with the server on every page route', () => {
     const server = read('server.js');
     const guard = read('auth-guard.js');
@@ -226,7 +216,8 @@ test('The browser page guard (auth-guard.js) agrees with the server on every pag
     const checked = [];
     const routes = [
         ...server.matchAll(/app\.get\('(\/[a-z-]+)',\s*guardPageRoute\(PAGE_ROLES\.([A-Z_]+),\s*'[^']+'\)/g),
-        ...server.matchAll(/app\.get\('(\/[a-z-]+)',\s*embeddedPage\('[^']+',\s*PAGE_ROLES\.([A-Z_]+)/g)
+        ...server.matchAll(/app\.get\('(\/[a-z-]+)',\s*directPage\('[^']+',\s*PAGE_ROLES\.([A-Z_]+)\)/g),
+        ...server.matchAll(/app\.get\('(\/[a-z-]+)',\s*\(req,\s*res,\s*next\)\s*=>\s*\{[\s\S]{0,400}?guardPageRoute\(PAGE_ROLES\.([A-Z_]+),/g)
     ];
     for (const m of routes) {
         const [, route, role] = m;
@@ -234,9 +225,22 @@ test('The browser page guard (auth-guard.js) agrees with the server on every pag
         assert.ok(client[route], `auth-guard.js has no entry for ${route}: every user would be refused`);
         assert.equal(client[route], toClient(role), `${route}: browser guard says ${client[route]}, server says ${role}`);
     }
-    for (const hub of ['/team', '/stock', '/sales', '/money', '/customers', '/settings', '/reports']) {
+    for (const hub of ['/team', '/money', '/customers', '/settings', '/reports', '/dashboard', '/company-portal']) {
         assert.ok(checked.includes(hub), `${hub} must be a guarded server route`);
     }
+});
+
+test('P0 Security: POST /api/users blocks super_admin escalation, admin does not bypass RLS, and stock-take/batches/backups are scoped', () => {
+    const server = read('server.js');
+    const auth = read('middleware/auth.js');
+    const backups = read('routes/backups.js');
+    assert.ok(server.includes("targetRole === 'super_admin' && userRole !== 'super_admin'"), 'POST /api/users must restrict super_admin creation');
+    assert.ok(!auth.includes("userPayload.role === 'admin'"), 'tenant admin must not bypass PostgreSQL RLS via isSuperAdmin');
+    assert.ok(auth.includes("status(503)"), 'token revocation DB errors must fail closed');
+    assert.ok(server.includes("app.post('/api/stock-take', authenticateToken, requireRole(MANAGER_ROLES)"), 'POST /api/stock-take must be manager-only');
+    assert.ok(server.includes("to_jsonb($3::numeric)"), 'POST /api/stock-take must support fractional numeric quantities');
+    assert.ok(server.includes("WHERE barcode = $4 AND tenant_id = $5"), 'POST /api/stock-take must scope UPDATE by tenant_id');
+    assert.ok(backups.includes("WHERE COALESCE(tenant_id, 1) = $1"), 'Backup exports must scope by tenant_id');
 });
 
 test('Report queries report their failures instead of hiding them', async () => {

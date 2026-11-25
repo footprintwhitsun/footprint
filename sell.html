@@ -519,25 +519,35 @@
             }
             drawBatch();
         };
-        document.getElementById('imp-run').onclick = async () => {
+        const impRunBtn = document.getElementById('imp-run');
+        impRunBtn.onclick = async () => {
+            if (impRunBtn.disabled) return;
             if (!batch.length) return OkwUI.toast('Add at least one sale row first', 'warning');
+            impRunBtn.disabled = true;
+            const origText = impRunBtn.textContent;
+            impRunBtn.textContent = 'Importing...';
             let okCount = 0;
-            for (const row of batch) {
-                const r = await fetch('/api/pos/checkout', {
-                    method: 'POST', headers, credentials: 'include',
-                    body: JSON.stringify({
-                        items: [{ barcode: String(row.barcode), qty: Number(row.qty) }],
-                        customer_name: row.customer || 'Walk-in',
-                        payment_method: String(row.method || 'cash').toLowerCase()
-                    })
-                });
-                if (r.ok) okCount++;
-            }
-            OkwUI.toast(`Saved ${okCount} of ${batch.length} sale(s)`, 'success');
-            if (okCount > 0) {
-                activeView = 'all';
-                window.history.replaceState(null, '', '/sell?tab=all');
-                render();
+            try {
+                for (const row of batch) {
+                    const r = await fetch('/api/pos/checkout', {
+                        method: 'POST', headers, credentials: 'include',
+                        body: JSON.stringify({
+                            items: [{ barcode: String(row.barcode), qty: Number(row.qty) }],
+                            customer_name: row.customer || 'Walk-in',
+                            payment_method: String(row.method || 'cash').toLowerCase()
+                        })
+                    });
+                    if (r.ok) okCount++;
+                }
+                OkwUI.toast(`Saved ${okCount} of ${batch.length} sale(s)`, 'success');
+                if (okCount > 0) {
+                    activeView = 'all';
+                    window.history.replaceState(null, '', '/sell?tab=all');
+                    render();
+                }
+            } finally {
+                impRunBtn.disabled = false;
+                impRunBtn.textContent = origText;
             }
         };
     }

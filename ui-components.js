@@ -1399,6 +1399,18 @@
     function enhanceAllTables() {
         const path = (window.location.pathname || '').toLowerCase();
         if (/\/(pos|login|receipt|customer-display|forgot-password|reset-password)/.test(path)) return;
+        document.querySelectorAll('.modal').forEach(m => {
+            if (!m.getAttribute('role')) m.setAttribute('role', 'dialog');
+            if (!m.getAttribute('aria-modal')) m.setAttribute('aria-modal', 'true');
+        });
+        if (!document.documentElement.dataset.okwModalEscBound) {
+            document.documentElement.dataset.okwModalEscBound = '1';
+            document.addEventListener('keydown', (ev) => {
+                if (ev.key !== 'Escape') return;
+                const openModals = document.querySelectorAll('.modal.active');
+                if (openModals.length) openModals[openModals.length - 1].classList.remove('active');
+            });
+        }
         document.querySelectorAll('table').forEach(tbl => {
             if (tbl.dataset.noTableTools === '1') return;
             attachTableTools(tbl);

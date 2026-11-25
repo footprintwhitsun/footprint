@@ -3018,10 +3018,13 @@ async function loadCompanyTransactions() {
     }
 }
 
+let __recordingCompanyPayment = false;
 async function recordPayment(id) {
+    if (__recordingCompanyPayment) return;
     const amount = prompt("Enter payment amount:");
     if (!amount || isNaN(amount)) return;
     
+    __recordingCompanyPayment = true;
     const token = localStorage.getItem('companyToken');
     try {
         const res = await fetch(`/api/company/sales-invoices/${id}/payment`, {
@@ -3032,8 +3035,11 @@ async function recordPayment(id) {
         if (res.ok) {
             showToast('Payment recorded');
             loadSalesInvoices();
+        } else {
+            showToast('Failed to record payment', 'error');
         }
     } catch (e) { console.error(e); }
+    finally { __recordingCompanyPayment = false; }
 }
 
 async function printDocument(data, type, terms = '...........................................') {
@@ -3619,6 +3625,8 @@ async function processQuickPayment(paymentMethod, shouldDownload = false, custom
         proforma_id: activeProformaId
     };
     
+    if (window.__submittingQuickSale) return;
+    window.__submittingQuickSale = true;
     const token = localStorage.getItem('companyToken');
     try {
         const response = await fetch('/api/company/quick-sale', {
@@ -3653,6 +3661,10 @@ async function processQuickPayment(paymentMethod, shouldDownload = false, custom
             activeProformaId = null;
             selectedQuickCreditCustomer = null; 
             document.getElementById('customerName').value = '';
+            setTimeout(() => { window.__submittingQuickSale = false; }, 400);
+        } else {
+            window.__submittingQuickSale = false;
+        }
             document.getElementById('customerEmail').value = '';
             document.getElementById('customerPhone').value = '';
             document.getElementById('customerCompany').value = '';

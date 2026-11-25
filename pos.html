@@ -2493,7 +2493,7 @@
                 } catch (err) {
                     const errorMsg = 'Failed to load products. Please try again.';
                     console.error(errorMsg, err);
-                    scanResult.innerHTML = `${errorMsg}`;
+                    scanResult.textContent = errorMsg;
                     notify(errorMsg, 'error');
                     return;
                 }
