@@ -164,15 +164,11 @@
 
     OkwUI.sectionPage({
         mount: '#hub',
-        title: 'Team',
-        subtitle: 'Staff accounts, onboarding, roles and permissions, attendance, and payroll.',
-        defaultId: 'staff',
+        title: 'Payroll & Salaries',
+        subtitle: 'Staff salary profiles, statutory deductions, payroll runs, and payslips.',
+        defaultId: 'payroll',
         sections: [
-            { id: 'staff', label: 'Staff accounts', embed: '/pos-register?tab=users' },
-            { id: 'onboard', label: 'Onboard new staff', embed: '/pos-register?tab=register' },
-            { id: 'roles', label: 'Roles and permissions', embed: '/roles' },
-            { id: 'attendance', label: 'Attendance', embed: '/extras?tab=attendance' },
-            { id: 'payroll', label: 'Payroll & salaries', render: mountPayroll }
+            { id: 'payroll', label: 'Payroll & Salaries', render: mountPayroll }
         ]
     });
 })();

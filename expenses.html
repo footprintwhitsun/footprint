@@ -33,29 +33,9 @@
 
     <main class="main-content">
         <div class="page-wrap">
-            <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:16px;">
-                <div>
-                    <h1 style="margin:0;font-size:24px;">Expenses</h1>
-                    <p style="margin:4px 0 0;color:var(--color-text-muted);font-size:14px;">Track business expenses, add new expense entries, and manage expense categories.</p>
-                </div>
-            </div>
-
-            <div class="okw-card" style="margin-bottom:16px;padding:12px 16px;">
-                <div class="okw-filter-bar">
-                    <label for="exp-view">Section</label>
-                    <select id="exp-view" class="okw-select">
-                        <option value="list">List Expenses</option>
-                        <option value="add">Add Expense</option>
-                        <option value="categories">Expense Categories</option>
-                    </select>
-                    <select id="exp-cat-filter" class="okw-select" style="display:none;">
-                        <option value="">All Categories</option>
-                    </select>
-                    <div id="exp-date-picker"></div>
-                </div>
-            </div>
-
-            <div class="okw-card" id="exp-panel">Loading...</div>
+            <div class="okw-kpi-row" id="exp-kpis" style="display:none;"></div>
+            <div class="okw-action-bar" id="exp-filter-bar"></div>
+            <div id="exp-panel">Loading...</div>
         </div>
         <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA CO LTD</footer>
     </main>
@@ -72,20 +52,27 @@
     let dateRange = { from: new Date().toISOString().slice(0, 8) + '01', to: new Date().toISOString().slice(0, 10) };
     let categories = [];
 
-    const viewSel = document.getElementById('exp-view');
+    const filterBar = document.getElementById('exp-filter-bar');
+    filterBar.innerHTML = OkwUI.filterDropdown({
+        label: 'Filters',
+        contentHtml: `
+            <div class="okw-filter-field">
+                <label for="exp-cat-filter">Category</label>
+                <select id="exp-cat-filter" class="okw-select"><option value="">All Categories</option></select>
+            </div>
+            <div class="okw-filter-field">
+                <label>Date Range</label>
+                <div id="exp-date-picker"></div>
+            </div>`
+    });
     const catFilter = document.getElementById('exp-cat-filter');
-    const dateHost = document.getElementById('exp-date-picker');
-    viewSel.value = activeView;
+    const dateHost = filterBar;
 
     OkwUI.dateRangePicker('#exp-date-picker', (r) => {
         dateRange = r;
         if (activeView === 'list') renderList();
     });
 
-    viewSel.addEventListener('change', () => {
-        activeView = viewSel.value;
-        renderCurrent();
-    });
     catFilter.addEventListener('change', () => {
         if (activeView === 'list') renderList();
     });
@@ -99,22 +86,24 @@
     }
 
     async function renderList() {
-        catFilter.style.display = 'inline-block';
-        dateHost.style.display = 'block';
+        dateHost.style.display = 'flex';
         const qs = new URLSearchParams({ from: dateRange.from, to: dateRange.to, category: catFilter.value || '' }).toString();
         const res = await fetch(`/api/expenses?${qs}`, { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
         const rows = d.expenses || [];
         const total = rows.reduce((s, r) => s + Number(r.amount || 0), 0);
 
+        const kpiHost = document.getElementById('exp-kpis');
+        if (kpiHost) {
+            kpiHost.style.display = '';
+            kpiHost.innerHTML = [
+                OkwUI.kpiCard({ label: 'Total Expenses', value: fmt(total), tone: 'danger' }),
+                OkwUI.kpiCard({ label: 'Expense Entries', value: rows.length, tone: 'info' }),
+                OkwUI.kpiCard({ label: 'Average Expense', value: fmt(rows.length ? total / rows.length : 0), tone: 'warning' })
+            ].join('');
+        }
         const panel = document.getElementById('exp-panel');
-        panel.innerHTML = `
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin-bottom:14px;">
-                ${OkwUI.kpiCard({ label: 'Total Expenses', value: fmt(total), tone: 'danger' })}
-                ${OkwUI.kpiCard({ label: 'Expense Entries', value: rows.length, tone: 'info' })}
-            </div>
-            <div id="exp-tbl"></div>
-        `;
+        panel.innerHTML = `<div id="exp-tbl"></div>`;
         OkwUI.dataTable('#exp-tbl', {
             columns: [
                 { key: 'expense_date', label: 'Date', render: (v, r) => new Date(v || r.created_at).toLocaleDateString() },
@@ -139,7 +128,8 @@
     }
 
     function renderAdd() {
-        catFilter.style.display = 'none';
+        const kpiHost = document.getElementById('exp-kpis');
+        if (kpiHost) kpiHost.style.display = 'none';
         dateHost.style.display = 'none';
         const today = new Date().toISOString().slice(0, 10);
         const autoRef = generateExpenseRef();
@@ -204,7 +194,7 @@
             if (res.ok) {
                 OkwUI.toast('Expense saved', 'success');
                 activeView = 'list';
-                viewSel.value = 'list';
+                window.history.replaceState(null, '', '/expenses?tab=list');
                 renderCurrent();
             } else {
                 OkwUI.toast(d.message || 'Failed to save expense', 'danger');
@@ -213,7 +203,8 @@
     }
 
     function renderCategories() {
-        catFilter.style.display = 'none';
+        const kpiHost = document.getElementById('exp-kpis');
+        if (kpiHost) kpiHost.style.display = 'none';
         dateHost.style.display = 'none';
         const panel = document.getElementById('exp-panel');
         panel.innerHTML = `

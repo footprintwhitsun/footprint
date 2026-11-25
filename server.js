@@ -1507,23 +1507,9 @@ app.use((req, res, next) => {
 
 // PAGE_ROLES, MANAGER_ROLES, userTenantScope, and guardPageRoute are imported from ./middleware/auth above.
 
-// A page that now lives inside a hub section: it is served only when embedded (?embed=1),
-// and a direct visit goes to its hub section instead.
-const embeddedPage = (file, roles, hubUrl) => {
-    const guard = guardPageRoute(roles, file);
-    return (req, res, next) => {
-        if (req.query.embed !== '1') return res.redirect(hubUrl(req));
-        // inside a frame a redirect to the login page would nest it; send the whole window there instead
-        const redirect = res.redirect.bind(res);
-        res.redirect = (...args) => {
-            const target = String(args[args.length - 1]);
-            if (!target.startsWith('/')) return redirect(...args);
-            const safeTarget = target.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-            return res.status(200).type('html').send(`<!doctype html><meta charset="utf-8"><script src="/top-redirect.js" data-target="${safeTarget}"></script>`);
-        };
-        return guard(req, res, next);
-    };
-};
+// All pages are served directly as full-window pages (no iframe hubs).
+// Legacy hub URLs redirect cleanly to their direct page routes.
+const directPage = (file, roles) => guardPageRoute(roles, file);
 
 // Explicitly serve HTML pages with role authorization guards
 app.get('/login', (req, res) => {
@@ -1550,8 +1536,15 @@ app.get('/ceo-portal', guardPageRoute(PAGE_ROLES.CEO_ONLY, 'ceo-portal.html'));
 app.get('/ceo-live', guardPageRoute(PAGE_ROLES.CEO_ONLY, 'ceo-live.html'));
 app.get('/all-reports', (req, res) => res.redirect('/reports?tab=detailed'));
 app.get('/extras', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'extras.html'));
-app.get('/roles', embeddedPage('roles.html', PAGE_ROLES.MANAGERS, () => '/team?tab=roles'));
-app.get('/team', guardPageRoute(PAGE_ROLES.MANAGERS, 'team.html'));
+app.get('/roles', directPage('roles.html', PAGE_ROLES.MANAGERS));
+app.get('/team', (req, res, next) => {
+    const tab = String(req.query.tab || 'staff');
+    if (tab === 'staff') return res.redirect('/pos-register?tab=users');
+    if (tab === 'onboard') return res.redirect('/pos-register?tab=register');
+    if (tab === 'roles') return res.redirect('/roles');
+    if (tab === 'attendance') return res.redirect('/extras?tab=attendance');
+    return guardPageRoute(PAGE_ROLES.MANAGERS, 'team.html')(req, res, next);
+});
 app.get('/backups', (req, res) => res.redirect('/settings?tab=backups'));
 app.get('/activity-log', (req, res) => res.redirect('/settings?tab=activity'));
 app.get('/tax-management', (req, res) => res.redirect('/settings?tab=taxrates'));
@@ -1562,46 +1555,85 @@ app.get('/business-settings', (req, res) => {
     res.redirect('/settings?tab=' + tab);
 });
 app.get('/notification-templates', (req, res) => res.redirect('/settings?tab=notifications'));
-app.get('/money', guardPageRoute(PAGE_ROLES.MANAGERS, 'money.html'));
-app.get('/till', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'till.html'));
-app.get('/expenses', embeddedPage('expenses.html', PAGE_ROLES.MANAGERS, (req) => '/money?tab=expenses-' + (['list', 'add', 'categories'].includes(req.query.tab) ? req.query.tab : 'list')));
-app.get('/stock-adjustments', embeddedPage('stock-adjustments.html', PAGE_ROLES.MANAGERS, (req) => '/stock?tab=adj-' + (['list', 'add', 'bulk'].includes(req.query.tab) ? req.query.tab : 'list')));
-app.get('/stock-transfers', embeddedPage('stock-transfers.html', PAGE_ROLES.MANAGERS, (req) => '/stock?tab=tr-' + (req.query.tab === 'add' ? 'add' : 'list')));
+app.get('/money', (req, res, next) => {
+    const tab = String(req.query.tab || 'expenses-list');
+    if (tab === 'expenses-list') return res.redirect('/expenses?tab=list');
+    if (tab === 'expenses-add') return res.redirect('/expenses?tab=add');
+    if (tab === 'expenses-categories') return res.redirect('/expenses?tab=categories');
+    if (tab === 'cash') return res.redirect('/extras?tab=accounts');
+    return guardPageRoute(PAGE_ROLES.MANAGERS, 'money.html')(req, res, next);
+});
+app.get('/till', (req, res) => {
+    const tab = String(req.query.tab || 'open');
+    const map = { open: '/open-shift', close: '/close-shift', daily: '/daily-close', transactions: '/transactions' };
+    res.redirect(map[tab] || '/open-shift');
+});
+app.get('/expenses', directPage('expenses.html', PAGE_ROLES.MANAGERS));
+app.get('/stock-adjustments', directPage('stock-adjustments.html', PAGE_ROLES.MANAGERS));
+app.get('/stock-transfers', directPage('stock-transfers.html', PAGE_ROLES.MANAGERS));
 const SELL_TABS = ['all', 'add', 'list_pos', 'add_draft', 'drafts', 'add_quotation', 'quotations', 'returns', 'shipments', 'discounts', 'import'];
-app.get('/sales', guardPageRoute(PAGE_ROLES.MANAGERS, 'sales.html'));
-app.get('/sell', embeddedPage('sell.html', PAGE_ROLES.MANAGERS, (req) => '/sales?tab=' + (SELL_TABS.includes(req.query.tab) ? req.query.tab : 'all')));
+app.get('/sales', (req, res) => {
+    const tab = String(req.query.tab || 'all');
+    if (tab === 'transactions') return res.redirect('/transactions');
+    if (tab === 'layaway') return res.redirect('/extras?tab=layaway');
+    if (tab === 'promotions') return res.redirect('/promotions');
+    res.redirect('/sell?tab=' + (SELL_TABS.includes(tab) ? tab : 'all'));
+});
+app.get('/sell', directPage('sell.html', PAGE_ROLES.MANAGERS));
 app.get('/locations', (req, res) => res.redirect('/settings?tab=locations'));
 
 // Management & Executive Portals
 app.get('/dashboard', guardPageRoute(PAGE_ROLES.MANAGERS, 'dashboard.html'));
 const STOCK_TABS = ['stock', 'orders', 'receiving', 'shelf', 'distribution', 'stocktaking', 'barcodes', 'returns', 'suppliers'];
-app.get('/stock', guardPageRoute(PAGE_ROLES.MANAGERS, 'stock.html'));
-app.get('/inventory', embeddedPage('inventory.html', PAGE_ROLES.MANAGERS, (req) => req.query.tab === 'analytics' ? '/reports?tab=overview' : '/stock?tab=' + (STOCK_TABS.includes(req.query.tab) ? req.query.tab : 'stock')));
+app.get('/stock', (req, res) => {
+    const tab = String(req.query.tab || 'stock');
+    if (tab === 'analytics') return res.redirect('/reports?tab=overview');
+    if (tab === 'negative') return res.redirect('/negative-stock');
+    if (tab === 'adj-list') return res.redirect('/stock-adjustments?tab=list');
+    if (tab === 'adj-add') return res.redirect('/stock-adjustments?tab=add');
+    if (tab === 'adj-bulk') return res.redirect('/stock-adjustments?tab=bulk');
+    if (tab === 'tr-list') return res.redirect('/stock-transfers?tab=list');
+    if (tab === 'tr-add') return res.redirect('/stock-transfers?tab=add');
+    if (tab === 'deliveries') return res.redirect('/operations');
+    if (tab === 'categories') return res.redirect('/categories');
+    if (tab === 'catalog') return res.redirect('/catalog-ops');
+    if (tab === 'import') return res.redirect('/bulk-upload');
+    const qs = new URLSearchParams({ tab: STOCK_TABS.includes(tab) ? tab : 'stock' });
+    if (req.query.lowStock === 'true') qs.set('lowStock', 'true');
+    if (req.query.outOfStock === 'true') qs.set('outOfStock', 'true');
+    res.redirect('/inventory?' + qs.toString());
+});
+app.get('/inventory', directPage('inventory.html', PAGE_ROLES.MANAGERS));
 app.get('/reports', guardPageRoute(PAGE_ROLES.MANAGERS, 'reports.html'));
 app.get('/core-reports', (req, res) => res.redirect('/reports?tab=drilldown'));
-app.get('/daily-close', embeddedPage('daily-close.html', PAGE_ROLES.STAFF_ALL, () => '/till?tab=daily'));
+app.get('/daily-close', directPage('daily-close.html', PAGE_ROLES.STAFF_ALL));
 app.get('/sales-dashboard', (req, res) => res.redirect('/reports?tab=overview'));
 app.get('/profitability', (req, res) => res.redirect('/reports?tab=overview'));
-app.get('/bulk-upload', embeddedPage('bulk-upload.html', PAGE_ROLES.MANAGERS, () => '/stock?tab=import'));
-app.get('/categories', embeddedPage('categories.html', PAGE_ROLES.MANAGERS, () => '/stock?tab=categories'));
-app.get('/catalog-ops', embeddedPage('catalog-ops.html', PAGE_ROLES.MANAGERS, () => '/stock?tab=catalog'));
+app.get('/bulk-upload', directPage('bulk-upload.html', PAGE_ROLES.MANAGERS));
+app.get('/categories', directPage('categories.html', PAGE_ROLES.MANAGERS));
+app.get('/catalog-ops', directPage('catalog-ops.html', PAGE_ROLES.MANAGERS));
 app.get('/operations', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'operations.html'));
-app.get('/negative-stock', embeddedPage('negative-stock.html', PAGE_ROLES.MANAGERS, () => '/stock?tab=negative'));
-app.get('/promotions', embeddedPage('promotions.html', PAGE_ROLES.MANAGERS, () => '/sales?tab=promotions'));
-app.get('/transactions', embeddedPage('transactions.html', PAGE_ROLES.STAFF_ALL, () => '/till?tab=transactions'));
-app.get('/credit-customers', embeddedPage('credit-customers.html', PAGE_ROLES.MANAGERS, (req) => '/customers?tab=' + (req.query.tab === 'auth' ? 'auth' : 'clients')));
+app.get('/negative-stock', directPage('negative-stock.html', PAGE_ROLES.MANAGERS));
+app.get('/promotions', directPage('promotions.html', PAGE_ROLES.MANAGERS));
+app.get('/transactions', directPage('transactions.html', PAGE_ROLES.STAFF_ALL));
+app.get('/credit-customers', directPage('credit-customers.html', PAGE_ROLES.MANAGERS));
 app.get('/purchase-orders', guardPageRoute(PAGE_ROLES.MANAGERS, 'purchase-orders.html'));
 app.get('/suppliers', guardPageRoute(PAGE_ROLES.MANAGERS, 'suppliers.html'));
 
 // POS & Staff Operations
 app.get('/pos', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'pos.html'));
-app.get('/pos-register', embeddedPage('pos-register.html', PAGE_ROLES.MANAGERS, (req) => '/team?tab=' + (req.query.tab === 'register' ? 'onboard' : 'staff')));
-app.get('/open-shift', embeddedPage('open-shift.html', PAGE_ROLES.STAFF_ALL, () => '/till?tab=open'));
-app.get('/close-shift', embeddedPage('close-shift.html', PAGE_ROLES.STAFF_ALL, () => '/till?tab=close'));
+app.get('/pos-register', directPage('pos-register.html', PAGE_ROLES.MANAGERS));
+app.get('/open-shift', directPage('open-shift.html', PAGE_ROLES.STAFF_ALL));
+app.get('/close-shift', directPage('close-shift.html', PAGE_ROLES.STAFF_ALL));
 app.get('/payment', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'payment.html'));
 app.get('/receipt', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'receipt.html'));
-app.get('/customers', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'customers-hub.html'));
-app.get('/customers-list', embeddedPage('customers.html', PAGE_ROLES.STAFF_ALL, () => '/customers?tab=all'));
+app.get('/customers', (req, res, next) => {
+    const tab = String(req.query.tab || 'all');
+    if (tab === 'clients') return res.redirect('/credit-customers?tab=clients');
+    if (tab === 'auth') return res.redirect('/credit-customers?tab=auth');
+    return guardPageRoute(PAGE_ROLES.STAFF_ALL, 'customers.html')(req, res, next);
+});
+app.get('/customers-list', directPage('customers.html', PAGE_ROLES.STAFF_ALL));
 app.get('/customer-display', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'customer-display.html'));
 
 // Corporate B2B Client Portal

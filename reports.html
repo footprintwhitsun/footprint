@@ -61,11 +61,20 @@
         let range = { from: monthStart(), to: todayStr() };
         let branch = 'All Branches';
 
-        ctx.toolbar.innerHTML = `
-            <select id="ov-branch" class="okw-select" aria-label="Branch"><option value="All Branches">All Branches</option></select>
-            <div id="ov-date-picker"></div>`;
+        ctx.kpis.innerHTML = `<div class="okw-kpi-row" id="ov-kpis"></div>`;
+        ctx.toolbar.innerHTML = OkwUI.filterDropdown({
+            label: 'Filters',
+            contentHtml: `
+                <div class="okw-filter-field">
+                    <label for="ov-branch">Branch</label>
+                    <select id="ov-branch" class="okw-select" aria-label="Branch"><option value="All Branches">All Branches</option></select>
+                </div>
+                <div class="okw-filter-field">
+                    <label>Date Range</label>
+                    <div id="ov-date-picker"></div>
+                </div>`
+        });
         panel.innerHTML = `
-            <div class="okw-kpi-row" id="ov-kpis"></div>
             <div id="ov-body"><div class="okw-empty">Loading...</div></div>
             <div class="okw-card" id="ov-ytd-card" style="margin-top:20px;">
                 <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px;">
@@ -119,7 +128,8 @@
             const bestProduct = (d.fastMovers || []).slice().sort((a, b) => Number(b.revenue || 0) - Number(a.revenue || 0))[0];
             const topCashier = (d.salesByTeller || []).slice().sort((a, b) => Number(b.sales || 0) - Number(a.sales || 0))[0];
             const topCashierName = topCashier ? String(topCashier.teller || '').replace(/\s*\(@[^)]*\)\s*/g, '').trim() : 'None yet';
-            panel.querySelector('#ov-kpis').innerHTML = [
+            const ovKpisEl = ctx.kpis.querySelector('#ov-kpis');
+            if (ovKpisEl) ovKpisEl.innerHTML = [
                 OkwUI.kpiCard({ label: 'Sales', value: fmt(p.sales), subtext: `${receipts} receipts`, tone: 'primary' }),
                 OkwUI.kpiCard({ label: 'Gross profit', value: fmt(p.gross_profit), subtext: `${margin.toFixed(1)}% gross margin`, tone: 'info' }),
                 OkwUI.kpiCard({ label: 'Expenses', value: fmt(p.expenses), tone: 'warning' }),
@@ -279,24 +289,67 @@
        lived on the old Reports page, moved here unchanged apart from how
        it is mounted and how a report is chosen from the link (?report=).
        ==================================================================== */
-    const DETAILED_TYPE_SELECT = `<select id="rep-type" class="okw-select" aria-label="Report Type"><option value="pnl">Profit / Loss Report</option><option value="z_report">Z Report</option><option value="purchase_sale">Purchase &amp; Sale</option><option value="tax">Tax Report</option><option value="supplier_customer">Supplier &amp; Customer Report</option><option value="customer_groups">Customer Groups Report</option><option value="stock">Stock Report</option><option value="adj">Stock Adjustment Report</option><option value="trending">Trending Products</option><option value="items_report">Items Report</option><option value="product_purchase">Product Purchase Report</option><option value="product_sell">Product Sell Report</option><option value="daily_sales_product">Daily Sales by Product</option><option value="purchase_sale_product">Purchase &amp; Sale Product</option><option value="purchase_payment">Purchase Payment Report</option><option value="sell_payment">Sell Payment Report</option><option value="payment_by_age">Payment by Age</option><option value="expense">Expense Report</option><option value="shifts">Register Report</option><option value="teller">Sales Representative Report</option><option value="activity_log">Activity Log</option><option value="deleted_transactions">Deleted Transactions</option><option value="transactions">Transaction History</option><option value="daily">Daily Summary</option><option value="cat">Sales by Category</option><option value="method">By Payment Method</option><option value="hourly">Hourly Sales</option><option value="quotes">Quotations</option><option value="slow_movers">Slow Movers (30+ Days)</option><option value="margin">Profit by Item</option><option value="variance">Stock Count Variance</option></select>`;
+    const DETAILED_REPORT_LABELS = {
+        pnl: 'Profit / Loss Report',
+        z_report: 'Z Report',
+        purchase_sale: 'Purchase & Sale',
+        tax: 'Tax Report',
+        supplier_customer: 'Supplier & Customer Report',
+        customer_groups: 'Customer Groups Report',
+        stock: 'Stock Report',
+        adj: 'Stock Adjustment Report',
+        trending: 'Trending Products',
+        items_report: 'Items Report',
+        product_purchase: 'Product Purchase Report',
+        product_sell: 'Product Sell Report',
+        daily_sales_product: 'Daily Sales by Product',
+        purchase_sale_product: 'Purchase & Sale Product',
+        purchase_payment: 'Purchase Payment Report',
+        sell_payment: 'Sell Payment Report',
+        payment_by_age: 'Payment by Age',
+        expense: 'Expense Report',
+        shifts: 'Register Report',
+        teller: 'Sales Representative Report',
+        activity_log: 'Activity Log',
+        deleted_transactions: 'Deleted Transactions',
+        transactions: 'Transaction History',
+        daily: 'Daily Summary',
+        cat: 'Sales by Category',
+        method: 'By Payment Method',
+        hourly: 'Hourly Sales',
+        quotes: 'Quotations',
+        slow_movers: 'Slow Movers (30+ Days)',
+        margin: 'Profit by Item',
+        variance: 'Stock Count Variance'
+    };
 
     function mountDetailed(panel, ctx) {
         destroyOverviewCharts();
-        ctx.toolbar.innerHTML = DETAILED_TYPE_SELECT + `
-            <select id="rep-branch" class="okw-select" aria-label="Branch"><option value="All Branches">All Branches</option></select>
-            <div id="rep-date-picker"></div>`;
+        ctx.toolbar.innerHTML = OkwUI.filterDropdown({
+            label: 'Filters',
+            contentHtml: `
+                <div class="okw-filter-field">
+                    <label for="rep-branch">Branch</label>
+                    <select id="rep-branch" class="okw-select" aria-label="Branch"><option value="All Branches">All Branches</option></select>
+                </div>
+                <div class="okw-filter-field">
+                    <label>Date Range</label>
+                    <div id="rep-date-picker"></div>
+                </div>`
+        });
         panel.innerHTML = '<div id="rep-host">Loading report...</div>';
-                    const token = localStorage.getItem("authToken") || localStorage.getItem("token") || sessionStorage.getItem("token");
+            const token = localStorage.getItem("authToken") || localStorage.getItem("token") || sessionStorage.getItem("token");
             const headers = { Authorization: "Bearer " + token };
             const fmt = (n) => (typeof formatCurrency === "function" ? formatCurrency(n) : ("GH₵ " + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })));
 
             const urlParams = new URLSearchParams(window.location.search);
             const initReport = urlParams.get("report");
-            let reportType = "transactions";
-            const typeSelect = document.getElementById("rep-type");
-            if (typeSelect && initReport && Array.from(typeSelect.options).some(o => o.value === initReport)) reportType = initReport;
-            if (typeSelect) typeSelect.value = reportType;
+            const reportType = (initReport && Object.prototype.hasOwnProperty.call(DETAILED_REPORT_LABELS, initReport)) ? initReport : "transactions";
+            const activeLabel = DETAILED_REPORT_LABELS[reportType] || "Transaction History";
+            const hubH1 = document.querySelector(".okw-hub-head h1");
+            if (hubH1) hubH1.textContent = activeLabel;
+            const topTitle = document.querySelector(".okw-topbar-title");
+            if (topTitle) topTitle.textContent = activeLabel;
 
             let dateRange = { from: new Date().toISOString().slice(0, 8) + "01", to: new Date().toISOString().slice(0, 10) };
             let selectedBranch = "All Branches";
@@ -786,12 +839,6 @@
                 }
             }
 
-            if (typeSelect) {
-                typeSelect.addEventListener("change", (e) => {
-                    reportType = e.target.value;
-                    loadAndRender();
-                });
-            }
             if (branchSelect) {
                 branchSelect.addEventListener("change", (e) => {
                     selectedBranch = e.target.value || "All Branches";
@@ -807,42 +854,74 @@
        Section 3 - Items, brands and customers (drill-down)
        Saved views are stored in the database for each user.
        ==================================================================== */
+    const DRILLDOWN_LABELS = {
+        items_today: 'Items Sold Today',
+        items_period: 'Items Sold (Any Period)',
+        by_brand: 'Sales by Brand',
+        top_customers: 'Top Customers',
+        customers_owing: 'Customers Owing (Aging)',
+        stock_on_hand: 'Stock on Hand'
+    };
+
     function mountDrilldown(panel, ctx) {
         destroyOverviewCharts();
         ctx.toolbar.style.flexWrap = 'wrap';
         let range = { from: monthStart(), to: todayStr() };
-        let active = 'items_today';
+        const viewParam = new URLSearchParams(window.location.search).get('view');
+        const initialView = (viewParam && Object.prototype.hasOwnProperty.call(DRILLDOWN_LABELS, viewParam)) ? viewParam : 'items_today';
+        let active = initialView;
         let data = null;
         let drillBrand = null;
         let views = [];
 
-        ctx.toolbar.innerHTML = `
-            <select id="cr-report-type" class="okw-select" aria-label="Report type">
-                <option value="items_today">Items sold today</option>
-                <option value="items_period">Items sold (any period)</option>
-                <option value="by_brand">Sales by brand</option>
-                <option value="top_customers">Top customers</option>
-                <option value="customers_owing">Customers owing (aging)</option>
-                <option value="stock_on_hand">Stock on hand</option>
-            </select>
-            <div id="cr-date-picker"></div>
-            <input type="text" id="cr-brand" class="okw-input" placeholder="Brand..." aria-label="Brand">
-            <input type="text" id="cr-category" class="okw-input" placeholder="Category..." aria-label="Category">
-            <input type="text" id="cr-item" class="okw-input" placeholder="Item name..." aria-label="Item name">
-            <select id="cr-method" class="okw-select" aria-label="Payment method">
-                <option value="">All payment methods</option>
-                <option value="cash">Cash</option>
-                <option value="momo">Mobile money</option>
-                <option value="card">Card</option>
-                <option value="credit">Credit</option>
-                <option value="split">Split</option>
-            </select>
-            <button type="button" class="okw-btn okw-btn-primary" id="cr-apply">Apply</button>
-            <select id="cr-views" class="okw-select" aria-label="Saved views"><option value="">Saved views...</option></select>
-            <button type="button" class="okw-btn okw-btn-outline" id="cr-save-view">Save view</button>
-            <button type="button" class="okw-btn okw-btn-outline" id="cr-delete-view">Delete view</button>`;
+        const activeViewLabel = DRILLDOWN_LABELS[active] || 'Items Sold Today';
+        const hubH1 = document.querySelector('.okw-hub-head h1');
+        if (hubH1) hubH1.textContent = activeViewLabel;
+        const topTitle = document.querySelector('.okw-topbar-title');
+        if (topTitle) topTitle.textContent = activeViewLabel;
+
+        ctx.kpis.innerHTML = `<div class="okw-kpi-row" id="cr-kpis"></div>`;
+        ctx.toolbar.innerHTML = OkwUI.filterDropdown({
+            label: 'Filters',
+            contentHtml: `
+                <div class="okw-filter-field">
+                    <label>Date Range</label>
+                    <div id="cr-date-picker"></div>
+                </div>
+                <div class="okw-filter-field">
+                    <label for="cr-brand">Brand</label>
+                    <input type="text" id="cr-brand" class="okw-input" placeholder="Filter by brand..." aria-label="Brand">
+                </div>
+                <div class="okw-filter-field">
+                    <label for="cr-category">Category</label>
+                    <input type="text" id="cr-category" class="okw-input" placeholder="Filter by category..." aria-label="Category">
+                </div>
+                <div class="okw-filter-field">
+                    <label for="cr-item">Item Name</label>
+                    <input type="text" id="cr-item" class="okw-input" placeholder="Filter by item..." aria-label="Item name">
+                </div>
+                <div class="okw-filter-field">
+                    <label for="cr-method">Payment Method</label>
+                    <select id="cr-method" class="okw-select" aria-label="Payment method">
+                        <option value="">All payment methods</option>
+                        <option value="cash">Cash</option>
+                        <option value="momo">Mobile money</option>
+                        <option value="card">Card</option>
+                        <option value="credit">Credit</option>
+                        <option value="split">Split</option>
+                    </select>
+                </div>
+                <div class="okw-filter-field">
+                    <label for="cr-views">Saved Views</label>
+                    <select id="cr-views" class="okw-select" aria-label="Saved views"><option value="">Saved views...</option></select>
+                </div>
+                <div class="okw-filter-actions">
+                    <button type="button" class="okw-btn okw-btn-outline" id="cr-save-view">Save</button>
+                    <button type="button" class="okw-btn okw-btn-outline" id="cr-delete-view">Delete</button>
+                    <button type="button" class="okw-btn okw-btn-primary" id="cr-apply">Apply</button>
+                </div>`
+        });
         panel.innerHTML = `
-            <div class="okw-kpi-row" id="cr-kpis"></div>
             <div id="cr-drill-bar"></div>
             <div id="cr-table-host">Loading report...</div>`;
 
@@ -878,7 +957,8 @@
             const delta = p.pct_change !== null && p.pct_change !== undefined ? `${p.pct_change >= 0 ? '+' : ''}${p.pct_change}% vs prior period` : 'No prior baseline';
             const owing = (data.customersOwing || []).reduce((s, c) => s + Number(c.balance || 0), 0);
             const stockVal = (data.stockOnHand || []).reduce((s, i) => s + Number(i.value_at_cost || 0), 0);
-            panel.querySelector('#cr-kpis').innerHTML = [
+            const crKpisEl = ctx.kpis.querySelector('#cr-kpis');
+            if (crKpisEl) crKpisEl.innerHTML = [
                 OkwUI.kpiCard({ label: 'Period sales', value: fmt(p.current_revenue), subtext: delta, tone: 'primary' }),
                 OkwUI.kpiCard({ label: 'Period profit', value: fmt(p.current_profit), subtext: `${p.from || ''} to ${p.to || ''}`, tone: 'success' }),
                 OkwUI.kpiCard({ label: 'Customers owing', value: fmt(owing), subtext: `${(data.customersOwing || []).length} accounts`, tone: 'warning' }),
@@ -893,7 +973,7 @@
                 ? `<div class="okw-filter-bar okw-drill-bar"><span>Drill-down: <strong>${esc(drillBrand)}</strong></span><button type="button" class="okw-btn okw-btn-outline" id="cr-clear-drill">Back to all brands</button></div>`
                 : '';
             const clear = bar.querySelector('#cr-clear-drill');
-            if (clear) clear.onclick = () => { drillBrand = null; renderTable(); };
+            if (clear) clear.onclick = () => { drillBrand = null; active = initialView; renderTable(); };
 
             const host = '#cr-table-host';
             if (active === 'items_today' || active === 'items_period') {
@@ -931,7 +1011,6 @@
                         e.preventDefault();
                         drillBrand = a.dataset.drillBrand;
                         active = 'items_period';
-                        $('#cr-report-type').value = active;
                         renderTable();
                     };
                 });
@@ -976,11 +1055,6 @@
             }
         }
 
-        $('#cr-report-type').addEventListener('change', (e) => {
-            drillBrand = null;
-            active = e.target.value;
-            if (active === 'items_today' || !data) load(); else renderTable();
-        });
         $('#cr-apply').addEventListener('click', load);
 
         // Saved views live in the database (per user), not in this browser.

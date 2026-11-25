@@ -495,14 +495,10 @@
 
     OkwUI.sectionPage({
         mount: '#hub',
-        title: 'Money',
-        subtitle: 'Expenses, cash accounts, and double-entry general ledger.',
-        defaultId: 'expenses-list',
+        title: 'General Ledger',
+        subtitle: 'Chart of accounts, journal entries, trial balance, and bank reconciliation.',
+        defaultId: 'coa',
         sections: [
-            { id: 'expenses-list', label: 'Expenses', group: 'Expenses & Cash', embed: '/expenses?tab=list' },
-            { id: 'expenses-add', label: 'Add expense', group: 'Expenses & Cash', embed: '/expenses?tab=add' },
-            { id: 'expenses-categories', label: 'Expense categories', group: 'Expenses & Cash', embed: '/expenses?tab=categories' },
-            { id: 'cash', label: 'Account and cash', group: 'Expenses & Cash', embed: '/extras?tab=accounts' },
             { id: 'coa', label: 'Chart of Accounts', group: 'General Ledger', render: mountCoa },
             { id: 'journal', label: 'Journal Entries', group: 'General Ledger', render: mountJournal },
             { id: 'trial-balance', label: 'Trial Balance & Balance Sheet', group: 'General Ledger', render: mountTrialBalance },

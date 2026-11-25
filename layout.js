@@ -46,73 +46,147 @@
 
     const MODULES = [
         { label: 'Dashboard', url: '/dashboard', roles: ['admin', 'manager', 'store_manager'], group: 'Core', icon: 'home' },
-        { label: 'CEO overview', url: '/ceo-portal?tab=overview', roles: ['ceo', 'admin'], group: 'CEO', icon: 'shield' },
-        { label: 'Pending approvals', url: '/ceo-portal?tab=approvals-pending', roles: ['ceo', 'admin'], group: 'CEO', icon: 'clock' },
-        { label: 'Approval history', url: '/ceo-portal?tab=approvals-history', roles: ['ceo', 'admin'], group: 'CEO', icon: 'fileCheck' },
+
+        { label: 'CEO Overview', url: '/ceo-portal?tab=overview', roles: ['ceo', 'admin'], group: 'CEO', icon: 'shield' },
+        { label: 'Pending Approvals', url: '/ceo-portal?tab=approvals-pending', roles: ['ceo', 'admin'], group: 'CEO', icon: 'clock' },
+        { label: 'Approval History', url: '/ceo-portal?tab=approvals-history', roles: ['ceo', 'admin'], group: 'CEO', icon: 'fileCheck' },
         { label: 'Branches', url: '/ceo-portal?tab=branches', roles: ['ceo', 'admin'], group: 'CEO', icon: 'mapPin' },
-        { label: 'Supply chain bottlenecks', url: '/ceo-portal?tab=ops-bottlenecks', roles: ['ceo', 'admin'], group: 'CEO', icon: 'activity' },
-        { label: 'Branch performance', url: '/ceo-portal?tab=ops-performance', roles: ['ceo', 'admin'], group: 'CEO', icon: 'barChart' },
-        { label: 'Security settings', url: '/ceo-portal?tab=settings', roles: ['ceo', 'admin'], group: 'CEO', icon: 'lock' },
+        { label: 'Supply Chain Bottlenecks', url: '/ceo-portal?tab=ops-bottlenecks', roles: ['ceo', 'admin'], group: 'CEO', icon: 'activity' },
+        { label: 'Branch Performance', url: '/ceo-portal?tab=ops-performance', roles: ['ceo', 'admin'], group: 'CEO', icon: 'barChart' },
+        { label: 'Security Settings', url: '/ceo-portal?tab=settings', roles: ['ceo', 'admin'], group: 'CEO', icon: 'lock' },
 
-        { label: 'Company dashboard', url: '/company-portal', roles: ['company', 'business_client'], group: 'Company', icon: 'home' },
-        { label: 'Proforma invoices', url: '/company-portal?tab=proforma', roles: ['company', 'business_client'], group: 'Company', icon: 'receipt' },
-        { label: 'Company transactions', url: '/company-portal?tab=transactions', roles: ['company', 'business_client'], group: 'Company', icon: 'activity' },
-        { label: 'Quick sale', url: '/company-portal?tab=quick-sale', roles: ['company', 'business_client'], group: 'Company', icon: 'shoppingCart' },
-        { label: 'Company tax', url: '/company-portal?tab=tax-management', roles: ['company', 'business_client'], group: 'Company', icon: 'percent' },
-        { label: 'Company profile', url: '/company-portal?tab=company-profile', roles: ['company', 'business_client'], group: 'Company', icon: 'users' },
-        { label: 'Company settings', url: '/company-portal?tab=settings', roles: ['company', 'business_client'], group: 'Company', icon: 'settings' },
+        { label: 'Company Dashboard', url: '/company-portal', roles: ['company', 'business_client'], group: 'Company', icon: 'home' },
+        { label: 'Proforma Invoices', url: '/company-portal?tab=proforma', roles: ['company', 'business_client'], group: 'Company', icon: 'receipt' },
+        { label: 'Company Transactions', url: '/company-portal?tab=transactions', roles: ['company', 'business_client'], group: 'Company', icon: 'activity' },
+        { label: 'Quick Sale', url: '/company-portal?tab=quick-sale', roles: ['company', 'business_client'], group: 'Company', icon: 'shoppingCart' },
+        { label: 'Company Tax', url: '/company-portal?tab=tax-management', roles: ['company', 'business_client'], group: 'Company', icon: 'percent' },
+        { label: 'Company Profile', url: '/company-portal?tab=company-profile', roles: ['company', 'business_client'], group: 'Company', icon: 'users' },
+        { label: 'Company Settings', url: '/company-portal?tab=settings', roles: ['company', 'business_client'], group: 'Company', icon: 'settings' },
 
-        { label: 'POS', url: '/pos', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Sales', icon: 'shoppingBag' },
-        { label: 'All sales', url: '/sales?tab=all', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', icon: 'receipt' },
-        { label: 'Add sale', url: '/sales?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', icon: 'shoppingCart' },
-        { label: 'Drafts and quotations', url: '/sales?tab=drafts', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', icon: 'fileCheck' },
-        { label: 'Returns and shipments', url: '/sales?tab=returns', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', icon: 'truck' },
-        { label: 'Discounts and promotions', url: '/sales?tab=discounts', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', icon: 'percent' },
-        { label: 'Open shift', url: '/till?tab=open', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'clock' },
-        { label: 'Close shift', url: '/till?tab=close', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'logOut' },
-        { label: 'Daily close', url: '/till?tab=daily', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'fileCheck' },
-        { label: 'Transactions', url: '/till?tab=transactions', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'receipt' },
-        { label: 'Reserved Orders (Part-Pay)', url: '/extras', roles: ['cashier', 'teller'], group: 'Till', icon: 'layers' },
-        { label: 'Stock items', url: '/stock?tab=stock', roles: ['admin', 'manager', 'store_manager'], group: 'Stock', icon: 'package' },
-        { label: 'Purchase orders', url: '/stock?tab=orders', roles: ['admin', 'manager', 'store_manager'], group: 'Stock', icon: 'shoppingCart' },
-        { label: 'Goods receiving', url: '/stock?tab=receiving', roles: ['admin', 'manager', 'store_manager'], group: 'Stock', icon: 'clipboardCheck' },
-        { label: 'Adjustments and transfers', url: '/stock?tab=adj-list', roles: ['admin', 'manager', 'store_manager'], group: 'Stock', icon: 'layers' },
-        { label: 'Categories and catalog', url: '/stock?tab=categories', roles: ['admin', 'manager', 'store_manager'], group: 'Stock', icon: 'folder' },
-        { label: 'Deliveries and counts', url: '/operations', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller', 'storekeeper', 'driver'], group: 'Stock', icon: 'clipboardCheck' },
-        { label: 'Customers', url: '/customers', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Customers', icon: 'users' },
-        { label: 'Credit clients', url: '/customers?tab=clients', roles: ['admin', 'manager', 'store_manager'], group: 'Customers', icon: 'creditCard' },
-        { label: 'Manager authorization', url: '/customers?tab=auth', roles: ['admin', 'manager', 'store_manager'], group: 'Customers', icon: 'lock' },
-        { label: 'Expenses', url: '/money?tab=expenses-list', roles: ['admin', 'manager', 'store_manager'], group: 'Money', icon: 'dollarSign' },
-        { label: 'Add expense', url: '/money?tab=expenses-add', roles: ['admin', 'manager', 'store_manager'], group: 'Money', icon: 'receipt' },
-        { label: 'Account and cash', url: '/money?tab=cash', roles: ['admin', 'manager', 'store_manager'], group: 'Money', icon: 'creditCard' },
-        { label: 'General ledger', url: '/money?tab=coa', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Money', icon: 'fileCheck' },
-        { label: 'Reports overview', url: '/reports?tab=overview', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', icon: 'pieChart' },
-        { label: 'Detailed reports', url: '/reports?tab=detailed', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', icon: 'barChart' },
-        { label: 'Items, brands & customers', url: '/reports?tab=drilldown', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', icon: 'trendingUp' },
-        { label: 'Staff accounts', url: '/team?tab=staff', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Team', icon: 'users' },
-        { label: 'Onboard new staff', url: '/team?tab=onboard', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Team', icon: 'user' },
-        { label: 'Roles and permissions', url: '/team?tab=roles', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Team', icon: 'lock' },
-        { label: 'Attendance', url: '/team?tab=attendance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Team', icon: 'clock' },
-        { label: 'Payroll & salaries', url: '/team?tab=payroll', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Team', icon: 'dollarSign' },
-        { label: 'Store profile', url: '/settings?tab=store', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', icon: 'home' },
-        { label: 'Business', url: '/settings?tab=business', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', icon: 'settings' },
-        { label: 'Tax rates and report', url: '/settings?tab=taxrates', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', icon: 'percent' },
-        { label: 'Locations', url: '/settings?tab=locations', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', icon: 'mapPin' },
-        { label: 'Invoice', url: '/settings?tab=invoice', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', icon: 'receipt' },
-        { label: 'Receipt printers', url: '/settings?tab=printers', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', icon: 'fileCheck' },
-        { label: 'Notification templates', url: '/settings?tab=notifications', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Admin', icon: 'bell' },
-        { label: 'Activity log', url: '/settings?tab=activity', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Admin', icon: 'activity' },
-        { label: 'Backups', url: '/settings?tab=backups', roles: ['ceo', 'admin'], group: 'Admin', icon: 'database' },
-        { label: 'My profile', url: '/profile', roles: ['all'], group: 'Admin', icon: 'user' }
+        // Sales
+        { label: 'POS', url: '/pos', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Sales', subgroup: 'Sales', icon: 'shoppingBag' },
+        { label: 'All Sales', url: '/sell?tab=all', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Sales', icon: 'receipt' },
+        { label: 'Add Sale', url: '/sell?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Sales', icon: 'shoppingCart' },
+        { label: 'POS Sales', url: '/sell?tab=list_pos', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Sales', icon: 'shoppingBag' },
+        { label: 'Sale Returns', url: '/sell?tab=returns', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Sales', icon: 'truck' },
+        { label: 'Shipments', url: '/sell?tab=shipments', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Sales', icon: 'truck' },
+        { label: 'Lay-away', url: '/extras?tab=layaway', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Sales', icon: 'layers' },
+        { label: 'Add Draft', url: '/sell?tab=add_draft', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Drafts & Quotes', icon: 'fileCheck' },
+        { label: 'Drafts', url: '/sell?tab=drafts', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Drafts & Quotes', icon: 'fileCheck' },
+        { label: 'Add Quotation', url: '/sell?tab=add_quotation', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Drafts & Quotes', icon: 'fileCheck' },
+        { label: 'Quotations', url: '/sell?tab=quotations', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Drafts & Quotes', icon: 'fileCheck' },
+        { label: 'Discounts', url: '/sell?tab=discounts', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Pricing & Import', icon: 'percent' },
+        { label: 'Promotions', url: '/promotions', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Pricing & Import', icon: 'tag' },
+        { label: 'Import Sales', url: '/sell?tab=import', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Pricing & Import', icon: 'upload' },
 
+        // Cash Register (Till)
+        { label: 'Open Shift', url: '/open-shift', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Cash Register', icon: 'clock' },
+        { label: 'Close Shift', url: '/close-shift', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Cash Register', icon: 'logOut' },
+        { label: 'Daily Close', url: '/daily-close', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Cash Register', icon: 'fileCheck' },
+        { label: 'Transactions', url: '/transactions', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Cash Register', icon: 'receipt' },
+        { label: 'Reserved Orders (Part-Pay)', url: '/extras', roles: ['cashier', 'teller'], group: 'Cash Register', icon: 'layers' },
 
+        // Inventory (Stock, Purchasing, Movement, Catalog)
+        { label: 'Stock Items', url: '/inventory?tab=stock', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Stock', icon: 'package' },
+        { label: 'Batch & Lot Tracking', url: '/inventory?tab=shelf', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Stock', icon: 'layers' },
+        { label: 'Stock Taking', url: '/inventory?tab=stocktaking', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Stock', icon: 'clipboardCheck' },
+        { label: 'Barcode Generator', url: '/inventory?tab=barcodes', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Stock', icon: 'tag' },
+        { label: 'Negative Stock', url: '/negative-stock', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Stock', icon: 'activity' },
+        { label: 'Purchase Orders', url: '/inventory?tab=orders', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'shoppingCart' },
+        { label: 'Goods Receiving', url: '/inventory?tab=receiving', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'clipboardCheck' },
+        { label: 'Suppliers', url: '/inventory?tab=suppliers', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'truck' },
+        { label: 'Distribution', url: '/inventory?tab=distribution', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'truck' },
+        { label: 'Stock Adjustments', url: '/stock-adjustments?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'layers' },
+        { label: 'Add Stock Adjustment', url: '/stock-adjustments?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'clipboardCheck' },
+        { label: 'Bulk Adjustment', url: '/stock-adjustments?tab=bulk', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'layers' },
+        { label: 'Stock Transfers', url: '/stock-transfers?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'truck' },
+        { label: 'Add Stock Transfer', url: '/stock-transfers?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'truck' },
+        { label: 'Returned Sales', url: '/inventory?tab=returns', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'receipt' },
+        { label: 'Deliveries & Counts', url: '/operations', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller', 'storekeeper', 'driver'], group: 'Inventory', subgroup: 'Movement', icon: 'clipboardCheck' },
+        { label: 'Categories', url: '/categories', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Catalog', icon: 'folder' },
+        { label: 'Brands, Units & Prices', url: '/catalog-ops', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Catalog', icon: 'tag' },
+        { label: 'Bulk Import', url: '/bulk-upload', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Catalog', icon: 'upload' },
 
+        // Customers
+        { label: 'All Customers', url: '/customers', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Customers', icon: 'users' },
+        { label: 'Credit Clients', url: '/credit-customers?tab=clients', roles: ['admin', 'manager', 'store_manager'], group: 'Customers', icon: 'creditCard' },
+        { label: 'Manager Authorization', url: '/credit-customers?tab=auth', roles: ['admin', 'manager', 'store_manager'], group: 'Customers', icon: 'lock' },
 
+        // Expenses & Accounts (Money)
+        { label: 'Expenses', url: '/expenses?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'dollarSign' },
+        { label: 'Add Expense', url: '/expenses?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'receipt' },
+        { label: 'Expense Categories', url: '/expenses?tab=categories', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'folder' },
+        { label: 'Account & Cash', url: '/extras?tab=accounts', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'creditCard' },
+        { label: 'Chart of Accounts', url: '/money?tab=coa', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'General Ledger', icon: 'fileCheck' },
+        { label: 'Journal Entries', url: '/money?tab=journal', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'General Ledger', icon: 'receipt' },
+        { label: 'Trial Balance & Balance Sheet', url: '/money?tab=trial-balance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'General Ledger', icon: 'barChart' },
+        { label: 'Bank Reconciliation', url: '/money?tab=reconcile', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'General Ledger', icon: 'clipboardCheck' },
 
+        // Reports
+        { label: 'Reports Overview', url: '/reports?tab=overview', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Overview', icon: 'pieChart' },
+        { label: 'Profit / Loss Report', url: '/reports?tab=detailed&report=pnl', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Financial & Tax', icon: 'trendingUp' },
+        { label: 'Z Report', url: '/reports?tab=detailed&report=z_report', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Financial & Tax', icon: 'receipt' },
+        { label: 'Purchase & Sale', url: '/reports?tab=detailed&report=purchase_sale', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Financial & Tax', icon: 'barChart' },
+        { label: 'Tax Report', url: '/reports?tab=detailed&report=tax', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Financial & Tax', icon: 'percent' },
+        { label: 'Expense Report', url: '/reports?tab=detailed&report=expense', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Financial & Tax', icon: 'dollarSign' },
+        { label: 'Profit by Item', url: '/reports?tab=detailed&report=margin', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Financial & Tax', icon: 'trendingUp' },
+        { label: 'Transaction History', url: '/reports?tab=detailed&report=transactions', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'receipt' },
+        { label: 'Daily Summary', url: '/reports?tab=detailed&report=daily', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'barChart' },
+        { label: 'Sales by Category', url: '/reports?tab=detailed&report=cat', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'pieChart' },
+        { label: 'By Payment Method', url: '/reports?tab=detailed&report=method', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'creditCard' },
+        { label: 'Hourly Sales', url: '/reports?tab=detailed&report=hourly', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'clock' },
+        { label: 'Quotations', url: '/reports?tab=detailed&report=quotes', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'fileCheck' },
+        { label: 'Supplier & Customer Report', url: '/reports?tab=detailed&report=supplier_customer', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'users' },
+        { label: 'Customer Groups Report', url: '/reports?tab=detailed&report=customer_groups', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'users' },
+        { label: 'Register Report', url: '/reports?tab=detailed&report=shifts', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'clock' },
+        { label: 'Sales Representative Report', url: '/reports?tab=detailed&report=teller', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'user' },
+        { label: 'Stock Report', url: '/reports?tab=detailed&report=stock', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'package' },
+        { label: 'Stock Adjustment Report', url: '/reports?tab=detailed&report=adj', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'layers' },
+        { label: 'Stock Count Variance', url: '/reports?tab=detailed&report=variance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'clipboardCheck' },
+        { label: 'Trending Products', url: '/reports?tab=detailed&report=trending', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'trendingUp' },
+        { label: 'Slow Movers (30+ Days)', url: '/reports?tab=detailed&report=slow_movers', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'clock' },
+        { label: 'Items Report', url: '/reports?tab=detailed&report=items_report', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'package' },
+        { label: 'Product Purchase Report', url: '/reports?tab=detailed&report=product_purchase', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'shoppingCart' },
+        { label: 'Product Sell Report', url: '/reports?tab=detailed&report=product_sell', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'shoppingBag' },
+        { label: 'Daily Sales by Product', url: '/reports?tab=detailed&report=daily_sales_product', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'barChart' },
+        { label: 'Purchase & Sale Product', url: '/reports?tab=detailed&report=purchase_sale_product', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'layers' },
+        { label: 'Purchase Payment Report', url: '/reports?tab=detailed&report=purchase_payment', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'creditCard' },
+        { label: 'Sell Payment Report', url: '/reports?tab=detailed&report=sell_payment', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'creditCard' },
+        { label: 'Payment by Age', url: '/reports?tab=detailed&report=payment_by_age', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'clock' },
+        { label: 'Activity Log', url: '/reports?tab=detailed&report=activity_log', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'activity' },
+        { label: 'Deleted Transactions', url: '/reports?tab=detailed&report=deleted_transactions', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'fileCheck' },
 
+        // Quick Reports (Items, Brands & Customers)
+        { label: 'Items Sold Today', url: '/reports?tab=drilldown&view=items_today', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Quick Reports', icon: 'shoppingBag' },
+        { label: 'Items Sold (Any Period)', url: '/reports?tab=drilldown&view=items_period', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Quick Reports', icon: 'barChart' },
+        { label: 'Sales by Brand', url: '/reports?tab=drilldown&view=by_brand', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Quick Reports', icon: 'tag' },
+        { label: 'Top Customers', url: '/reports?tab=drilldown&view=top_customers', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Quick Reports', icon: 'users' },
+        { label: 'Customers Owing (Aging)', url: '/reports?tab=drilldown&view=customers_owing', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Quick Reports', icon: 'creditCard' },
+        { label: 'Stock on Hand', url: '/reports?tab=drilldown&view=stock_on_hand', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Quick Reports', icon: 'package' },
 
+        // Staff & Payroll (Team)
+        { label: 'Users', url: '/pos-register?tab=users', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff & Payroll', icon: 'users' },
+        { label: 'Onboard New Staff', url: '/pos-register?tab=register', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff & Payroll', icon: 'user' },
+        { label: 'Roles & Permissions', url: '/roles', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff & Payroll', icon: 'lock' },
+        { label: 'Attendance', url: '/extras?tab=attendance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff & Payroll', icon: 'clock' },
+        { label: 'Payroll & Salaries', url: '/team?tab=payroll', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff & Payroll', icon: 'dollarSign' },
 
+        // Store Settings (Business Settings, Locations & Tax, Messages, Security)
+        { label: 'Store Profile', url: '/settings?tab=store', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'home' },
+        { label: 'Business', url: '/settings?tab=business', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'settings' },
+        { label: 'Tax Defaults', url: '/settings?tab=tax', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'percent' },
+        { label: 'Product', url: '/settings?tab=product', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'package' },
+        { label: 'Invoice', url: '/settings?tab=invoice', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'receipt' },
+        { label: 'Barcode', url: '/settings?tab=barcode', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'tag' },
+        { label: 'Receipt Printers', url: '/settings?tab=printers', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'fileCheck' },
+        { label: 'Locations', url: '/settings?tab=locations', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Locations & Tax', icon: 'mapPin' },
+        { label: 'Tax Rates & Report', url: '/settings?tab=taxrates', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Locations & Tax', icon: 'percent' },
+        { label: 'Notification Templates', url: '/settings?tab=notifications', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Messages', icon: 'bell' },
+        { label: 'Activity Log', url: '/settings?tab=activity', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Security', icon: 'activity' },
+        { label: 'Backups & Export', url: '/settings?tab=backups', roles: ['ceo', 'admin'], group: 'Store Settings', subgroup: 'Security', icon: 'database' },
 
+        // Account
+        { label: 'My Profile', url: '/profile', roles: ['all'], group: 'Account', icon: 'user' }
     ];
 
     function getCurrentUser() {
@@ -392,10 +466,22 @@
             });
     }
 
+    function matchesModuleUrl(modUrl, currentPath, currentParams) {
+        const [mPath, mQuery] = modUrl.split('?');
+        if (mPath !== currentPath) return false;
+        if (!mQuery) return !currentParams.toString();
+        const mParams = new URLSearchParams(mQuery);
+        for (const [k, v] of mParams.entries()) {
+            if (currentParams.get(k) !== v) return false;
+        }
+        return true;
+    }
+
     function getActivePageTitle() {
         const currentPath = window.location.pathname.replace(/\.html$/, '') || '/';
-        const currentFull = currentPath + (window.location.search || '');
-        const match = MODULES.find(m => m.url === currentFull) || MODULES.find(m => m.url.split('?')[0] === currentPath);
+        const currentParams = new URLSearchParams(window.location.search || '');
+        const match = MODULES.find(m => matchesModuleUrl(m.url, currentPath, currentParams))
+            || MODULES.find(m => m.url.split('?')[0] === currentPath);
         if (match) return match.label;
         const raw = (document.title || 'Manager Portal').replace(/OKWESIWA CO LTD\s*\|\s*/i, '').replace(/\s*-\s*OKWESIWA CO LTD/i, '').trim();
         return raw || 'Portal';
@@ -720,11 +806,20 @@
             const allowed = role === 'super_admin'
                 ? MODULES
                 : MODULES.filter(m => m.roles.includes('all') || m.roles.includes(role));
-            const hasExactFullMatch = allowed.some(m => m.url === currentFull);
-            const currentQuery = (window.location.search || '').replace(/^\?/, '');
+            const currentParams = new URLSearchParams(window.location.search || '');
+            // Normalize default sub-views for /reports so the right item highlights even without explicit params
+            const normParams = new URLSearchParams(currentParams.toString());
+            if (currentPath === '/reports') {
+                const tab = normParams.get('tab');
+                if (tab === 'detailed' && !normParams.get('report')) normParams.set('report', 'transactions');
+                if (tab === 'drilldown' && !normParams.get('view')) normParams.set('view', 'items_today');
+                if (!tab && normParams.get('report')) normParams.set('tab', 'detailed');
+            }
+            const hasExactMatch = allowed.some(m => matchesModuleUrl(m.url, currentPath, normParams));
+            const currentQuery = normParams.toString();
             const defaultForPath = allowed.find(m => m.url.split('?')[0] === currentPath);
             const isItemActive = (m) => {
-                if (hasExactFullMatch) return m.url === currentFull;
+                if (hasExactMatch) return matchesModuleUrl(m.url, currentPath, normParams);
                 const [path, query] = m.url.split('?');
                 if (path !== currentPath) return false;
                 if (currentQuery) return false;
@@ -744,31 +839,30 @@
                 'CEO': 'shield',
                 'Company': 'layers',
                 'Sales': 'shoppingBag',
-                'Till': 'clock',
-                'Stock': 'package',
-                'Customers': 'users',
-                'Money': 'dollarSign',
-                'Team': 'users',
-                'Settings': 'settings',
-                'Sell': 'shoppingBag',
-                'Sales and till': 'clock',
+                'Cash Register': 'clock',
                 'Inventory': 'package',
-                'Contacts': 'users',
-                'Credit Management': 'creditCard',
+                'Customers': 'users',
+                'Expenses & Accounts': 'dollarSign',
                 'Reports': 'barChart',
-                'Expenses': 'dollarSign',
-                'Stock Adjustment': 'clipboardCheck',
-                'Stock Transfers': 'truck',
-                'Business': 'settings',
-                'Staff Management': 'user',
-                'Admin': 'lock'
+                'Quick Reports': 'trendingUp',
+                'Staff & Payroll': 'users',
+                'Store Settings': 'settings',
+                'Account': 'user'
             };
             nav.innerHTML = groups.map(([groupName, items]) => {
+                const distinctSubgroups = new Set(items.map(i => i.subgroup).filter(Boolean));
+                const showSubgroups = distinctSubgroups.size > 1;
+                let lastSub = null;
                 const links = items.map(m => {
                     const active = isItemActive(m) ? ' active' : '';
-                    return `<a href="${m.url}" class="nav-item${active}">${ICONS[m.icon] || ''}<span>${m.label}</span></a>`;
+                    let subHtml = '';
+                    if (showSubgroups && m.subgroup && m.subgroup !== lastSub) {
+                        lastSub = m.subgroup;
+                        subHtml = `<div class="nav-subgroup-label">${m.subgroup}</div>`;
+                    }
+                    return `${subHtml}<a href="${m.url}" class="nav-item${active}">${ICONS[m.icon] || ''}<span>${m.label}</span></a>`;
                 }).join('');
-                if (groupName === 'Core') return links;
+                if (groupName === 'Core' || groupName === 'Account') return links;
                 const hasActive = items.some(isItemActive);
                 const groupIconSvg = ICONS[GROUP_ICONS[groupName] || (items[0] && items[0].icon) || 'folder'] || '';
                 const chevSvg = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
@@ -822,6 +916,82 @@
                     collapseAllGroups();
                 });
             });
+
+            // Instant inline sidebar quick-find search
+            let searchWrap = sidebar.querySelector('.sidebar-search-wrap');
+            if (!searchWrap) {
+                searchWrap = document.createElement('div');
+                searchWrap.className = 'sidebar-search-wrap';
+                searchWrap.innerHTML = `
+                    <span class="sidebar-search-icon" aria-hidden="true">${ICONS.search}</span>
+                    <input type="search" id="okw-sidebar-search" class="sidebar-search-input" placeholder="Find page..." aria-label="Find page in menu" autocomplete="off">
+                `;
+                nav.parentNode.insertBefore(searchWrap, nav);
+            }
+            const searchInput = searchWrap.querySelector('#okw-sidebar-search');
+            if (searchInput && !searchInput.dataset.okwBound) {
+                searchInput.dataset.okwBound = '1';
+                const applySidebarFilter = () => {
+                    const q = searchInput.value.trim().toLowerCase();
+                    // Standalone top-level links (e.g. Dashboard, My Profile)
+                    Array.from(nav.children).forEach(child => {
+                        if (child.matches('a.nav-item')) {
+                            const txt = (child.textContent || '').toLowerCase();
+                            child.style.display = (!q || txt.includes(q)) ? '' : 'none';
+                        }
+                    });
+                    nav.querySelectorAll('.nav-group').forEach(group => {
+                        const groupName = (group.dataset.group || '').toLowerCase();
+                        const toggleBtn = group.querySelector('.nav-section-toggle');
+                        const itemsBox = group.querySelector('.nav-group-items');
+                        if (!itemsBox) return;
+                        if (!q) {
+                            group.style.display = '';
+                            itemsBox.querySelectorAll('a.nav-item, .nav-subgroup-label').forEach(el => { el.style.display = ''; });
+                            const isActiveGroup = !!(toggleBtn && toggleBtn.classList.contains('has-active'));
+                            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', isActiveGroup ? 'true' : 'false');
+                            itemsBox.style.display = isActiveGroup ? 'flex' : 'none';
+                            return;
+                        }
+                        let currentSub = '';
+                        let visibleCount = 0;
+                        const subLabels = [];
+                        let activeSubEntry = null;
+                        Array.from(itemsBox.children).forEach(el => {
+                            if (el.classList.contains('nav-subgroup-label')) {
+                                currentSub = (el.textContent || '').toLowerCase();
+                                activeSubEntry = { el, count: 0 };
+                                subLabels.push(activeSubEntry);
+                            } else if (el.matches('a.nav-item')) {
+                                const text = (el.textContent || '').toLowerCase();
+                                const match = text.includes(q) || groupName.includes(q) || currentSub.includes(q);
+                                el.style.display = match ? '' : 'none';
+                                if (match) {
+                                    visibleCount++;
+                                    if (activeSubEntry) activeSubEntry.count++;
+                                }
+                            }
+                        });
+                        subLabels.forEach(s => { s.el.style.display = s.count > 0 ? '' : 'none'; });
+                        group.style.display = visibleCount > 0 ? '' : 'none';
+                        if (visibleCount > 0) {
+                            if (toggleBtn) toggleBtn.setAttribute('aria-expanded', 'true');
+                            itemsBox.style.display = 'flex';
+                        }
+                    });
+                };
+                searchInput.addEventListener('input', applySidebarFilter);
+                searchInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        searchInput.value = '';
+                        applySidebarFilter();
+                        searchInput.blur();
+                    } else if (e.key === 'Enter') {
+                        const firstVisible = Array.from(nav.querySelectorAll('a.nav-item')).find(a => a.offsetParent !== null);
+                        if (firstVisible) window.location.href = firstVisible.getAttribute('href');
+                    }
+                });
+            }
 
             initSidebarPrefetch(nav);
         }
@@ -1127,8 +1297,7 @@
         if (!token) return;
 
         const path = window.location.pathname;
-        const tab = new URLSearchParams(window.location.search).get('tab') || 'open';
-        const isOpenShiftGatePage = (path === '/till' && tab === 'open') || path === '/open-shift';
+        const isOpenShiftGatePage = path === '/open-shift';
 
         fetch('/api/shifts/active', {
             headers: { Authorization: 'Bearer ' + token },
@@ -1136,7 +1305,7 @@
         }).then(r => (r.ok ? r.json() : null)).then(data => {
             if (!data || data.active) return;
             if (!isOpenShiftGatePage) {
-                window.location.replace('/till?tab=open');
+                window.location.replace('/open-shift');
                 return;
             }
             document.body.classList.add('okw-shift-gate');

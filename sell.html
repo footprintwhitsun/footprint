@@ -29,30 +29,12 @@
 
     <main class="main-content">
         <div class="page-wrap">
-            <div class="okw-card" style="margin-bottom:16px;padding:12px 16px;">
-                <div class="okw-filter-bar" style="justify-content:space-between;">
-                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-                        <label for="sell-view">Section</label>
-                        <select id="sell-view" class="okw-select">
-                            <option value="all">All Sales</option>
-                            <option value="add">Add Sale</option>
-                            <option value="list_pos">List POS</option>
-                            <option value="add_draft">Add Draft</option>
-                            <option value="drafts">List Drafts</option>
-                            <option value="add_quotation">Add Quotation</option>
-                            <option value="quotations">List Quotations</option>
-                            <option value="returns">List Sell Return</option>
-                            <option value="shipments">Shipments</option>
-                            <option value="discounts">Discounts</option>
-                            <option value="import">Import Sales</option>
-                        </select>
-                        <div id="sell-date-picker"></div>
-                    </div>
-                    <a href="/pos" class="okw-btn okw-btn-accent">Open POS Till</a>
-                </div>
+            <div class="okw-kpi-row" id="sell-kpis" style="display:none;"></div>
+            <div class="okw-action-bar">
+                <div id="sell-filter-host"></div>
+                <a href="/pos" class="okw-btn okw-btn-accent">Open POS Till</a>
             </div>
-
-            <div class="okw-card" id="sell-panel">Loading...</div>
+            <div id="sell-panel">Loading...</div>
         </div>
         <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA CO LTD</footer>
     </main>
@@ -69,10 +51,17 @@
     let activeView = valid.includes(urlTab) ? urlTab : 'all';
     let dateRange = { from: new Date().toISOString().slice(0, 8) + '01', to: new Date().toISOString().slice(0, 10) };
 
-    const viewSel = document.getElementById('sell-view');
-    const dateHost = document.getElementById('sell-date-picker');
-    viewSel.value = activeView;
-    viewSel.addEventListener('change', () => { activeView = viewSel.value; render(); });
+    const filterHost = document.getElementById('sell-filter-host');
+    const kpiHost = document.getElementById('sell-kpis');
+    filterHost.innerHTML = OkwUI.filterDropdown({
+        label: 'Filters',
+        contentHtml: `
+            <div class="okw-filter-field">
+                <label>Date Range</label>
+                <div id="sell-date-picker"></div>
+            </div>`
+    });
+    const dateHost = filterHost;
 
     OkwUI.dateRangePicker('#sell-date-picker', (r) => {
         dateRange = r;
@@ -85,7 +74,7 @@
     }
 
     async function renderSalesTable(filterFn, title, filename) {
-        dateHost.style.display = 'block';
+        dateHost.style.display = 'inline-block';
         const res = await fetch('/api/transactions', { headers, credentials: 'include' });
         const list = await res.json().catch(() => []);
         const rows = (Array.isArray(list) ? list : []).filter(t => inDateRange(t.created_at) && filterFn(t)).map(t => ({
@@ -99,6 +88,18 @@
             due: Number(t.balance_due || 0),
             status: String(t.status || 'completed').toUpperCase()
         }));
+        if (kpiHost) {
+            const totalAmt = rows.reduce((s, r) => s + r.total, 0);
+            const paidAmt = rows.reduce((s, r) => s + r.paid, 0);
+            const dueAmt = rows.reduce((s, r) => s + r.due, 0);
+            kpiHost.style.display = '';
+            kpiHost.innerHTML = [
+                OkwUI.kpiCard({ label: 'Total Sales', value: fmt(totalAmt), subtext: `${rows.length} transactions`, tone: 'primary' }),
+                OkwUI.kpiCard({ label: 'Total Paid', value: fmt(paidAmt), tone: 'success' }),
+                OkwUI.kpiCard({ label: 'Balance Due', value: fmt(dueAmt), tone: dueAmt > 0 ? 'warning' : 'info' }),
+                OkwUI.kpiCard({ label: 'Average Sale', value: fmt(rows.length ? totalAmt / rows.length : 0), tone: 'info' })
+            ].join('');
+        }
         document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
         OkwUI.dataTable('#sell-tbl', {
             columns: [
@@ -187,7 +188,7 @@
             if (r.ok) {
                 OkwUI.toast(`${titles[mode]} saved`, 'success');
                 activeView = mode === 'add_draft' ? 'drafts' : (mode === 'add_quotation' ? 'quotations' : 'all');
-                viewSel.value = activeView;
+                window.history.replaceState(null, '', '/sell?tab=' + activeView);
                 render();
             } else {
                 OkwUI.toast(d.message || 'Action failed', 'danger');
@@ -400,7 +401,7 @@
             OkwUI.toast(`Saved ${okCount} of ${batch.length} sale(s)`, 'success');
             if (okCount > 0) {
                 activeView = 'all';
-                viewSel.value = 'all';
+                window.history.replaceState(null, '', '/sell?tab=all');
                 render();
             }
         };

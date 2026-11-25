@@ -32,23 +32,7 @@
 
     <main class="main-content">
         <div class="page-wrap">
-            <div style="margin-bottom:16px;">
-                <h1 style="margin:0;font-size:24px;">Stock Adjustments</h1>
-                <p style="margin:4px 0 0;color:var(--color-text-muted);font-size:14px;">Review adjustment history, add a single adjustment, or submit bulk stock adjustments.</p>
-            </div>
-
-            <div class="okw-card" style="margin-bottom:16px;padding:12px 16px;">
-                <div class="okw-filter-bar">
-                    <label for="sa-view">Section</label>
-                    <select id="sa-view" class="okw-select">
-                        <option value="list">List Stock Adjustments</option>
-                        <option value="add">Add Stock Adjustment</option>
-                        <option value="bulk">Bulk Adjustment</option>
-                    </select>
-                </div>
-            </div>
-
-            <div class="okw-card" id="sa-panel">Loading...</div>
+            <div id="sa-panel">Loading...</div>
         </div>
         <footer style="text-align:center;padding:16px 24px;color:var(--color-text-muted);font-size:13px;border-top:1px solid var(--color-border);">© 2026 OKWESIWA CO LTD</footer>
     </main>
@@ -60,9 +44,6 @@
     const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
     const urlTab = new URLSearchParams(window.location.search).get('tab');
     let activeView = ['list', 'add', 'bulk'].includes(urlTab) ? urlTab : 'list';
-    const viewSel = document.getElementById('sa-view');
-    viewSel.value = activeView;
-    viewSel.addEventListener('change', () => { activeView = viewSel.value; render(); });
 
     const fmtQty = (v) => {
         const n = Number(v || 0);
@@ -137,7 +118,7 @@
                 method: 'POST', headers, credentials: 'include',
                 body: JSON.stringify({ product_barcode: prod.barcode, adjustment_type: type, quantity_adjusted: qty, reason })
             });
-            if (r.ok) { OkwUI.toast('Stock adjustment saved', 'success'); activeView = 'list'; viewSel.value = 'list'; render(); }
+            if (r.ok) { OkwUI.toast('Stock adjustment saved', 'success'); activeView = 'list'; window.history.replaceState(null, '', '/stock-adjustments?tab=list'); render(); }
             else OkwUI.toast('Failed to save adjustment', 'danger');
         };
     }
@@ -197,7 +178,7 @@
             if (r.ok) {
                 OkwUI.toast(`Saved ${staged.length} adjustments`, 'success');
                 activeView = 'list';
-                viewSel.value = 'list';
+                window.history.replaceState(null, '', '/stock-adjustments?tab=list');
                 render();
             } else {
                 OkwUI.toast('Bulk adjustment failed', 'danger');

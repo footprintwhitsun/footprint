@@ -366,13 +366,13 @@
     // and handlers; they are only moved into a menu.
     function compactExportMenu(root, sel) {
         const csv = root.querySelector(sel.csv);
-        if (!csv || root.querySelector('details.okw-menu')) return;
+        if (!csv || root.querySelector('details.okw-export-menu')) return;
         const excel = root.querySelector(sel.excel), print = root.querySelector(sel.print);
         const orient = root.querySelector(sel.orient), pdf = root.querySelector(sel.pdf);
         if (!excel || !print || !orient || !pdf) return;
         const menu = document.createElement('details');
-        menu.className = 'okw-menu';
-        menu.innerHTML = '<summary class="okw-btn okw-btn-outline">Export</summary><div class="okw-menu-list"></div>';
+        menu.className = 'okw-menu okw-export-menu';
+        menu.innerHTML = '<summary class="okw-btn okw-btn-outline"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Export</summary><div class="okw-menu-list"></div>';
         const list = menu.querySelector('.okw-menu-list');
         const row = document.createElement('div');
         row.className = 'okw-menu-row';
@@ -383,12 +383,36 @@
         csv.parentNode.insertBefore(menu, csv);
         list.append(csv, excel, print, row);
         if (pdfWrap && pdfWrap !== list && !pdfWrap.children.length) pdfWrap.remove();
-        if (!document.documentElement.dataset.okwMenuClose) {
-            document.documentElement.dataset.okwMenuClose = '1';
-            document.addEventListener('click', (e) => {
-                document.querySelectorAll('details.okw-menu[open]').forEach(d => { if (!d.contains(e.target)) d.removeAttribute('open'); });
+        bindMenuOutsideClose();
+    }
+
+    function bindMenuOutsideClose() {
+        if (document.documentElement.dataset.okwMenuClose) return;
+        document.documentElement.dataset.okwMenuClose = '1';
+        document.addEventListener('click', (e) => {
+            document.querySelectorAll('details.okw-menu[open]').forEach(d => {
+                if (!d.contains(e.target)) d.removeAttribute('open');
             });
-        }
+        });
+    }
+
+    /**
+     * Builds a right-aligned "Filters" dropdown popover (<details class="okw-menu okw-filter-menu">).
+     * Returns HTML string ready to inject into any toolbar.
+     */
+    function filterDropdown({ label = 'Filters', contentHtml = '', id = '' } = {}) {
+        bindMenuOutsideClose();
+        const idAttr = id ? ` id="${escapeHtml(id)}"` : '';
+        return `
+            <details class="okw-menu okw-filter-menu"${idAttr}>
+                <summary class="okw-btn okw-btn-outline">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" style="margin-right:6px;"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+                    <span>${escapeHtml(label)}</span>
+                </summary>
+                <div class="okw-menu-list okw-filter-popover">
+                    ${contentHtml}
+                </div>
+            </details>`;
     }
 
     function dataTable(container, opts) {
@@ -413,9 +437,9 @@
         const getVisibleCols = () => columns.filter(c => !hiddenKeys.has(c.key));
 
         el.innerHTML = `
-            <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
+            <div class="okw-dt-bar" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;">
                 <input type="search" class="okw-input" data-search placeholder="${escapeHtml(searchPlaceholder)}" style="min-width:220px;flex:1;max-width:340px;height:36px;">
-                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;position:relative;">
+                <div class="okw-dt-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;position:relative;">
                     <button type="button" class="okw-btn okw-btn-outline" data-export-csv style="height:36px;">Export CSV</button>
                     <button type="button" class="okw-btn okw-btn-outline" data-export-excel style="height:36px;">Export Excel</button>
                     <button type="button" class="okw-btn okw-btn-outline" data-print style="height:36px;">Print</button>
@@ -448,6 +472,8 @@
             <div data-pager style="display:flex;align-items:center;justify-content:space-between;margin-top:10px;font-size:13px;color:var(--color-text-muted);"></div>
         `;
 
+        const dtBar = el.querySelector('.okw-dt-bar');
+        const dtActions = el.querySelector('.okw-dt-actions');
         const searchIn = el.querySelector('[data-search]');
         const theadRow = el.querySelector('thead tr');
         const tbody = el.querySelector('tbody');
@@ -456,6 +482,30 @@
         const colMenu = el.querySelector('[data-col-menu]');
         compactExportMenu(el, { csv: '[data-export-csv]', excel: '[data-export-excel]', print: '[data-print]', orient: '[data-pdf-orientation]', pdf: '[data-export-pdf]' });
         const pdfOrient = el.querySelector('[data-pdf-orientation]');
+
+        // Merge into the page's single-row filter/action bar when one exists right above this table
+        const pageWrap = el.closest('.page-wrap');
+        const dockBar = pageWrap
+            ? (pageWrap.querySelector('.okw-hub-bar .okw-hub-toolbar') || pageWrap.querySelector('.okw-action-bar'))
+            : null;
+        if (dockBar && dockBar.querySelector('details.okw-filter-menu')) {
+            const outerBar = dockBar.closest('.okw-hub-bar') || dockBar;
+            if (outerBar.style.display !== 'none') {
+                outerBar.classList.add('okw-bar-unified');
+                dockBar.querySelectorAll('[data-dt-docked="1"]').forEach(n => n.remove());
+                searchIn.dataset.dtDocked = '1';
+                searchIn.classList.add('okw-dt-docked-search');
+                dtActions.dataset.dtDocked = '1';
+                dtActions.classList.add('okw-dt-docked-actions');
+                dockBar.insertBefore(searchIn, dockBar.firstChild);
+                const filterNode = dockBar.querySelector('details.okw-filter-menu');
+                const insertAnchor = filterNode && filterNode.parentNode === dockBar
+                    ? filterNode.nextSibling
+                    : (filterNode && filterNode.parentNode && filterNode.parentNode.parentNode === dockBar ? filterNode.parentNode.nextSibling : null);
+                dockBar.insertBefore(dtActions, insertAnchor);
+                if (dtBar) dtBar.style.display = 'none';
+            }
+        }
 
         function getFiltered() {
             const q = query.trim().toLowerCase();
@@ -537,16 +587,16 @@
         };
         const getTitle = () => printTitle || exportFilename.replace(/\.(xlsx|csv)$/i, '').replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
 
-        el.querySelector('[data-export-csv]').onclick = () => {
+        dtActions.querySelector('[data-export-csv]').onclick = () => {
             exportRowsToCsv(getExportCols(), getFiltered(), exportFilename);
         };
-        el.querySelector('[data-export-excel]').onclick = () => {
+        dtActions.querySelector('[data-export-excel]').onclick = () => {
             exportRowsToExcel(getExportCols(), getFiltered(), exportFilename, getTitle());
         };
-        el.querySelector('[data-print]').onclick = () => {
+        dtActions.querySelector('[data-print]').onclick = () => {
             printRowsList(getExportCols(), getFiltered(), getTitle(), 'portrait');
         };
-        el.querySelector('[data-export-pdf]').onclick = () => {
+        dtActions.querySelector('[data-export-pdf]').onclick = () => {
             const orient = pdfOrient ? pdfOrient.value : 'portrait';
             printRowsList(getExportCols(), getFiltered(), getTitle(), orient);
         };
@@ -822,37 +872,12 @@
     }
 
     /**
-     * Show an existing page inside a hub section (for large pages that keep their own logic).
-     * The page is loaded with ?embed=1, which hides its sidebar and top bar (see layout.js).
-     * The frame fills the visible window and scrolls on its own, so the page's pop-up
-     * dialogs stay centred on screen.
-     */
-    function embedFrame(panel, url, title) {
-        const u = new URL(url, window.location.origin);
-        u.searchParams.set('embed', '1');
-        panel.classList.add('okw-hub-panel-embed');
-        panel.innerHTML = `<iframe class="okw-embed-frame" title="${escapeHtml(title || 'Section')}" src="${escapeHtml(u.pathname + u.search)}"></iframe>`;
-    }
-
-    /**
-     * Section page: the shell every merged hub uses.
-     * Writes the header, the Section picker, the ?tab= whitelist (with a default)
-     * and one content panel, then calls the chosen section's render().
-     *
-     * sectionPage({
-     *   mount: '#hub',                       // element or selector
-     *   title, subtitle,
-     *   defaultId: 'list',                   // optional, else the first allowed section
-     *   sections: [{ id, label, group?: 'Business', roles?: ['ceo','admin'], render(panel, ctx), leave?() }]
-     * })
-     * embed: '/some-page?x=y' shows that existing page in the section instead of render().
-     * group: sections with the same group sit together under one heading in the picker.
-     * leave(): called just before another section replaces this one (keep unsaved edits).
-     * ctx = { toolbar, show(id), current }   // toolbar: an empty slot inside the filter bar,
-     *                                        // cleared before every section renders
-     *
-     * `roles` only hides sections in the picker; the server still enforces access.
-     * Returns { show, current } or null when the mount is missing.
+     * Section page: open, unboxed workspace shell (no iframes).
+     * Layout order:
+     *   1. Page heading (.okw-hub-head)
+     *   2. Top KPI strip (.okw-hub-kpis — optional, populated via ctx.kpis)
+     *   3. Right-aligned action & filter toolbar (.okw-hub-bar — shown only when populated)
+     *   4. Open content workspace (.okw-hub-panel)
      */
     function sectionPage({ mount, title, subtitle = '', sections = [], defaultId } = {}) {
         const root = typeof mount === 'string' ? document.querySelector(mount) : mount;
@@ -874,7 +899,6 @@
         const fromUrl = new URLSearchParams(window.location.search).get('tab');
         let current = ids.includes(fromUrl) ? fromUrl : (ids.includes(defaultId) ? defaultId : ids[0]);
 
-        const pickerId = 'okw-hub-picker';
         root.innerHTML = `
             <div class="okw-hub-head">
                 <div>
@@ -882,91 +906,66 @@
                     ${subtitle ? `<p>${escapeHtml(subtitle)}</p>` : ''}
                 </div>
             </div>
-            <div class="okw-card okw-hub-bar">
-                <div class="okw-filter-bar">
-                    <label for="${pickerId}">Section</label>
-                    <select id="${pickerId}" class="okw-select">
-                        ${(() => {
-                            let html = '', open = null;
-                            allowed.forEach(s => {
-                                if ((s.group || null) !== open) {
-                                    if (open) html += '</optgroup>';
-                                    open = s.group || null;
-                                    if (open) html += `<optgroup label="${escapeHtml(open)}">`;
-                                }
-                                html += `<option value="${escapeHtml(s.id)}">${escapeHtml(s.label)}</option>`;
-                            });
-                            if (open) html += '</optgroup>';
-                            return html;
-                        })()}
-                    </select>
-                    <div class="okw-hub-toolbar"></div>
-                </div>
+            <div class="okw-hub-kpis" style="display:none;"></div>
+            <div class="okw-hub-bar" style="display:none;">
+                <div class="okw-hub-toolbar"></div>
             </div>
-            <div class="okw-card okw-hub-panel"><div class="okw-hub-frames"></div><div class="okw-hub-render">Loading...</div></div>
+            <div class="okw-hub-panel"><div class="okw-hub-render">Loading...</div></div>
         `;
 
-        const picker = root.querySelector('#' + pickerId);
+        const head = root.querySelector('.okw-hub-head');
+        const headTitle = head ? head.querySelector('h1') : null;
+        const kpis = root.querySelector('.okw-hub-kpis');
+        const bar = root.querySelector('.okw-hub-bar');
         const toolbar = root.querySelector('.okw-hub-toolbar');
-        const outer = root.querySelector('.okw-hub-panel');
-        const framesBox = outer.querySelector('.okw-hub-frames');
-        const panel = outer.querySelector('.okw-hub-render');
-        // Embedded sections stay loaded once opened (hidden, not removed), so coming back is instant.
-        // A frame that has been away for a while reloads quietly so it never shows stale numbers.
-        const frames = new Map();
-        const FRAME_STALE_MS = 45000;
+        const panel = root.querySelector('.okw-hub-render');
 
-        let shown = null; // the section currently on screen
+        function syncBarVisibility() {
+            if (bar) {
+                const hasControls = toolbar.children.length > 0 || toolbar.textContent.trim().length > 0;
+                bar.style.display = hasControls ? '' : 'none';
+            }
+            if (kpis) {
+                const hasKpis = kpis.children.length > 0 || kpis.textContent.trim().length > 0;
+                kpis.style.display = hasKpis ? '' : 'none';
+            }
+        }
+
+        let shown = null;
         async function show(id) {
             const section = allowed.find(s => s.id === id) || allowed[0];
-            // let the section being left keep unsaved edits (optional leave() hook)
             if (shown && shown !== section && typeof shown.leave === 'function') {
                 try { shown.leave(); } catch (_) { /* never block navigation */ }
             }
             shown = section;
             current = section.id;
-            picker.value = current;
+            if (section.embed) {
+                window.location.replace(section.embed);
+                return;
+            }
+            if (headTitle && section.label) headTitle.textContent = section.label;
+            const topTitle = document.querySelector('.okw-topbar-title');
+            if (topTitle && section.label && !new URLSearchParams(window.location.search).get('report') && !new URLSearchParams(window.location.search).get('view')) {
+                topTitle.textContent = section.label;
+            }
             try {
                 const url = new URL(window.location.href);
                 url.searchParams.set('tab', current);
                 window.history.replaceState(null, '', url);
             } catch (_) { /* history is a nicety, never required */ }
             toolbar.innerHTML = '';
-            frames.forEach(f => { f.el.style.display = 'none'; });
+            kpis.innerHTML = '';
+            syncBarVisibility();
             try {
-                if (section.embed) {
-                    outer.classList.add('okw-hub-panel-embed');
-                    panel.style.display = 'none';
-                    let f = frames.get(section.id);
-                    if (!f) {
-                        const u = new URL(section.embed, window.location.origin);
-                        u.searchParams.set('embed', '1');
-                        const el = document.createElement('iframe');
-                        el.className = 'okw-embed-frame';
-                        el.title = section.label || 'Section';
-                        el.src = u.pathname + u.search;
-                        framesBox.appendChild(el);
-                        f = { el, left: 0 };
-                        frames.set(section.id, f);
-                    } else if (f.left && Date.now() - f.left > FRAME_STALE_MS) {
-                        try { f.el.contentWindow.location.reload(); } catch (_) { /* cross-origin guard */ }
-                    }
-                    f.el.style.display = 'block';
-                    frames.forEach(o => { if (o !== f) o.left = o.left || Date.now(); });
-                    f.left = 0;
-                } else {
-                    outer.classList.remove('okw-hub-panel-embed');
-                    panel.style.display = '';
-                    panel.innerHTML = 'Loading...';
-                    await section.render(panel, { toolbar, show, current });
-                }
+                panel.innerHTML = 'Loading...';
+                await section.render(panel, { toolbar, kpis, show, current, syncBarVisibility });
+                syncBarVisibility();
             } catch (err) {
                 panel.innerHTML = '<div>This section could not be loaded.</div>';
                 toast((err && err.message) || 'This section could not be loaded.', 'danger');
             }
         }
 
-        picker.addEventListener('change', () => show(picker.value));
         show(current);
         return { show, get current() { return current; } };
     }
@@ -978,13 +977,13 @@
         badge,
         kpiCard,
         dateRangePicker,
+        filterDropdown,
         getCompanyProfile,
         exportRowsToExcel,
         attachTableTools,
         enhanceAllTables,
         productTypeahead,
         dataTable,
-        embedFrame,
         warnIfPartial,
         sectionPage
     };
