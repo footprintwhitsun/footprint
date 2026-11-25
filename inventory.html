@@ -648,6 +648,7 @@
         </style>
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.9/tinymce.min.js" referrerpolicy="origin" defer></script>
     <link rel="stylesheet" href="/portal-skin.css">
     <script src="/okw-events.js"></script>
 </head>
@@ -2732,11 +2733,48 @@
         }
 
         function updateProductDescWords() {
-            const el = document.getElementById('pDescription');
             const out = document.getElementById('pDescWordCount');
-            if (!el || !out) return;
-            const words = el.value.trim() ? el.value.trim().split(/\s+/).length : 0;
+            if (!out) return;
+            const ed = (typeof tinymce !== 'undefined') ? tinymce.get('pDescription') : null;
+            const text = ed
+                ? (ed.getContent({ format: 'text' }) || '').trim()
+                : (document.getElementById('pDescription')?.value || '').trim();
+            const words = text ? text.split(/\s+/).length : 0;
             out.textContent = `${words} WORD${words === 1 ? '' : 'S'}`;
+        }
+
+        function initProductDescEditor(initialHtml = '') {
+            const ta = document.getElementById('pDescription');
+            if (ta) ta.value = initialHtml || '';
+            if (typeof tinymce === 'undefined') {
+                updateProductDescWords();
+                return;
+            }
+            const existing = tinymce.get('pDescription');
+            if (existing) {
+                existing.setContent(initialHtml || '');
+                updateProductDescWords();
+                return;
+            }
+            tinymce.init({
+                selector: '#pDescription',
+                height: 220,
+                menubar: true,
+                branding: true,
+                statusbar: true,
+                plugins: 'lists link wordcount table code',
+                toolbar: 'undo redo | formatselect | bold italic underline strikethrough | alignleft aligncenter alignright alignjustify | bullist numlist outdent indent | link | removeformat',
+                setup: (editor) => {
+                    editor.on('init', () => {
+                        editor.setContent(initialHtml || '');
+                        updateProductDescWords();
+                    });
+                    editor.on('keyup change input SetContent', () => {
+                        editor.save();
+                        updateProductDescWords();
+                    });
+                }
+            });
         }
 
         function handleProductFile(input, hiddenId, previewId, maxMb) {
@@ -2828,11 +2866,11 @@
             ['pImageData', 'pBrochureData', 'pBrochureName', 'pVariantImageData'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
             ['pImagePreview', 'pVariantImgPreview'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
             const bLbl = document.getElementById('pBrochureLabel'); if (bLbl) bLbl.textContent = '';
-            updateProductDescWords();
             document.getElementById('pBatchNumber').required = false;
             document.querySelector('#productModal h3').textContent = 'Add New Product';
             resetBulkMode();
-            document.getElementById('productModal').classList.add('active'); 
+            document.getElementById('productModal').classList.add('active');
+            initProductDescEditor('');
         }
 
         function closeModal() { 
@@ -2857,7 +2895,7 @@
             if (document.getElementById('pLocations')) document.getElementById('pLocations').value = product.business_locations || 'All Locations';
             if (document.getElementById('pManageStock')) document.getElementById('pManageStock').checked = product.manage_stock !== false;
             if (document.getElementById('pDescription')) document.getElementById('pDescription').value = product.description || '';
-            updateProductDescWords();
+            setTimeout(() => initProductDescEditor(product.description || ''), 30);
             if (document.getElementById('pApplicableTax')) document.getElementById('pApplicableTax').value = String(product.applicable_tax || 0);
             if (document.getElementById('pTaxType')) document.getElementById('pTaxType').value = product.tax_type || 'Exclusive';
             if (document.getElementById('pProductType')) document.getElementById('pProductType').value = product.product_type || 'Single';
@@ -2987,7 +3025,9 @@
                 sub_category: document.getElementById('pSubCategory')?.value.trim() || '',
                 business_locations: document.getElementById('pLocations')?.value || 'All Locations',
                 manage_stock: document.getElementById('pManageStock') ? document.getElementById('pManageStock').checked : true,
-                description: document.getElementById('pDescription')?.value || '',
+                description: (typeof tinymce !== 'undefined' && tinymce.get('pDescription'))
+                    ? tinymce.get('pDescription').getContent()
+                    : (document.getElementById('pDescription')?.value || ''),
                 image_url: document.getElementById('pImageData')?.value || document.getElementById('pVariantImageData')?.value || '',
                 brochure_url: document.getElementById('pBrochureData')?.value || '',
                 brochure_name: document.getElementById('pBrochureName')?.value || '',
