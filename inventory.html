@@ -2599,10 +2599,21 @@
                         </td>
                         <td data-label="Batch Number">${batchNumber}</td>
                         <td data-label="Expiry Date">${expiryDate}</td>
-                        <td data-label="Actions">
-                            <button class="action-btn btn-edit" data-onclick="editProduct(${p.id})" title="Edit Product"><i class="fas fa-edit"></i></button>
-                            <button class="action-btn btn-print" data-onclick="printLabel('${OkwUI.escapeHtml(p.barcode)}')" title="Print Label"><i class="fas fa-print"></i></button>
-                            <button class="action-btn btn-delete" data-onclick="deleteProduct(${p.id})" title="Delete"><i class="fas fa-trash"></i></button>
+                        <td data-label="Actions" style="white-space:nowrap;">
+                            <details class="okw-menu" style="display:inline-block;">
+                                <summary class="okw-btn okw-btn-outline" style="height:30px;padding:0 10px;font-size:12px;">Actions</summary>
+                                <div class="okw-menu-list" style="min-width:210px;text-align:left;z-index:90;">
+                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();printLabel('${OkwUI.escapeHtml(p.barcode)}')">Labels</button>
+                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();viewProductPrintable(${p.id})">View</button>
+                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();editProduct(${p.id})">Edit</button>
+                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();openOpeningStockModal(${p.id})">Add or edit opening stock</button>
+                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();openProductStockHistory('${OkwUI.escapeHtml(p.barcode)}')">Product stock history</button>
+                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();openVaryingPriceModal(${p.id})">Varying Quantity Price</button>
+                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();duplicateProduct(${p.id})">Duplicate Product</button>
+                                    <div style="border-top:1px solid var(--edge,#e2e8f0);margin:4px 0;"></div>
+                                    <button type="button" class="okw-menu-item" style="color:#b91c1c;" data-onclick="closeRowMenus();deleteProduct(${p.id})">Delete</button>
+                                </div>
+                            </details>
                         </td>
                     </tr>
                 `;
@@ -2692,17 +2703,31 @@
         }
 
         let _productFormLookupsLoaded = false;
+        window._defaultBarcodeType = 'C128';
+        function closeRowMenus() {
+            document.querySelectorAll('details.okw-menu[open]').forEach(d => d.removeAttribute('open'));
+        }
+
         async function loadProductFormLookups() {
             if (_productFormLookupsLoaded) return;
             _productFormLookupsLoaded = true;
             const token = localStorage.getItem('authToken');
             const hdrs = { Authorization: `Bearer ${token}` };
             try {
-                const [brRes, taxRes, brandRes] = await Promise.all([
+                const [brRes, taxRes, brandRes, cfgRes] = await Promise.all([
                     fetch('/api/branches', { headers: hdrs }).catch(() => null),
                     fetch('/api/taxes', { headers: hdrs }).catch(() => null),
-                    fetch('/api/brands', { headers: hdrs }).catch(() => null)
+                    fetch('/api/brands', { headers: hdrs }).catch(() => null),
+                    fetch('/api/business-config', { headers: hdrs }).catch(() => null)
                 ]);
+                if (cfgRes && cfgRes.ok) {
+                    const cfg = await cfgRes.json().catch(() => ({}));
+                    const rawBt = String(cfg.barcode_type || (cfg.config && cfg.config.barcode_type) || 'C128').trim();
+                    const map = { 'Code 128': 'C128', 'Code 39': 'C39', 'EAN-13': 'EAN13', 'EAN-8': 'EAN8', 'UPC-A': 'UPCA', 'UPC-E': 'UPCE' };
+                    window._defaultBarcodeType = map[rawBt] || (['C128', 'C39', 'EAN13', 'EAN8', 'UPCA', 'UPCE'].includes(rawBt) ? rawBt : 'C128');
+                    const btEl = document.getElementById('pBarcodeType');
+                    if (btEl && !document.getElementById('pId')?.value) btEl.value = window._defaultBarcodeType;
+                }
                 if (brRes && brRes.ok) {
                     const brs = await brRes.json().catch(() => []);
                     const list = Array.isArray(brs) ? brs : (brs.locations || []);
@@ -2730,6 +2755,221 @@
                     }
                 }
             } catch (_) { }
+        }
+
+        function viewProductPrintable(id) {
+            const p = products.find(x => x.id === parseInt(id));
+            if (!p || !window.OkwUI || typeof OkwUI.openPrintableRecord !== 'function') return;
+            const branchStock = inventoryDisplayStock(p);
+            const cleanDesc = String(p.description || '').replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+            OkwUI.openPrintableRecord({
+                title: 'Product Details',
+                refNumber: p.barcode,
+                date: p.created_at ? new Date(p.created_at).toLocaleDateString() : '',
+                partyLabel: 'Product Name',
+                partyName: p.name,
+                branch: p.business_locations || window.currentUserBranch || 'All Locations',
+                status: branchStock <= 0 ? 'Out of Stock' : 'In Stock',
+                metaRows: [
+                    ['Barcode Type', p.barcode_type || window._defaultBarcodeType || 'C128'],
+                    ['Brand', p.brand || '—'],
+                    ['Category', p.category || 'General'],
+                    ...(p.sub_category ? [['Sub Category', p.sub_category]] : []),
+                    ['Unit', p.selling_unit || 'Unit'],
+                    ['Current Stock', String(branchStock)],
+                    ['Alert Quantity', String(p.reorder_level ?? 10)],
+                    ['Cost (Exc. Tax)', formatCurrency(p.cost_price || 0)],
+                    ['Selling Price', formatCurrency(p.price || 0)],
+                    ['Applicable Tax', `${Number(p.applicable_tax || 0)}% (${p.tax_type || 'Exclusive'})`],
+                    ['Product Type', p.product_type || 'Single']
+                ],
+                notes: cleanDesc
+            });
+        }
+
+        function duplicateProduct(id) {
+            editProduct(id);
+            document.getElementById('pId').value = '';
+            const bc = document.getElementById('pBarcode');
+            if (bc) { bc.readOnly = false; bc.value = (bc.value ? bc.value + '-COPY' : 'FP-' + Date.now()); }
+            const nm = document.getElementById('pName');
+            if (nm && !nm.value.endsWith(' (Copy)')) nm.value = nm.value + ' (Copy)';
+            document.querySelector('#productModal h3').textContent = 'Duplicate Product';
+        }
+
+        function openOpeningStockModal(id) {
+            const p = products.find(x => x.id === parseInt(id));
+            if (!p) return;
+            const curStock = inventoryDisplayStock(p);
+            const prev = document.getElementById('okw-opening-stock-modal');
+            if (prev) prev.remove();
+            const backdrop = document.createElement('div');
+            backdrop.id = 'okw-opening-stock-modal';
+            backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.62);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
+            backdrop.innerHTML = `
+                <div class="okw-card" style="width:100%;max-width:460px;padding:22px 24px;">
+                    <h3 style="margin:0 0 4px;">Add / Edit Opening Stock</h3>
+                    <div style="font-size:12.5px;color:var(--color-text-muted);margin-bottom:14px;"><strong>${OkwUI.escapeHtml(p.name)}</strong> (${OkwUI.escapeHtml(p.barcode)})</div>
+                    <div style="display:flex;flex-direction:column;gap:12px;">
+                        <div>
+                            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Current Stock at Branch</label>
+                            <input type="text" class="okw-input" value="${curStock}" disabled style="width:100%;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">New Opening / Current Stock Quantity *</label>
+                            <input type="number" step="any" min="0" id="os-new-qty" class="okw-input" value="${curStock}" style="width:100%;">
+                        </div>
+                        <div>
+                            <label style="font-size:12px;font-weight:600;display:block;margin-bottom:4px;">Note / Reason</label>
+                            <input type="text" id="os-note" class="okw-input" value="Opening stock update" style="width:100%;">
+                        </div>
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;">
+                        <button type="button" class="okw-btn okw-btn-outline" id="os-cancel">Cancel</button>
+                        <button type="button" class="okw-btn okw-btn-primary" id="os-save">Save Opening Stock</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(backdrop);
+            backdrop.querySelector('#os-cancel').onclick = () => backdrop.remove();
+            backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove(); });
+            backdrop.querySelector('#os-save').onclick = async () => {
+                const targetQty = parseFloat(backdrop.querySelector('#os-new-qty').value);
+                if (isNaN(targetQty) || targetQty < 0) return showNotification('Enter a valid quantity', 'error');
+                const delta = Number((targetQty - curStock).toFixed(3));
+                if (delta === 0) { backdrop.remove(); return; }
+                const token = localStorage.getItem('authToken');
+                const r = await fetch('/api/stock-adjustments', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({
+                        product_barcode: p.barcode,
+                        adjustment_type: 'Opening Stock',
+                        quantity_adjusted: delta,
+                        reason: backdrop.querySelector('#os-note').value || 'Opening stock update'
+                    })
+                });
+                if (r.ok) {
+                    backdrop.remove();
+                    showNotification('Opening stock updated', 'success');
+                    loadInventory();
+                } else {
+                    const d = await r.json().catch(() => ({}));
+                    showNotification(d.message || 'Failed to update stock', 'error');
+                }
+            };
+        }
+
+        async function openProductStockHistory(barcode) {
+            const prev = document.getElementById('okw-stock-history-modal');
+            if (prev) prev.remove();
+            const backdrop = document.createElement('div');
+            backdrop.id = 'okw-stock-history-modal';
+            backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.62);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
+            backdrop.innerHTML = `
+                <div class="okw-card" style="width:100%;max-width:860px;max-height:88vh;overflow-y:auto;padding:20px 24px;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                        <h3 style="margin:0;">Product Stock History — ${OkwUI.escapeHtml(barcode)}</h3>
+                        <button type="button" class="okw-btn okw-btn-outline" id="sh-close">Close</button>
+                    </div>
+                    <div id="sh-body">Loading stock history...</div>
+                </div>`;
+            document.body.appendChild(backdrop);
+            backdrop.querySelector('#sh-close').onclick = () => backdrop.remove();
+            backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove(); });
+            try {
+                const token = localStorage.getItem('authToken');
+                const res = await fetch(`/api/products/${encodeURIComponent(barcode)}/stock-history`, { headers: { Authorization: `Bearer ${token}` } });
+                const data = await res.json().catch(() => ({}));
+                const rows = (data.history || []).map(h => ({
+                    date: h.date ? new Date(h.date).toLocaleString() : '—',
+                    type: h.type || 'Movement',
+                    qty_change: h.qty_change !== null && h.qty_change !== undefined ? (Number(h.qty_change) > 0 ? '+' + h.qty_change : String(h.qty_change)) : '—',
+                    qty_after: h.qty_after !== null && h.qty_after !== undefined ? String(h.qty_after) : '—',
+                    branch: h.branch || '—',
+                    staff: h.staff || 'Staff',
+                    notes: h.notes || h.reference || '—'
+                }));
+                OkwUI.dataTable(backdrop.querySelector('#sh-body'), {
+                    columns: [
+                        { key: 'date', label: 'Date' },
+                        { key: 'type', label: 'Type' },
+                        { key: 'qty_change', label: 'Qty Change', numeric: true },
+                        { key: 'qty_after', label: 'New Stock', numeric: true },
+                        { key: 'branch', label: 'Branch' },
+                        { key: 'staff', label: 'Staff' },
+                        { key: 'notes', label: 'Notes / Ref' }
+                    ],
+                    rows,
+                    exportFilename: `stock-history-${barcode}.xlsx`,
+                    printTitle: `Stock History — ${data.product ? data.product.name : barcode}`,
+                    emptyText: 'No stock movements recorded for this product yet.'
+                });
+            } catch (e) {
+                backdrop.querySelector('#sh-body').innerHTML = '<div class="okw-empty">Could not load stock history.</div>';
+            }
+        }
+
+        function openVaryingPriceModal(id) {
+            const p = products.find(x => x.id === parseInt(id));
+            if (!p) return;
+            const tiers = Array.isArray(p.varying_prices)
+                ? p.varying_prices.map(t => ({ ...t }))
+                : (typeof p.varying_prices === 'string' ? JSON.parse(p.varying_prices || '[]') : []);
+            const prev = document.getElementById('okw-varying-price-modal');
+            if (prev) prev.remove();
+            const backdrop = document.createElement('div');
+            backdrop.id = 'okw-varying-price-modal';
+            backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.62);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
+            backdrop.innerHTML = `
+                <div class="okw-card" style="width:100%;max-width:560px;max-height:88vh;overflow-y:auto;padding:22px 24px;">
+                    <h3 style="margin:0 0 4px;">Varying Quantity Price</h3>
+                    <div style="font-size:12.5px;color:var(--color-text-muted);margin-bottom:14px;"><strong>${OkwUI.escapeHtml(p.name)}</strong> · Base Price: <strong>${formatCurrency(p.price)}</strong></div>
+                    <div id="vp-rows" style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px;"></div>
+                    <button type="button" class="okw-btn okw-btn-outline" id="vp-add">+ Add Quantity Tier</button>
+                    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;padding-top:12px;border-top:1px solid var(--color-border);">
+                        <button type="button" class="okw-btn okw-btn-outline" id="vp-cancel">Cancel</button>
+                        <button type="button" class="okw-btn okw-btn-primary" id="vp-save">Save Pricing Tiers</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(backdrop);
+            const host = backdrop.querySelector('#vp-rows');
+            const renderTiers = () => {
+                if (!tiers.length) {
+                    host.innerHTML = '<div style="font-size:12.5px;color:var(--color-text-muted);padding:10px 0;">No quantity tiers yet. Click "+ Add Quantity Tier" to set bulk prices (e.g. 10+ units).</div>';
+                    return;
+                }
+                host.innerHTML = tiers.map((t, i) => `
+                    <div style="display:grid;grid-template-columns:1fr 1fr 1.2fr auto;gap:8px;align-items:center;">
+                        <input type="number" min="1" class="okw-input vp-qty" data-i="${i}" value="${t.min_qty || 10}" placeholder="Min Qty">
+                        <input type="number" step="0.01" min="0" class="okw-input vp-price" data-i="${i}" value="${t.price || ''}" placeholder="Unit Price">
+                        <input type="text" class="okw-input vp-lbl" data-i="${i}" value="${OkwUI.escapeHtml(t.label || '')}" placeholder="Label (e.g. Bulk)">
+                        <button type="button" class="okw-btn okw-btn-danger vp-rm" data-i="${i}" style="height:34px;padding:0 10px;">×</button>
+                    </div>`).join('');
+                host.querySelectorAll('.vp-qty').forEach(el => el.oninput = () => { tiers[el.dataset.i].min_qty = Number(el.value || 1); });
+                host.querySelectorAll('.vp-price').forEach(el => el.oninput = () => { tiers[el.dataset.i].price = Number(el.value || 0); });
+                host.querySelectorAll('.vp-lbl').forEach(el => el.oninput = () => { tiers[el.dataset.i].label = el.value; });
+                host.querySelectorAll('.vp-rm').forEach(el => el.onclick = () => { tiers.splice(Number(el.dataset.i), 1); renderTiers(); });
+            };
+            renderTiers();
+            backdrop.querySelector('#vp-add').onclick = () => { tiers.push({ min_qty: 10, price: Number(p.price || 0), label: '' }); renderTiers(); };
+            backdrop.querySelector('#vp-cancel').onclick = () => backdrop.remove();
+            backdrop.addEventListener('click', e => { if (e.target === backdrop) backdrop.remove(); });
+            backdrop.querySelector('#vp-save').onclick = async () => {
+                const token = localStorage.getItem('authToken');
+                const r = await fetch(`/api/products/${p.id}/varying-prices`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    body: JSON.stringify({ tiers })
+                });
+                if (r.ok) {
+                    const out = await r.json().catch(() => ({}));
+                    if (out.product) p.varying_prices = out.product.varying_prices;
+                    backdrop.remove();
+                    showNotification('Varying quantity prices saved', 'success');
+                } else {
+                    showNotification('Failed to save varying prices', 'error');
+                }
+            };
         }
 
         function updateProductDescWords() {
@@ -2862,6 +3102,7 @@
             document.getElementById('pBatchNumber').value = '';
             document.getElementById('pExpiryDate').value = '';
             if (document.getElementById('pMarkup')) document.getElementById('pMarkup').value = '';
+            if (document.getElementById('pBarcodeType')) document.getElementById('pBarcodeType').value = window._defaultBarcodeType || 'C128';
             if (document.getElementById('pManageStock')) document.getElementById('pManageStock').checked = true;
             ['pImageData', 'pBrochureData', 'pBrochureName', 'pVariantImageData'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
             ['pImagePreview', 'pVariantImgPreview'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });

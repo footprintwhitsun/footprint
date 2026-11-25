@@ -3363,6 +3363,7 @@ async function ensureExtendedProductColumns() {
         ALTER TABLE products ADD COLUMN IF NOT EXISTS product_type VARCHAR(30) DEFAULT 'Single';
         ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_inc_tax NUMERIC(12,2) DEFAULT 0;
         ALTER TABLE products ADD COLUMN IF NOT EXISTS margin_pct NUMERIC(8,2) DEFAULT 0;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS varying_prices JSONB DEFAULT '[]'::jsonb;
     `).catch(() => {});
 }
 
@@ -3941,6 +3942,94 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error updating product' });
+    }
+});
+
+// Product Stock History (Sales, Returns, Purchases, Stock Adjustments, Inventory Audit)
+app.get('/api/products/:barcode/stock-history', authenticateToken, async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
+    const barcode = String(req.params.barcode || '').trim();
+    if (!barcode) return res.status(400).json({ message: 'Barcode is required' });
+    try {
+        const [prodRes, auditRes, adjRes] = await Promise.all([
+            pool.query('SELECT id, barcode, name, stock, stock_levels, selling_unit FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2 LIMIT 1', [barcode, tenantId]),
+            pool.query(
+                `SELECT ial.created_at, ial.action_type, ial.quantity_before, ial.quantity_after, ial.reference_type, ial.reference_id, ial.notes,
+                        COALESCE(u.name, u.username, 'Staff') AS user_name, COALESCE(b.name, '') AS branch_name
+                 FROM inventory_audit_log ial
+                 LEFT JOIN users u ON u.id = ial.user_id
+                 LEFT JOIN branches b ON b.id = ial.branch_id
+                 WHERE ial.product_barcode = $1
+                 ORDER BY ial.created_at DESC
+                 LIMIT 200`,
+                [barcode]
+            ).catch(() => ({ rows: [] })),
+            pool.query(
+                `SELECT sa.created_at, sa.adjustment_type AS action_type, sa.quantity_adjusted, sa.reason AS notes,
+                        COALESCE(u.name, u.username, 'Staff') AS user_name, COALESCE(b.name, '') AS branch_name
+                 FROM stock_adjustments sa
+                 LEFT JOIN users u ON u.id = sa.approver_id
+                 LEFT JOIN branches b ON b.id = sa.branch_id
+                 WHERE sa.product_barcode = $1 AND COALESCE(sa.tenant_id, 1) = $2
+                 ORDER BY sa.created_at DESC
+                 LIMIT 100`,
+                [barcode, tenantId]
+            ).catch(() => ({ rows: [] }))
+        ]);
+
+        const history = [
+            ...auditRes.rows.map(r => ({
+                date: r.created_at,
+                type: r.action_type || r.reference_type || 'Stock Change',
+                qty_change: (r.quantity_after !== null && r.quantity_before !== null) ? Number((Number(r.quantity_after) - Number(r.quantity_before)).toFixed(3)) : null,
+                qty_before: r.quantity_before,
+                qty_after: r.quantity_after,
+                reference: r.reference_id ? `${r.reference_type || 'Ref'} #${r.reference_id}` : (r.reference_type || '—'),
+                branch: r.branch_name || '—',
+                staff: r.user_name || 'Staff',
+                notes: r.notes || ''
+            })),
+            ...adjRes.rows.map(r => ({
+                date: r.created_at,
+                type: `Adjustment (${r.action_type || 'Correction'})`,
+                qty_change: Number(r.quantity_adjusted || 0),
+                qty_before: null,
+                qty_after: null,
+                reference: 'Stock Adjustment',
+                branch: r.branch_name || '—',
+                staff: r.user_name || 'Staff',
+                notes: r.notes || ''
+            }))
+        ].sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 200);
+
+        res.json({ product: prodRes.rows[0] || null, history });
+    } catch (err) {
+        console.error('GET /api/products/:barcode/stock-history error:', err);
+        res.status(500).json({ message: 'Failed to load stock history' });
+    }
+});
+
+// Varying Quantity Prices for a Product
+app.put('/api/products/:id/varying-prices', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
+    const { tiers = [] } = req.body || {};
+    if (!Array.isArray(tiers)) return res.status(400).json({ message: 'tiers must be an array' });
+    const clean = tiers
+        .map(t => ({ min_qty: Math.max(1, Number(t.min_qty || 0)), price: Math.max(0, Number(t.price || 0)), label: String(t.label || '').trim() }))
+        .filter(t => Number.isFinite(t.min_qty) && Number.isFinite(t.price) && t.price > 0)
+        .sort((a, b) => a.min_qty - b.min_qty);
+    try {
+        await ensureExtendedProductColumns();
+        const upd = await pool.query(
+            'UPDATE products SET varying_prices = $1 WHERE id = $2 AND COALESCE(tenant_id, 1) = $3 RETURNING id, barcode, name, varying_prices',
+            [JSON.stringify(clean), req.params.id, tenantId]
+        );
+        if (!upd.rows.length) return res.status(404).json({ message: 'Product not found' });
+        await logActivity(req, 'AMEND_VARYING_PRICES', { product_id: upd.rows[0].id, barcode: upd.rows[0].barcode, name: upd.rows[0].name, tiers: clean });
+        res.json({ success: true, product: upd.rows[0] });
+    } catch (err) {
+        console.error('PUT /api/products/:id/varying-prices error:', err);
+        res.status(500).json({ message: 'Failed to save varying quantity prices' });
     }
 });
 
