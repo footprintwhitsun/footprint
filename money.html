@@ -7,6 +7,7 @@
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="stylesheet" href="/sidebar.css">
     <script src="/vendor/xlsx-0.20.2.full.min.js" defer></script>
+    <script src="/vendor/chart-4.4.1.umd.min.js"></script>
     <script src="/auth-guard.js"></script>
     <script src="/currency.js"></script>
     <script src="/layout.js"></script>
@@ -61,51 +62,288 @@
         return Number.isFinite(n) ? n : 0;
     }
 
-    function mountCoa(panel) {
-        panel.innerHTML = `
-            <div class="okw-card okw-mb-16">
-                <h2 class="okw-h2-sm">Add Ledger Account</h2>
-                <div class="okw-grid-coa">
-                    <input id="coa-code" class="okw-input" placeholder="Code (e.g. 1050)">
-                    <input id="coa-name" class="okw-input" placeholder="Account name (e.g. Petty Cash)">
-                    <select id="coa-type" class="okw-select">
+    let coaCharts = [];
+    function destroyCoaCharts() {
+        coaCharts.forEach(c => { try { c.destroy(); } catch (_) { } });
+        coaCharts = [];
+    }
+
+    function mountCoa(panel, ctx) {
+        destroyCoaCharts();
+        let allAccounts = [];
+        let allEntries = [];
+
+        ctx.kpis.innerHTML = `<div class="okw-kpi-row" id="coa-kpis"></div>`;
+        ctx.toolbar.innerHTML = OkwUI.filterDropdown({
+            label: 'Filters',
+            contentHtml: `
+                <div class="okw-filter-field">
+                    <label for="coa-filter-type">Account Type</label>
+                    <select id="coa-filter-type" class="okw-select" aria-label="Filter by account type">
+                        <option value="">All Types</option>
                         <option value="Asset">Asset</option>
                         <option value="Liability">Liability</option>
                         <option value="Equity">Equity</option>
                         <option value="Revenue">Revenue</option>
                         <option value="Expense">Expense</option>
                     </select>
-                    <button id="coa-add" class="okw-btn okw-btn-primary" type="button">+ Add Account</button>
+                </div>
+                <div class="okw-filter-field">
+                    <label for="coa-filter-normal">Normal Balance</label>
+                    <select id="coa-filter-normal" class="okw-select" aria-label="Filter by normal balance">
+                        <option value="">All</option>
+                        <option value="debit">Debit</option>
+                        <option value="credit">Credit</option>
+                    </select>
+                </div>
+                <div class="okw-filter-field">
+                    <label for="coa-filter-bal">Balance</label>
+                    <select id="coa-filter-bal" class="okw-select" aria-label="Filter by balance">
+                        <option value="">All Accounts</option>
+                        <option value="nonzero">Non-Zero Only</option>
+                        <option value="zero">Zero Balance</option>
+                    </select>
+                </div>
+                <div class="okw-filter-actions">
+                    <button type="button" class="okw-btn okw-btn-outline" id="coa-filter-reset">Reset</button>
+                </div>`
+        }) + `<button id="coa-toggle-add" class="okw-btn okw-btn-primary" type="button">+ Add Account</button>`;
+
+        panel.innerHTML = `
+            <div class="okw-card okw-mb-16" id="coa-add-card" style="display:none;">
+                <div class="okw-flex-between" style="margin-bottom:12px;">
+                    <h2 class="okw-h2-sm" style="margin:0;">Add Ledger Account</h2>
+                    <button id="coa-close-add" class="okw-btn okw-btn-outline" type="button">Close</button>
+                </div>
+                <div class="okw-grid-coa">
+                    <input id="coa-code" class="okw-input" placeholder="Code (e.g. 1050)">
+                    <input id="coa-name" class="okw-input" placeholder="Account name (e.g. Petty Cash)">
+                    <select id="coa-type" class="okw-select" aria-label="New account type">
+                        <option value="Asset">Asset</option>
+                        <option value="Liability">Liability</option>
+                        <option value="Equity">Equity</option>
+                        <option value="Revenue">Revenue</option>
+                        <option value="Expense">Expense</option>
+                    </select>
+                    <button id="coa-add" class="okw-btn okw-btn-primary" type="button">Save Account</button>
                 </div>
             </div>
-            <div class="okw-card" id="coa-list"><div class="okw-empty">Loading Chart of Accounts...</div></div>`;
+            <div id="coa-list"><div class="okw-empty">Loading Chart of Accounts...</div></div>
+            <div class="okw-chart-grid" id="coa-charts-wrap" style="margin-top:20px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));">
+                <div class="okw-card">
+                    <h2 class="okw-chart-title">Balance Distribution by Type</h2>
+                    <div class="okw-chart-box"><canvas id="coa-donut"></canvas></div>
+                </div>
+                <div class="okw-card">
+                    <h2 class="okw-chart-title">Debits vs Credits by Type</h2>
+                    <div class="okw-chart-box"><canvas id="coa-bar"></canvas></div>
+                </div>
+                <div class="okw-card">
+                    <h2 class="okw-chart-title">Ledger Activity Trend</h2>
+                    <div class="okw-chart-box"><canvas id="coa-line"></canvas></div>
+                </div>
+            </div>`;
+
+        const typeFilter = ctx.toolbar.querySelector('#coa-filter-type');
+        const normalFilter = ctx.toolbar.querySelector('#coa-filter-normal');
+        const balFilter = ctx.toolbar.querySelector('#coa-filter-bal');
+        const resetBtn = ctx.toolbar.querySelector('#coa-filter-reset');
+        const toggleAddBtn = ctx.toolbar.querySelector('#coa-toggle-add');
+        const addCard = panel.querySelector('#coa-add-card');
+
+        toggleAddBtn.onclick = () => {
+            addCard.style.display = addCard.style.display === 'none' ? '' : 'none';
+            if (addCard.style.display !== 'none') panel.querySelector('#coa-code')?.focus();
+        };
+        panel.querySelector('#coa-close-add').onclick = () => { addCard.style.display = 'none'; };
+
+        const cssVar = (name, fallback) => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+
+        function getFilteredAccounts() {
+            const tVal = (typeFilter.value || '').trim().toLowerCase();
+            const nVal = (normalFilter.value || '').trim().toLowerCase();
+            const bVal = balFilter.value || '';
+            return allAccounts.filter(a => {
+                if (tVal && String(a.type || '').trim().toLowerCase() !== tVal) return false;
+                if (nVal && String(a.normal_balance || '').trim().toLowerCase() !== nVal) return false;
+                const bal = Number(a.balance || 0);
+                if (bVal === 'nonzero' && Math.abs(bal) < 0.005) return false;
+                if (bVal === 'zero' && Math.abs(bal) >= 0.005) return false;
+                return true;
+            });
+        }
+
+        function renderKpis(list) {
+            const sumType = (typeName) => list
+                .filter(a => String(a.type || '').trim().toLowerCase() === typeName)
+                .reduce((s, a) => s + Number(a.balance || 0), 0);
+            const countType = (typeName) => list.filter(a => String(a.type || '').trim().toLowerCase() === typeName).length;
+            const host = ctx.kpis.querySelector('#coa-kpis');
+            if (!host) return;
+            host.innerHTML = [
+                OkwUI.kpiCard({ label: 'Assets', value: fmt(sumType('asset')), subtext: `${countType('asset')} accounts`, tone: 'info' }),
+                OkwUI.kpiCard({ label: 'Liabilities', value: fmt(sumType('liability')), subtext: `${countType('liability')} accounts`, tone: 'warning' }),
+                OkwUI.kpiCard({ label: 'Equity', value: fmt(sumType('equity')), subtext: `${countType('equity')} accounts`, tone: 'primary' }),
+                OkwUI.kpiCard({ label: 'Revenue', value: fmt(sumType('revenue')), subtext: `${countType('revenue')} accounts`, tone: 'success' }),
+                OkwUI.kpiCard({ label: 'Expenses', value: fmt(sumType('expense')), subtext: `${countType('expense')} accounts`, tone: 'danger' })
+            ].join('');
+        }
+
+        function renderCharts(list) {
+            destroyCoaCharts();
+            if (typeof Chart === 'undefined') return;
+            const types = ['Asset', 'Liability', 'Equity', 'Revenue', 'Expense'];
+            const primary = cssVar('--color-primary', '#273990');
+            const info = cssVar('--color-info', '#0369A1');
+            const warning = cssVar('--color-warning', '#B45309');
+            const success = cssVar('--color-success', '#15803D');
+            const danger = cssVar('--color-danger', '#B91C1C');
+            const muted = cssVar('--color-text-muted', '#6B7280');
+            const grid = cssVar('--color-border', '#E2E8F0');
+            Chart.defaults.color = muted;
+
+            const colors = [info, warning, primary, success, danger];
+            const byTypeAbs = types.map(t => list
+                .filter(a => String(a.type || '').trim().toLowerCase() === t.toLowerCase())
+                .reduce((s, a) => s + Math.abs(Number(a.balance || 0)), 0));
+            const hasBalanceData = byTypeAbs.some(v => v > 0);
+            const donutData = hasBalanceData
+                ? byTypeAbs
+                : types.map(t => list.filter(a => String(a.type || '').trim().toLowerCase() === t.toLowerCase()).length);
+
+            const donutCanvas = panel.querySelector('#coa-donut');
+            if (donutCanvas) {
+                coaCharts.push(new Chart(donutCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: types,
+                        datasets: [{ data: donutData, backgroundColor: colors, borderWidth: 0 }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '62%',
+                        plugins: { legend: { position: 'bottom' } }
+                    }
+                }));
+            }
+
+            const debitsByType = types.map(t => list
+                .filter(a => String(a.type || '').trim().toLowerCase() === t.toLowerCase())
+                .reduce((s, a) => s + Number(a.total_debit || 0), 0));
+            const creditsByType = types.map(t => list
+                .filter(a => String(a.type || '').trim().toLowerCase() === t.toLowerCase())
+                .reduce((s, a) => s + Number(a.total_credit || 0), 0));
+
+            const barCanvas = panel.querySelector('#coa-bar');
+            if (barCanvas) {
+                coaCharts.push(new Chart(barCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: types,
+                        datasets: [
+                            { label: 'Debits', data: debitsByType, backgroundColor: primary, borderRadius: 4 },
+                            { label: 'Credits', data: creditsByType, backgroundColor: success, borderRadius: 4 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: grid } } }
+                    }
+                }));
+            }
+
+            const lineCanvas = panel.querySelector('#coa-line');
+            if (lineCanvas) {
+                const byDate = new Map();
+                const allowedCodes = new Set(list.map(a => String(a.code)));
+                allEntries.forEach(e => {
+                    const day = String(e.entry_date || '').slice(0, 10);
+                    if (!day) return;
+                    const cur = byDate.get(day) || { debit: 0, credit: 0 };
+                    (e.lines || []).forEach(l => {
+                        if (allowedCodes.size && !allowedCodes.has(String(l.account_code))) return;
+                        cur.debit += Number(l.debit || 0);
+                        cur.credit += Number(l.credit || 0);
+                    });
+                    byDate.set(day, cur);
+                });
+                const sortedDays = Array.from(byDate.keys()).sort();
+                const labels = sortedDays.length ? sortedDays : list.slice(0, 12).map(a => a.code);
+                const seriesA = sortedDays.length ? sortedDays.map(d => byDate.get(d).debit) : list.slice(0, 12).map(a => Number(a.total_debit || 0));
+                const seriesB = sortedDays.length ? sortedDays.map(d => byDate.get(d).credit) : list.slice(0, 12).map(a => Number(a.total_credit || 0));
+
+                coaCharts.push(new Chart(lineCanvas, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [
+                            { label: 'Debits', data: seriesA, borderColor: primary, backgroundColor: primary, tension: 0.3, pointRadius: 3 },
+                            { label: 'Credits', data: seriesB, borderColor: warning, backgroundColor: warning, tension: 0.3, pointRadius: 3 }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: { legend: { position: 'bottom' } },
+                        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: grid } } }
+                    }
+                }));
+            }
+        }
+
+        function renderView() {
+            const filtered = getFilteredAccounts();
+            renderKpis(filtered);
+            renderCharts(filtered);
+            OkwUI.dataTable(panel.querySelector('#coa-list'), {
+                columns: [
+                    { key: 'code', label: 'Code', render: v => `<strong>${esc(v)}</strong>` },
+                    { key: 'name', label: 'Account Name' },
+                    {
+                        key: 'type',
+                        label: 'Type',
+                        render: v => OkwUI.badge(v, v === 'Asset' ? 'info' : (v === 'Revenue' ? 'success' : (v === 'Expense' ? 'warning' : 'neutral')))
+                    },
+                    { key: 'normal_balance', label: 'Normal', render: v => `<span class="okw-cap-muted">${esc(v)}</span>` },
+                    { key: 'total_debit', label: 'Debits', numeric: true, render: fmt },
+                    { key: 'total_credit', label: 'Credits', numeric: true, render: fmt },
+                    { key: 'balance', label: 'Balance', numeric: true, render: v => `<strong>${esc(fmt(v))}</strong>` }
+                ],
+                rows: filtered,
+                searchPlaceholder: 'Search account code or name...',
+                exportFilename: 'okwesiwa-chart-of-accounts.xlsx',
+                printTitle: 'Chart of Accounts',
+                emptyText: 'No accounts match the selected filter.'
+            });
+        }
 
         async function load() {
             const host = panel.querySelector('#coa-list');
             try {
-                const { accounts } = await api('/api/gl/accounts');
-                host.innerHTML = `
-                    <div class="okw-scroll-x">
-                        <table class="okw-table okw-w-full">
-                            <thead><tr><th>Code</th><th>Account Name</th><th>Type</th><th>Normal</th><th class="okw-num">Debits</th><th class="okw-num">Credits</th><th class="okw-num">Balance</th></tr></thead>
-                            <tbody>
-                                ${accounts.map(a => `
-                                    <tr>
-                                        <td><strong>${esc(a.code)}</strong></td>
-                                        <td>${esc(a.name)}</td>
-                                        <td>${OkwUI.badge(a.type, a.type === 'Asset' ? 'info' : (a.type === 'Revenue' ? 'success' : (a.type === 'Expense' ? 'warning' : 'neutral')))}</td>
-                                        <td class="okw-cap-muted">${esc(a.normal_balance)}</td>
-                                        <td class="okw-num">${fmt(a.total_debit)}</td>
-                                        <td class="okw-num">${fmt(a.total_credit)}</td>
-                                        <td class="okw-num"><strong>${fmt(a.balance)}</strong></td>
-                                    </tr>`).join('')}
-                            </tbody>
-                        </table>
-                    </div>`;
+                const [accData, jeData] = await Promise.all([
+                    api('/api/gl/accounts'),
+                    api('/api/gl/journal').catch(() => ({ entries: [] }))
+                ]);
+                allAccounts = accData.accounts || [];
+                allEntries = jeData.entries || [];
+                renderView();
             } catch (e) {
                 host.innerHTML = `<div class="okw-empty">${esc(e.message)}</div>`;
             }
         }
+
+        typeFilter.addEventListener('change', renderView);
+        normalFilter.addEventListener('change', renderView);
+        balFilter.addEventListener('change', renderView);
+        resetBtn.addEventListener('click', () => {
+            typeFilter.value = '';
+            normalFilter.value = '';
+            balFilter.value = '';
+            renderView();
+        });
 
         panel.querySelector('#coa-add').onclick = async () => {
             try {
@@ -120,6 +358,7 @@
                 OkwUI.toast('Account added', 'success');
                 panel.querySelector('#coa-code').value = '';
                 panel.querySelector('#coa-name').value = '';
+                addCard.style.display = 'none';
                 load();
             } catch (e) { OkwUI.toast(e.message, 'danger'); }
         };
