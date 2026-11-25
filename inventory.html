@@ -1536,13 +1536,13 @@
                             <textarea id="pDescription" rows="3" placeholder="Enter product description..." data-oninput="updateProductDescWords()" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:6px;resize:vertical;font-family:inherit;font-size:13px;"></textarea>
                         </div>
                         <div class="form-group" style="margin:0;">
-                            <label>Product Image</label>
+                            <label>Product Image <span style="font-weight:400;color:#64748b;font-size:11.5px;">(Optional)</span></label>
                             <input type="file" id="pImageFile" accept="image/*" data-onchange="handleProductFile(this,'pImageData','pImagePreview',5)" style="width:100%;font-size:12px;">
                             <div style="font-size:11px;color:#64748b;margin-top:4px;">Max file size: 5MB · Aspect ratio 1:1</div>
                             <img id="pImagePreview" alt="" style="display:none;margin-top:6px;width:54px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;">
                         </div>
                         <div class="form-group" style="margin:0;">
-                            <label>Product Brochure</label>
+                            <label>Product Brochure <span style="font-weight:400;color:#64748b;font-size:11.5px;">(Optional)</span></label>
                             <input type="file" id="pBrochureFile" accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png" data-onchange="handleProductFile(this,'pBrochureData','pBrochureLabel',5)" style="width:100%;font-size:12px;">
                             <div style="font-size:11px;color:#64748b;margin-top:4px;">Max 5MB · .pdf, .csv, .zip, .doc, .docx, .jpg, .png</div>
                             <div id="pBrochureLabel" style="font-size:11.5px;color:#273990;margin-top:4px;font-weight:600;"></div>
@@ -1584,7 +1584,6 @@
                                     <th style="padding:10px;text-align:left;color:#fff !important;background:#273990 !important;">Default Purchase Price</th>
                                     <th style="padding:10px;text-align:left;color:#fff !important;background:#273990 !important;">x Margin (%)</th>
                                     <th style="padding:10px;text-align:left;color:#fff !important;background:#273990 !important;">Default Selling Price</th>
-                                    <th style="padding:10px;text-align:left;color:#fff !important;background:#273990 !important;">Product Image</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1611,11 +1610,6 @@
                                         <input type="number" step="0.01" id="pPrice" required placeholder="0.00" list="priceOptions" data-oninput="syncProductPricing('sell')" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">
                                         <datalist id="priceOptions"></datalist>
                                         <div id="pSellIncHint" style="font-size:11px;color:#64748b;margin-top:4px;"></div>
-                                    </td>
-                                    <td style="padding:10px;vertical-align:top;min-width:170px;">
-                                        <input type="file" id="pVariantImageFile" accept="image/*" data-onchange="handleProductFile(this,'pVariantImageData','pVariantImgPreview',5)" style="width:100%;font-size:11.5px;">
-                                        <div style="font-size:10.5px;color:#64748b;margin-top:3px;">Max 5MB · Aspect ratio 1:1</div>
-                                        <img id="pVariantImgPreview" alt="" style="display:none;margin-top:5px;width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;">
                                     </td>
                                 </tr>
                             </tbody>
