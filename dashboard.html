@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OKWESIWA CO LTD | Super Dashboard</title>
+    <title>OKWESIWA CO LTD | Home</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -133,6 +133,17 @@
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; }
         .message.error { background: #fff4f4; color: #c42b1c; border: 1px solid #ffd2cf; padding: 12px 16px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; }
 
+        .dash-skeleton {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            min-height: 360px; gap: 12px; color: var(--muted, #64748b); font-size: 13.5px; font-weight: 500;
+        }
+        .dash-spinner {
+            width: 34px; height: 34px; border-radius: 50%;
+            border: 3px solid rgba(39, 57, 144, 0.14); border-top-color: #273990;
+            animation: dashSpin 0.75s linear infinite;
+        }
+        @keyframes dashSpin { to { transform: rotate(360deg); } }
+
         @media (max-width: 1120px) {
             .charts-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
             .tables-grid-2 { grid-template-columns: 1fr; }
@@ -163,8 +174,8 @@
             <div class="user-profile-row">
                 <div class="user-avatar"><i class="fas fa-user"></i></div>
                 <div class="user-info">
-                    <div id="userName">Leadership</div>
-                    <div id="userRole">Super Dashboard</div>
+                    <div id="userName"></div>
+                    <div id="userRole"></div>
                 </div>
             </div>
             <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
@@ -173,11 +184,7 @@
 
     <!-- Main Content -->
     <div class="main-content">
-        <header class="super-head">
-            <div class="header-title">
-                <h1>Super Dashboard</h1>
-                <p id="superDashSubtitle">Unified Executive, Retail &amp; Company overview at a glance.</p>
-            </div>
+        <header class="super-head" style="justify-content:flex-end;">
             <div class="super-controls">
                 <select id="superBranchSelect" class="super-select" aria-label="Filter by Branch" data-onchange="loadSuperDashboard()">
                     <option value="All Branches">All Branches</option>
@@ -189,6 +196,13 @@
         </header>
 
         <div id="errorMessage" class="message error" style="display:none;"></div>
+
+        <div id="dashSkeleton" class="dash-skeleton">
+            <div class="dash-spinner"></div>
+            <div>Loading live data...</div>
+        </div>
+
+        <div id="dashContent" style="display:none;">
 
         <!-- Low / Out of Stock Notice -->
         <div id="lowStockNotice" class="stock-notice" role="status" hidden>
@@ -300,17 +314,16 @@
             </div>
         </section>
 
-        <!-- 4. LIVE PACE, CASH DROP & THEFT CONTROLS -->
+        <!-- 4. LIVE PACE & CONTROLS -->
         <section class="controls-panel" id="ceoLiveSection">
             <div class="controls-head">
                 <div>
-                    <div class="controls-title">Live Pace, Cash Drop &amp; Theft Controls</div>
+                    <div class="controls-title">Live Pace &amp; Controls</div>
                     <div class="controls-sub">Today vs yesterday &amp; last week, receivables/payables, blind close variances, and staff flags</div>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;">
                     <button type="button" class="super-btn" data-onclick="setCeoBranchTarget()"><i class="fas fa-bullseye"></i> Set Branch Target</button>
-                    <button type="button" class="super-btn super-btn-amber" data-onclick="recordCeoCashDrop()"><i class="fas fa-vault"></i> Record Cash Drop</button>
-                    <a href="/ceo-portal?tab=approvals-pending" class="super-btn"><i class="fas fa-clock"></i> Approvals (<span id="pendingApprovalsBadge">0</span>)</a>
+                    <a href="/ceo-portal?tab=approvals-pending" class="super-btn"><i class="fas fa-clock"></i> Approvals (<span id="pendingApprovalsBadge"></span>)</a>
                 </div>
             </div>
             <div class="pulse-grid">
@@ -537,6 +550,7 @@
                 </table>
             </div>
         </div>
+        </div><!-- /#dashContent -->
     </div>
 
     <footer>
@@ -556,6 +570,7 @@
 
         let dashDateRange = { from: new Date().toISOString().slice(0, 8) + '01', to: new Date().toISOString().slice(0, 10) };
         let branchesLoaded = false;
+        let dashReady = false;
 
         const chartInstances = {};
         function destroyChart(key) {
@@ -610,9 +625,10 @@
                 window.location.href = '/login';
                 return;
             }
-            document.getElementById('userName').textContent = user.name || 'Leadership';
+            document.getElementById('userName').textContent = user.name || 'User';
             const roleMap = { super_admin: 'Super Profile', ceo: 'CEO', admin: 'Administrator', manager: 'Store Manager', store_manager: 'Store Manager', company: 'Company Portal', business_client: 'Business Client' };
             document.getElementById('userRole').textContent = (roleMap[role] || role) + (user.store_location ? ` · ${user.store_location}` : '');
+            dashReady = true;
             loadSuperDashboard();
         }
 
@@ -631,7 +647,7 @@
             if (window.OkwUI && typeof OkwUI.dateRangePicker === 'function') {
                 OkwUI.dateRangePicker('#dash-date-picker', (range) => {
                     dashDateRange = range;
-                    loadSuperDashboard();
+                    if (dashReady) loadSuperDashboard();
                 });
             }
         });
@@ -684,6 +700,8 @@
             ]);
 
             if (!dashData && !ceoFin && !compData) {
+                const sk = document.getElementById('dashSkeleton');
+                if (sk) sk.style.display = 'none';
                 if (errEl) {
                     errEl.innerHTML = 'Could not load dashboard figures. <button type="button" data-onclick="loadSuperDashboard()" style="margin-left:8px;text-decoration:underline;background:none;border:0;cursor:pointer;color:inherit;">Try again</button>';
                     errEl.style.display = 'block';
@@ -695,14 +713,6 @@
 
             const stats = (dashData && dashData.stats) || {};
             const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-
-            // Subtitle
-            const subEl = document.getElementById('superDashSubtitle');
-            if (subEl) {
-                subEl.textContent = selectedBranch !== 'All Branches'
-                    ? `Unified Executive, Retail & Company overview for ${selectedBranch}`
-                    : (dashData && dashData.branch ? `Unified Executive, Retail & Company overview · ${dashData.branch}` : 'Unified Executive, Retail & Company overview across all branches.');
-            }
 
             // 1. Executive & Retail KPIs
             const totalSalesVal = stats.totalSales ?? (ceoFin ? ceoFin.revenue : 0) ?? 0;
@@ -822,7 +832,13 @@
             renderRecentTransactions((dashData && dashData.recentTransactions) || []);
             renderCashierStats((dashData && dashData.cashierStats) || []);
 
-            // 6. Charts
+            // Reveal live dashboard content only after real data is populated
+            const sk = document.getElementById('dashSkeleton');
+            const content = document.getElementById('dashContent');
+            if (sk) sk.style.display = 'none';
+            if (content) content.style.display = 'block';
+
+            // 6. Charts (rendered after container is visible so Chart.js measures exact canvas width)
             renderAllCharts({ stats, repData: repData || {}, ceoFin: ceoFin || {}, ceoTrend: Array.isArray(ceoTrend) ? ceoTrend : [], peakHours: Array.isArray(peakHours) ? peakHours : [] });
         }
 

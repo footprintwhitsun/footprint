@@ -45,7 +45,7 @@
     };
 
     const MODULES = [
-        { label: 'Super Dashboard', url: '/dashboard', roles: ['ceo', 'admin', 'manager', 'store_manager', 'company', 'business_client'], group: 'Core', icon: 'home' },
+        { label: 'Home', url: '/dashboard', roles: ['ceo', 'admin', 'manager', 'store_manager', 'company', 'business_client'], group: 'Core', icon: 'home' },
 
         { label: 'Pending Approvals', url: '/ceo-portal?tab=approvals-pending', roles: ['ceo', 'admin'], group: 'CEO', icon: 'clock' },
         { label: 'Approval History', url: '/ceo-portal?tab=approvals-history', roles: ['ceo', 'admin'], group: 'CEO', icon: 'fileCheck' },
