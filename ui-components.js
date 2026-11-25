@@ -445,7 +445,8 @@
             netTotal = null,
             paidAmount = null,
             balanceDue = null,
-            notes = ''
+            notes = '',
+            extraHtml = ''
         } = opts;
 
         const detailsLine = [profile.address, profile.phone, profile.email].filter(Boolean).join('  •  ');
@@ -529,6 +530,7 @@
                 ${allMeta.map(([k, v]) => `<div><div style="font-size:11px;text-transform:uppercase;color:var(--color-text-muted,#64748b);font-weight:600;">${escapeHtml(k)}</div><div style="font-weight:600;margin-top:2px;">${escapeHtml(v)}</div></div>`).join('')}
             </div>
             ${itemsHtml}
+            ${extraHtml}
             ${totalsHtml}
             ${notes ? `<div style="margin-top:14px;padding:10px 12px;border-radius:8px;background:var(--color-surface-muted,#f8fafc);border:1px solid var(--color-border,#e2e8f0);font-size:12.5px;"><strong>Notes:</strong> ${escapeHtml(notes)}</div>` : ''}
         `;
@@ -569,6 +571,174 @@
             iframe.contentWindow.focus();
             setTimeout(() => { iframe.contentWindow.print(); }, 120);
         };
+    }
+
+    function humanizeAction(action) {
+        return String(action || 'Activity')
+            .replace(/_/g, ' ')
+            .toLowerCase()
+            .replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function formatAuditSummary(action, raw) {
+        let d = raw;
+        if (typeof d === 'string') {
+            try { d = JSON.parse(d); } catch (_) { return d; }
+        }
+        if (!d || typeof d !== 'object') return humanizeAction(action);
+
+        const fmtC = (n) => (typeof window.formatCurrency === 'function'
+            ? window.formatCurrency(n)
+            : 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+        const parts = [];
+        if (d.receipt_number || d.receiptNumber) parts.push(`Receipt #${d.receipt_number || d.receiptNumber}`);
+        if (d.return_receipt) parts.push(`Return #${d.return_receipt}`);
+        if (d.original_receipt) parts.push(`Orig #${d.original_receipt}`);
+        if (d.quote_number) parts.push(`Quote ${d.quote_number}`);
+        if (d.reference_no) parts.push(d.reference_no);
+        if (d.po_id || d.poId) parts.push(`PO #${d.po_id || d.poId}`);
+        if (d.label) parts.push(d.label);
+        if (d.supplier_name) parts.push(`Supplier: ${d.supplier_name}`);
+        if (d.customer_name) parts.push(`Customer: ${d.customer_name}`);
+        if (d.name && !d.customer_name && !d.supplier_name) parts.push(d.name);
+        if (d.category && !d.changes) parts.push(d.category);
+
+        if (d.total !== undefined) parts.push(fmtC(d.total));
+        else if (d.total_amount !== undefined) parts.push(fmtC(d.total_amount));
+        else if (d.refund_total !== undefined) parts.push(`Refund ${fmtC(d.refund_total)}`);
+        else if (d.amount !== undefined) parts.push(fmtC(d.amount));
+
+        if (Array.isArray(d.items) && d.items.length) {
+            const preview = d.items.slice(0, 2).map(it => `${it.name || it.barcode} ×${it.qty}`).join(', ');
+            parts.push(`${d.items.length} item${d.items.length === 1 ? '' : 's'} (${preview}${d.items.length > 2 ? ', …' : ''})`);
+        }
+        if (Array.isArray(d.items_removed) && d.items_removed.length) {
+            const preview = d.items_removed.slice(0, 2).map(it => `${it.name || it.barcode} ×${it.qty}`).join(', ');
+            parts.push(`Removed ${d.items_removed.length} (${preview}${d.items_removed.length > 2 ? ', …' : ''})`);
+        }
+        if (d.changes && typeof d.changes === 'object' && Object.keys(d.changes).length) {
+            const diffStr = Object.entries(d.changes).slice(0, 3).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v.from} → ${v.to}`).join(', ');
+            parts.push(`Amended (${diffStr})`);
+        }
+        if (d.quantity_adjusted !== undefined) {
+            parts.push(`${d.product_barcode || ''} (${Number(d.quantity_adjusted) >= 0 ? '+' : ''}${d.quantity_adjusted})`);
+        }
+        if (d.reason) parts.push(`Reason: ${d.reason}`);
+
+        if (!parts.length) {
+            const branch = d.store_location || d.branch || '';
+            const actor = d.actor_name || '';
+            const role = d.actor_role ? String(d.actor_role).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) : '';
+            const summary = [humanizeAction(action)];
+            if (branch) summary.push(branch);
+            else if (actor) summary.push(role ? `${actor} (${role})` : actor);
+            return summary.join(' · ');
+        }
+        const branch = d.store_location || d.branch;
+        if (branch && !parts.includes(branch)) parts.push(branch);
+        return parts.join(' · ');
+    }
+
+    async function openAuditDetailModal(log = {}) {
+        const prev = document.getElementById('okw-audit-detail-modal');
+        if (prev) prev.remove();
+
+        let d = log.rawDetails !== undefined ? log.rawDetails : log.details;
+        if (typeof d === 'string') {
+            try { d = JSON.parse(d); } catch (_) { d = d ? { note: d } : {}; }
+        }
+        d = (d && typeof d === 'object' && !Array.isArray(d)) ? d : {};
+
+        const fmtC = (n) => (typeof window.formatCurrency === 'function'
+            ? window.formatCurrency(n)
+            : 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+        const itemsAdded = Array.isArray(d.items) ? d.items : [];
+        const itemsRemoved = Array.isArray(d.items_removed) ? d.items_removed : [];
+        const changes = (d.changes && typeof d.changes === 'object') ? Object.entries(d.changes) : [];
+        const payments = Array.isArray(d.payments) ? d.payments : [];
+        const staffName = log.user || log.user_name || d.actor_name || 'Staff';
+        const roleLabel = String(log.role || log.user_role || d.actor_role || 'Staff').replace(/_/g, ' ').toUpperCase();
+        const timeStr = log.time || (log.created_at ? new Date(log.created_at).toLocaleString() : '—');
+        const branchStr = d.store_location || d.branch || '—';
+        const refNo = d.receipt_number || d.receiptNumber || d.return_receipt || d.quote_number || d.reference_no || (d.po_id ? `PO-${d.po_id}` : '');
+        const totalVal = d.total ?? d.total_amount ?? d.refund_total ?? d.amount ?? null;
+
+        const SKIP_KEYS = new Set([
+            'actor_name', 'actor_role', 'branch', 'store_location', 'items', 'items_removed',
+            'changes', 'payments', 'receipt_number', 'receiptNumber', 'quote_number', 'reference_no',
+            'po_id', 'total', 'total_amount', 'refund_total', 'amount', 'subtotal', 'discount_amount',
+            'paid_amount', 'balance_due', 'change_amount', 'customer_name', 'supplier_name', 'reason', 'notes'
+        ]);
+        const extraMeta = Object.entries(d)
+            .filter(([k, v]) => !SKIP_KEYS.has(k) && v !== null && v !== undefined && v !== '' && typeof v !== 'object')
+            .map(([k, v]) => [k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()), String(v)]);
+
+        const metaRows = [
+            ['Action', `${humanizeAction(log.action)} (${log.action || ''})`],
+            ['Staff', staffName],
+            ['Role', roleLabel],
+            ['Branch / Location', branchStr],
+            ['Timestamp', timeStr],
+            ...(log.ip || log.ip_address ? [['IP Address', log.ip || log.ip_address]] : []),
+            ...(d.customer_name ? [['Customer', d.customer_name]] : []),
+            ...(d.supplier_name ? [['Supplier', d.supplier_name]] : []),
+            ...(payments.length ? [['Payments', payments.map(p => `${p.method}: ${fmtC(p.amount)}`).join(', ')]] : []),
+            ...extraMeta
+        ];
+
+        const extraSections = [];
+        if (itemsRemoved.length) {
+            extraSections.push(`
+                <div style="margin-top:16px;">
+                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#b91c1c;margin-bottom:6px;">Items Removed / Returned / Deleted (${itemsRemoved.length})</div>
+                    <table class="okw-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+                        <thead><tr><th>Item</th><th>Barcode</th><th class="okw-num">Qty</th><th class="okw-num">Unit Price</th><th class="okw-num">Total</th></tr></thead>
+                        <tbody>${itemsRemoved.map(it => `<tr>
+                            <td><strong>${escapeHtml(it.name || it.barcode || 'Item')}</strong></td>
+                            <td>${escapeHtml(it.barcode || '—')}</td>
+                            <td class="okw-num">${escapeHtml(it.qty ?? 1)}</td>
+                            <td class="okw-num">${it.price !== undefined ? fmtC(it.price) : '—'}</td>
+                            <td class="okw-num"><strong>${it.line_total !== undefined ? fmtC(it.line_total) : (it.price !== undefined ? fmtC(Number(it.price) * Number(it.qty || 1)) : '—')}</strong></td>
+                        </tr>`).join('')}</tbody>
+                    </table>
+                </div>`);
+        }
+        if (changes.length) {
+            extraSections.push(`
+                <div style="margin-top:16px;">
+                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#b45309;margin-bottom:6px;">Amended Fields (Before → After)</div>
+                    <table class="okw-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+                        <thead><tr><th>Field</th><th>Before</th><th>After</th></tr></thead>
+                        <tbody>${changes.map(([k, v]) => `<tr>
+                            <td><strong>${escapeHtml(k.replace(/_/g, ' '))}</strong></td>
+                            <td>${escapeHtml(v && v.from !== undefined ? v.from : '—')}</td>
+                            <td><strong>${escapeHtml(v && v.to !== undefined ? v.to : '—')}</strong></td>
+                        </tr>`).join('')}</tbody>
+                    </table>
+                </div>`);
+        }
+
+        await openPrintableRecord({
+            title: `Activity Log — ${humanizeAction(log.action)}`,
+            refNumber: refNo,
+            date: timeStr,
+            partyLabel: d.supplier_name ? 'Supplier' : (d.customer_name ? 'Customer' : 'Performed By'),
+            partyName: d.supplier_name || d.customer_name || staffName,
+            branch: branchStr,
+            status: d.status ? String(d.status).toUpperCase() : '',
+            paymentStatus: d.payment_status || '',
+            metaRows,
+            items: itemsAdded,
+            subtotal: d.subtotal !== undefined ? Number(d.subtotal) : null,
+            discount: d.discount_amount !== undefined ? Number(d.discount_amount) : null,
+            netTotal: totalVal !== null ? Number(totalVal) : null,
+            paidAmount: d.paid_amount !== undefined ? Number(d.paid_amount) : null,
+            balanceDue: d.balance_due !== undefined ? Number(d.balance_due) : null,
+            notes: [d.reason, d.notes].filter(Boolean).join(' · '),
+            extraHtml: extraSections.join('')
+        });
     }
 
     function dataTable(container, opts) {
@@ -723,7 +893,10 @@
                                     const rawVal = typeof c.exportValue === 'function'
                                         ? c.exportValue(row)
                                         : (row[c.key] ?? '');
-                                    return [c.label, String(rawVal)];
+                                    const textVal = (rawVal && typeof rawVal === 'object')
+                                        ? Object.entries(rawVal).filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object').map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(' · ')
+                                        : String(rawVal);
+                                    return [c.label, textVal];
                                 });
                             openPrintableRecord({
                                 title: getTitle(),
@@ -1221,6 +1394,8 @@
         productTypeahead,
         dataTable,
         openPrintableRecord,
+        formatAuditSummary,
+        openAuditDetailModal,
         warnIfPartial,
         sectionPage
     };

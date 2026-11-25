@@ -711,14 +711,29 @@
                             rows: d.expenseReport || [], exportFilename: "okwesiwa-expense-report.xlsx", printTitle: "Expense Report"
                         });
                     } else if (reportType === "activity_log") {
+                        const alRows = (d.activityLogReport || []).map(r => ({
+                            id: r.id,
+                            created_at: r.created_at,
+                            time: r.created_at ? new Date(r.created_at).toLocaleString() : '—',
+                            user: r.user_name || (r.details && r.details.actor_name) || 'Staff',
+                            role: String((r.details && r.details.actor_role) || r.user_role || 'Staff').replace(/_/g, ' ').toUpperCase(),
+                            action: r.action,
+                            details: OkwUI.formatAuditSummary(r.action, r.details),
+                            rawDetails: r.details,
+                            ip: r.ip_address || ''
+                        }));
                         OkwUI.dataTable(host, {
                             columns: [
-                                { key: "created_at", label: "Date", render: v => new Date(v).toLocaleString() },
-                                { key: "user_name", label: "User" },
+                                { key: "time", label: "Date" },
+                                { key: "user", label: "User" },
+                                { key: "role", label: "Role", render: v => OkwUI.badge(v, "info") },
                                 { key: "action", label: "Action" },
-                                { key: "details", label: "Details", render: v => typeof v === 'object' ? OkwUI.escapeHtml(JSON.stringify(v)) : OkwUI.escapeHtml(v || '') }
+                                { key: "details", label: "Summary" }
                             ],
-                            rows: d.activityLogReport || [], exportFilename: "okwesiwa-activity-log.xlsx", printTitle: "Activity Log"
+                            rows: alRows,
+                            onRowClick: (row) => OkwUI.openAuditDetailModal(row),
+                            exportFilename: "okwesiwa-activity-log.xlsx",
+                            printTitle: "Activity Log"
                         });
                     } else if (reportType === "deleted_transactions") {
                         const delRows = (d.deletedTransactions || []).map(r => ({

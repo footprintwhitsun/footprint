@@ -936,113 +936,11 @@
         }
 
         function summarizeDetails(action, raw) {
-            const d = (raw && typeof raw === 'object') ? raw : {};
-            const parts = [];
-            if (d.receipt_number || d.receiptNumber) parts.push(`#${d.receipt_number || d.receiptNumber}`);
-            if (d.return_receipt) parts.push(`Return #${d.return_receipt}`);
-            if (d.original_receipt) parts.push(`Orig #${d.original_receipt}`);
-            if (d.quote_number) parts.push(d.quote_number);
-            if (d.po_id || d.poId) parts.push(`PO #${d.po_id || d.poId}`);
-            if (d.label) parts.push(d.label);
-            if (d.customer_name) parts.push(d.customer_name);
-            if (d.name && !d.customer_name) parts.push(d.name);
-            if (d.category && !d.changes) parts.push(d.category);
-            if (d.total !== undefined) parts.push(fmtMoney(d.total));
-            else if (d.total_amount !== undefined) parts.push(fmtMoney(d.total_amount));
-            else if (d.refund_total !== undefined) parts.push(`Refund ${fmtMoney(d.refund_total)}`);
-            else if (d.amount !== undefined) parts.push(fmtMoney(d.amount));
-            if (Array.isArray(d.items) && d.items.length) {
-                const preview = d.items.slice(0, 2).map(it => `${it.name || it.barcode} ×${it.qty}`).join(', ');
-                parts.push(`+${d.items.length} item${d.items.length === 1 ? '' : 's'} (${preview}${d.items.length > 2 ? ', …' : ''})`);
-            }
-            if (Array.isArray(d.items_removed) && d.items_removed.length) {
-                const preview = d.items_removed.slice(0, 2).map(it => `${it.name || it.barcode} ×${it.qty}`).join(', ');
-                parts.push(`Removed ${d.items_removed.length} (${preview}${d.items_removed.length > 2 ? ', …' : ''})`);
-            }
-            if (d.changes && typeof d.changes === 'object' && Object.keys(d.changes).length) {
-                const diffStr = Object.entries(d.changes).slice(0, 3).map(([k, v]) => `${k}: ${v.from} → ${v.to}`).join(', ');
-                parts.push(`Amended (${diffStr})`);
-            }
-            if (d.quantity_adjusted !== undefined) {
-                parts.push(`${d.product_barcode || ''} (${Number(d.quantity_adjusted) >= 0 ? '+' : ''}${d.quantity_adjusted})`);
-            }
-            if (d.reason) parts.push(`Reason: ${d.reason}`);
-            if (parts.length) return parts.join(' · ');
-            return typeof raw === 'object' ? JSON.stringify(raw) : String(raw || '');
+            return OkwUI.formatAuditSummary(action, raw);
         }
 
         function openDetailModal(log) {
-            const prev = document.getElementById('okw-audit-detail-modal');
-            if (prev) prev.remove();
-            const d = (log.rawDetails && typeof log.rawDetails === 'object') ? log.rawDetails : {};
-            const itemsAdded = Array.isArray(d.items) ? d.items : [];
-            const itemsRemoved = Array.isArray(d.items_removed) ? d.items_removed : [];
-            const changes = (d.changes && typeof d.changes === 'object') ? Object.entries(d.changes) : [];
-            const payments = Array.isArray(d.payments) ? d.payments : [];
-
-            const renderItemsTable = (title, list, tone) => !list.length ? '' : `
-                <div style="margin-top:14px;">
-                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:${tone};margin-bottom:6px;">${title} (${list.length})</div>
-                    <table class="okw-table" style="width:100%;font-size:12.5px;">
-                        <thead><tr><th>Item</th><th>Barcode</th><th class="okw-num">Qty</th><th class="okw-num">Price</th><th class="okw-num">Total</th></tr></thead>
-                        <tbody>
-                            ${list.map(it => `<tr>
-                                <td><strong>${esc(it.name || it.barcode || 'Item')}</strong></td>
-                                <td>${esc(it.barcode || '—')}</td>
-                                <td class="okw-num">${esc(it.qty ?? '')}</td>
-                                <td class="okw-num">${it.price !== undefined ? fmtMoney(it.price) : '—'}</td>
-                                <td class="okw-num"><strong>${it.line_total !== undefined ? fmtMoney(it.line_total) : (it.price !== undefined ? fmtMoney(Number(it.price) * Number(it.qty || 1)) : '—')}</strong></td>
-                            </tr>`).join('')}
-                        </tbody>
-                    </table>
-                </div>`;
-
-            const changesHtml = !changes.length ? '' : `
-                <div style="margin-top:14px;">
-                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#b45309;margin-bottom:6px;">Amended Fields (Before → After)</div>
-                    <table class="okw-table" style="width:100%;font-size:12.5px;">
-                        <thead><tr><th>Field</th><th>Before</th><th>After</th></tr></thead>
-                        <tbody>${changes.map(([k, v]) => `<tr><td><strong>${esc(k)}</strong></td><td>${esc(v.from ?? '—')}</td><td><strong>${esc(v.to ?? '—')}</strong></td></tr>`).join('')}</tbody>
-                    </table>
-                </div>`;
-
-            const paymentsHtml = !payments.length ? '' : `
-                <div style="margin-top:10px;font-size:12.5px;">
-                    <strong>Payments:</strong> ${payments.map(p => `${esc(p.method)}: ${fmtMoney(p.amount)}`).join(' · ')}
-                </div>`;
-
-            const backdrop = document.createElement('div');
-            backdrop.id = 'okw-audit-detail-modal';
-            backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.62);z-index:10050;display:flex;align-items:center;justify-content:center;padding:16px;';
-            backdrop.innerHTML = `
-                <div class="okw-card" style="width:100%;max-width:760px;max-height:88vh;overflow-y:auto;padding:20px 24px;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
-                    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--edge,#e2e8f0);padding-bottom:10px;margin-bottom:14px;">
-                        <div>
-                            <h2 style="margin:0;font-size:17px;">${esc(log.action)}</h2>
-                            <div style="font-size:12px;color:var(--muted,#64748b);margin-top:2px;">${esc(log.time)} · ${esc(log.user)} (${esc(log.role)}) · IP ${esc(log.ip || '—')}</div>
-                        </div>
-                        <button type="button" id="al-modal-close" class="okw-btn okw-btn-outline">Close</button>
-                    </div>
-                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;font-size:12.5px;padding:10px 12px;border-radius:8px;background:var(--frame,#f8fafc);border:1px solid var(--edge,#e2e8f0);">
-                        <div><span style="color:var(--muted);">Branch:</span> <strong>${esc(d.store_location || d.branch || '—')}</strong></div>
-                        ${d.customer_name ? `<div><span style="color:var(--muted);">Customer:</span> <strong>${esc(d.customer_name)}</strong></div>` : ''}
-                        ${(d.receipt_number || d.receiptNumber || d.quote_number || d.po_id) ? `<div><span style="color:var(--muted);">Ref #:</span> <strong>${esc(d.receipt_number || d.receiptNumber || d.quote_number || ('PO-' + d.po_id))}</strong></div>` : ''}
-                        ${d.subtotal !== undefined ? `<div><span style="color:var(--muted);">Subtotal:</span> <strong>${fmtMoney(d.subtotal)}</strong></div>` : ''}
-                        ${d.discount_amount ? `<div><span style="color:var(--muted);">Discount:</span> <strong>-${fmtMoney(d.discount_amount)}</strong></div>` : ''}
-                        ${(d.total !== undefined || d.total_amount !== undefined || d.refund_total !== undefined || d.amount !== undefined) ? `<div><span style="color:var(--muted);">Total:</span> <strong>${fmtMoney(d.total ?? d.total_amount ?? d.refund_total ?? d.amount)}</strong></div>` : ''}
-                    </div>
-                    ${paymentsHtml}
-                    ${renderItemsTable('Items Added / Sold / Purchased', itemsAdded, '#15803d')}
-                    ${renderItemsTable('Items Removed / Returned / Deleted', itemsRemoved, '#b91c1c')}
-                    ${changesHtml}
-                    <details style="margin-top:14px;">
-                        <summary style="font-size:12px;color:var(--muted);cursor:pointer;">Raw audit payload</summary>
-                        <pre style="margin:8px 0 0;padding:10px;border-radius:8px;background:var(--frame,#f8fafc);font-size:11.5px;overflow:auto;">${esc(JSON.stringify(d, null, 2))}</pre>
-                    </details>
-                </div>`;
-            document.body.appendChild(backdrop);
-            backdrop.querySelector('#al-modal-close').onclick = () => backdrop.remove();
-            backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+            OkwUI.openAuditDetailModal(log);
         }
 
         function renderFiltered() {
@@ -1081,6 +979,7 @@
                     }
                 ],
                 rows: filtered,
+                onRowClick: openDetailModal,
                 searchPlaceholder: 'Search staff, role, action, item, or receipt...',
                 exportFilename: 'okwesiwa-activity-log.xlsx',
                 printTitle: 'Activity Log',
