@@ -3,7 +3,7 @@
    Steel & Brick palette for building & construction materials
    ========================================================================== */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@600;700;800&display=swap');
+/* Fonts are loaded via non-blocking <link> tags in HTML templates */
 
 :root,
 [data-theme="light"] {
@@ -12,6 +12,7 @@
     --color-primary-hover: #1C2B70;
     --color-primary-soft: rgba(39, 57, 144, 0.10);
     --color-accent: #F9A51A;
+    --color-accent-text: #B45309;
     --color-accent-hover: #D98A0F;
     --color-accent-soft: rgba(249, 165, 26, 0.14);
 

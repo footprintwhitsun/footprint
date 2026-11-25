@@ -2989,11 +2989,11 @@ app.get('/products', authenticateToken, async (req, res) => {
             stockLevelsInitTenants.add(_tid);
         }
 
-        // Support Pagination & Search parameters
+        // Support Pagination & Search parameters (cap limit=all at 5000 to prevent OOM)
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limitParam = req.query.limit;
-        const limit = limitParam === 'all' ? null : Math.max(1, parseInt(limitParam) || 20);
-        const offset = limit ? (page - 1) * limit : 0;
+        const limit = limitParam === 'all' ? 5000 : Math.min(5000, Math.max(1, parseInt(limitParam) || 20));
+        const offset = (page - 1) * limit;
         const search = req.query.search ? req.query.search.trim() : null;
 
         let queryParams = [req.user.tenant_id];
@@ -3083,11 +3083,11 @@ app.get('/api/products', authenticateToken, async (req, res) => {
             WHERE (stock_levels IS NULL OR stock_levels = '{}'::jsonb) AND tenant_id = $1
         `, [req.user.tenant_id || 1, _mainName]);
 
-        // Support Pagination & Search parameters
+        // Support Pagination & Search parameters (cap limit=all at 5000 to prevent OOM)
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limitParam = req.query.limit;
-        const limit = limitParam === 'all' ? null : Math.max(1, parseInt(limitParam) || 20);
-        const offset = limit ? (page - 1) * limit : 0;
+        const limit = limitParam === 'all' ? 5000 : Math.min(5000, Math.max(1, parseInt(limitParam) || 20));
+        const offset = (page - 1) * limit;
         const search = req.query.search ? req.query.search.trim() : null;
 
         let queryParams = [req.user.tenant_id || 1];
@@ -3230,7 +3230,7 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
         const outOfStockOnly = req.query.outOfStock === 'true';
         const stockFilter = lowStockOnly || outOfStockOnly;
 
-        const requestedLimit = limitParam === 'all' ? null : Math.max(1, parseInt(limitParam) || 20);
+        const requestedLimit = limitParam === 'all' ? 5000 : Math.min(5000, Math.max(1, parseInt(limitParam) || 20));
         const search = req.query.search ? req.query.search.trim() : null;
 
         let queryParams = [req.user.tenant_id || 1];
@@ -3255,7 +3255,7 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
             FROM products p
             LEFT JOIN (
                 SELECT product_barcode, COUNT(*) AS batch_count, MIN(expiry_date) AS next_expiry
-                FROM product_batches WHERE status = 'Active' GROUP BY product_barcode
+                FROM product_batches WHERE status = 'Active' AND COALESCE(tenant_id, 1) = $1 GROUP BY product_barcode
             ) pb ON pb.product_barcode = p.barcode
             ${where}
             ORDER BY p.name
@@ -5946,13 +5946,15 @@ app.get('/api/ceo/financials', authenticateToken, async (req, res) => {
 app.post('/api/ceo/target', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     const { target } = req.body;
+    const tenantId = req.user.tenant_id || 1;
     try {
+        const targetBranchId = await mainBranchId(pool, tenantId);
         await pool.query(`
-            INSERT INTO system_settings (id, branch_id, store_name, currency_symbol, vat_rate, receipt_footer, monthly_target)
-            VALUES (1, 1, 'OKWESIWA CO LTD', '₵ (GHS)', 0.00, 'Thank you!', $1)
-            ON CONFLICT (id) DO UPDATE SET monthly_target = $1
-        `, [target]);
-        await logActivity(req, 'UPDATE_REVENUE_TARGET', { target });
+            INSERT INTO system_settings (branch_id, tenant_id, store_name, currency_symbol, vat_rate, receipt_footer, monthly_target)
+            VALUES ($2, $3, 'OKWESIWA CO LTD', '₵ (GHS)', 0.00, 'Thank you!', $1)
+            ON CONFLICT (branch_id) DO UPDATE SET monthly_target = $1
+        `, [target, targetBranchId, tenantId]);
+        await logActivity(req, 'UPDATE_REVENUE_TARGET', { target, branch_id: targetBranchId });
         res.json({ success: true });
     } catch (err) {
         console.error(err);
@@ -5965,14 +5967,19 @@ app.get('/api/ceo/branches', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
 
     const { startDate, endDate } = req.query;
+    const tenantScope = userTenantScope(req);
 
     try {
         let whereClause = "LOWER(status) = 'completed'";
         let params = [];
 
+        if (tenantScope !== null) {
+            params.push(tenantScope);
+            whereClause += ` AND COALESCE(tenant_id, 1) = $${params.length}`;
+        }
         if (startDate && endDate) {
-            whereClause += " AND created_at >= $1 AND created_at <= $2::date + INTERVAL '1 day' - INTERVAL '1 second'";
             params.push(startDate, endDate);
+            whereClause += ` AND created_at >= $${params.length - 1} AND created_at <= $${params.length}::date + INTERVAL '1 day' - INTERVAL '1 second'`;
         }
 
         const result = await pool.query(`
@@ -5998,11 +6005,12 @@ app.get('/api/ceo/risks', authenticateToken, async (req, res) => {
 
     try {
         const risks = [];
+        const tenantScope = userTenantScope(req);
 
         // Risk: Low Stock Only
-        const lowStockRes = await pool.query(`
-            SELECT COUNT(*) as count FROM products WHERE deleted_at IS NULL AND stock <= reorder_level
-        `);
+        const lowStockRes = tenantScope !== null
+            ? await pool.query(`SELECT COUNT(*) as count FROM products WHERE deleted_at IS NULL AND stock <= reorder_level AND tenant_id = $1`, [tenantScope])
+            : await pool.query(`SELECT COUNT(*) as count FROM products WHERE deleted_at IS NULL AND stock <= reorder_level`);
 
         if (parseInt(lowStockRes.rows[0].count) > 0) {
             risks.push({ type: 'Stockout Risk', message: `${lowStockRes.rows[0].count} items are critically low on stock.`, severity: 'high' });
@@ -6140,13 +6148,16 @@ app.post('/api/ceo/approvals/credit-customers/:id/reject', authenticateToken, as
 app.get('/api/ceo/analytics/peak-hours', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
+        const tenantScope = userTenantScope(req);
+        const tFilter = tenantScope !== null ? ' AND COALESCE(tenant_id, 1) = $1' : '';
+        const tParams = tenantScope !== null ? [tenantScope] : [];
         const result = await pool.query(`
             SELECT EXTRACT(HOUR FROM created_at) as hour, COUNT(*) as count, SUM(total_amount) as revenue
             FROM transactions
-            WHERE status = 'completed' AND created_at >= date_trunc('month', CURRENT_DATE)
+            WHERE status = 'completed' AND created_at >= date_trunc('month', CURRENT_DATE)${tFilter}
             GROUP BY hour
             ORDER BY hour
-        `);
+        `, tParams);
         await logActivity(req, 'VIEW_CEO_PEAK_HOURS');
         res.json(result.rows);
     } catch (err) { res.status(500).json({ message: "Server error" }); }
@@ -6156,16 +6167,19 @@ app.get('/api/ceo/analytics/peak-hours', authenticateToken, async (req, res) => 
 app.get('/api/ceo/transactions/high-value', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
+        const tenantScope = userTenantScope(req);
+        const tFilter = tenantScope !== null ? ' AND COALESCE(t.tenant_id, 1) = $1' : '';
+        const tParams = tenantScope !== null ? [tenantScope] : [];
         const result = await pool.query(`
             SELECT t.*,
                    CASE WHEN u.id IS NOT NULL THEN COALESCE(u.name, u.username, 'Staff') || ' (@' || COALESCE(u.username, SPLIT_PART(u.email, '@', 1)) || ' · ' || UPPER(COALESCE(u.role, 'staff')) || ')' ELSE NULL END as cashier_name,
                    u.username as cashier_username, u.role as cashier_role
             FROM transactions t
             LEFT JOIN users u ON t.user_id = u.id
-            WHERE t.status = 'completed' AND t.created_at >= date_trunc('month', CURRENT_DATE)
+            WHERE t.status = 'completed' AND t.created_at >= date_trunc('month', CURRENT_DATE)${tFilter}
             ORDER BY t.total_amount DESC
             LIMIT 5
-        `);
+        `, tParams);
         await logActivity(req, 'VIEW_CEO_HIGH_VALUE_TXNS');
         res.json(result.rows);
     } catch (err) { res.status(500).json({ message: "Server error" }); }
@@ -6175,15 +6189,18 @@ app.get('/api/ceo/transactions/high-value', authenticateToken, async (req, res) 
 app.get('/api/ceo/staff-performance', authenticateToken, async (req, res) => {
     if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
+        const tenantScope = userTenantScope(req);
+        const tFilter = tenantScope !== null ? ' AND COALESCE(t.tenant_id, 1) = $1' : '';
+        const tParams = tenantScope !== null ? [tenantScope] : [];
         const result = await pool.query(`
             SELECT u.name, COUNT(CASE WHEN t.is_return = FALSE THEN 1 END) as transactions, SUM(t.total_amount) as sales
             FROM users u
             LEFT JOIN transactions t ON u.id = t.user_id
-            WHERE t.status = 'completed' AND t.created_at >= date_trunc('month', CURRENT_DATE)
+            WHERE t.status = 'completed' AND t.created_at >= date_trunc('month', CURRENT_DATE)${tFilter}
             GROUP BY u.id, u.name
             ORDER BY sales DESC
             LIMIT 10
-        `);
+        `, tParams);
 
         const staff = result.rows.map(r => ({
             name: r.name,

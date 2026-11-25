@@ -1330,7 +1330,10 @@
             });
         }
 
-        const obs = new MutationObserver(() => applyColumnVisibility());
+        const obs = new MutationObserver(() => {
+            if (!table.isConnected) { obs.disconnect(); return; }
+            applyColumnVisibility();
+        });
         obs.observe(tbody, { childList: true });
 
         const colBtn = bar.querySelector('[data-t-colbtn]');
@@ -1403,12 +1406,59 @@
             if (!m.getAttribute('role')) m.setAttribute('role', 'dialog');
             if (!m.getAttribute('aria-modal')) m.setAttribute('aria-modal', 'true');
         });
+        // Auto-label icon-only buttons & unlabeled form controls for WCAG accessibility
+        const iconLabels = {
+            'fa-times': 'Close', 'fa-close': 'Close', 'fa-bars': 'Toggle Menu', 'fa-search': 'Search',
+            'fa-sync': 'Refresh', 'fa-sync-alt': 'Refresh', 'fa-edit': 'Edit', 'fa-pen': 'Edit',
+            'fa-trash': 'Delete', 'fa-trash-alt': 'Delete', 'fa-print': 'Print', 'fa-plus': 'Add',
+            'fa-chevron-left': 'Previous', 'fa-chevron-right': 'Next', 'fa-sign-out-alt': 'Logout',
+            'fa-eye': 'View', 'fa-download': 'Download', 'fa-camera': 'Scan Camera', 'fa-keyboard': 'Keyboard Mode'
+        };
+        document.querySelectorAll('button:not([aria-label])').forEach(btn => {
+            if ((btn.textContent || '').trim()) return;
+            const t = btn.getAttribute('title');
+            if (t) { btn.setAttribute('aria-label', t); return; }
+            const icon = btn.querySelector('i');
+            if (icon) {
+                for (const [cls, lbl] of Object.entries(iconLabels)) {
+                    if (icon.classList.contains(cls)) { btn.setAttribute('aria-label', lbl); return; }
+                }
+            }
+        });
+        document.querySelectorAll('input:not([type="hidden"]):not([aria-label]):not([aria-labelledby]), select:not([aria-label]):not([aria-labelledby]), textarea:not([aria-label]):not([aria-labelledby])').forEach(ctrl => {
+            if (ctrl.id && document.querySelector(`label[for="${CSS.escape(ctrl.id)}"]`)) return;
+            const grp = ctrl.closest('.form-group, div');
+            const lbl = grp ? grp.querySelector('label') : null;
+            if (lbl && lbl.textContent.trim()) {
+                ctrl.setAttribute('aria-label', lbl.textContent.replace(/\s+/g, ' ').trim());
+            } else if (ctrl.placeholder) {
+                ctrl.setAttribute('aria-label', ctrl.placeholder.trim());
+            }
+        });
         if (!document.documentElement.dataset.okwModalEscBound) {
             document.documentElement.dataset.okwModalEscBound = '1';
             document.addEventListener('keydown', (ev) => {
-                if (ev.key !== 'Escape') return;
-                const openModals = document.querySelectorAll('.modal.active');
-                if (openModals.length) openModals[openModals.length - 1].classList.remove('active');
+                const activeModal = document.getElementById('okw-printable-record-modal')
+                    || Array.from(document.querySelectorAll('.modal.active')).pop();
+                if (!activeModal) return;
+                if (ev.key === 'Escape' && activeModal.classList.contains('modal')) {
+                    activeModal.classList.remove('active');
+                    return;
+                }
+                if (ev.key === 'Tab') {
+                    const focusables = Array.from(activeModal.querySelectorAll('a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'))
+                        .filter(el => el.offsetParent !== null);
+                    if (!focusables.length) return;
+                    const first = focusables[0];
+                    const last = focusables[focusables.length - 1];
+                    if (ev.shiftKey && document.activeElement === first) {
+                        ev.preventDefault();
+                        last.focus();
+                    } else if (!ev.shiftKey && document.activeElement === last) {
+                        ev.preventDefault();
+                        first.focus();
+                    }
+                }
             });
         }
         document.querySelectorAll('table').forEach(tbl => {
