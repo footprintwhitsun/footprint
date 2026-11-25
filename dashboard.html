@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OKWESIWA CO LTD | Retail Dashboard</title>
+    <title>OKWESIWA CO LTD | Super Dashboard</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
     <link rel="stylesheet" href="sidebar.css">
     <script src="currency.js"></script>
@@ -15,286 +15,137 @@
     <script src="instant-nav.js"></script>
     <script src="auth-guard.js"></script>
     <script src="/vendor/chart-4.4.1.umd.min.js" defer></script>
-    <style>
-        /* Spinner Animation */
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .spinner {
-            border: 3px solid rgba(0, 0, 0, 0.08);
-            width: 32px;
-            height: 32px;
-            border-radius: 50%;
-            border-left-color: var(--primary-color);
-            animation: spin 0.8s linear infinite;
-            margin: 0 auto 10px;
-        }
-        
-        .message {
-            padding: 12px 16px;
-            border-radius: 8px;
-            margin: 15px 0;
-            text-align: center;
-            font-size: 13.5px;
-        }
-        
-        .message.error {
-            background-color: #fff4f4;
-            color: #c42b1c;
-            border: 1px solid #ffd2cf;
-        }
-        
-        .message.success {
-            background-color: #f1f8f5;
-            color: #108043;
-            border: 1px solid #b7e3cd;
-        }
-        
-        /* Shopify Polaris Tokens */
-        :root {
-            --primary-color: #273990; --accent-color: #f9a51a;
-            --secondary-color: #1c2b70;
-            --accent-color: #f9a51a;
-            --text-color: #202223;
-            --text-secondary: #6d7175;
-            --text-subdued: #8c9196;
-            --border-color: #e1e3e5;
-            --border-subdued: #ebebeb;
-            --card-bg: #ffffff;
-            --gray-light: #f6f6f7;
-            --sidebar-width: 260px;
-            --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05);
-        }
-
-        /* Reset & Base */
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
-        body { background: var(--gray-light); display: flex; flex-direction: column; min-height: 100vh; color: var(--text-color); }
-
-        /* Main Content Area */
-        .main-content {
-            margin-left: var(--sidebar-width);
-            flex: 1;
-            padding: 28px 36px;
-        }
-
-        /* Header */
-        header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-        .header-title h2 { color: var(--text-color); font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin-bottom: 3px; }
-        .header-title p { color: var(--text-secondary); font-size: 13px; }
-        .location-selector select {
-            padding: 8px 14px; border-radius: 6px; border: 1px solid #c9cccf; outline: none; cursor: pointer; font-size: 13px; background: white; color: var(--text-color); font-weight: 500;
-        }
-        .location-selector select:focus {
-            border-color: var(--primary-color);
-        }
-
-        /* Stats Grid - Shopify Polaris Cards */
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px; margin-bottom: 24px; }
-        .stat-card {
-            background: var(--card-bg);
-            padding: 20px 22px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            cursor: pointer;
-            transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
-        }
-        .stat-card:hover {
-            border-color: #c9cccf;
-            transform: translateY(-1px);
-        }
-        .stat-info h3 { font-size: 24px; font-weight: 700; color: var(--text-color); margin-bottom: 3px; letter-spacing: -0.02em; }
-        .stat-info p { color: var(--text-secondary); font-size: 13px; font-weight: 500; }
-        .stat-icon {
-            width: 44px;
-            height: 44px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
-        }
-        .icon-sales { background: rgba(245, 158, 11, 0.1); color: var(--primary-color); }
-        .icon-orders { background: #f0fdf4; color: #166534; }
-        .icon-products { background: #fffbeb; color: #b45309; }
-        .icon-stores { background: #f1f5f9; color: #475569; }
-
-        /* Tables & Sections - Polaris Cards */
-        .recent-section {
-            background: var(--card-bg);
-            padding: 20px 24px;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-        .section-header h3 { font-size: 16px; font-weight: 600; color: var(--text-color); }
-        .btn-primary {
-            background: var(--primary-color);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            text-decoration: none;
-            font-size: 13px;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            transition: background 0.15s ease;
-        }
-        .btn-primary:hover {
-            background: var(--secondary-color);
-        }
-        
-        table { width: 100%; border-collapse: collapse; }
-        th {
-            text-align: left;
-            padding: 11px 14px;
-            color: var(--text-secondary);
-            font-weight: 600;
-            font-size: 11.5px;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            border-bottom: 1px solid var(--border-color);
-            background: #fafbfb;
-        }
-        th:first-child { border-top-left-radius: 6px; }
-        th:last-child { border-top-right-radius: 6px; }
-        td {
-            padding: 12px 14px;
-            border-bottom: 1px solid var(--border-subdued);
-            color: var(--text-color);
-            font-size: 13.5px;
-        }
-        tr:last-child td { border-bottom: none; }
-        
-        /* Status Badges - Polaris Tag Style */
-        .status {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.02em;
-        }
-        .status.completed { background: #e3f1df; color: #108043; border: 1px solid #b7e3cd; }
-        .status.pending { background: #fef3d6; color: #916a00; border: 1px solid #f9e295; }
-
-        @keyframes popIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        /* Mobile Responsive Styles */
-        .mobile-menu-btn {
-            display: none;
-            position: fixed;
-            top: 14px;
-            left: 14px;
-            z-index: 1001;
-            background: #1a1a1a;
-            color: white;
-            border: 1px solid #333;
-            padding: 8px 12px;
-            border-radius: 6px;
-            cursor: pointer;
-            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
-            font-size: 14px;
-        }
-        .overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 999; }
-
-        @media (max-width: 992px) {
-            .main-content { margin-left: 0; padding: 18px 16px; padding-top: 64px; }
-            .mobile-menu-btn { display: block; }
-            .overlay.active { display: block; }
-            .stats-grid { grid-template-columns: 1fr; }
-
-            /* Recent Transactions card-table */
-            .recent-txn-table thead { display: none; }
-            .recent-txn-table tbody tr {
-                display: block;
-                border: 1px solid var(--border-color);
-                border-radius: 8px;
-                margin-bottom: 12px;
-                background: white;
-            }
-            .recent-txn-table tbody tr:last-child { border-bottom: 1px solid var(--border-color); }
-            .recent-txn-table td {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 9px 14px;
-                border-bottom: 1px solid #f1f2f3;
-                font-size: 13px;
-            }
-            .recent-txn-table td:last-child { border-bottom: none; }
-            .recent-txn-table td::before {
-                content: attr(data-label);
-                font-weight: 600;
-                font-size: 11px;
-                color: var(--text-secondary);
-                text-transform: uppercase;
-                letter-spacing: 0.04em;
-                flex-shrink: 0;
-                min-width: 80px;
-                margin-right: 10px;
-            }
-
-            /* Cashier table card-table */
-            .cashier-table thead { display: none; }
-            .cashier-table tbody tr {
-                display: block;
-                border: 1px solid var(--border-color);
-                border-radius: 8px;
-                margin-bottom: 12px;
-                background: white;
-            }
-            .cashier-table tbody tr:last-child { border-bottom: 1px solid var(--border-color); }
-            .cashier-table td {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 9px 14px;
-                border-bottom: 1px solid #f1f2f3;
-                font-size: 13px;
-            }
-            .cashier-table td:last-child { border-bottom: none; }
-            .cashier-table td::before {
-                content: attr(data-label);
-                font-weight: 600;
-                font-size: 11px;
-                color: var(--text-secondary);
-                text-transform: uppercase;
-                letter-spacing: 0.04em;
-                flex-shrink: 0;
-                min-width: 80px;
-                margin-right: 10px;
-            }
-        }
-    </style>
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
     <link rel="stylesheet" href="/portal-skin.css">
-    <style id="dash-face">
-        .dash-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-        .dash-head h1 { margin: 0; font-size: 26px; }
-        .dash-head p { margin: 4px 0 0; color: var(--muted); font-size: 14px; }
-        .stock-notice { background: #FFF8E6 !important; border: 1px solid #F6E3B4 !important; color: #7A4B00 !important; border-radius: 10px !important; padding: 10px 14px !important; font-size: 13px !important; margin-bottom: 16px !important; }
+    <style id="super-dash-styles">
+        :root {
+            --primary-color: #273990;
+            --secondary-color: #1c2b70;
+            --accent-color: #f9a51a;
+            --sidebar-width: 260px;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
+        body { background: var(--frame, #f6f6f7); display: flex; flex-direction: column; min-height: 100vh; color: var(--ink, #0f172a); }
+        .main-content { margin-left: var(--sidebar-width); flex: 1; padding: 24px 30px; }
+
+        /* Top Header */
+        .super-head { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 14px; margin-bottom: 18px; }
+        .super-head h1 { margin: 0; font-size: 24px; font-weight: 800; color: var(--ink, #0f172a); letter-spacing: -0.02em; }
+        .super-head p { margin: 3px 0 0; color: var(--muted, #64748b); font-size: 13.5px; }
+        .super-controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+        .super-select {
+            height: 32px; padding: 0 10px; border-radius: 7px; border: 1px solid var(--edge, #cbd5e1);
+            background: var(--sheet, #fff); color: var(--ink, #0f172a); font-size: 12.5px; font-weight: 600; cursor: pointer;
+        }
+        .super-btn {
+            height: 32px; padding: 0 12px; border-radius: 7px; border: 1px solid var(--edge, #cbd5e1);
+            background: var(--sheet, #fff); color: var(--ink, #0f172a); font-size: 12.5px; font-weight: 600;
+            display: inline-flex; align-items: center; gap: 6px; cursor: pointer; text-decoration: none; transition: all 0.15s ease;
+        }
+        .super-btn:hover { border-color: #273990; color: #273990; }
+        .super-btn-primary { background: #273990; border-color: #273990; color: #fff; }
+        .super-btn-primary:hover { background: #1c2b70; color: #fff; }
+        .super-btn-amber { background: #F9A51A; border-color: #F9A51A; color: #0f172a; }
+        .super-btn-amber:hover { background: #e5930e; color: #0f172a; }
+
+        /* Alert Notices */
+        .stock-notice {
+            background: #FFF8E6; border: 1px solid #F6E3B4; color: #7A4B00; border-radius: 10px;
+            padding: 10px 14px; font-size: 13px; margin-bottom: 14px; display: flex; flex-wrap: wrap;
+            align-items: center; justify-content: space-between; gap: 10px;
+        }
+        .stock-notice[hidden] { display: none; }
+        .stock-notice-actions { display: inline-flex; align-items: center; gap: 12px; }
+        .stock-notice a { color: #1F3A60; font-weight: 700; text-decoration: underline; }
+        .stock-notice button { background: none; border: 0; color: inherit; cursor: pointer; font-weight: 600; opacity: 0.8; }
+
+        .cash-alert-banner {
+            display: none; margin-bottom: 14px; padding: 10px 14px; border-radius: 10px;
+            background: #FEF3C7; border: 1px solid #F59E0B; color: #92400E; font-weight: 600; font-size: 13px;
+        }
+
+        /* KPI Strips */
         .kpi-group { margin: 0 0 16px; }
-        .kpi-group-title { margin: 0 0 8px; font-size: 13px; font-weight: 600; color: var(--muted); font-family: inherit; }
-        .kpi-strip { display: grid; background: var(--sheet); border: 1px solid var(--edge); border-radius: 12px; overflow: hidden; }
-        .kpi-cell { padding: 18px 20px; border-left: 1px solid var(--edge); cursor: pointer; min-width: 0; }
+        .kpi-group-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 7px; }
+        .kpi-group-title { margin: 0; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted, #64748b); }
+        .kpi-strip { display: grid; background: var(--sheet, #fff); border: 1px solid var(--edge, #e2e8f0); border-radius: 12px; overflow: hidden; }
+        .kpi-cell { padding: 15px 18px; border-left: 1px solid var(--edge, #e2e8f0); cursor: pointer; min-width: 0; transition: background 0.15s ease; }
         .kpi-cell:first-child { border-left: 0; }
-        .kpi-cell:hover { background: var(--sheet-2); }
-        .kpi-label { margin: 0 0 8px; font-size: 13px; font-weight: 500; color: var(--muted); }
-        .kpi-figure { margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 600; line-height: 1.15; color: var(--ink); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
-        .kpi-figure.due { color: var(--warn); }
-        .kpi-cell.lead .kpi-figure { display: inline-block; font-size: 34px; font-weight: 700; color: var(--brand); border-bottom: 3px solid var(--brick); padding-bottom: 2px; }
-        @media (max-width: 900px) { .kpi-strip { grid-template-columns: 1fr 1fr !important; } .kpi-cell { border-left: 0; border-top: 1px solid var(--edge); } .kpi-cell.lead { grid-column: 1 / -1; border-top: 0; } }
+        .kpi-cell:hover { background: var(--sheet-2, #f8fafc); }
+        .kpi-label { margin: 0 0 6px; font-size: 12px; font-weight: 600; color: var(--muted, #64748b); }
+        .kpi-figure { margin: 0; font-size: 20px; font-weight: 700; line-height: 1.2; color: var(--ink, #0f172a); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+        .kpi-figure.due { color: #b45309; }
+        .kpi-figure.danger { color: #dc2626; }
+        .kpi-figure.good { color: #059669; }
+        .kpi-sub { font-size: 11.5px; color: var(--muted, #64748b); margin-top: 4px; }
+        .kpi-cell.lead .kpi-figure { display: inline-block; font-size: 28px; font-weight: 800; color: #273990; border-bottom: 3px solid #F9A51A; padding-bottom: 2px; }
+
+        /* Credit Usage Bar */
+        .usage-bar-track { height: 7px; border-radius: 999px; background: #e2e8f0; overflow: hidden; margin-top: 7px; }
+        .usage-bar-fill { height: 100%; width: 0%; background: linear-gradient(90deg, #273990, #F9A51A); border-radius: 999px; transition: width 0.4s ease; }
+
+        /* Live Controls Strip */
+        .controls-panel {
+            background: var(--sheet, #fff); border: 1px solid var(--edge, #e2e8f0); border-radius: 12px;
+            padding: 16px 18px; margin-bottom: 18px;
+        }
+        .controls-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .controls-title { font-size: 15px; font-weight: 700; color: var(--ink, #0f172a); }
+        .controls-sub { font-size: 12px; color: var(--muted, #64748b); margin-top: 2px; }
+        .pulse-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+        .pulse-card { padding: 12px 14px; border: 1px solid var(--edge, #e2e8f0); border-radius: 10px; background: var(--frame, #f8fafc); }
+        .pulse-summary {
+            margin-top: 12px; padding: 10px 14px; border-radius: 8px;
+            background: rgba(39, 57, 144, 0.05); border: 1px solid rgba(39, 57, 144, 0.12);
+            font-size: 12.5px; display: flex; flex-wrap: wrap; gap: 18px; color: var(--ink, #0f172a);
+        }
+
+        /* Charts & Tables Grids */
+        .charts-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+        .tables-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 18px; }
+        .panel-card {
+            background: var(--sheet, #fff); border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 12px; padding: 16px 18px; min-width: 0;
+        }
+        .panel-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .panel-head h3 { font-size: 15px; font-weight: 700; color: var(--ink, #0f172a); margin: 0; }
+        .chart-box { height: 225px; position: relative; }
+        .tbl-wrap { overflow-x: auto; }
+
+        table { width: 100%; border-collapse: collapse; }
+        th {
+            text-align: left; padding: 9px 11px; color: var(--muted, #64748b); font-weight: 600;
+            font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em;
+            border-bottom: 1px solid var(--edge, #e2e8f0); background: var(--frame, #f8fafc);
+        }
+        td { padding: 10px 11px; border-bottom: 1px solid var(--edge, #f1f5f9); color: var(--ink, #0f172a); font-size: 13px; }
+        tr:last-child td { border-bottom: none; }
+        th.numeric, td.numeric { text-align: right; font-variant-numeric: tabular-nums; }
+        .status { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+        .status.completed { background: #e3f1df; color: #108043; border: 1px solid #b7e3cd; }
+        .status.pending { background: #fef3d6; color: #916a00; border: 1px solid #f9e295; }
+
+        .mobile-menu-btn {
+            display: none; position: fixed; top: 14px; left: 14px; z-index: 1001;
+            background: #1a1a1a; color: #fff; border: 1px solid #333; padding: 8px 12px; border-radius: 6px; cursor: pointer;
+        }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 999; }
+        .message.error { background: #fff4f4; color: #c42b1c; border: 1px solid #ffd2cf; padding: 12px 16px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; }
+
+        @media (max-width: 1120px) {
+            .charts-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .tables-grid-2 { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 900px) {
+            .main-content { margin-left: 0; padding: 18px 14px; padding-top: 64px; }
+            .mobile-menu-btn { display: block; }
+            .overlay.active { display: block; }
+            .charts-grid-3 { grid-template-columns: 1fr; }
+            .kpi-strip { grid-template-columns: 1fr 1fr !important; }
+            .kpi-cell { border-left: 0; border-top: 1px solid var(--edge, #e2e8f0); }
+            .kpi-cell.lead { grid-column: 1 / -1; border-top: 0; }
+        }
     </style>
     <script src="/okw-events.js"></script>
 </head>
@@ -307,14 +158,13 @@
         <div class="brand">
             <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD">
         </div>
-        <div class="nav-links">
-        </div>
+        <div class="nav-links"></div>
         <div class="user-profile">
             <div class="user-profile-row">
                 <div class="user-avatar"><i class="fas fa-user"></i></div>
                 <div class="user-info">
-                    <div id="userName">Manager</div>
-                    <div id="userRole">Store Management</div>
+                    <div id="userName">Leadership</div>
+                    <div id="userRole">Super Dashboard</div>
                 </div>
             </div>
             <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
@@ -323,345 +173,829 @@
 
     <!-- Main Content -->
     <div class="main-content">
-        <header class="dash-head">
+        <header class="super-head">
             <div class="header-title">
-                <h1>Dashboard</h1>
-                <p>Today's sales, transactions and stock at a glance.</p>
+                <h1>Super Dashboard</h1>
+                <p id="superDashSubtitle">Unified Executive, Retail &amp; Company overview at a glance.</p>
             </div>
-            <div id="dash-date-picker"></div>
+            <div class="super-controls">
+                <select id="superBranchSelect" class="super-select" aria-label="Filter by Branch" data-onchange="loadSuperDashboard()">
+                    <option value="All Branches">All Branches</option>
+                </select>
+                <div id="dash-date-picker"></div>
+                <button type="button" class="super-btn" data-onclick="loadSuperDashboard()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <a href="/pos" class="super-btn super-btn-primary"><i class="fas fa-cash-register"></i> Open POS</a>
+            </div>
         </header>
 
-        <!-- Stats -->
+        <div id="errorMessage" class="message error" style="display:none;"></div>
+
+        <!-- Low / Out of Stock Notice -->
         <div id="lowStockNotice" class="stock-notice" role="status" hidden>
             <span id="lowStockMsg"></span>
             <span class="stock-notice-actions">
                 <a href="/inventory">Review stock</a>
-                <button type="button" data-onclick="closeLowStockAlert()" aria-label="Dismiss until tomorrow or until the counts change">Dismiss</button>
+                <button type="button" data-onclick="closeLowStockAlert()">Dismiss</button>
             </span>
         </div>
 
-        <section class="kpi-group" aria-label="Sales">
-            <h2 class="kpi-group-title">Sales</h2>
-            <div class="kpi-strip" style="grid-template-columns: 1.7fr 1fr 1fr 1fr 1fr;">
+        <!-- Cash Drop Alert Banner -->
+        <div id="ceoCashAlertBanner" class="cash-alert-banner"></div>
+
+        <!-- 1. EXECUTIVE & RETAIL SALES KPIs -->
+        <section class="kpi-group" aria-label="Executive and Retail Sales">
+            <div class="kpi-group-head">
+                <h2 class="kpi-group-title">Executive &amp; Retail Performance</h2>
+            </div>
+            <div class="kpi-strip" style="grid-template-columns: 1.5fr 1fr 1fr 1fr 1fr;">
                 <div class="kpi-cell lead" data-onclick="window.location.href='/reports?tab=overview'">
-                    <p class="kpi-label">Total sales</p>
+                    <p class="kpi-label">Total Sales</p>
                     <p class="kpi-figure" id="totalSales">--</p>
+                    <div class="kpi-sub" id="ceoRevSub">Executive revenue</div>
                 </div>
-                <div class="kpi-cell" data-onclick="window.location.href='/reports?tab=overview'">
-                    <p class="kpi-label">Net sales</p>
+                <div class="kpi-cell" data-onclick="window.location.href='/reports?tab=detailed&report=pnl'">
+                    <p class="kpi-label">Net Sales</p>
                     <p class="kpi-figure" id="netSales">--</p>
+                    <div class="kpi-sub">After returns</div>
                 </div>
-                <div class="kpi-cell" data-onclick="window.location.href='/stock?tab=returns'">
-                    <p class="kpi-label">Sale returns</p>
-                    <p class="kpi-figure" id="totalSellReturn">--</p>
+                <div class="kpi-cell" data-onclick="window.location.href='/reports?tab=detailed&report=pnl'">
+                    <p class="kpi-label">Net Profit</p>
+                    <p class="kpi-figure good" id="kpiProfit">--</p>
+                    <div class="kpi-sub">COGS &amp; OpEx deducted</div>
                 </div>
-                <div class="kpi-cell" data-onclick="window.location.href='/customers?tab=clients'">
-                    <p class="kpi-label">Invoices due</p>
-                    <p class="kpi-figure due" id="invoiceDue">--</p>
-                </div>
-                <div class="kpi-cell" data-onclick="window.location.href='/sales?tab=all'">
+                <div class="kpi-cell" data-onclick="window.location.href='/sell?tab=all'">
                     <p class="kpi-label">Transactions</p>
                     <p class="kpi-figure" id="totalTxns">--</p>
+                    <div class="kpi-sub" id="kpiAvgTxnSub">Avg: --</div>
+                </div>
+                <div class="kpi-cell" data-onclick="window.location.href='/ceo-portal?tab=branches'">
+                    <p class="kpi-label">Active Branches</p>
+                    <p class="kpi-figure" id="kpiBranches">--</p>
+                    <div class="kpi-sub" id="kpiReturnsSub">Returns: --</div>
                 </div>
             </div>
         </section>
 
-        <section class="kpi-group" aria-label="Purchasing and costs">
-            <h2 class="kpi-group-title">Purchasing and costs</h2>
-            <div class="kpi-strip" style="grid-template-columns: repeat(4, 1fr);">
-                <div class="kpi-cell" data-onclick="window.location.href='/stock?tab=orders'">
+        <!-- 2. PURCHASING, PAYABLES & EXPENSES KPIs -->
+        <section class="kpi-group" aria-label="Purchasing and Costs">
+            <div class="kpi-group-head">
+                <h2 class="kpi-group-title">Purchasing, Cash &amp; Costs</h2>
+            </div>
+            <div class="kpi-strip" style="grid-template-columns: repeat(5, 1fr);">
+                <div class="kpi-cell" data-onclick="window.location.href='/inventory?tab=orders'">
                     <p class="kpi-label">Purchases</p>
                     <p class="kpi-figure" id="totalPurchase">--</p>
                 </div>
-                <div class="kpi-cell" data-onclick="window.location.href='/stock?tab=suppliers'">
-                    <p class="kpi-label">Owed to suppliers</p>
-                    <p class="kpi-figure due" id="purchaseDue">--</p>
+                <div class="kpi-cell" data-onclick="window.location.href='/inventory?tab=suppliers'">
+                    <p class="kpi-label">Owed to Suppliers</p>
+                    <p class="kpi-figure danger" id="purchaseDue">--</p>
                 </div>
-                <div class="kpi-cell" data-onclick="window.location.href='/stock?tab=orders'">
-                    <p class="kpi-label">Purchase returns</p>
-                    <p class="kpi-figure" id="totalPurchaseReturn">--</p>
+                <div class="kpi-cell" data-onclick="window.location.href='/credit-customers?tab=clients'">
+                    <p class="kpi-label">Invoices Due</p>
+                    <p class="kpi-figure due" id="invoiceDue">--</p>
                 </div>
-                <div class="kpi-cell" data-onclick="window.location.href='/money?tab=expenses-list'">
+                <div class="kpi-cell" data-onclick="window.location.href='/expenses?tab=list'">
                     <p class="kpi-label">Expenses</p>
                     <p class="kpi-figure" id="totalExpense">--</p>
+                </div>
+                <div class="kpi-cell" data-onclick="window.location.href='/inventory?tab=returns'">
+                    <p class="kpi-label">Sale Returns</p>
+                    <p class="kpi-figure" id="totalSellReturn">--</p>
                 </div>
             </div>
         </section>
 
-        <!-- Analytics Charts (Bar, Doughnut, Pie) -->
-        <div class="charts-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:24px;">
-            <div class="okw-card" style="padding:16px;">
-                <h3 style="margin:0 0 12px;font-size:15px;">Financial Overview</h3>
-                <div style="height:230px;position:relative;"><canvas id="dashBarChart"></canvas></div>
+        <!-- 3. COMPANY PORTAL & B2B CREDIT KPIs -->
+        <section class="kpi-group" id="companyKpiSection" aria-label="Company Portal and Credit">
+            <div class="kpi-group-head">
+                <h2 class="kpi-group-title">Company Portal &amp; B2B Credit</h2>
+                <div style="display:flex;gap:8px;">
+                    <a href="/company-portal?tab=proforma" class="super-btn" style="height:26px;font-size:11.5px;"><i class="fas fa-file-invoice"></i> Proforma Invoices</a>
+                    <a href="/company-portal?tab=quick-sale" class="super-btn" style="height:26px;font-size:11.5px;"><i class="fas fa-bolt"></i> Company Quick Sale</a>
+                </div>
             </div>
-            <div class="okw-card" style="padding:16px;">
-                <h3 style="margin:0 0 12px;font-size:15px;">Payment Methods</h3>
-                <div style="height:230px;position:relative;"><canvas id="dashDoughnutChart"></canvas></div>
+            <div class="kpi-strip" style="grid-template-columns: repeat(5, 1fr);">
+                <div class="kpi-cell" data-onclick="window.location.href='/company-portal?tab=transactions'">
+                    <p class="kpi-label">Company Revenue</p>
+                    <p class="kpi-figure" id="compTotalRevenue">--</p>
+                </div>
+                <div class="kpi-cell" data-onclick="window.location.href='/credit-customers?tab=clients'">
+                    <p class="kpi-label">Credit Owed</p>
+                    <p class="kpi-figure due" id="compCreditOwed">--</p>
+                    <div class="usage-bar-track"><div class="usage-bar-fill" id="creditUsageBar"></div></div>
+                    <div class="kpi-sub">Credit utilization: <strong id="creditUsageLabel">0%</strong></div>
+                </div>
+                <div class="kpi-cell" data-onclick="window.location.href='/credit-customers?tab=clients'">
+                    <p class="kpi-label">Active Debtors</p>
+                    <p class="kpi-figure" id="compActiveDebtors">--</p>
+                </div>
+                <div class="kpi-cell" data-onclick="window.location.href='/company-portal?tab=proforma'">
+                    <p class="kpi-label">Proforma Invoices</p>
+                    <p class="kpi-figure" id="compTotalProforma">--</p>
+                </div>
+                <div class="kpi-cell" data-onclick="window.location.href='/company-portal?tab=transactions'">
+                    <p class="kpi-label">Pending Payments</p>
+                    <p class="kpi-figure due" id="compPendingPayments">--</p>
+                </div>
             </div>
-            <div class="okw-card" style="padding:16px;">
-                <h3 style="margin:0 0 12px;font-size:15px;">Sales by Category</h3>
-                <div style="height:230px;position:relative;"><canvas id="dashPieChart"></canvas></div>
+        </section>
+
+        <!-- 4. LIVE PACE, CASH DROP & THEFT CONTROLS -->
+        <section class="controls-panel" id="ceoLiveSection">
+            <div class="controls-head">
+                <div>
+                    <div class="controls-title">Live Pace, Cash Drop &amp; Theft Controls</div>
+                    <div class="controls-sub">Today vs yesterday &amp; last week, receivables/payables, blind close variances, and staff flags</div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" class="super-btn" data-onclick="setCeoBranchTarget()"><i class="fas fa-bullseye"></i> Set Branch Target</button>
+                    <button type="button" class="super-btn super-btn-amber" data-onclick="recordCeoCashDrop()"><i class="fas fa-vault"></i> Record Cash Drop</button>
+                    <a href="/ceo-portal?tab=approvals-pending" class="super-btn"><i class="fas fa-clock"></i> Approvals (<span id="pendingApprovalsBadge">0</span>)</a>
+                </div>
+            </div>
+            <div class="pulse-grid">
+                <div class="pulse-card">
+                    <div class="kpi-label">Today's Live Sales</div>
+                    <div id="liveTodaySales" class="kpi-figure">--</div>
+                    <div id="livePaceSub" class="kpi-sub">Yesterday: -- · Last wk: --</div>
+                </div>
+                <div class="pulse-card">
+                    <div class="kpi-label">Owed to OKWESIWA (Receivables)</div>
+                    <div id="liveReceivables" class="kpi-figure due">--</div>
+                    <div class="kpi-sub">Open customer balances</div>
+                </div>
+                <div class="pulse-card">
+                    <div class="kpi-label">Owed to Suppliers (Payables)</div>
+                    <div id="livePayables" class="kpi-figure danger">--</div>
+                    <div class="kpi-sub">Unpaid purchase orders</div>
+                </div>
+                <div class="pulse-card">
+                    <div class="kpi-label">Stock Alerts</div>
+                    <div id="liveStockAlerts" class="kpi-figure">--</div>
+                    <div id="liveStockSub" class="kpi-sub">Out of stock / Low stock</div>
+                </div>
+            </div>
+            <div id="ceoLiveControlsSummary" class="pulse-summary">
+                <span>Loading theft &amp; cash controls...</span>
+            </div>
+        </section>
+
+        <!-- 5. ANALYTICS CHARTS (ROW 1) -->
+        <div class="charts-grid-3">
+            <div class="panel-card">
+                <div class="panel-head"><h3>Revenue Trend</h3></div>
+                <div class="chart-box"><canvas id="superTrendChart"></canvas></div>
+            </div>
+            <div class="panel-card">
+                <div class="panel-head"><h3>Financial Overview</h3></div>
+                <div class="chart-box"><canvas id="dashBarChart"></canvas></div>
+            </div>
+            <div class="panel-card">
+                <div class="panel-head"><h3>Peak Trading Hours</h3></div>
+                <div class="chart-box"><canvas id="peakHoursChart"></canvas></div>
             </div>
         </div>
 
-        <!-- Recent Transactions -->
-        <div class="recent-section">
-            <div class="section-header">
-                <h3>Recent Transactions</h3>
-                <a href="reports" class="btn-primary">View All</a>
+        <!-- 6. ANALYTICS CHARTS (ROW 2) -->
+        <div class="charts-grid-3">
+            <div class="panel-card">
+                <div class="panel-head"><h3>Payment Methods</h3></div>
+                <div class="chart-box"><canvas id="dashDoughnutChart"></canvas></div>
             </div>
-            <table class="recent-txn-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Location</th>
-                        <th>Customer</th>
-                        <th class="numeric">Amount</th>
-                        <th>Status</th>
-                        <th>Time</th>
-                    </tr>
-                </thead>
-                <tbody id="recentTxnBody">
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 20px; color: #888;">No recent transactions</td>
-                    </tr>
-                </tbody>
-            </table>
+            <div class="panel-card">
+                <div class="panel-head"><h3>Sales by Category</h3></div>
+                <div class="chart-box"><canvas id="dashPieChart"></canvas></div>
+            </div>
+            <div class="panel-card">
+                <div class="panel-head"><h3>Profit &amp; Cost Breakdown</h3></div>
+                <div class="chart-box"><canvas id="finBreakdownChart"></canvas></div>
+            </div>
         </div>
 
-        <!-- Cashier Performance -->
-        <div class="recent-section" style="margin-top: 30px;">
-            <div class="section-header">
-                <h3>Sales by Cashier</h3>
+        <!-- 7. BRANCH PERFORMANCE & HIGH-VALUE SALES -->
+        <div class="tables-grid-2">
+            <div class="panel-card">
+                <div class="panel-head">
+                    <h3>Branch Performance</h3>
+                    <a href="/ceo-portal?tab=ops-performance" class="super-btn" style="height:28px;font-size:11.5px;">Full Report</a>
+                </div>
+                <div class="tbl-wrap">
+                    <table data-print-title="Branch Performance">
+                        <thead>
+                            <tr>
+                                <th>Branch</th>
+                                <th class="numeric">Txns</th>
+                                <th class="numeric">Revenue</th>
+                                <th class="numeric">Avg Ticket</th>
+                            </tr>
+                        </thead>
+                        <tbody id="branchPerfBody">
+                            <tr><td colspan="4" style="text-align:center;color:#888;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
-            <table class="cashier-table">
-                <thead>
-                    <tr>
-                        <th>Cashier Name</th>
-                        <th>Transactions</th>
-                        <th>Total Sales</th>
-                    </tr>
-                </thead>
-                <tbody id="cashierStatsBody">
-                    <tr><td colspan="3" style="text-align:center; color:#888;">No data available</td></tr>
-                </tbody>
-            </table>
+
+            <div class="panel-card">
+                <div class="panel-head">
+                    <h3>High-Value Sales (This Month)</h3>
+                    <a href="/reports?tab=detailed&report=transactions" class="super-btn" style="height:28px;font-size:11.5px;">All Sales</a>
+                </div>
+                <div class="tbl-wrap">
+                    <table data-print-title="High-Value Sales">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th class="numeric">Amount</th>
+                                <th>Branch</th>
+                                <th>Cashier</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="highValueTxnBody">
+                            <tr><td colspan="5" style="text-align:center;color:#888;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 8. TOP SELLING & SLOW MOVING PRODUCTS -->
+        <div class="tables-grid-2">
+            <div class="panel-card">
+                <div class="panel-head">
+                    <h3>Top Selling Products</h3>
+                    <a href="/reports?tab=detailed&report=trending" class="super-btn" style="height:28px;font-size:11.5px;">Trending</a>
+                </div>
+                <div class="tbl-wrap">
+                    <table data-print-title="Top Selling Products">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="numeric">Units Sold</th>
+                                <th class="numeric">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody id="topSellingBody">
+                            <tr><td colspan="3" style="text-align:center;color:#888;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-head">
+                    <h3>Slow Moving Products</h3>
+                    <a href="/reports?tab=detailed&report=slow_movers" class="super-btn" style="height:28px;font-size:11.5px;">Slow Movers</a>
+                </div>
+                <div class="tbl-wrap">
+                    <table data-print-title="Slow Moving Products">
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th class="numeric">Units Sold</th>
+                                <th class="numeric">Revenue</th>
+                            </tr>
+                        </thead>
+                        <tbody id="slowMovingBody">
+                            <tr><td colspan="3" style="text-align:center;color:#888;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 9. RECENT RETAIL TRANSACTIONS & COMPANY ACTIVITY -->
+        <div class="tables-grid-2">
+            <div class="panel-card">
+                <div class="panel-head">
+                    <h3>Recent Retail Transactions</h3>
+                    <a href="/reports?tab=detailed&report=transactions" class="super-btn super-btn-primary" style="height:28px;font-size:11.5px;">View All</a>
+                </div>
+                <div class="tbl-wrap">
+                    <table class="recent-txn-table" data-print-title="Recent Retail Transactions">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Location</th>
+                                <th>Customer</th>
+                                <th class="numeric">Amount</th>
+                                <th>Status</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentTxnBody">
+                            <tr><td colspan="6" style="text-align:center;color:#888;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="panel-card">
+                <div class="panel-head">
+                    <h3>Recent Company Invoices &amp; Activity</h3>
+                    <a href="/company-portal?tab=transactions" class="super-btn" style="height:28px;font-size:11.5px;">Company Ledger</a>
+                </div>
+                <div class="tbl-wrap">
+                    <table data-print-title="Recent Company Activity">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Reference</th>
+                                <th>Type</th>
+                                <th class="numeric">Amount</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="companyActivityBody">
+                            <tr><td colspan="5" style="text-align:center;color:#888;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 10. SALES BY CASHIER / STAFF PERFORMANCE -->
+        <div class="panel-card" style="margin-bottom:24px;">
+            <div class="panel-head">
+                <h3>Sales by Cashier &amp; Staff Performance</h3>
+                <a href="/reports?tab=detailed&report=teller" class="super-btn" style="height:28px;font-size:11.5px;">Sales Rep Report</a>
+            </div>
+            <div class="tbl-wrap">
+                <table class="cashier-table" data-print-title="Sales by Cashier">
+                    <thead>
+                        <tr>
+                            <th>Cashier / Staff</th>
+                            <th class="numeric">Transactions</th>
+                            <th class="numeric">Total Sales</th>
+                            <th class="numeric">Share</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cashierStatsBody">
+                        <tr><td colspan="4" style="text-align:center;color:#888;">Loading...</td></tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </div>
 
     <footer>
         <span>&copy; 2026 OKWESIWA CO LTD</span>
         <span>&bull;</span>
-        <a href="#">Support</a>
+        <a href="/settings">Settings</a>
     </footer>
-
-    <!-- Loading Indicator -->
-    <div id="loadingIndicator" style="display: none; text-align: center; padding: 20px;">
-        <div class="spinner"></div>
-        <p>Loading dashboard data...</p>
-    </div>
-
-    <!-- Error Message -->
-    <div id="errorMessage" class="message error" style="display: none; margin: 20px;"></div>
 
     <script>
         function toggleSidebar() {
-            document.querySelector('.sidebar').classList.toggle('active');
-            document.querySelector('.overlay').classList.toggle('active');
+            document.querySelector('.sidebar')?.classList.toggle('active');
+            document.querySelector('.overlay')?.classList.toggle('active');
         }
 
-        // Check authentication and load data
+        const esc = (v) => (window.OkwUI && OkwUI.escapeHtml) ? OkwUI.escapeHtml(v) : String(v ?? '').replace(/[&<>"']/g, s => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]));
+        const fmtC = (v) => typeof formatCurrency === 'function' ? formatCurrency(Number(v || 0)) : 'GH₵ ' + Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        let dashDateRange = { from: new Date().toISOString().slice(0, 8) + '01', to: new Date().toISOString().slice(0, 10) };
+        let branchesLoaded = false;
+
+        const chartInstances = {};
+        function destroyChart(key) {
+            if (chartInstances[key]) { chartInstances[key].destroy(); chartInstances[key] = null; }
+        }
+
+        function getAuthToken() {
+            return localStorage.getItem('authToken') || localStorage.getItem('companyToken') || '';
+        }
+
+        async function fetchJsonSafe(url, token) {
+            try {
+                const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) return null;
+                return await res.json();
+            } catch (_) {
+                return null;
+            }
+        }
+
         async function checkAuth() {
-            // Immediate UI update from session storage to prevent "..." flash
             const userStr = localStorage.getItem('currentUser');
             if (userStr) {
-                const user = JSON.parse(userStr);
-                document.getElementById('userName').textContent = user.name || 'User';
-                const roleLabel = user.role === 'manager' ? 'Store Manager' : (user.role === 'admin' ? 'Administrator' : (user.role || 'Staff'));
-                const branchLabel = user.store_location ? ` · ${user.store_location}` : '';
-                document.getElementById('userRole').textContent = roleLabel + branchLabel;
+                try {
+                    const u = JSON.parse(userStr);
+                    document.getElementById('userName').textContent = u.name || 'User';
+                    document.getElementById('userRole').textContent = (u.role || 'Staff') + (u.store_location ? ` · ${u.store_location}` : '');
+                } catch (_) {}
             }
-
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            const errorMessage = document.getElementById('errorMessage');
-            
+            const token = getAuthToken();
+            if (!token) { window.location.href = '/login'; return; }
             try {
-                loadingIndicator.style.display = 'block';
-                errorMessage.style.display = 'none';
-
-                const token = localStorage.getItem('authToken');
-                if (!token) throw new Error('No auth token found');
-                
-                const response = await fetch('/api/session', {
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!response.ok) {
-                    throw new Error('Not authenticated');
-                }
-
-                const data = await response.json();
-                // Always refresh localStorage with the latest server data (clears stale values like old store names)
+                const res = await fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) throw new Error('Not authenticated');
+                const data = await res.json();
                 if (data.user) localStorage.setItem('currentUser', JSON.stringify(data.user));
                 initDashboard(data.user);
-            } catch (error) {
-                console.error('Auth check failed:', error);
+            } catch (err) {
+                console.error('Auth check failed:', err);
                 window.location.href = '/login';
-            } finally {
-                loadingIndicator.style.display = 'none';
             }
         }
 
         function initDashboard(user) {
-            const userRole = user.role ? user.role.toLowerCase() : '';
-            // Verify leadership/manager role
-            if (!['super_admin', 'ceo', 'admin', 'manager', 'store_manager'].includes(userRole)) {
-                if (userRole === 'cashier' || userRole === 'teller') { checkShiftAndRedirect(); } else {
-                    window.location.href = '/login';
-                }
+            const role = (user && user.role ? user.role : '').toLowerCase();
+            if (role === 'cashier' || role === 'teller') {
+                checkShiftAndRedirect();
                 return;
             }
-
-            // Update UI with user info
-            document.getElementById('userName').textContent = user.name || (userRole === 'manager' || userRole === 'store_manager' ? 'Manager' : (userRole === 'super_admin' ? 'Super Profile' : (userRole === 'ceo' ? 'CEO' : 'Admin')));
-            const roleLabel = userRole === 'super_admin' ? 'Super Profile' : (userRole === 'ceo' ? 'CEO' : (userRole === 'manager' || userRole === 'store_manager' ? 'Store Manager' : 'Administrator'));
-            const branchLabel = user.store_location ? ` · ${user.store_location}` : '';
-            document.getElementById('userRole').textContent = roleLabel + branchLabel;
-            
-            // Load dashboard data
-            loadDashboardData();
+            const allowed = ['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'company', 'business_client'];
+            if (!allowed.includes(role)) {
+                window.location.href = '/login';
+                return;
+            }
+            document.getElementById('userName').textContent = user.name || 'Leadership';
+            const roleMap = { super_admin: 'Super Profile', ceo: 'CEO', admin: 'Administrator', manager: 'Store Manager', store_manager: 'Store Manager', company: 'Company Portal', business_client: 'Business Client' };
+            document.getElementById('userRole').textContent = (roleMap[role] || role) + (user.store_location ? ` · ${user.store_location}` : '');
+            loadSuperDashboard();
         }
 
         async function checkShiftAndRedirect() {
-            const token = localStorage.getItem('authToken');
+            const token = getAuthToken();
             try {
-                const res = await fetch('/api/shifts/active', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const shiftData = await res.json();
-                    if (shiftData.active) {
-                        window.location.href = 'pos';
-                    } else {
-                        window.location.href = 'open-shift';
-                    }
-                } else {
-                    window.location.href = 'open-shift';
-                }
-            } catch (e) {
-                window.location.href = 'open-shift';
+                const res = await fetch('/api/shifts/active', { headers: { 'Authorization': `Bearer ${token}` } });
+                const d = res.ok ? await res.json() : {};
+                window.location.href = d.active ? '/pos' : '/open-shift';
+            } catch (_) {
+                window.location.href = '/open-shift';
             }
         }
-
-        let dashDateRange = { from: new Date().toISOString().slice(0, 8) + '01', to: new Date().toISOString().slice(0, 10) };
 
         document.addEventListener('DOMContentLoaded', () => {
             if (window.OkwUI && typeof OkwUI.dateRangePicker === 'function') {
                 OkwUI.dateRangePicker('#dash-date-picker', (range) => {
                     dashDateRange = range;
-                    loadDashboardData();
+                    loadSuperDashboard();
                 });
             }
         });
 
-        async function loadDashboardData() {
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            const errorMessage = document.getElementById('errorMessage');
-            
-            try {
-                loadingIndicator.style.display = 'block';
-                errorMessage.style.display = 'none';
-
-                const token = localStorage.getItem('authToken');
-                if (!token) return;
-                
-                const qs = new URLSearchParams({ from: dashDateRange.from || '', to: dashDateRange.to || '' }).toString();
-                const [response, repResponse] = await Promise.all([
-                    fetch(`/api/dashboard?${qs}`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    }),
-                    fetch(`/api/reports/all?${qs}`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    }).catch(() => null)
-                ]);
-                
-                if (!response.ok) {
-                    throw new Error('Failed to load dashboard data');
+        async function loadBranchesDropdown(token) {
+            if (branchesLoaded) return;
+            const list = await fetchJsonSafe('/api/branches', token);
+            if (!Array.isArray(list)) return;
+            const sel = document.getElementById('superBranchSelect');
+            if (!sel) return;
+            const existing = new Set(['All Branches']);
+            list.forEach(b => {
+                const name = b.name || b.location;
+                if (name && !existing.has(name)) {
+                    existing.add(name);
+                    const opt = document.createElement('option');
+                    opt.value = name;
+                    opt.textContent = name;
+                    sel.appendChild(opt);
                 }
-                
-                const data = await response.json();
-                const repData = repResponse && repResponse.ok ? await repResponse.json().catch(() => ({})) : {};
-                if (window.OkwUI && OkwUI.warnIfPartial) OkwUI.warnIfPartial(repData);
-                updateDashboardUI(data);
-                renderDashboardCharts(data.stats || {}, repData);
-                
-            } catch (error) {
-                console.error('Error loading dashboard:', error);
-                // A failed load must not look like a quiet day: show dashes, not zeros, and put the error where it is seen.
-                ['totalSales', 'invoiceDue', 'netSales', 'totalSellReturn', 'totalPurchase', 'purchaseDue', 'totalPurchaseReturn', 'totalExpense'].forEach((id) => { const el = document.getElementById(id); if (el) el.textContent = '--'; });
-                const cs = document.getElementById('cashierStatsBody'); if (cs) cs.innerHTML = '<tr><td colspan="3">Could not load cashier sales.</td></tr>';
-                const rt = document.querySelector('.recent-txn-table tbody, #recentTxnBody'); if (rt) rt.innerHTML = '<tr><td colspan="6">Could not load transactions.</td></tr>';
-                errorMessage.setAttribute('role', 'alert');
-                errorMessage.innerHTML = 'Could not load dashboard figures. <button type="button" data-onclick="loadDashboardData()" style="margin-left:8px;font:inherit;text-decoration:underline;background:none;border:0;cursor:pointer;color:inherit;">Try again</button>';
-                errorMessage.style.display = 'block';
-                const mc = document.querySelector('.main-content'); if (mc && errorMessage.parentNode !== mc) mc.insertBefore(errorMessage, mc.querySelector('.stats-grid') || mc.firstChild);
-            } finally {
-                loadingIndicator.style.display = 'none';
-            }
+            });
+            branchesLoaded = true;
         }
 
-        let dashBarInst = null;
-        let dashDoughnutInst = null;
-        let dashPieInst = null;
+        async function loadSuperDashboard() {
+            const token = getAuthToken();
+            if (!token) return;
+            const errEl = document.getElementById('errorMessage');
+            if (errEl) errEl.style.display = 'none';
 
-        function renderDashboardCharts(stats, repData) {
-            if (typeof Chart === 'undefined') {
-                setTimeout(() => renderDashboardCharts(stats, repData), 150);
+            await loadBranchesDropdown(token);
+            const selectedBranch = document.getElementById('superBranchSelect')?.value || 'All Branches';
+            const from = dashDateRange.from || '';
+            const to = dashDateRange.to || '';
+
+            const qsDash = new URLSearchParams({ from, to }).toString();
+            const qsCeo = new URLSearchParams({ branch: selectedBranch, ...(from && to ? { startDate: from, endDate: to } : {}) }).toString();
+
+            const [dashData, repData, ceoFin, ceoBranches, ceoLive, ceoTrend, peakHours, highValue, approvals, compData] = await Promise.all([
+                fetchJsonSafe(`/api/dashboard?${qsDash}`, token),
+                fetchJsonSafe(`/api/reports/all?${qsDash}`, token),
+                fetchJsonSafe(`/api/ceo/financials?${qsCeo}`, token),
+                fetchJsonSafe(`/api/ceo/branches?${qsCeo}`, token),
+                fetchJsonSafe('/api/ceo-live/overview', token),
+                fetchJsonSafe(`/api/ceo/analytics/trend?${qsCeo}`, token),
+                fetchJsonSafe('/api/ceo/analytics/peak-hours', token),
+                fetchJsonSafe('/api/ceo/transactions/high-value', token),
+                fetchJsonSafe('/api/ceo/approvals/credit-customers', token),
+                fetchJsonSafe('/api/company/dashboard', token)
+            ]);
+
+            if (!dashData && !ceoFin && !compData) {
+                if (errEl) {
+                    errEl.innerHTML = 'Could not load dashboard figures. <button type="button" data-onclick="loadSuperDashboard()" style="margin-left:8px;text-decoration:underline;background:none;border:0;cursor:pointer;color:inherit;">Try again</button>';
+                    errEl.style.display = 'block';
+                }
                 return;
             }
-            const palette = ['#273990', '#4B5BB0', '#7C8BD0', '#A9B3E0', '#CBD1EE', '#E4E7F6'];
-            const methodColors = { Cash: '#273990', MoMo: '#F9A51A', Card: '#7C8BD0', Bank: '#9AA3B2', Credit: '#B4531A' };
 
-            // 1. Financial Overview Bar Chart
+            if (window.OkwUI && OkwUI.warnIfPartial && repData) OkwUI.warnIfPartial(repData);
+
+            const stats = (dashData && dashData.stats) || {};
+            const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+
+            // Subtitle
+            const subEl = document.getElementById('superDashSubtitle');
+            if (subEl) {
+                subEl.textContent = selectedBranch !== 'All Branches'
+                    ? `Unified Executive, Retail & Company overview for ${selectedBranch}`
+                    : (dashData && dashData.branch ? `Unified Executive, Retail & Company overview · ${dashData.branch}` : 'Unified Executive, Retail & Company overview across all branches.');
+            }
+
+            // 1. Executive & Retail KPIs
+            const totalSalesVal = stats.totalSales ?? (ceoFin ? ceoFin.revenue : 0) ?? 0;
+            const netSalesVal = stats.netSales ?? totalSalesVal;
+            const netProfitVal = ceoFin ? (ceoFin.netProfit || 0) : (netSalesVal - Number(stats.totalExpense || 0));
+            const branchList = Array.isArray(ceoBranches) ? ceoBranches : [];
+            const totalTxnsVal = stats.totalTransactions ?? branchList.reduce((s, b) => s + (parseInt(b.txn_count) || 0), 0);
+            const avgTxnVal = totalTxnsVal > 0 ? Number(totalSalesVal) / Number(totalTxnsVal) : 0;
+
+            setEl('totalSales', fmtC(totalSalesVal));
+            setEl('ceoRevSub', ceoFin && ceoFin.revenue ? `All-branch exec: ${fmtC(ceoFin.revenue)}` : 'Selected period');
+            setEl('netSales', fmtC(netSalesVal));
+            setEl('kpiProfit', fmtC(netProfitVal));
+            setEl('totalTxns', Number(totalTxnsVal || 0).toLocaleString());
+            setEl('kpiAvgTxnSub', `Avg ticket: ${fmtC(avgTxnVal)}`);
+            setEl('kpiBranches', ceoFin && ceoFin.branchCount != null ? ceoFin.branchCount : (branchList.length || 1));
+            setEl('kpiReturnsSub', `Returns: ${fmtC(stats.totalSellReturn || 0)}`);
+
+            // 2. Purchasing & Costs KPIs
+            setEl('totalPurchase', fmtC(stats.totalPurchase || 0));
+            setEl('purchaseDue', fmtC(stats.purchaseDue ?? (ceoLive ? ceoLive.payables : 0) ?? 0));
+            setEl('invoiceDue', fmtC(stats.invoiceDue ?? (ceoLive ? ceoLive.receivables : 0) ?? 0));
+            setEl('totalExpense', fmtC(stats.totalExpense ?? (ceoFin ? ceoFin.opex : 0) ?? 0));
+            setEl('totalSellReturn', fmtC(stats.totalSellReturn || 0));
+
+            // Stock Alert Notice
+            const outCount = Number(stats.outOfStockCount || 0);
+            const lowCount = Number(stats.lowStockCount || 0);
+            setEl('liveStockAlerts', `${outCount} Out · ${lowCount} Low`);
+            setEl('liveStockSub', outCount + lowCount > 0 ? 'Attention required in Inventory' : 'All items healthy');
+            window.__stockCounts = { out: outCount, low: lowCount };
+            let dismissed = null;
+            try { dismissed = JSON.parse(localStorage.getItem('lowStockAlertDismissed') || 'null'); } catch (_) {}
+            const today = new Date().toISOString().slice(0, 10);
+            const stillDismissed = dismissed && dismissed.day === today && outCount <= dismissed.out && lowCount <= dismissed.low;
+            const notice = document.getElementById('lowStockNotice');
+            if (notice && (outCount + lowCount) > 0 && !stillDismissed) {
+                document.getElementById('lowStockMsg').innerHTML =
+                    `<strong>${outCount}</strong> ${outCount === 1 ? 'item is' : 'items are'} out of stock and <strong>${lowCount}</strong> ${lowCount === 1 ? 'item is' : 'items are'} running low.`;
+                const reviewLink = notice.querySelector('a');
+                if (reviewLink) {
+                    const p = new URLSearchParams({ tab: 'stock' });
+                    if (lowCount > 0) p.set('lowStock', 'true');
+                    if (outCount > 0) p.set('outOfStock', 'true');
+                    reviewLink.href = '/inventory?' + p.toString();
+                }
+                notice.hidden = false;
+            } else if (notice) {
+                notice.hidden = true;
+            }
+
+            // 3. Company Portal KPIs & Activity
+            if (compData) {
+                setEl('compTotalRevenue', fmtC(compData.totalRevenue || 0));
+                setEl('compCreditOwed', fmtC(compData.totalCreditOwed || 0));
+                setEl('compActiveDebtors', compData.activeDebtors || 0);
+                setEl('compTotalProforma', compData.totalProforma || 0);
+                setEl('compPendingPayments', compData.pendingPayments || 0);
+                const usageRate = Number(compData.creditUsageRate || 0);
+                const bar = document.getElementById('creditUsageBar');
+                if (bar) bar.style.width = `${Math.min(100, Math.max(0, usageRate))}%`;
+                setEl('creditUsageLabel', `${usageRate}%`);
+
+                const actBody = document.getElementById('companyActivityBody');
+                const acts = Array.isArray(compData.recentActivity) ? compData.recentActivity : [];
+                if (actBody) {
+                    actBody.innerHTML = acts.length
+                        ? acts.slice(0, 8).map(act => `
+                            <tr>
+                                <td>${act.date ? new Date(act.date).toLocaleDateString('en-GB') : '—'}</td>
+                                <td><strong>${act.invoice_number ? '#' + esc(act.invoice_number) : '—'}</strong></td>
+                                <td>${esc(act.type || 'Invoice')}</td>
+                                <td class="numeric"><strong>${fmtC(act.amount || 0)}</strong></td>
+                                <td><span class="status completed">Completed</span></td>
+                            </tr>`).join('')
+                        : '<tr><td colspan="5" style="text-align:center;color:#888;padding:18px;">No recent company invoices yet.</td></tr>';
+                }
+            } else {
+                const actBody = document.getElementById('companyActivityBody');
+                if (actBody) actBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:18px;">No company activity available.</td></tr>';
+            }
+
+            // 4. CEO Live Pace & Controls
+            setEl('pendingApprovalsBadge', Array.isArray(approvals) ? approvals.length : 0);
+            if (ceoLive) {
+                const alertEl = document.getElementById('ceoCashAlertBanner');
+                if (alertEl) {
+                    if (ceoLive.cash_drop_alert) {
+                        alertEl.style.display = 'block';
+                        alertEl.textContent = `Cash drop alert: Today's sales (${fmtC(ceoLive.live?.today_total)}) exceeded the ${fmtC(ceoLive.cash_threshold)} threshold. Collect a cash drop.`;
+                    } else {
+                        alertEl.style.display = 'none';
+                    }
+                }
+                setEl('liveTodaySales', fmtC(ceoLive.live?.today_total || 0));
+                setEl('livePaceSub', `Yesterday: ${fmtC(ceoLive.live?.yesterday_total || 0)} · Last wk: ${fmtC(ceoLive.live?.last_week_total || 0)}`);
+                setEl('liveReceivables', fmtC(ceoLive.receivables || 0));
+                setEl('livePayables', fmtC(ceoLive.payables || 0));
+
+                const ctrl = ceoLive.controls || {};
+                const sumEl = document.getElementById('ceoLiveControlsSummary');
+                if (sumEl) {
+                    const flags = (ctrl.staff_flags || []).map(s => `${esc(s.teller)} (${s.returns_count})`).join(', ') || 'None';
+                    const drops = (ceoLive.cash_drops || []).slice(0, 3).map(c => `${esc(c.branch_name)} ${fmtC(c.amount)}`).join(' · ') || 'None';
+                    sumEl.innerHTML = `
+                        <div><strong>Blind Close Variances:</strong> ${(ctrl.blind_close_diffs || []).length}</div>
+                        <div><strong>Staff Flags (3+ returns/30d):</strong> ${flags}</div>
+                        <div><strong>Recent Cash Drops:</strong> ${drops}</div>
+                    `;
+                }
+            }
+
+            // 5. Tables: Branch Performance, High-Value, Top/Slow Products, Recent Txns, Cashiers
+            renderBranchTable(branchList);
+            renderHighValueTable(Array.isArray(highValue) ? highValue : []);
+            renderProductTables(ceoFin ? (ceoFin.topProducts || []) : [], ceoFin ? (ceoFin.slowMoving || []) : []);
+            renderRecentTransactions((dashData && dashData.recentTransactions) || []);
+            renderCashierStats((dashData && dashData.cashierStats) || []);
+
+            // 6. Charts
+            renderAllCharts({ stats, repData: repData || {}, ceoFin: ceoFin || {}, ceoTrend: Array.isArray(ceoTrend) ? ceoTrend : [], peakHours: Array.isArray(peakHours) ? peakHours : [] });
+        }
+
+        function renderBranchTable(list) {
+            const tbody = document.getElementById('branchPerfBody');
+            if (!tbody) return;
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888;padding:18px;">No branch data for this period.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.map(b => {
+                const txns = parseInt(b.txn_count) || 0;
+                const rev = parseFloat(b.revenue) || 0;
+                const avg = txns > 0 ? rev / txns : 0;
+                return `<tr>
+                    <td><strong>${esc(b.branch || b.name || 'Main')}</strong></td>
+                    <td class="numeric">${txns.toLocaleString()}</td>
+                    <td class="numeric"><strong>${fmtC(rev)}</strong></td>
+                    <td class="numeric">${fmtC(avg)}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderHighValueTable(list) {
+            const tbody = document.getElementById('highValueTxnBody');
+            if (!tbody) return;
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:18px;">No high-value transactions yet.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.slice(0, 8).map(t => `
+                <tr>
+                    <td><strong>#${esc(String(t.receipt_number || t.id || '').slice(-6))}</strong></td>
+                    <td class="numeric"><strong>${fmtC(t.total_amount || t.amount || 0)}</strong></td>
+                    <td>${esc(t.store_location || t.branch || '—')}</td>
+                    <td>${esc(t.cashier_name || t.cashier || '—')}</td>
+                    <td>${t.created_at ? new Date(t.created_at).toLocaleDateString('en-GB') : '—'}</td>
+                </tr>`).join('');
+        }
+
+        function renderProductTables(topList, slowList) {
+            const topEl = document.getElementById('topSellingBody');
+            const slowEl = document.getElementById('slowMovingBody');
+            const fmtRows = (arr, emptyMsg) => arr.length
+                ? arr.slice(0, 7).map(p => `
+                    <tr>
+                        <td><strong>${esc(p.name || p.product_name || 'Product')}</strong></td>
+                        <td class="numeric">${Number(p.units_sold || p.qty_sold || p.total_qty || 0).toLocaleString()}</td>
+                        <td class="numeric"><strong>${fmtC(p.revenue || p.total_revenue || 0)}</strong></td>
+                    </tr>`).join('')
+                : `<tr><td colspan="3" style="text-align:center;color:#888;padding:18px;">${emptyMsg}</td></tr>`;
+            if (topEl) topEl.innerHTML = fmtRows(topList, 'No top-selling product data yet.');
+            if (slowEl) slowEl.innerHTML = fmtRows(slowList, 'No slow-moving product data yet.');
+        }
+
+        function renderRecentTransactions(list) {
+            const tbody = document.getElementById('recentTxnBody');
+            if (!tbody) return;
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:18px;">No recent transactions.</td></tr>';
+                return;
+            }
+            tbody.innerHTML = list.slice(0, 8).map(txn => {
+                const timeStr = txn.created_at ? new Date(txn.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—';
+                const statusCls = (txn.status || 'completed').toLowerCase() === 'pending' ? 'pending' : 'completed';
+                return `<tr>
+                    <td>#${esc(String(txn.receipt_number || txn.id || '---').slice(-6))}</td>
+                    <td>${esc(txn.store_location || 'N/A')}</td>
+                    <td>${esc(txn.customer_name || 'Walk-in Customer')}</td>
+                    <td class="numeric"><strong>${fmtC(txn.total_amount || 0)}</strong></td>
+                    <td><span class="status ${statusCls}">${esc(txn.status || 'Completed')}</span></td>
+                    <td>${timeStr}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderCashierStats(list) {
+            const tbody = document.getElementById('cashierStatsBody');
+            if (!tbody) return;
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#888;padding:18px;">No cashier sales data for this period.</td></tr>';
+                return;
+            }
+            const grandTotal = list.reduce((s, c) => s + Number(c.total_sales || 0), 0) || 1;
+            tbody.innerHTML = list.map(c => {
+                const sales = Number(c.total_sales || 0);
+                const pct = ((sales / grandTotal) * 100).toFixed(1);
+                return `<tr>
+                    <td><strong>${esc(c.cashier || 'Unknown')}</strong></td>
+                    <td class="numeric">${Number(c.transaction_count || 0).toLocaleString()}</td>
+                    <td class="numeric"><strong>${fmtC(sales)}</strong></td>
+                    <td class="numeric">${pct}%</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function renderAllCharts({ stats, repData, ceoFin, ceoTrend, peakHours }) {
+            if (typeof Chart === 'undefined') {
+                setTimeout(() => renderAllCharts({ stats, repData, ceoFin, ceoTrend, peakHours }), 150);
+                return;
+            }
+            const palette = ['#273990', '#4B5BB0', '#F9A51A', '#7C8BD0', '#10B981', '#94A3B8'];
+            const methodColors = { Cash: '#273990', MoMo: '#F9A51A', Card: '#4B5BB0', Bank: '#10B981', Credit: '#B4531A' };
+
+            // 1. Revenue Trend Line Chart
+            const trendCtx = document.getElementById('superTrendChart');
+            if (trendCtx) {
+                destroyChart('trend');
+                const labels = ceoTrend.length ? ceoTrend.map(d => d.label || d.date || d.day) : ['No Data'];
+                const vals = ceoTrend.length ? ceoTrend.map(d => Number(d.revenue || d.total || 0)) : [0];
+                chartInstances.trend = new Chart(trendCtx, {
+                    type: 'line',
+                    data: {
+                        labels,
+                        datasets: [{
+                            label: 'Revenue (GH₵)',
+                            data: vals,
+                            borderColor: '#273990',
+                            backgroundColor: 'rgba(39, 57, 144, 0.12)',
+                            fill: true,
+                            tension: 0.35,
+                            pointRadius: 3
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } }
+                });
+            }
+
+            // 2. Financial Overview Bar Chart
             const barCtx = document.getElementById('dashBarChart');
             if (barCtx) {
-                if (dashBarInst) dashBarInst.destroy();
-                dashBarInst = new Chart(barCtx, {
+                destroyChart('bar');
+                chartInstances.bar = new Chart(barCtx, {
                     type: 'bar',
                     data: {
-                        labels: ['Total Sales', 'Net', 'Purchase', 'Expense', 'Invoice Due'],
+                        labels: ['Sales', 'Net', 'Purchase', 'Expense', 'Due'],
                         datasets: [{
-                            label: 'Amount (GH₵)',
+                            label: 'GH₵',
                             data: [
-                                Number(stats.totalSales || 0),
+                                Number(stats.totalSales || ceoFin.revenue || 0),
                                 Number(stats.netSales ?? stats.totalSales ?? 0),
                                 Number(stats.totalPurchase || 0),
-                                Number(stats.totalExpense || 0),
+                                Number(stats.totalExpense || ceoFin.opex || 0),
                                 Number(stats.invoiceDue || 0)
                             ],
                             backgroundColor: ['#273990', '#4B5BB0', '#9AA3B2', '#B4531A', '#F9A51A'],
                             borderRadius: 6
                         }]
                     },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { display: false } },
-                        scales: { x: { grid: { display: false } }, y: { beginAtZero: true, grid: { color: '#E3E7F1' }, border: { display: false } } }
-                    }
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } }
                 });
             }
 
-            // 2. Payment Methods Doughnut Chart
+            // 3. Peak Trading Hours Bar Chart
+            const peakCtx = document.getElementById('peakHoursChart');
+            if (peakCtx) {
+                destroyChart('peak');
+                const labels = peakHours.length ? peakHours.map(h => `${String(h.hour ?? h.hr ?? '').padStart(2, '0')}:00`) : ['No Data'];
+                const vals = peakHours.length ? peakHours.map(h => Number(h.revenue || h.total || h.count || 0)) : [0];
+                chartInstances.peak = new Chart(peakCtx, {
+                    type: 'bar',
+                    data: {
+                        labels,
+                        datasets: [{ label: 'Volume', data: vals, backgroundColor: '#F9A51A', borderRadius: 5 }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { beginAtZero: true } } }
+                });
+            }
+
+            // 4. Payment Methods Doughnut Chart
             const dCtx = document.getElementById('dashDoughnutChart');
             if (dCtx) {
-                if (dashDoughnutInst) dashDoughnutInst.destroy();
+                destroyChart('doughnut');
                 const pmRows = Array.isArray(repData.salesByPaymentMethod) ? repData.salesByPaymentMethod : [];
                 const totals = { Cash: 0, MoMo: 0, Card: 0, Bank: 0, Credit: 0 };
                 for (const r of pmRows) {
@@ -672,125 +1006,96 @@
                     totals.Credit += Number(r.credit || 0);
                 }
                 const entries = Object.entries(totals).filter(([, v]) => v > 0);
-                const labels = entries.length ? entries.map(([k]) => k) : ['No Payments'];
-                const values = entries.length ? entries.map(([, v]) => Number(v.toFixed(2))) : [1];
-                const colors = entries.length ? entries.map(([k]) => methodColors[k]) : ['#E3E7F1'];
-
-                dashDoughnutInst = new Chart(dCtx, {
+                chartInstances.doughnut = new Chart(dCtx, {
                     type: 'doughnut',
-                    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        cutout: '62%',
-                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
-                    }
+                    data: {
+                        labels: entries.length ? entries.map(([k]) => k) : ['No Payments'],
+                        datasets: [{
+                            data: entries.length ? entries.map(([, v]) => Number(v.toFixed(2))) : [1],
+                            backgroundColor: entries.length ? entries.map(([k]) => methodColors[k]) : ['#E3E7F1'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 11, font: { size: 11 } } } } }
                 });
             }
 
-            // 3. Sales by Category Pie Chart
+            // 5. Sales by Category Pie Chart
             const pCtx = document.getElementById('dashPieChart');
             if (pCtx) {
-                if (dashPieInst) dashPieInst.destroy();
-                const catRows = (Array.isArray(repData.salesByCategory) ? repData.salesByCategory : [])
-                    .filter(c => Number(c.revenue || 0) > 0)
-                    .slice(0, 6);
-                const labels = catRows.length ? catRows.map(c => c.category || 'General') : ['No Sales Data'];
-                const values = catRows.length ? catRows.map(c => Number(Number(c.revenue || 0).toFixed(2))) : [1];
-                const colors = catRows.length ? palette.slice(0, catRows.length) : ['#e2e8f0'];
-
-                dashPieInst = new Chart(pCtx, {
+                destroyChart('pie');
+                const catRows = (Array.isArray(repData.salesByCategory) ? repData.salesByCategory : []).filter(c => Number(c.revenue || 0) > 0).slice(0, 6);
+                chartInstances.pie = new Chart(pCtx, {
                     type: 'pie',
-                    data: { labels, datasets: [{ data: values, backgroundColor: colors, borderWidth: 0 }] },
-                    options: {
-                        responsive: true,
-                        maintainAspectRatio: false,
-                        plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } } }
-                    }
+                    data: {
+                        labels: catRows.length ? catRows.map(c => c.category || 'General') : ['No Sales Data'],
+                        datasets: [{
+                            data: catRows.length ? catRows.map(c => Number(Number(c.revenue || 0).toFixed(2))) : [1],
+                            backgroundColor: catRows.length ? palette.slice(0, catRows.length) : ['#e2e8f0'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { boxWidth: 11, font: { size: 11 } } } } }
+                });
+            }
+
+            // 6. Cost vs Profit Breakdown Doughnut
+            const fCtx = document.getElementById('finBreakdownChart');
+            if (fCtx) {
+                destroyChart('fin');
+                const rev = Number(ceoFin.revenue || stats.totalSales || 0);
+                const cogs = Number(ceoFin.cogs || (rev * 0.7));
+                const opex = Number(ceoFin.opex || stats.totalExpense || 0);
+                const profit = Math.max(0, Number(ceoFin.netProfit ?? (rev - cogs - opex)));
+                const hasData = (cogs + opex + profit) > 0;
+                chartInstances.fin = new Chart(fCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: hasData ? ['Cost of Goods', 'Operating Expenses', 'Net Profit'] : ['No Financial Data'],
+                        datasets: [{
+                            data: hasData ? [Number(cogs.toFixed(2)), Number(opex.toFixed(2)), Number(profit.toFixed(2))] : [1],
+                            backgroundColor: hasData ? ['#273990', '#F9A51A', '#10B981'] : ['#E3E7F1'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '62%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 11, font: { size: 11 } } } } }
                 });
             }
         }
 
-        function updateDashboardUI(data) {
-            const { stats, recentTransactions, cashierStats, branch } = data;
-            
-            // Update header with branch info
-            if (branch) {
-                document.querySelector('.header-title p').textContent = `Overview for: ${branch}`;
+        async function setCeoBranchTarget() {
+            const token = getAuthToken();
+            const branch_name = prompt('Branch name:', document.getElementById('superBranchSelect')?.value === 'All Branches' ? 'TEMA MAIN' : document.getElementById('superBranchSelect')?.value);
+            if (!branch_name) return;
+            const target_amount = parseFloat(prompt('Monthly target (GH₵):', '100000') || '0');
+            if (!target_amount) return;
+            const r = await fetch('/api/ceo-live/targets', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ branch_name, target_amount })
+            });
+            if (r.ok) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Branch target updated', 'success');
+                else alert('Target updated successfully');
+                loadSuperDashboard();
             }
-            // Update stats cards
-            const setEl = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
-            setEl('totalSales', formatCurrency(stats.totalSales || 0));
-            setEl('invoiceDue', formatCurrency(stats.invoiceDue || 0));
-            setEl('netSales', formatCurrency(stats.netSales ?? stats.totalSales ?? 0));
-            setEl('totalSellReturn', formatCurrency(stats.totalSellReturn || 0));
-            setEl('totalPurchase', formatCurrency(stats.totalPurchase || 0));
-            setEl('purchaseDue', formatCurrency(stats.purchaseDue || 0));
-            setEl('totalPurchaseReturn', formatCurrency(stats.totalPurchaseReturn || 0));
-            setEl('totalExpense', formatCurrency(stats.totalExpense || 0));
-            setEl('totalTxns', stats.totalTransactions || 0);
-            setEl('lowStock', stats.lowStockCount || 0);
-            setEl('outOfStock', stats.outOfStockCount || 0);
+        }
 
-            // Low / out-of-stock notice. A dismissal covers today's counts only: it comes back tomorrow,
-            // or as soon as either count goes up.
-            const outCount = Number(stats.outOfStockCount || 0);
-            const lowCount = Number(stats.lowStockCount || 0);
-            window.__stockCounts = { out: outCount, low: lowCount };
-            let dismissed = null;
-            try { dismissed = JSON.parse(localStorage.getItem('lowStockAlertDismissed') || 'null'); } catch (e) { dismissed = null; }
-            const today = new Date().toISOString().slice(0, 10);
-            const stillDismissed = dismissed && dismissed.day === today && outCount <= dismissed.out && lowCount <= dismissed.low;
-            const notice = document.getElementById('lowStockNotice');
-            if (notice && (outCount + lowCount) > 0 && !stillDismissed) {
-                document.getElementById('lowStockMsg').innerHTML =
-                    `<strong>${outCount}</strong> ${outCount === 1 ? 'item is' : 'items are'} out of stock and <strong>${lowCount}</strong> ${lowCount === 1 ? 'item is' : 'items are'} running low.`;
-                const reviewLink = notice.querySelector('a');
-                if (reviewLink) {
-                    const params = new URLSearchParams({ tab: 'stock' });
-                    if (lowCount > 0) params.set('lowStock', 'true');
-                    if (outCount > 0) params.set('outOfStock', 'true');
-                    reviewLink.href = '/inventory?' + params.toString();
-                }
-                notice.hidden = false;
-            } else if (notice) {
-                notice.hidden = true;
-            }
-
-            // Update cashier stats
-            const cashierBody = document.getElementById('cashierStatsBody');
-            if (cashierStats && cashierStats.length > 0) {
-                cashierBody.innerHTML = cashierStats.map(cashier => `
-                    <tr>
-                        <td data-label="Cashier">${OkwUI.escapeHtml(cashier.cashier || 'Unknown')}</td>
-                        <td data-label="Transactions">${cashier.transaction_count || 0}</td>
-                        <td data-label="Total Sales">${formatCurrency(cashier.total_sales || 0)}</td>
-                    </tr>
-                `).join('');
-            } else {
-                cashierBody.innerHTML = '<tr><td colspan="3">No transaction data available</td></tr>';
-            }
-
-            // Update recent transactions
-            const tbody = document.getElementById('recentTxnBody');
-            if (recentTransactions && recentTransactions.length > 0) {
-                tbody.innerHTML = recentTransactions.map(txn => {
-                    const date = new Date(txn.created_at);
-                    const timeStr = date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                    
-                    return `
-                        <tr>
-                            <td data-label="ID">#${(txn.receipt_number || txn.id || '---').toString().slice(-6)}</td>
-                            <td data-label="Location">${OkwUI.escapeHtml(txn.store_location || 'N/A')}</td>
-                            <td data-label="Customer">${OkwUI.escapeHtml(txn.customer_name || 'Walk-in Customer')}</td>
-                            <td data-label="Amount">${formatCurrency(txn.total_amount || 0)}</td>
-                            <td data-label="Status"><span class="status ${txn.status || 'completed'}">${txn.status || 'Completed'}</span></td>
-                            <td data-label="Time">${timeStr}</td>
-                        </tr>
-                    `;
-                }).join('');
-            } else {
-                tbody.innerHTML = '<tr><td colspan="6">No recent transactions</td></tr>';
+        async function recordCeoCashDrop() {
+            const token = getAuthToken();
+            const branch_name = prompt('Branch:', document.getElementById('superBranchSelect')?.value === 'All Branches' ? 'TEMA MAIN' : document.getElementById('superBranchSelect')?.value);
+            if (!branch_name) return;
+            const amount = parseFloat(prompt('Cash drop amount (GH₵):', '20000') || '0');
+            if (!amount) return;
+            const r = await fetch('/api/ceo-live/cash-drop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ branch_name, amount })
+            });
+            if (r.ok) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Cash drop recorded', 'success');
+                else alert('Cash drop recorded successfully');
+                loadSuperDashboard();
             }
         }
 
@@ -798,94 +1103,21 @@
             const n = document.getElementById('lowStockNotice');
             if (n) n.hidden = true;
             const c = window.__stockCounts || { out: 0, low: 0 };
-            try { localStorage.setItem('lowStockAlertDismissed', JSON.stringify({ day: new Date().toISOString().slice(0, 10), out: c.out, low: c.low })); } catch (e) {}
+            try { localStorage.setItem('lowStockAlertDismissed', JSON.stringify({ day: new Date().toISOString().slice(0, 10), out: c.out, low: c.low })); } catch (_) {}
         }
 
-        // Logout function
         async function logout() {
-            if (window.authGuard && typeof window.authGuard.logout === 'function') {
-                return window.authGuard.logout();
-            }
             try {
-                const token = localStorage.getItem('authToken');
-                if (token) {
-                    await fetch('/api/logout', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json'
-                        }
-                    }).catch(() => {});
-                }
-            } catch (error) {
-                console.error('Logout error:', error);
-            } finally {
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.replace('/login?logout=true');
-            }
+                const token = getAuthToken();
+                if (token) await fetch('/api/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+            } catch (_) {}
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('companyToken');
+            localStorage.removeItem('currentUser');
+            window.location.href = '/login';
         }
 
-        // Initialize the dashboard when the page loads
-        document.addEventListener('DOMContentLoaded', checkAuth);
+        checkAuth();
     </script>
-
-<!-- ================== GLOBAL UX FIXES ================== -->
-<style>
-#custom-toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
-.custom-toast.show { opacity: 1; transform: translateY(0); }
-.custom-toast.error { background: #e74c3c; border-left: 4px solid #c0392b; }
-.custom-toast.success { background: #27ae60; border-left: 4px solid #2ecc71; }
-</style>
-<script>
-(function() {
-    // 1. Toast Notification Override
-    const container = document.createElement('div');
-    container.id = 'custom-toast-container';
-    document.body.appendChild(container);
-
-    window.alert = function(message) {
-        const toast = document.createElement('div');
-        toast.className = 'custom-toast';
-        if (typeof message === 'string') {
-            const msg = message.toLowerCase();
-            if (msg.includes('error') || msg.includes('fail')) toast.classList.add('error');
-            else if (msg.includes('success') || msg.includes('saved')) toast.classList.add('success');
-        }
-        toast.textContent = message;
-        container.appendChild(toast);
-        toast.offsetHeight; // trigger reflow
-        toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    };
-
-    // 2. Mobile Table Auto-Labeler
-    function applyTableDataLabels() {
-        document.querySelectorAll('.card-table').forEach(table => {
-            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-            if (headers.length === 0) return;
-            table.querySelectorAll('tbody tr').forEach(tr => {
-                tr.querySelectorAll('td').forEach((td, index) => {
-                    if (headers[index] && !td.hasAttribute('data-label')) {
-                        td.setAttribute('data-label', headers[index]);
-                    }
-                });
-            });
-        });
-    }
-    /* Optimized: Global MutationObserver removed to prevent DOM thrashing */
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', applyTableDataLabels);
-    } else {
-        applyTableDataLabels();
-    }
-})();
-</script>
-<!-- ====================================================== -->
 </body>
 </html>

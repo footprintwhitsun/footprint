@@ -90,7 +90,7 @@
         '/locations': ROLES.LEADERSHIP,
 
         // Management & Branch Store Operations
-        '/dashboard': ROLES.MANAGERS,
+        '/dashboard': ROLES.LEADERSHIP,
         '/sell': ROLES.MANAGERS,
         '/expenses': ROLES.MANAGERS,
         '/stock-adjustments': ROLES.MANAGERS,
@@ -133,7 +133,7 @@
         '/customer-display': ROLES.STAFF_ALL,
 
         // B2B Corporate Client Portal
-        '/company-portal': ROLES.COMPANY,
+        '/company-portal': ROLES.LEADERSHIP,
 
         // Profile & Account
         '/profile': ROLES.ALL_USERS
@@ -142,11 +142,8 @@
     // 6. Helper: Determine user's home landing dashboard based on role
     function getHomeRoute(role) {
         const r = normalizeRole(role);
-        if (r === 'ceo') return '/ceo-portal';
-        if (r === 'super_admin' || r === 'admin') return '/dashboard';
-        if (r === 'manager' || r === 'store_manager') return '/dashboard';
+        if (['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'company', 'business_client'].includes(r)) return '/dashboard';
         if (r === 'cashier' || r === 'teller') return '/pos';
-        if (r === 'company' || r === 'business_client') return '/company-portal';
         return '/login';
     }
 

@@ -45,9 +45,8 @@
     };
 
     const MODULES = [
-        { label: 'Dashboard', url: '/dashboard', roles: ['admin', 'manager', 'store_manager'], group: 'Core', icon: 'home' },
+        { label: 'Super Dashboard', url: '/dashboard', roles: ['ceo', 'admin', 'manager', 'store_manager', 'company', 'business_client'], group: 'Core', icon: 'home' },
 
-        { label: 'CEO Overview', url: '/ceo-portal?tab=overview', roles: ['ceo', 'admin'], group: 'CEO', icon: 'shield' },
         { label: 'Pending Approvals', url: '/ceo-portal?tab=approvals-pending', roles: ['ceo', 'admin'], group: 'CEO', icon: 'clock' },
         { label: 'Approval History', url: '/ceo-portal?tab=approvals-history', roles: ['ceo', 'admin'], group: 'CEO', icon: 'fileCheck' },
         { label: 'Branches', url: '/ceo-portal?tab=branches', roles: ['ceo', 'admin'], group: 'CEO', icon: 'mapPin' },
@@ -55,7 +54,6 @@
         { label: 'Branch Performance', url: '/ceo-portal?tab=ops-performance', roles: ['ceo', 'admin'], group: 'CEO', icon: 'barChart' },
         { label: 'Security Settings', url: '/ceo-portal?tab=settings', roles: ['ceo', 'admin'], group: 'CEO', icon: 'lock' },
 
-        { label: 'Company Dashboard', url: '/company-portal', roles: ['company', 'business_client'], group: 'Company', icon: 'home' },
         { label: 'Proforma Invoices', url: '/company-portal?tab=proforma', roles: ['company', 'business_client'], group: 'Company', icon: 'receipt' },
         { label: 'Company Transactions', url: '/company-portal?tab=transactions', roles: ['company', 'business_client'], group: 'Company', icon: 'activity' },
         { label: 'Quick Sale', url: '/company-portal?tab=quick-sale', roles: ['company', 'business_client'], group: 'Company', icon: 'shoppingCart' },
