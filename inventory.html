@@ -669,8 +669,8 @@
             <div class="user-profile-row">
                 <div class="user-avatar"><i class="fas fa-user"></i></div>
             <div class="user-info">
-                <div style="font-weight: bold;" id="userName">...</div>
-                <div style="font-size: 12px; opacity: 0.7;" id="userRole">...</div>
+                <div style="font-weight: bold;" id="userName"></div>
+                <div style="font-size: 12px; opacity: 0.7;" id="userRole"></div>
             </div>
             </div>
             <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
@@ -4302,21 +4302,16 @@
                     branches = await res.json();
                 }
                 
-                // Use branch names from API, fallback to hardcoded if empty
-                const locations = branches.length > 0 
-                    ? branches.map(b => b.name || b.location) 
-                    : ['Main Warehouse', 'Accra Branch', 'Kumasi Branch', 'Accra Central'];
-                
+                const locations = branches.map(b => b.name || b.location).filter(Boolean);
+                const otherLocations = locations.filter(l => l !== userBranch);
                 const toSelect = document.getElementById('trTo');
-                toSelect.innerHTML = '<option value="">-- Select Destination --</option>' + 
-                    locations.filter(l => l !== userBranch).map(l => `<option value="${l}">${l}</option>`).join('');
+                toSelect.innerHTML = otherLocations.length
+                    ? '<option value="">-- Select Destination --</option>' + otherLocations.map(l => `<option value="${OkwUI.escapeHtml(l)}">${OkwUI.escapeHtml(l)}</option>`).join('')
+                    : '<option value="">-- No other branches available --</option>';
             } catch (e) {
                 console.error('Failed to load branches:', e);
-                // Fallback to hardcoded list
-                const locations = ['Main Warehouse', 'Accra Branch', 'Kumasi Branch', 'Accra Central'];
                 const toSelect = document.getElementById('trTo');
-                toSelect.innerHTML = '<option value="">-- Select Destination --</option>' + 
-                    locations.filter(l => l !== userBranch).map(l => `<option value="${l}">${l}</option>`).join('');
+                toSelect.innerHTML = '<option value="">-- Failed to load branches --</option>';
             }
 
             document.getElementById('transferProductSearch').value = '';

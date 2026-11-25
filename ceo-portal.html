@@ -1556,8 +1556,8 @@
             <div class="user-profile-row">
                 <div class="user-avatar"><i class="fas fa-user-tie"></i></div>
                 <div class="user-info">
-                    <div id="userName">Executive Office</div>
-                    <div id="userRole">Chief Executive Officer</div>
+                    <div id="userName"></div>
+                    <div id="userRole"></div>
                 </div>
             </div>
             <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i
@@ -2056,7 +2056,7 @@
             <div class="kpi-grid">
                 <div class="kpi-card">
                     <div class="kpi-title">Inventory Health</div>
-                    <div class="kpi-value" id="opsKpiHealth">94%</div>
+                    <div class="kpi-value" id="opsKpiHealth">--</div>
                     <div class="kpi-sub">In-Stock Rate</div>
                     <i class="fas fa-boxes kpi-icon"></i>
                 </div>
@@ -2094,7 +2094,7 @@
                 </div>
                 <div class="kpi-card" style="border-left: 4px solid #10b981;">
                     <div class="kpi-title">Catalog Health</div>
-                    <div class="kpi-value" id="opsHealthPercent">100%</div>
+                    <div class="kpi-value" id="opsHealthPercent">--</div>
                     <div class="kpi-sub" style="color:#10b981;"><i class="fas fa-check-circle"></i> Sufficient Inventory
                     </div>
                     <i class="fas fa-heartbeat kpi-icon" style="color:#10b981; opacity:0.1;"></i>
@@ -2892,7 +2892,8 @@
 
         async function setCeoBranchTarget() {
             const token = localStorage.getItem('authToken');
-            const branch_name = prompt('Branch name:', 'TEMA MAIN');
+            const defaultBranch = (allBranches && allBranches[0] && (allBranches[0].name || allBranches[0].location)) || '';
+            const branch_name = prompt('Branch name:', defaultBranch);
             if (!branch_name) return;
             const target_amount = parseFloat(prompt('Monthly target (GH₵):', '100000') || '0');
             if (!target_amount) return;
@@ -2906,7 +2907,8 @@
 
         async function recordCeoCashDrop() {
             const token = localStorage.getItem('authToken');
-            const branch_name = prompt('Branch:', 'TEMA MAIN');
+            const defaultBranch = (allBranches && allBranches[0] && (allBranches[0].name || allBranches[0].location)) || '';
+            const branch_name = prompt('Branch:', defaultBranch);
             if (!branch_name) return;
             const amount = parseFloat(prompt('Cash drop amount (GH₵):', '20000') || '0');
             if (!amount) return;
@@ -5538,39 +5540,31 @@
             input.value = '';
             body.scrollTop = body.scrollHeight;
 
-            // Simulate AI Response
-            setTimeout(() => {
-                const lowerText = text.toLowerCase();
-                let response = "I'm sorry, I can't answer that. Try asking about 'sales trends', 'how to increase revenue', or 'inventory status'.";
-
-                if (lowerText.includes('increase') && (lowerText.includes('revenue') || lowerText.includes('sales'))) {
-                    response = "To boost revenue, consider these strategies: 1) Run a 'Buy One, Get One 50% Off' promotion on slow-moving items. 2) Implement a customer loyalty program to increase repeat business. 3) Increase marketing for the top-performing branch, Accra Main.";
-                } else if (lowerText.includes('sales') || lowerText.includes('revenue')) {
-                    response = "Based on current trends, monthly revenue is projected to exceed targets by 15%. The top performing branch is Accra Main.";
-                } else if (lowerText.includes('stock') || lowerText.includes('inventory')) {
-                    response = "Inventory levels are healthy overall (94%), but we have a bottleneck with 'Beverages' in the Kumasi branch. Reorder suggested.";
-                } else if (lowerText.includes('profit')) {
-                    response = "Net profit margin is currently at 22%, which is 2% higher than last month due to reduced operational costs.";
-                } else if (lowerText.includes('recommend') || lowerText.includes('strategy') || lowerText.includes('improve')) {
-                    response = "My top recommendation is to focus on customer retention. A 5% increase in retention can increase profitability by 25-95%. I suggest starting a points-based loyalty program. Would you like to see a projection?";
-                } else if (lowerText.includes('what are the results') || lowerText.includes('results')) {
-                    response = "Analysis complete. Key opportunities identified: 1) The 'Beverages' category has a 35% higher margin. 2) The Kumasi branch shows a 20% week-over-week growth in new customers. I suggest focusing marketing efforts there.";
-                } else if (lowerText.includes('how long') || lowerText.includes('take?')) {
-                    response = "My analysis is instant, based on the latest real-time data. What would you like to know?";
-                } else if (lowerText.includes('hello') || lowerText.includes('hi')) {
-                    response = "Hello! How can I assist you with your business operations today?";
-                }
+            // Query live assistant API with real database figures
+            (async () => {
+                let response = 'Unable to query live business data right now.';
+                try {
+                    const token = localStorage.getItem('authToken');
+                    const r = await fetch('/api/assistant/ask', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', ...(token ? { 'Authorization': `Bearer ${token}` } : {}) },
+                        credentials: 'include',
+                        body: JSON.stringify({ question: text })
+                    });
+                    const d = await r.json().catch(() => ({}));
+                    response = d.answer || d.message || 'No matching live data found for that question.';
+                } catch (_) {}
 
                 body.innerHTML += `
                     <div style="display: flex; gap: 10px; margin-bottom: 15px;">
                         <div style="width: 35px; height: 35px; background: var(--primary-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0;"><i class="fas fa-robot"></i></div>
                         <div style="background: white; padding: 10px 15px; border-radius: 0 15px 15px 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); max-width: 80%; font-size: 14px; line-height: 1.5;">
-                            ${response}
+                            ${OkwUI.escapeHtml(response)}
                         </div>
                     </div>
                 `;
                 body.scrollTop = body.scrollHeight;
-            }, 1000);
+            })();
         }
 
         function toggleSidebar() {

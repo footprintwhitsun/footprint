@@ -1079,9 +1079,16 @@
             }
         }
 
+        function getDefaultBranchName() {
+            const sel = document.getElementById('superBranchSelect');
+            if (sel && sel.value && sel.value !== 'All Branches') return sel.value;
+            if (sel && sel.options.length > 1) return sel.options[1].value;
+            try { return JSON.parse(localStorage.getItem('currentUser') || '{}').store_location || ''; } catch (_) { return ''; }
+        }
+
         async function setCeoBranchTarget() {
             const token = getAuthToken();
-            const branch_name = prompt('Branch name:', document.getElementById('superBranchSelect')?.value === 'All Branches' ? 'TEMA MAIN' : document.getElementById('superBranchSelect')?.value);
+            const branch_name = prompt('Branch name:', getDefaultBranchName());
             if (!branch_name) return;
             const target_amount = parseFloat(prompt('Monthly target (GH₵):', '100000') || '0');
             if (!target_amount) return;
@@ -1099,7 +1106,7 @@
 
         async function recordCeoCashDrop() {
             const token = getAuthToken();
-            const branch_name = prompt('Branch:', document.getElementById('superBranchSelect')?.value === 'All Branches' ? 'TEMA MAIN' : document.getElementById('superBranchSelect')?.value);
+            const branch_name = prompt('Branch:', getDefaultBranchName());
             if (!branch_name) return;
             const amount = parseFloat(prompt('Cash drop amount (GH₵):', '20000') || '0');
             if (!amount) return;

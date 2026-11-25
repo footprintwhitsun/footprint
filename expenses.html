@@ -143,8 +143,8 @@
         const today = new Date().toISOString().slice(0, 10);
         const autoRef = generateExpenseRef();
         const userLoc = (() => {
-            try { return JSON.parse(localStorage.getItem('currentUser') || '{}').store_location || 'TEMA MAIN'; }
-            catch (_) { return 'TEMA MAIN'; }
+            try { return JSON.parse(localStorage.getItem('currentUser') || '{}').store_location || ''; }
+            catch (_) { return ''; }
         })();
         const panel = document.getElementById('exp-panel');
         panel.innerHTML = `
