@@ -86,8 +86,16 @@ app.use(compression());
 // Override port 5000 to 5001 to avoid macOS AirPlay conflict
 const port = (process.env.PORT && process.env.PORT !== '5000') ? process.env.PORT : 8080;
 
-// Configure Multer for memory storage with upload size limit (5 MB)
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+// Configure Multer for memory storage with upload size limit (5 MB) & spreadsheet/CSV allowlist
+const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (req, file, cb) => {
+        const name = String(file.originalname || '').toLowerCase();
+        if (/\.(csv|xlsx|xls)$/.test(name)) return cb(null, true);
+        return cb(new Error('Only .csv, .xlsx, and .xls files are allowed'));
+    }
+});
 
 // Serve favicon if user has added favicon.ico or logo.png
 app.get(['/favicon.ico', '/favicon.png'], (req, res) => {
@@ -1444,7 +1452,7 @@ const corsOptions = {
     },
     credentials: true,
     optionsSuccessStatus: 200,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'X-CSRF-Token', 'X-Idempotency-Key']
 };
 
@@ -1592,7 +1600,7 @@ app.get('/sell', directPage('sell.html', PAGE_ROLES.MANAGERS));
 app.get('/locations', (req, res) => res.redirect('/settings?tab=locations'));
 
 // Management & Executive Portals
-app.get('/dashboard', guardPageRoute(PAGE_ROLES.MANAGERS, 'dashboard.html'));
+app.get('/dashboard', guardPageRoute(PAGE_ROLES.LEADERSHIP, 'dashboard.html'));
 const STOCK_TABS = ['stock', 'orders', 'receiving', 'shelf', 'distribution', 'stocktaking', 'barcodes', 'returns', 'suppliers'];
 app.get('/stock', (req, res) => {
     const tab = String(req.query.tab || 'stock');
@@ -1646,7 +1654,7 @@ app.get('/customers-list', directPage('customers.html', PAGE_ROLES.STAFF_ALL));
 app.get('/customer-display', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'customer-display.html'));
 
 // Corporate B2B Client Portal
-app.get('/company-portal', guardPageRoute(PAGE_ROLES.COMPANY, 'company-portal.html'));
+app.get('/company-portal', guardPageRoute(PAGE_ROLES.LEADERSHIP, 'company-portal.html'));
 
 // Profile & Account
 app.get('/profile', guardPageRoute(PAGE_ROLES.ALL_USERS, 'profile.html'));
@@ -2194,12 +2202,20 @@ app.post('/api/users', authenticateToken, async (req, res) => {
     const { username, fullName, employeeId, phone, email, role, store, password } = req.body;
 
     try {
-        const userRole = req.user.role;
+        const userRole = String(req.user.role || '').toLowerCase();
         if (!['super_admin', 'admin', 'manager', 'store_manager', 'ceo'].includes(userRole)) return res.status(403).json({ message: 'Unauthorized' });
 
-        // Managers cannot create CEO or Administrator accounts
-        if ((userRole === 'manager' || userRole === 'store_manager') && (role.toLowerCase() === 'ceo' || role.toLowerCase() === 'admin')) {
-            return res.status(403).json({ message: 'Managers cannot create CEO or Administrator accounts' });
+        const targetRole = String(role || '').toLowerCase().trim().replace(/[\s-]+/g, '_');
+        const ALLOWED_CREATE_ROLES = ['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller', 'storekeeper', 'driver', 'company', 'business_client'];
+        if (!ALLOWED_CREATE_ROLES.includes(targetRole)) {
+            return res.status(400).json({ message: 'Invalid role specified' });
+        }
+        // Strict role hierarchy: only super_admin can create super_admin; only super_admin/ceo can create ceo/admin
+        if (targetRole === 'super_admin' && userRole !== 'super_admin') {
+            return res.status(403).json({ message: 'Only a Super Profile can create another Super Profile account' });
+        }
+        if ((targetRole === 'ceo' || targetRole === 'admin') && !['super_admin', 'ceo'].includes(userRole)) {
+            return res.status(403).json({ message: 'Insufficient privileges to create CEO or Administrator accounts' });
         }
 
         // Resolve store_id from branches table to ensure correct settings/VAT linkage
@@ -2955,18 +2971,23 @@ app.get('/api/promotions/validate/:code', authenticateToken, async (req, res) =>
 });
 
 // Products Endpoints
+const stockLevelsInitTenants = new Set();
 app.get('/products', authenticateToken, async (req, res) => {
     try {
         const userBranch = req.user.store_location;
         const isRestricted = !['super_admin', 'admin', 'ceo'].includes((req.user.role || '').toLowerCase());
 
-        // Ensure all products have stock_levels initialized
-        const _mainName = await mainBranchName(pool, req.user.tenant_id || 1);
-        await pool.query(`
-            UPDATE products 
-            SET stock_levels = jsonb_build_object($2::text, COALESCE(stock, 0))
-            WHERE (stock_levels IS NULL OR stock_levels = '{}'::jsonb) AND tenant_id = $1
-        `, [req.user.tenant_id || 1, _mainName]);
+        // Initialize stock_levels once per tenant (avoid write-on-read on every GET)
+        const _tid = req.user.tenant_id || 1;
+        if (!stockLevelsInitTenants.has(_tid)) {
+            const _mainName = await mainBranchName(pool, _tid);
+            await pool.query(`
+                UPDATE products 
+                SET stock_levels = jsonb_build_object($2::text, COALESCE(stock, 0))
+                WHERE (stock_levels IS NULL OR stock_levels = '{}'::jsonb) AND tenant_id = $1
+            `, [_tid, _mainName]);
+            stockLevelsInitTenants.add(_tid);
+        }
 
         // Support Pagination & Search parameters
         const page = Math.max(1, parseInt(req.query.page) || 1);
@@ -3602,6 +3623,9 @@ app.post('/api/products/bulk', authenticateToken, requireRole(MANAGER_ROLES), up
             defval: '',
             raw: false
         });
+        if (data.length > 5000) {
+            return res.status(400).json({ message: 'Bulk upload is limited to 5,000 rows per file. Please split your spreadsheet.' });
+        }
 
 
 
@@ -4810,7 +4834,7 @@ app.post('/api/transfers', authenticateToken, requirePermission('stock', 'create
     }
 });
 
-app.post('/api/transfers/:id/receive', authenticateToken, async (req, res) => {
+app.post('/api/transfers/:id/receive', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { id } = req.params;
     const client = await pool.connect();
     try {
@@ -4913,19 +4937,20 @@ app.post('/api/transfers/:id/receive', authenticateToken, async (req, res) => {
 });
 
 // --- STOCK CONTROL (Expiry & Batches) ---
-app.get('/api/batches/expiry', authenticateToken, async (req, res) => {
+app.get('/api/batches/expiry', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id || 1;
         let query = `
             SELECT b.*, 
-                   (SELECT name FROM products p WHERE p.barcode = b.product_barcode ORDER BY id LIMIT 1) as name,
-                   (SELECT SUM(stock) FROM products p WHERE p.barcode = b.product_barcode) as current_stock
+                   (SELECT name FROM products p WHERE p.barcode = b.product_barcode AND p.tenant_id = $1 ORDER BY id LIMIT 1) as name,
+                   (SELECT SUM(stock) FROM products p WHERE p.barcode = b.product_barcode AND p.tenant_id = $1) as current_stock
             FROM product_batches b 
-            WHERE b.quantity > 0 
+            WHERE b.quantity > 0 AND COALESCE(b.tenant_id, 1) = $1
         `;
-        let params = [];
+        let params = [tenantId];
 
         if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
-            query += ` AND b.branch_id = $1`;
+            query += ` AND b.branch_id = $2`;
             params.push(req.user.store_id);
         }
 
@@ -4937,18 +4962,23 @@ app.get('/api/batches/expiry', authenticateToken, async (req, res) => {
 });
 
 // Stock Take Adjustment
-app.post('/api/stock-take', authenticateToken, async (req, res) => {
+app.post('/api/stock-take', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
 
     const { adjustments } = req.body; // Array of { barcode, physicalQty }
+    if (!Array.isArray(adjustments) || !adjustments.length) {
+        return res.status(400).json({ message: 'No stock adjustments provided' });
+    }
+    const tenantId = req.user.tenant_id || 1;
     const userBranch = req.user.store_location || DEFAULT_BRANCH_NAME;
+    const auditBranchId = req.user.store_id || (await mainBranchId(pool, tenantId));
     const client = await pool.connect();
 
     try {
         await client.query('BEGIN');
         for (const adj of adjustments) {
             // Get current stock info to calculate variance
-            const resProd = await client.query('SELECT stock, stock_levels FROM products WHERE barcode = $1 AND tenant_id = $2', [adj.barcode, req.user.tenant_id]);
+            const resProd = await client.query('SELECT stock, stock_levels FROM products WHERE barcode = $1 AND tenant_id = $2', [adj.barcode, tenantId]);
             if (resProd.rows.length === 0) continue;
 
             const product = resProd.rows[0];
@@ -4964,16 +4994,16 @@ app.post('/api/stock-take', authenticateToken, async (req, res) => {
                         stock_levels = jsonb_set(
                             COALESCE(stock_levels, '{}'::jsonb), 
                             ARRAY[$2::text], 
-                            to_jsonb($3::int)
+                            to_jsonb($3::numeric)
                         )
-                    WHERE barcode = $4
-                `, [variance, userBranch, newBranchStock, adj.barcode]);
+                    WHERE barcode = $4 AND tenant_id = $5
+                `, [variance, userBranch, newBranchStock, adj.barcode, tenantId]);
 
                 // Log audit
                 await client.query(`
                     INSERT INTO inventory_audit_log (action_type, product_barcode, quantity_before, quantity_after, reference_id, reference_type, user_id, branch_id, notes)
                     VALUES ('Stock Take', $1, $2, $3, NULL, 'Stock Take', $4, $5, 'Quick Update')
-                `, [adj.barcode, currentBranchStock, newBranchStock, req.user.id, req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1))]);
+                `, [adj.barcode, currentBranchStock, newBranchStock, req.user.id, auditBranchId]);
             }
         }
         await client.query('COMMIT');
@@ -6055,14 +6085,18 @@ app.post('/api/ceo/approvals/credit-customers/:id/approve', authenticateToken, a
     if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const { id } = req.params;
+        const tenantScope = userTenantScope(req);
 
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
-            // Apply pending limit if exists
-            await client.query('UPDATE customers SET credit_limit = COALESCE(pending_credit_limit, credit_limit), pending_credit_limit = NULL WHERE id = $1 AND pending_credit_limit IS NOT NULL', [id]);
-            // Activate if pending
-            await client.query("UPDATE customers SET status = 'Active' WHERE id = $1 AND status = 'Pending'", [id]);
+            if (tenantScope !== null) {
+                await client.query('UPDATE customers SET credit_limit = COALESCE(pending_credit_limit, credit_limit), pending_credit_limit = NULL WHERE id = $1 AND tenant_id = $2 AND pending_credit_limit IS NOT NULL', [id, tenantScope]);
+                await client.query("UPDATE customers SET status = 'Active' WHERE id = $1 AND tenant_id = $2 AND status = 'Pending'", [id, tenantScope]);
+            } else {
+                await client.query('UPDATE customers SET credit_limit = COALESCE(pending_credit_limit, credit_limit), pending_credit_limit = NULL WHERE id = $1 AND pending_credit_limit IS NOT NULL', [id]);
+                await client.query("UPDATE customers SET status = 'Active' WHERE id = $1 AND status = 'Pending'", [id]);
+            }
             await client.query('COMMIT');
         } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
 
@@ -6079,14 +6113,18 @@ app.post('/api/ceo/approvals/credit-customers/:id/reject', authenticateToken, as
     if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo') return res.status(403).json({ message: 'Unauthorized' });
     try {
         const { id } = req.params;
+        const tenantScope = userTenantScope(req);
 
         const client = await pool.connect();
         try {
             await client.query('BEGIN');
-            // Clear pending limit
-            await client.query('UPDATE customers SET pending_credit_limit = NULL WHERE id = $1', [id]);
-            // Reject if pending status
-            await client.query("UPDATE customers SET status = 'Rejected' WHERE id = $1 AND status = 'Pending'", [id]);
+            if (tenantScope !== null) {
+                await client.query('UPDATE customers SET pending_credit_limit = NULL WHERE id = $1 AND tenant_id = $2', [id, tenantScope]);
+                await client.query("UPDATE customers SET status = 'Rejected' WHERE id = $1 AND tenant_id = $2 AND status = 'Pending'", [id, tenantScope]);
+            } else {
+                await client.query('UPDATE customers SET pending_credit_limit = NULL WHERE id = $1', [id]);
+                await client.query("UPDATE customers SET status = 'Rejected' WHERE id = $1 AND status = 'Pending'", [id]);
+            }
             await client.query('COMMIT');
         } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
 
@@ -6670,7 +6708,12 @@ app.get('/api/batches/product/:barcode', authenticateToken, requireRole(PAGE_ROL
 });
 
 // 8. Get expiring batches (FEFO alert)
-app.get('/api/batches/expiring/:days', authenticateToken, async (req, res) => {
+app.get('/api/batches/expiring/:days', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
+    const parsedDays = parseInt(req.params.days, 10);
+    if (!Number.isFinite(parsedDays) || parsedDays < 0 || parsedDays > 3650) {
+        return res.status(400).json({ message: 'Invalid days parameter (must be 0-3650)' });
+    }
+    req.params.days = String(parsedDays);
     const { days } = req.params;
     const userBranchId = req.user.store_id;
     const isRestricted = req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo';
@@ -7328,7 +7371,7 @@ app.get('/api/pos/product/:barcode', authenticateToken, requireRole(PAGE_ROLES.S
 });
 
 // 22. Process POS sale with batch tracking
-app.post('/api/pos/sale/:barcode', authenticateToken, async (req, res) => {
+app.post('/api/pos/sale/:barcode', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { barcode } = req.params;
     const { quantity, batch_id, branch_id } = req.body;
     const qty = toQty(quantity);
@@ -7692,20 +7735,21 @@ app.patch('/api/branches/:id/set-main', authenticateToken, async (req, res) => {
         return res.status(403).json({ success: false, message: 'Unauthorized' });
     }
     const branchId = parseInt(req.params.id, 10);
+    const tenantId = req.user.tenant_id || 1;
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
-        // Verify branch exists and is not deleted
+        // Verify branch exists, belongs to this tenant, and is not deleted
         const check = await client.query(
-            'SELECT id, name FROM branches WHERE id = $1 AND deleted_at IS NULL', [branchId]
+            'SELECT id, name FROM branches WHERE id = $1 AND deleted_at IS NULL AND COALESCE(tenant_id, 1) = $2', [branchId, tenantId]
         );
         if (check.rows.length === 0) {
             await client.query('ROLLBACK');
             return res.status(404).json({ success: false, message: 'Branch not found.' });
         }
-        // Atomically unset all mains, then set the chosen one
-        await client.query('UPDATE branches SET is_main = FALSE WHERE is_main = TRUE');
-        await client.query('UPDATE branches SET is_main = TRUE WHERE id = $1', [branchId]);
+        // Atomically unset all mains for this tenant only, then set the chosen one
+        await client.query('UPDATE branches SET is_main = FALSE WHERE is_main = TRUE AND COALESCE(tenant_id, 1) = $1', [tenantId]);
+        await client.query('UPDATE branches SET is_main = TRUE WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [branchId, tenantId]);
         await client.query('COMMIT');
         await logActivity(req, 'SET_MAIN_BRANCH', { branchId, branchName: check.rows[0].name });
         res.json({ success: true, message: `"${check.rows[0].name}" is now the main branch.` });
@@ -7883,7 +7927,7 @@ app.post('/api/customers', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL),
     }
 });
 
-app.post('/api/customers/:id/payment', authenticateToken, async (req, res) => {
+app.post('/api/customers/:id/payment', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     const { id } = req.params;
     const tenantId = req.user.tenant_id || 1;
     const paid = parseFloat(req.body.amount);

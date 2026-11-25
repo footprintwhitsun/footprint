@@ -648,7 +648,7 @@
         </style>
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tinymce/5.10.9/tinymce.min.js" referrerpolicy="origin" defer></script>
+    <script src="/vendor/rich-editor.js" defer></script>
     <link rel="stylesheet" href="/portal-skin.css">
     <script src="/okw-events.js"></script>
 </head>
@@ -4202,24 +4202,37 @@
             });
         }
 
+        let __receivingSelected = false;
         async function receiveSelected() {
+            if (__receivingSelected) return;
             const checkboxes = document.querySelectorAll('.receiving-check:checked');
             if (checkboxes.length === 0) return showNotification("No orders selected", "error");
             
             if (!confirm(`Receive ${checkboxes.length} selected orders?`)) return;
+            __receivingSelected = true;
             
             const token = localStorage.getItem('authToken');
-            for (const chk of checkboxes) {
-                const id = chk.value;
-                await fetch(`/api/purchase-orders/${id}/receive`, { 
-                    method: 'POST',
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+            let okCount = 0;
+            let failCount = 0;
+            try {
+                for (const chk of checkboxes) {
+                    const id = chk.value;
+                    const res = await fetch(`/api/purchase-orders/${id}/receive`, { 
+                        method: 'POST',
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (res.ok) okCount++;
+                    else failCount++;
+                }
+            } finally {
+                __receivingSelected = false;
             }
 
             loadPOs();
             loadInventory();
-            showNotification("Selected orders received.", "success");
+            if (failCount === 0) showNotification(`${okCount} order(s) received.`, "success");
+            else if (okCount > 0) showNotification(`${okCount} received, ${failCount} failed.`, "error");
+            else showNotification(`Failed to receive ${failCount} order(s).`, "error");
             const selectAll = document.getElementById('selectAllReceiving');
             if(selectAll) selectAll.checked = false;
         }

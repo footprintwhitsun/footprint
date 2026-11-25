@@ -3301,7 +3301,7 @@ function manualScan() {
     if (!query) return;
     
     const scanResult = document.getElementById('scanResult');
-    scanResult.innerHTML = `Searching for: <strong>${query}</strong>`;
+    scanResult.innerHTML = `Searching for: <strong>${OkwUI.escapeHtml(query)}</strong>`;
     
     // Find product by barcode or name
     const product = products.find(p => 
@@ -3318,7 +3318,7 @@ function manualScan() {
             scanResult.innerHTML = '';
         }, 2000);
     } else {
-        scanResult.innerHTML = `Product not found: <strong>${query}</strong>`;
+        scanResult.innerHTML = `Product not found: <strong>${OkwUI.escapeHtml(query)}</strong>`;
         setTimeout(() => {
             scanResult.innerHTML = '';
         }, 3000);

@@ -723,8 +723,13 @@
             document.getElementById('payModal').classList.add('active');
         }
 
+        let __payingCustomer = false;
         async function processPayment(e) {
             e.preventDefault();
+            if (__payingCustomer) return;
+            __payingCustomer = true;
+            const submitBtn = e.target && e.target.querySelector ? e.target.querySelector('[type="submit"]') : null;
+            if (submitBtn) submitBtn.disabled = true;
             const id = document.getElementById('payCustomerId').value;
             const amount = document.getElementById('payAmount').value;
             const token = localStorage.getItem('authToken');
@@ -742,6 +747,10 @@
                     document.getElementById('payAmount').value = '';
                 } else showNotification('Error recording payment', 'error');
             } catch (e) { showNotification('Server error', 'error'); }
+            finally {
+                __payingCustomer = false;
+                if (submitBtn) submitBtn.disabled = false;
+            }
         }
 
         function openLimitModal(id, name, currentLimit) {

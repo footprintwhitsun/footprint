@@ -327,11 +327,12 @@ router.get('/api/backups/export-excel', authenticateToken, async (req, res) => {
         return res.status(403).json({ message: 'Only the CEO or Admin can export all data' });
     }
     try {
+        const tenantId = req.user.tenant_id || 1;
         const [products, customers, sales, suppliers] = await Promise.all([
-            safeSelect('SELECT id, name, barcode, category, price, cost_price, stock, stock_levels, selling_unit, brand FROM products ORDER BY name ASC'),
-            safeSelect('SELECT id, name, phone, email, customer_type, credit_limit, current_balance, store_location FROM customers ORDER BY name ASC'),
-            safeSelect('SELECT id, receipt_number, total_amount, payment_method, status, customer_name, store_location, created_at FROM transactions ORDER BY created_at DESC LIMIT 5000'),
-            safeSelect('SELECT id, name, contact_person, phone, email, address, rating FROM suppliers ORDER BY name ASC')
+            safeSelect('SELECT id, name, barcode, category, price, cost_price, stock, stock_levels, selling_unit, brand FROM products WHERE COALESCE(tenant_id, 1) = $1 ORDER BY name ASC', [tenantId]),
+            safeSelect('SELECT id, name, phone, email, customer_type, credit_limit, current_balance, store_location FROM customers WHERE COALESCE(tenant_id, 1) = $1 ORDER BY name ASC', [tenantId]),
+            safeSelect('SELECT id, receipt_number, total_amount, payment_method, status, customer_name, store_location, created_at FROM transactions WHERE COALESCE(tenant_id, 1) = $1 ORDER BY created_at DESC LIMIT 5000', [tenantId]),
+            safeSelect('SELECT id, name, contact_person, phone, email, address, rating FROM suppliers WHERE COALESCE(tenant_id, 1) = $1 ORDER BY name ASC', [tenantId])
         ]);
 
         const wb = xlsx.utils.book_new();
@@ -359,11 +360,12 @@ router.get('/api/backups/export-pdf', authenticateToken, async (req, res) => {
         return res.status(403).json({ message: 'Only the CEO or Admin can export all data' });
     }
     try {
+        const tenantId = req.user.tenant_id || 1;
         const [products, customers, sales, suppliers] = await Promise.all([
-            safeSelect('SELECT name, barcode, category, price, stock FROM products ORDER BY name ASC LIMIT 300'),
-            safeSelect('SELECT name, phone, customer_type, credit_limit, current_balance FROM customers ORDER BY name ASC LIMIT 300'),
-            safeSelect('SELECT receipt_number, total_amount, payment_method, customer_name, store_location, created_at FROM transactions ORDER BY created_at DESC LIMIT 300'),
-            safeSelect('SELECT name, contact_person, phone, email FROM suppliers ORDER BY name ASC LIMIT 300')
+            safeSelect('SELECT name, barcode, category, price, stock FROM products WHERE COALESCE(tenant_id, 1) = $1 ORDER BY name ASC LIMIT 300', [tenantId]),
+            safeSelect('SELECT name, phone, customer_type, credit_limit, current_balance FROM customers WHERE COALESCE(tenant_id, 1) = $1 ORDER BY name ASC LIMIT 300', [tenantId]),
+            safeSelect('SELECT receipt_number, total_amount, payment_method, customer_name, store_location, created_at FROM transactions WHERE COALESCE(tenant_id, 1) = $1 ORDER BY created_at DESC LIMIT 300', [tenantId]),
+            safeSelect('SELECT name, contact_person, phone, email FROM suppliers WHERE COALESCE(tenant_id, 1) = $1 ORDER BY name ASC LIMIT 300', [tenantId])
         ]);
 
         const stamp = new Date().toISOString().slice(0, 10);

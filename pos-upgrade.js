@@ -847,13 +847,15 @@
                 renderAll();
             };
 
+            const idempKey = payload.idempotency_key || (`split-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`);
+            payload.idempotency_key = idempKey;
             if (!navigator.onLine) {
                 queueOffline();
                 return;
             }
 
             try {
-                const res = await fetch('/api/pos/checkout', { method: 'POST', headers: authHeaders(), body: JSON.stringify(payload) });
+                const res = await fetch('/api/pos/checkout', { method: 'POST', headers: { ...authHeaders(), 'X-Idempotency-Key': idempKey }, body: JSON.stringify(payload) });
                 const data = await res.json().catch(() => ({}));
                 if (res.ok) {
                     modal.remove();

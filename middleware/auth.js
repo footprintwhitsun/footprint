@@ -64,7 +64,7 @@ const authenticateToken = (req, res, next) => {
         userPayload.tenant_id = userPayload.tenant_id ? parseInt(userPayload.tenant_id, 10) : 1;
         req.user = userPayload;
 
-        const isSuperAdmin = (userPayload.role === 'super_admin' || userPayload.role === 'ceo' || userPayload.role === 'admin');
+        const isSuperAdmin = (userPayload.role === 'super_admin' || userPayload.role === 'ceo');
         const tenantId = userPayload.tenant_id ? userPayload.tenant_id.toString() : '1';
         tenantContext.run({ tenantId, isSuperAdmin }, () => next());
     };
@@ -77,7 +77,7 @@ const authenticateToken = (req, res, next) => {
         isTokenRevoked(token).then((revoked) => {
             if (revoked) return res.status(401).json({ message: 'Session has been revoked. Please log in again.' });
             verifyAndContinue();
-        }).catch(() => verifyAndContinue());
+        }).catch(() => res.status(503).json({ message: 'Authentication service temporarily unavailable' }));
     } else if (req.session && req.session.user) {
         enforceSaaSBoundary(req.session.user);
     } else if (req.session && req.session.companyUser) {
@@ -115,7 +115,10 @@ const requirePermission = (moduleKey, action) => async (req, res, next) => {
             }
         }
     } catch (e) {
-        // If roles table does not exist yet, fall through to role-based check
+        // Only fall through if the roles table itself does not exist yet (42P01); otherwise fail closed.
+        if (e && e.code !== '42P01') {
+            return res.status(503).json({ message: 'Permission check temporarily unavailable' });
+        }
     }
     if (MANAGER_ROLES.includes(role)) return next();
     return res.status(403).json({ message: `Permission denied: ${moduleKey}.${action}` });

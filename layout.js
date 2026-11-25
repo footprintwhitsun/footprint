@@ -1489,12 +1489,14 @@
                 const d = await r.json().catch(() => ({}));
                 const aBubble = document.createElement('div');
                 aBubble.style.cssText = 'align-self:flex-start;background:var(--frame,#f8fafc);border:1px solid var(--edge,#e2e8f0);padding:8px 10px;border-radius:10px;max-width:92%;';
+                const escTxt = (s) => String(s ?? '').replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
                 const rowsHtml = Array.isArray(d.table) && d.table.length
                     ? '<div style="margin-top:6px;font-size:11.5px;color:var(--muted,#64748b);">' +
-                    d.table.slice(0, 5).map(row => Object.values(row).slice(0, 3).join(' · ').replace(/</g, '&lt;')).join('<br>') +
+                    d.table.slice(0, 5).map(row => escTxt(Object.values(row).slice(0, 3).join(' · '))).join('<br>') +
                     '</div>'
                     : '';
-                aBubble.innerHTML = `<div>${String(d.answer || d.message || 'No answer').replace(/</g, '&lt;')}</div>${rowsHtml}${d.link ? `<div style="margin-top:6px;"><a href="${d.link}" style="color:#273990;font-weight:600;text-decoration:none;">Open Full Report &rarr;</a></div>` : ''}`;
+                const safeLink = (typeof d.link === 'string' && d.link.startsWith('/') && !d.link.startsWith('//')) ? escTxt(d.link) : '';
+                aBubble.innerHTML = `<div>${escTxt(d.answer || d.message || 'No answer')}</div>${rowsHtml}${safeLink ? `<div style="margin-top:6px;"><a href="${safeLink}" style="color:#273990;font-weight:600;text-decoration:none;">Open Full Report &rarr;</a></div>` : ''}`;
                 msgs.appendChild(aBubble);
                 msgs.scrollTop = msgs.scrollHeight;
             } catch (_) { }

@@ -635,7 +635,7 @@
         const bodyHtml = `
             <div class="pr-banner">
                 <div class="pr-brand">
-                    <img src="${escapeHtml(profile.logoUrl)}" alt="${escapeHtml(profile.name)}" onerror="this.style.display='none'">
+                    <img class="pr-brand-logo" src="${escapeHtml(profile.logoUrl)}" alt="${escapeHtml(profile.name)}">
                     <div class="pr-company">${escapeHtml(profile.name)}</div>
                     ${detailsStackedHtml ? `<div class="pr-company-sub">${detailsStackedHtml}</div>` : ''}
                 </div>
@@ -654,6 +654,9 @@
 
         const backdrop = document.createElement('div');
         backdrop.id = 'okw-printable-record-modal';
+        backdrop.setAttribute('role', 'dialog');
+        backdrop.setAttribute('aria-modal', 'true');
+        backdrop.setAttribute('aria-label', title);
         backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.62);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
         backdrop.innerHTML = `
             <div class="okw-card" style="width:100%;max-width:860px;max-height:90vh;overflow-y:auto;padding:22px 26px;box-shadow:0 20px 50px rgba(0,0,0,0.3);background:#fff;color:#0f172a;">
@@ -665,8 +668,18 @@
                 </div>
             </div>`;
         document.body.appendChild(backdrop);
-        backdrop.querySelector('#okw-pr-close').onclick = () => backdrop.remove();
-        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+        const modalLogo = backdrop.querySelector('.pr-brand-logo');
+        if (modalLogo) {
+            modalLogo.addEventListener('error', () => { modalLogo.style.display = 'none'; });
+        }
+        const closeRecordModal = () => {
+            document.removeEventListener('keydown', onEscRecord);
+            backdrop.remove();
+        };
+        const onEscRecord = (ev) => { if (ev.key === 'Escape') closeRecordModal(); };
+        document.addEventListener('keydown', onEscRecord);
+        backdrop.querySelector('#okw-pr-close').onclick = closeRecordModal;
+        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeRecordModal(); });
         backdrop.querySelector('#okw-pr-print').onclick = () => {
             const printDoc = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(profile.name)} — ${escapeHtml(title)}</title><style>
                 @page{size:A4 portrait;margin:13mm;}
@@ -1117,7 +1130,12 @@
             colMenu.style.display = colMenu.style.display === 'none' ? 'block' : 'none';
         });
         colMenu.addEventListener('click', (e) => e.stopPropagation());
-        document.addEventListener('click', () => { colMenu.style.display = 'none'; });
+        if (!document.documentElement.dataset.okwColMenuClose) {
+            document.documentElement.dataset.okwColMenuClose = '1';
+            document.addEventListener('click', () => {
+                document.querySelectorAll('[data-t-colmenu]').forEach(m => { m.style.display = 'none'; });
+            });
+        }
         colMenu.querySelectorAll('[data-col-toggle]').forEach(cb => {
             cb.addEventListener('change', () => {
                 const k = cb.getAttribute('data-col-toggle');
@@ -1322,7 +1340,12 @@
             colMenu.style.display = colMenu.style.display === 'none' ? 'block' : 'none';
         });
         colMenu.addEventListener('click', (e) => e.stopPropagation());
-        document.addEventListener('click', () => { colMenu.style.display = 'none'; });
+        if (!document.documentElement.dataset.okwColMenuClose) {
+            document.documentElement.dataset.okwColMenuClose = '1';
+            document.addEventListener('click', () => {
+                document.querySelectorAll('[data-t-colmenu]').forEach(m => { m.style.display = 'none'; });
+            });
+        }
         colMenu.querySelectorAll('[data-t-colidx]').forEach(cb => {
             cb.addEventListener('change', () => {
                 const idx = Number(cb.getAttribute('data-t-colidx'));

@@ -189,24 +189,34 @@
                 </div>
             </div>
         `;
-        document.getElementById('ae-save').onclick = async () => {
-            const payload = {
-                category: document.getElementById('ae-cat').value,
-                amount: document.getElementById('ae-amt').value,
-                expense_date: document.getElementById('ae-date').value,
-                reference_no: document.getElementById('ae-ref').value,
-                store_location: document.getElementById('ae-loc').value,
-                description: document.getElementById('ae-desc').value
-            };
-            const res = await fetch('/api/expenses', { method: 'POST', headers, credentials: 'include', body: JSON.stringify(payload) });
-            const d = await res.json().catch(() => ({}));
-            if (res.ok) {
-                OkwUI.toast('Expense saved', 'success');
-                activeView = 'list';
-                window.history.replaceState(null, '', '/expenses?tab=list');
-                renderCurrent();
-            } else {
-                OkwUI.toast(d.message || 'Failed to save expense', 'danger');
+        const saveBtn = document.getElementById('ae-save');
+        saveBtn.onclick = async () => {
+            if (saveBtn.disabled) return;
+            saveBtn.disabled = true;
+            const origText = saveBtn.textContent;
+            saveBtn.textContent = 'Saving...';
+            try {
+                const payload = {
+                    category: document.getElementById('ae-cat').value,
+                    amount: document.getElementById('ae-amt').value,
+                    expense_date: document.getElementById('ae-date').value,
+                    reference_no: document.getElementById('ae-ref').value,
+                    store_location: document.getElementById('ae-loc').value,
+                    description: document.getElementById('ae-desc').value
+                };
+                const res = await fetch('/api/expenses', { method: 'POST', headers, credentials: 'include', body: JSON.stringify(payload) });
+                const d = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    OkwUI.toast('Expense saved', 'success');
+                    activeView = 'list';
+                    window.history.replaceState(null, '', '/expenses?tab=list');
+                    renderCurrent();
+                } else {
+                    OkwUI.toast(d.message || 'Failed to save expense', 'danger');
+                }
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.textContent = origText;
             }
         };
     }
