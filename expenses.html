@@ -64,9 +64,14 @@
                 <label>Date Range</label>
                 <div id="exp-date-picker"></div>
             </div>`
-    });
+    }) + `<button type="button" class="okw-btn okw-btn-primary" id="exp-go-add">+ Add Expense</button>`;
     const catFilter = document.getElementById('exp-cat-filter');
     const dateHost = filterBar;
+    document.getElementById('exp-go-add').onclick = () => {
+        activeView = 'add';
+        window.history.replaceState(null, '', '/expenses?tab=add');
+        renderCurrent();
+    };
 
     OkwUI.dateRangePicker('#exp-date-picker', (r) => {
         dateRange = r;
@@ -78,11 +83,15 @@
     });
 
     async function loadCategories() {
-        const res = await fetch('/api/expense-categories', { headers, credentials: 'include' });
-        const d = await res.json().catch(() => ({}));
-        categories = d.categories || [];
-        catFilter.innerHTML = `<option value="">All Categories</option>` +
-            categories.map(c => `<option value="${OkwUI.escapeHtml(c.name)}">${OkwUI.escapeHtml(c.name)}</option>`).join('');
+        try {
+            const res = await fetch('/api/expense-categories', { headers, credentials: 'include' });
+            const d = await res.json().catch(() => ({}));
+            categories = d.categories || [];
+            catFilter.innerHTML = `<option value="">All Categories</option>` +
+                categories.map(c => `<option value="${OkwUI.escapeHtml(c.name)}">${OkwUI.escapeHtml(c.name)}</option>`).join('');
+        } catch (_) {
+            categories = [];
+        }
     }
 
     async function renderList() {

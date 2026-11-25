@@ -114,8 +114,9 @@
                 <h1>Customers</h1>
                 <p id="custSummary">Loading customers...</p>
             </div>
-            <div class="header-controls">
+            <div class="header-controls" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
                 <input type="search" id="custSearch" placeholder="Search name, phone or account" aria-label="Search customers" style="min-width:260px;">
+                <button type="button" class="okw-btn okw-btn-primary" id="btnAddCustomer">+ Add Customer</button>
             </div>
         </div>
         <div class="card" style="padding:0; overflow-x:auto;">
@@ -274,6 +275,62 @@
         document.addEventListener('DOMContentLoaded', applyTableDataLabels);
     } else {
         applyTableDataLabels();
+    }
+
+    const addCustBtn = document.getElementById('btnAddCustomer');
+    if (addCustBtn) {
+        addCustBtn.addEventListener('click', () => {
+            const prev = document.getElementById('okw-add-cust-modal');
+            if (prev) prev.remove();
+            const backdrop = document.createElement('div');
+            backdrop.id = 'okw-add-cust-modal';
+            backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.6);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
+            backdrop.innerHTML = `
+                <div class="okw-card" style="width:100%;max-width:440px;padding:22px 24px;">
+                    <h3 style="margin:0 0 14px;">Add Customer</h3>
+                    <div style="display:flex;flex-direction:column;gap:10px;">
+                        <input type="text" id="ac-name" class="okw-input" placeholder="Customer name *" required>
+                        <input type="text" id="ac-phone" class="okw-input" placeholder="Phone number">
+                        <input type="email" id="ac-email" class="okw-input" placeholder="Email (optional)">
+                        <select id="ac-type" class="okw-select">
+                            <option value="Retail">Retail</option>
+                            <option value="Wholesale">Wholesale</option>
+                            <option value="Contractor">Contractor</option>
+                        </select>
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;">
+                        <button type="button" class="okw-btn okw-btn-outline" id="ac-cancel">Cancel</button>
+                        <button type="button" class="okw-btn okw-btn-primary" id="ac-save">Save Customer</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(backdrop);
+            backdrop.querySelector('#ac-cancel').onclick = () => backdrop.remove();
+            backdrop.addEventListener('click', (ev) => { if (ev.target === backdrop) backdrop.remove(); });
+            backdrop.querySelector('#ac-save').onclick = async () => {
+                const name = backdrop.querySelector('#ac-name').value.trim();
+                if (!name) return OkwUI.toast('Customer name is required', 'warning');
+                const token = localStorage.getItem('authToken') || localStorage.getItem('token');
+                const res = await fetch('/api/pos/customers/quick', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        name,
+                        phone: backdrop.querySelector('#ac-phone').value.trim(),
+                        email: backdrop.querySelector('#ac-email').value.trim(),
+                        price_group: backdrop.querySelector('#ac-type').value.toLowerCase()
+                    })
+                });
+                if (res.ok) {
+                    backdrop.remove();
+                    OkwUI.toast('Customer added', 'success');
+                    window.location.reload();
+                } else {
+                    const d = await res.json().catch(() => ({}));
+                    OkwUI.toast(d.message || 'Failed to add customer', 'danger');
+                }
+            };
+        });
     }
 })();
 </script>

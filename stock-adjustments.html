@@ -54,7 +54,7 @@
         const res = await fetch('/api/stock-adjustments', { headers, credentials: 'include' });
         const rows = await res.json().catch(() => []);
         const panel = document.getElementById('sa-panel');
-        panel.innerHTML = `<div id="sa-tbl"></div>`;
+        panel.innerHTML = `<div class="okw-action-bar"><a href="/stock-adjustments?tab=add" class="okw-btn okw-btn-primary">+ Add Stock Adjustment</a></div><div id="sa-tbl"></div>`;
         OkwUI.dataTable('#sa-tbl', {
             columns: [
                 { key: 'created_at', label: 'Date', render: v => v ? new Date(v).toLocaleString() : '' },

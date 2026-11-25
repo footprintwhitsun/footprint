@@ -115,7 +115,7 @@
         { label: 'Manager Authorization', url: '/credit-customers?tab=auth', roles: ['admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'lock' },
 
         // Expenses & Accounts (Money)
-        { label: 'Expenses', url: '/expenses?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'dollarSign' },
+        { label: 'List Expenses', url: '/expenses?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'dollarSign' },
         { label: 'Add Expense', url: '/expenses?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'receipt' },
         { label: 'Expense Categories', url: '/expenses?tab=categories', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'folder' },
         { label: 'Account & Cash', url: '/extras?tab=accounts', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'creditCard' },
@@ -653,6 +653,14 @@
                 </button>
             </div>
             <div class="okw-topbar-right">
+                <div class="okw-plus-wrap" style="position:relative;">
+                    <button type="button" class="okw-icon-btn" id="okw-plus-btn" title="Quick Tools (Calendar, To Do, Tour)" aria-label="Quick Tools" aria-haspopup="true" aria-expanded="false" style="font-size:18px;font-weight:700;padding:0 11px;">+</button>
+                    <div id="okw-plus-dropdown" class="okw-menu-list" style="display:none;min-width:190px;top:40px;right:0;z-index:10050;">
+                        <button type="button" class="okw-menu-item" id="okw-act-calendar">📅 Calendar</button>
+                        <button type="button" class="okw-menu-item" id="okw-act-todo">✅ Add To Do</button>
+                        <button type="button" class="okw-menu-item" id="okw-act-tour">🧭 Application Tour</button>
+                    </div>
+                </div>
                 ${isMgr ? `<button type="button" class="okw-icon-btn" id="okw-today-profit-btn" title="Today's Profit">${ICONS.profitChart}<span>Today's Profit</span></button>` : ''}
                 <div class="okw-notif-wrap">
                     <button type="button" class="okw-icon-btn" id="okw-notif-btn" title="Notifications &amp; Alerts" aria-label="Notifications &amp; Alerts">${ICONS.bell}<span id="okw-notif-badge" class="okw-notif-badge" style="display:none;">0</span></button>
@@ -680,8 +688,249 @@
         topbar.querySelector('#okw-theme-toggle').addEventListener('click', toggleTheme);
         const tpBtn = topbar.querySelector('#okw-today-profit-btn');
         if (tpBtn) tpBtn.addEventListener('click', openTodayProfitModal);
+        setupQuickToolsDropdown(topbar);
         setupNotificationsDropdown(topbar);
         setupUserAvatarDropdown(topbar, user, role, displayName);
+    }
+
+    function todoStorageKey() {
+        const u = getCurrentUser();
+        return u && u.id ? `okw_todos_${u.id}` : 'okw_todos_default';
+    }
+    function loadTodos() {
+        try { return JSON.parse(localStorage.getItem(todoStorageKey()) || '[]') || []; } catch (_) { return []; }
+    }
+    function saveTodos(list) {
+        try { localStorage.setItem(todoStorageKey(), JSON.stringify(list)); } catch (_) { }
+    }
+
+    function openTodoModal(prefillDate = '') {
+        const prev = document.getElementById('okw-todo-modal');
+        if (prev) prev.remove();
+        const today = prefillDate || new Date().toISOString().slice(0, 10);
+        const backdrop = document.createElement('div');
+        backdrop.id = 'okw-todo-modal';
+        backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.62);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
+        backdrop.innerHTML = `
+            <div class="okw-card" style="width:100%;max-width:560px;max-height:88vh;overflow-y:auto;padding:22px 24px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--edge,#e2e8f0);padding-bottom:10px;margin-bottom:14px;">
+                    <h2 style="margin:0;font-size:17px;">To-Do List</h2>
+                    <button type="button" id="td-close" class="okw-btn okw-btn-outline">Close</button>
+                </div>
+                <form id="td-form" style="display:grid;grid-template-columns:1.6fr 1fr 110px auto;gap:8px;margin-bottom:14px;">
+                    <input type="text" id="td-title" class="okw-input" placeholder="Task title..." required>
+                    <input type="date" id="td-date" class="okw-input" value="${today}">
+                    <select id="td-prio" class="okw-select">
+                        <option value="Medium">Medium</option>
+                        <option value="High">High</option>
+                        <option value="Low">Low</option>
+                    </select>
+                    <button type="submit" class="okw-btn okw-btn-primary">Add</button>
+                </form>
+                <div id="td-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+            </div>`;
+        document.body.appendChild(backdrop);
+        backdrop.querySelector('#td-close').onclick = () => backdrop.remove();
+        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+
+        const esc = (s) => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        function renderList() {
+            const items = loadTodos();
+            const host = backdrop.querySelector('#td-list');
+            if (!items.length) {
+                host.innerHTML = '<div style="padding:18px;text-align:center;color:var(--muted,#64748b);font-size:13px;">No tasks yet. Add your first To-Do above.</div>';
+                return;
+            }
+            host.innerHTML = items.map((t, i) => `
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;border:1px solid var(--edge,#e2e8f0);border-radius:8px;${t.done ? 'opacity:0.55;' : ''}">
+                    <label style="display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;">
+                        <input type="checkbox" data-td-chk="${i}" ${t.done ? 'checked' : ''}>
+                        <div>
+                            <div style="font-weight:600;font-size:13.5px;${t.done ? 'text-decoration:line-through;' : ''}">${esc(t.title)}</div>
+                            <div style="font-size:11.5px;color:var(--muted,#64748b);">Due: ${esc(t.date || 'No date')} · Priority: <strong>${esc(t.priority || 'Medium')}</strong></div>
+                        </div>
+                    </label>
+                    <button type="button" class="okw-btn okw-btn-danger" data-td-del="${i}" style="height:28px;padding:0 10px;font-size:12px;">Delete</button>
+                </div>`).join('');
+            host.querySelectorAll('[data-td-chk]').forEach(cb => {
+                cb.onchange = () => {
+                    const list = loadTodos();
+                    list[Number(cb.dataset.tdChk)].done = cb.checked;
+                    saveTodos(list);
+                    renderList();
+                };
+            });
+            host.querySelectorAll('[data-td-del]').forEach(btn => {
+                btn.onclick = () => {
+                    const list = loadTodos();
+                    list.splice(Number(btn.dataset.tdDel), 1);
+                    saveTodos(list);
+                    renderList();
+                };
+            });
+        }
+        backdrop.querySelector('#td-form').onsubmit = (e) => {
+            e.preventDefault();
+            const title = backdrop.querySelector('#td-title').value.trim();
+            if (!title) return;
+            const list = loadTodos();
+            list.unshift({
+                id: Date.now(),
+                title,
+                date: backdrop.querySelector('#td-date').value,
+                priority: backdrop.querySelector('#td-prio').value,
+                done: false
+            });
+            saveTodos(list);
+            backdrop.querySelector('#td-title').value = '';
+            renderList();
+        };
+        renderList();
+    }
+
+    function openCalendarModal() {
+        const prev = document.getElementById('okw-cal-modal');
+        if (prev) prev.remove();
+        const now = new Date();
+        let curYear = now.getFullYear();
+        let curMonth = now.getMonth();
+        const backdrop = document.createElement('div');
+        backdrop.id = 'okw-cal-modal';
+        backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.62);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
+        backdrop.innerHTML = `
+            <div class="okw-card" style="width:100%;max-width:680px;max-height:90vh;overflow-y:auto;padding:22px 24px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--edge,#e2e8f0);padding-bottom:10px;margin-bottom:14px;">
+                    <div style="display:flex;align-items:center;gap:10px;">
+                        <button type="button" id="cal-prev" class="okw-btn okw-btn-outline" style="height:30px;padding:0 10px;">‹</button>
+                        <h2 id="cal-title" style="margin:0;font-size:17px;min-width:170px;text-align:center;"></h2>
+                        <button type="button" id="cal-next" class="okw-btn okw-btn-outline" style="height:30px;padding:0 10px;">›</button>
+                    </div>
+                    <div style="display:flex;gap:8px;">
+                        <button type="button" id="cal-add-todo" class="okw-btn okw-btn-primary">+ Add To Do</button>
+                        <button type="button" id="cal-close" class="okw-btn okw-btn-outline">Close</button>
+                    </div>
+                </div>
+                <div id="cal-grid"></div>
+                <div style="margin-top:10px;font-size:12px;color:var(--muted,#64748b);">Click any day to add a To-Do for that date.</div>
+            </div>`;
+        document.body.appendChild(backdrop);
+        backdrop.querySelector('#cal-close').onclick = () => backdrop.remove();
+        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+        backdrop.querySelector('#cal-add-todo').onclick = () => { backdrop.remove(); openTodoModal(); };
+
+        const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+        function renderCal() {
+            backdrop.querySelector('#cal-title').textContent = `${months[curMonth]} ${curYear}`;
+            const firstDay = new Date(curYear, curMonth, 1).getDay();
+            const daysInMonth = new Date(curYear, curMonth + 1, 0).getDate();
+            const todayIso = new Date().toISOString().slice(0, 10);
+            const todos = loadTodos();
+            const byDate = {};
+            todos.forEach(t => { if (t.date) { byDate[t.date] = (byDate[t.date] || 0) + 1; } });
+
+            let html = '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center;font-size:11.5px;font-weight:700;color:var(--muted,#64748b);margin-bottom:6px;">' +
+                ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => `<div>${d}</div>`).join('') + '</div>';
+            html += '<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;">';
+            for (let i = 0; i < firstDay; i++) html += '<div></div>';
+            for (let d = 1; d <= daysInMonth; d++) {
+                const iso = `${curYear}-${String(curMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+                const isToday = iso === todayIso;
+                const cnt = byDate[iso] || 0;
+                html += `<button type="button" data-cal-day="${iso}" style="min-height:58px;padding:6px;border-radius:8px;border:1px solid ${isToday ? '#273990' : 'var(--edge,#e2e8f0)'};background:${isToday ? 'rgba(39,57,144,0.08)' : 'var(--sheet,#fff)'};cursor:pointer;display:flex;flex-direction:column;align-items:flex-start;justify-content:space-between;color:var(--ink,#0f172a);">
+                    <span style="font-weight:${isToday ? '800' : '600'};font-size:13px;color:${isToday ? '#273990' : 'inherit'};">${d}</span>
+                    ${cnt ? `<span style="font-size:10.5px;font-weight:700;padding:1px 6px;border-radius:999px;background:#F9A51A;color:#111827;">${cnt} task${cnt > 1 ? 's' : ''}</span>` : ''}
+                </button>`;
+            }
+            html += '</div>';
+            const grid = backdrop.querySelector('#cal-grid');
+            grid.innerHTML = html;
+            grid.querySelectorAll('[data-cal-day]').forEach(btn => {
+                btn.onclick = () => { backdrop.remove(); openTodoModal(btn.dataset.calDay); };
+            });
+        }
+        backdrop.querySelector('#cal-prev').onclick = () => { curMonth--; if (curMonth < 0) { curMonth = 11; curYear--; } renderCal(); };
+        backdrop.querySelector('#cal-next').onclick = () => { curMonth++; if (curMonth > 11) { curMonth = 0; curYear++; } renderCal(); };
+        renderCal();
+    }
+
+    function startApplicationTour() {
+        const prev = document.getElementById('okw-app-tour');
+        if (prev) prev.remove();
+        const steps = [
+            { title: 'Welcome to Your Store Portal', body: 'This quick tour shows you where everything lives so you can run sales, stock, expenses, and reports effortlessly.', selector: '.sidebar' },
+            { title: 'Instant Sidebar Search', body: 'Use "Find page..." at the top of the sidebar to jump straight to any screen — type "z report", "suppliers", "drafts", or "payroll" and press Enter.', selector: '#okw-sidebar-search' },
+            { title: 'Global Quick Search (Ctrl+K)', body: 'Press Ctrl+K (or click Search in the top bar) from any page to jump across modules instantly.', selector: '#okw-cmd-trigger' },
+            { title: 'Quick Tools (+ Menu)', body: 'Click the "+" button anytime to open your Business Calendar, manage To-Do tasks, or replay this Application Tour.', selector: '#okw-plus-btn' },
+            { title: 'Sales, POS & Drafts', body: 'Open Sales in the sidebar for POS checkout, All Sales, Quotations, and Drafts (where you can Edit, Print, Delete, or send a Draft straight to POS).', selector: '.nav-group[data-group="Sales"]' },
+            { title: 'Inventory, Suppliers & Contacts', body: 'Manage Current Stock, Purchase Orders, Adjustments, Transfers, Suppliers, Customers, and Customer Groups — click any row for a printable form or click any column header to sort.', selector: '.nav-group[data-group="Inventory"]' },
+            { title: 'Reports, Filters & Export', body: 'Every report puts KPIs at the top, Search on the left, and Filters ▾ + Export ▾ (CSV, Excel, Print, PDF) cleanly on the right.', selector: '.nav-group[data-group="Reports"]' }
+        ];
+        let idx = 0;
+        const overlay = document.createElement('div');
+        overlay.id = 'okw-app-tour';
+        overlay.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.58);z-index:10080;display:flex;align-items:center;justify-content:center;padding:16px;';
+        document.body.appendChild(overlay);
+
+        let highlighted = null;
+        function clearHighlight() {
+            if (highlighted) {
+                highlighted.style.outline = '';
+                highlighted.style.outlineOffset = '';
+                highlighted = null;
+            }
+        }
+        function renderStep() {
+            clearHighlight();
+            const s = steps[idx];
+            const el = s.selector ? document.querySelector(s.selector) : null;
+            if (el) {
+                highlighted = el;
+                el.style.outline = '3px solid #F9A51A';
+                el.style.outlineOffset = '3px';
+                try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) { }
+            }
+            overlay.innerHTML = `
+                <div class="okw-card" style="width:100%;max-width:460px;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,0.35);">
+                    <div style="font-size:11.5px;font-weight:700;text-transform:uppercase;color:#F9A51A;letter-spacing:0.05em;">Step ${idx + 1} of ${steps.length}</div>
+                    <h3 style="margin:6px 0 8px;font-size:18px;">${s.title}</h3>
+                    <p style="margin:0 0 18px;font-size:13.5px;line-height:1.55;color:var(--ink-2,#334155);">${s.body}</p>
+                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                        <button type="button" id="tour-skip" class="okw-btn okw-btn-outline">Close</button>
+                        <div style="display:flex;gap:8px;">
+                            ${idx > 0 ? '<button type="button" id="tour-prev" class="okw-btn okw-btn-outline">Back</button>' : ''}
+                            <button type="button" id="tour-next" class="okw-btn okw-btn-primary">${idx === steps.length - 1 ? 'Finish' : 'Next →'}</button>
+                        </div>
+                    </div>
+                </div>`;
+            overlay.querySelector('#tour-skip').onclick = () => { clearHighlight(); overlay.remove(); };
+            const prevBtn = overlay.querySelector('#tour-prev');
+            if (prevBtn) prevBtn.onclick = () => { idx--; renderStep(); };
+            overlay.querySelector('#tour-next').onclick = () => {
+                if (idx >= steps.length - 1) { clearHighlight(); overlay.remove(); }
+                else { idx++; renderStep(); }
+            };
+        }
+        renderStep();
+    }
+
+    function setupQuickToolsDropdown(topbar) {
+        const btn = topbar.querySelector('#okw-plus-btn');
+        const dd = topbar.querySelector('#okw-plus-dropdown');
+        if (!btn || !dd) return;
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const open = dd.style.display === 'block';
+            dd.style.display = open ? 'none' : 'block';
+            btn.setAttribute('aria-expanded', open ? 'false' : 'true');
+        });
+        dd.addEventListener('click', (e) => e.stopPropagation());
+        document.addEventListener('click', () => {
+            dd.style.display = 'none';
+            btn.setAttribute('aria-expanded', 'false');
+        });
+        topbar.querySelector('#okw-act-calendar').onclick = () => { dd.style.display = 'none'; openCalendarModal(); };
+        topbar.querySelector('#okw-act-todo').onclick = () => { dd.style.display = 'none'; openTodoModal(); };
+        topbar.querySelector('#okw-act-tour').onclick = () => { dd.style.display = 'none'; startApplicationTour(); };
     }
 
     function setupUserAvatarDropdown(topbar, user, role, displayName) {

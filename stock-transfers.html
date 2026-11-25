@@ -46,7 +46,7 @@
         const res = await fetch('/api/transfers', { headers, credentials: 'include' });
         const rows = await res.json().catch(() => []);
         const panel = document.getElementById('st-panel');
-        panel.innerHTML = `<div id="st-tbl"></div>`;
+        panel.innerHTML = `<div class="okw-action-bar"><a href="/stock-transfers?tab=add" class="okw-btn okw-btn-primary">+ Add Stock Transfer</a></div><div id="st-tbl"></div>`;
         OkwUI.dataTable('#st-tbl', {
             columns: [
                 { key: 'transfer_date', label: 'Date', render: v => v ? new Date(v).toLocaleString() : '' },

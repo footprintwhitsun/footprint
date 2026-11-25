@@ -32,6 +32,7 @@
             <div class="okw-kpi-row" id="sell-kpis" style="display:none;"></div>
             <div class="okw-action-bar">
                 <div id="sell-filter-host"></div>
+                <button type="button" class="okw-btn okw-btn-primary" id="sell-quick-add" style="display:none;">+ Add</button>
                 <a href="/pos" class="okw-btn okw-btn-accent">Open POS Till</a>
             </div>
             <div id="sell-panel">Loading...</div>
@@ -53,6 +54,25 @@
 
     const filterHost = document.getElementById('sell-filter-host');
     const kpiHost = document.getElementById('sell-kpis');
+    const quickAddBtn = document.getElementById('sell-quick-add');
+    function syncQuickAddButton() {
+        if (!quickAddBtn) return;
+        const map = {
+            all: ['+ Add Sale', 'add'],
+            list_pos: ['+ Add Sale', 'add'],
+            drafts: ['+ Add Draft', 'add_draft'],
+            quotations: ['+ Add Quotation', 'add_quotation']
+        };
+        const cfg = map[activeView];
+        if (!cfg) { quickAddBtn.style.display = 'none'; return; }
+        quickAddBtn.style.display = '';
+        quickAddBtn.textContent = cfg[0];
+        quickAddBtn.onclick = () => {
+            activeView = cfg[1];
+            window.history.replaceState(null, '', '/sell?tab=' + activeView);
+            render();
+        };
+    }
     filterHost.innerHTML = OkwUI.filterDropdown({
         label: 'Filters',
         contentHtml: `
@@ -74,6 +94,7 @@
     }
 
     async function renderSalesTable(filterFn, title, filename) {
+        syncQuickAddButton();
         dateHost.style.display = 'inline-block';
         const res = await fetch('/api/transactions', { headers, credentials: 'include' });
         const list = await res.json().catch(() => []);
@@ -237,6 +258,7 @@
     }
 
     async function renderDrafts() {
+        syncQuickAddButton();
         dateHost.style.display = 'none';
         if (kpiHost) kpiHost.style.display = 'none';
         const res = await fetch('/api/pos/holds', { headers, credentials: 'include' });
@@ -327,6 +349,7 @@
     }
 
     async function renderQuotations() {
+        syncQuickAddButton();
         dateHost.style.display = 'none';
         const res = await fetch('/api/pos/quotations', { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
