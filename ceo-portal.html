@@ -2145,10 +2145,13 @@
                     data-onkeyup="filterOpsSuppliers()">
             </div>
             <div class="table-card">
-                <div class="card-header">
+                <div class="card-header" style="flex-wrap:wrap;gap:10px;">
                     <div class="card-title">Suppliers (by Branch)</div>
-                    <button class="btn-control btn-white" data-onclick="loadOpsSuppliers()"
-                        style="padding: 8px 12px; font-size: 13px;"><i class="fas fa-sync"></i> Refresh</button>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button class="btn-control btn-primary" data-onclick="window.location.href='/inventory?tab=suppliers'" style="padding: 8px 12px; font-size: 13px;"><i class="fas fa-plus"></i> Add Supplier</button>
+                        <button class="btn-control btn-white" data-onclick="loadOpsSuppliers()"
+                            style="padding: 8px 12px; font-size: 13px;"><i class="fas fa-sync"></i> Refresh</button>
+                    </div>
                 </div>
                 <div class="table-scroll-wrapper">
                     <table class="card-table">
@@ -2187,10 +2190,13 @@
                     data-onkeyup="filterOpsPOs()">
             </div>
             <div class="table-card">
-                <div class="card-header">
+                <div class="card-header" style="flex-wrap:wrap;gap:10px;">
                     <div class="card-title">Recent Purchase Orders</div>
-                    <button class="btn-control btn-white" data-onclick="loadOpsPOs()"
-                        style="padding: 8px 12px; font-size: 13px;"><i class="fas fa-sync"></i> Refresh</button>
+                    <div style="display:flex;gap:8px;align-items:center;">
+                        <button class="btn-control btn-primary" data-onclick="window.location.href='/inventory?tab=orders'" style="padding: 8px 12px; font-size: 13px;"><i class="fas fa-plus"></i> Add Purchase Order</button>
+                        <button class="btn-control btn-white" data-onclick="loadOpsPOs()"
+                            style="padding: 8px 12px; font-size: 13px;"><i class="fas fa-sync"></i> Refresh</button>
+                    </div>
                 </div>
                 <div class="table-scroll-wrapper">
                     <table class="card-table">

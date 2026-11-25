@@ -1498,7 +1498,7 @@ tr:last-child td {
 
         <!-- Proforma Invoices Tab -->
         <div id="proforma" class="tab-content">
-            <header>
+            <header style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
                 <div style="display: flex; align-items: center;">
                     <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
                     <div class="header-title">
@@ -1506,6 +1506,9 @@ tr:last-child td {
                         <p>Manage and track your proforma invoices</p>
                     </div>
                 </div>
+                <button type="button" class="btn btn-primary" data-onclick="openProformaModal()">
+                    <i class="fas fa-plus"></i> Add Proforma Invoice
+                </button>
             </header>
 
             <div class="content-section">
@@ -1564,13 +1567,21 @@ tr:last-child td {
 
         <!-- Transactions Tab -->
         <div id="transactions" class="tab-content">
-            <header>
+            <header style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
                 <div style="display: flex; align-items: center;">
                     <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
                     <div class="header-title">
                         <h2>Transactions</h2>
                         <p>View all your financial transactions</p>
                     </div>
+                </div>
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" class="btn btn-primary" data-onclick="switchTab('quick-sale')">
+                        <i class="fas fa-plus"></i> New Sale / Invoice
+                    </button>
+                    <button type="button" class="btn btn-outline" data-onclick="openProformaModal()">
+                        <i class="fas fa-file-invoice"></i> Add Proforma
+                    </button>
                 </div>
             </header>
 

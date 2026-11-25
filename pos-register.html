@@ -682,6 +682,10 @@
 
         <!-- 3. EXISTING USERS MANAGEMENT TAB -->
         <div id="tab-users" class="tab-content">
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                <h3 style="margin:0;font-size:17px;">Staff Directory</h3>
+                <button type="button" class="btn-add" data-onclick="switchTab('register')"><i class="fas fa-user-plus"></i> Register Staff</button>
+            </div>
             
             <div class="search-container">
                 <input type="text" id="userSearch" placeholder="Search by name, username, or ID..." class="search-input" data-onkeyup="filterUsers()">
