@@ -456,9 +456,18 @@
         let range = { from: monthStart, to: new Date().toISOString().slice(0, 10) };
         let branch = 'All Branches';
 
-        ctx.toolbar.innerHTML = `
-            <select id="tx-branch" class="okw-select" aria-label="Branch"><option value="All Branches">All Branches</option></select>
-            <div id="tx-date-picker"></div>`;
+        ctx.toolbar.innerHTML = OkwUI.filterDropdown({
+            label: 'Filters',
+            contentHtml: `
+                <div class="okw-filter-field">
+                    <label for="tx-branch">Branch</label>
+                    <select id="tx-branch" class="okw-select" aria-label="Branch"><option value="All Branches">All Branches</option></select>
+                </div>
+                <div class="okw-filter-field">
+                    <label>Date Range</label>
+                    <div id="tx-date-picker"></div>
+                </div>`
+        });
         panel.innerHTML = `
             <div class="form-grid" style="margin-bottom:24px;align-items:start;">
                 <div>

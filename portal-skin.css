@@ -425,31 +425,48 @@ body.sidebar-collapsed .sidebar .nav-subgroup-label {
     display: none !important;
 }
 
-/* Uniform straight-line filter bar & controls */
-.okw-filter-bar,
-.okw-date-row {
+/* Uniform straight-line filter bar & compact right-aligned date controls */
+.okw-filter-bar {
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     flex-wrap: nowrap;
-}
-
-.okw-filter-bar {
     overflow-x: auto;
     scrollbar-width: thin;
 }
 
+.okw-date-row {
+    display: inline-flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    flex-wrap: nowrap;
+    margin-left: auto;
+}
+
 .okw-filter-bar .okw-select,
 .okw-filter-bar .okw-input,
-.okw-filter-bar .okw-btn,
+.okw-filter-bar .okw-btn {
+    height: 34px !important;
+    min-height: 34px !important;
+    padding: 0 10px !important;
+    font-size: 12.5px !important;
+    line-height: 32px !important;
+    border-radius: 7px !important;
+    box-sizing: border-box !important;
+    flex: 0 0 auto;
+    margin: 0 !important;
+}
+
 .okw-date-row .okw-select,
-.okw-date-row .okw-input {
-    height: 38px !important;
-    min-height: 38px !important;
-    padding: 0 12px !important;
-    font-size: 13px !important;
-    line-height: 36px !important;
-    border-radius: 8px !important;
+.okw-date-row .okw-input,
+.okw-date-row input[type="date"] {
+    height: 32px !important;
+    min-height: 32px !important;
+    padding: 0 8px !important;
+    font-size: 12px !important;
+    line-height: 30px !important;
+    border-radius: 7px !important;
     box-sizing: border-box !important;
     flex: 0 0 auto;
     margin: 0 !important;
@@ -457,16 +474,19 @@ body.sidebar-collapsed .sidebar .nav-subgroup-label {
 
 .okw-filter-bar .okw-select,
 .okw-filter-bar .okw-input[type="text"] {
-    width: 175px !important;
-    min-width: 150px !important;
+    width: 160px !important;
+    min-width: 135px !important;
 }
 
 .okw-date-row .okw-select {
-    width: 150px !important;
+    width: 122px !important;
+    min-width: 112px !important;
 }
 
-.okw-date-row .okw-input[type="date"] {
-    width: 142px !important;
+.okw-date-row .okw-input[type="date"],
+.okw-date-row input[type="date"] {
+    width: 118px !important;
+    min-width: 112px !important;
 }
 
 .okw-filter-bar label {
@@ -2219,20 +2239,20 @@ input[type="date"], .filter-select, .form-input { min-height: 36px; border-radiu
 
 /* Filters dropdown popover (right-hand side) */
 .okw-filter-popover {
-    min-width: 320px;
-    max-width: calc(100vw - 32px);
-    padding: 14px 16px;
+    min-width: 280px;
+    max-width: min(340px, calc(100vw - 32px));
+    padding: 12px 14px;
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 10px;
 }
 .okw-filter-field {
     display: flex;
     flex-direction: column;
-    gap: 5px;
+    gap: 4px;
 }
 .okw-filter-field label {
-    font-size: 11.5px;
+    font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
@@ -2241,15 +2261,24 @@ input[type="date"], .filter-select, .form-input { min-height: 36px; border-radiu
 .okw-filter-field .okw-input,
 .okw-filter-field .okw-select {
     width: 100%;
+    height: 32px;
+    font-size: 12.5px;
     box-sizing: border-box;
 }
 .okw-filter-popover .okw-date-row {
+    width: 100%;
+    margin-left: 0;
+    justify-content: flex-start;
     flex-wrap: wrap;
     gap: 6px;
 }
+.okw-filter-popover .okw-date-row .okw-select {
+    width: 100% !important;
+}
 .okw-filter-popover .okw-date-row input[type="date"] {
-    flex: 1;
-    min-width: 120px;
+    flex: 1 1 108px;
+    width: auto !important;
+    min-width: 108px !important;
 }
 .okw-filter-actions {
     display: flex;

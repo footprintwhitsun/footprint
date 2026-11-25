@@ -469,23 +469,23 @@
         load();
     }
 
-    function mountTrialBalance(panel) {
+    function mountTrialBalance(panel, ctx) {
         const today = new Date().toISOString().slice(0, 10);
-        panel.innerHTML = `
-            <div class="okw-card okw-mb-16 okw-flex-row">
-                <label class="okw-lbl-sm">As of Date:</label>
-                <input id="tb-date" type="date" class="okw-input okw-w-180" value="${today}">
-                <button id="tb-run" class="okw-btn okw-btn-primary" type="button">Refresh</button>
-            </div>
-            <div class="okw-kpi-row okw-mb-16" id="tb-bs-kpis"></div>
-            <div class="okw-card" id="tb-table"><div class="okw-empty">Loading Trial Balance...</div></div>`;
+        ctx.kpis.innerHTML = `<div class="okw-kpi-row" id="tb-bs-kpis"></div>`;
+        ctx.toolbar.innerHTML = `
+            <div class="okw-date-row">
+                <label for="tb-date" class="okw-lbl-sm">As of:</label>
+                <input id="tb-date" type="date" class="okw-input" value="${today}">
+                <button id="tb-run" class="okw-btn okw-btn-primary" type="button" style="height:32px;padding:0 12px;font-size:12.5px;">Refresh</button>
+            </div>`;
+        panel.innerHTML = `<div class="okw-card" id="tb-table"><div class="okw-empty">Loading Trial Balance...</div></div>`;
 
         async function load() {
-            const asOf = panel.querySelector('#tb-date').value;
+            const asOf = ctx.toolbar.querySelector('#tb-date').value;
             try {
                 const d = await api('/api/gl/trial-balance?as_of=' + encodeURIComponent(asOf));
                 const bs = d.balance_sheet || {};
-                panel.querySelector('#tb-bs-kpis').innerHTML = [
+                ctx.kpis.querySelector('#tb-bs-kpis').innerHTML = [
                     OkwUI.kpiCard({ label: 'Total Assets', value: fmt(bs.assets), tone: 'info' }),
                     OkwUI.kpiCard({ label: 'Total Liabilities', value: fmt(bs.liabilities), tone: 'warning' }),
                     OkwUI.kpiCard({ label: 'Equity + Net Income', value: fmt(bs.equity), subtext: `Net Income: ${fmt(bs.net_income)}`, tone: 'success' }),
@@ -510,7 +510,8 @@
                     </div>`;
             } catch (e) { panel.querySelector('#tb-table').innerHTML = `<div class="okw-empty">${esc(e.message)}</div>`; }
         }
-        panel.querySelector('#tb-run').onclick = load;
+        ctx.toolbar.querySelector('#tb-run').onclick = load;
+        ctx.toolbar.querySelector('#tb-date').addEventListener('change', load);
         load();
     }
 
