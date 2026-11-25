@@ -275,7 +275,8 @@
     document.getElementById('cat-tabs').querySelectorAll('[data-ctab]').forEach(b => {
         b.onclick = () => switchTab(b.dataset.ctab);
     });
-    switchTab('brands');
+    const initTab = new URLSearchParams(window.location.search).get('tab');
+    switchTab(['brands', 'units', 'prices', 'groups'].includes(initTab) ? initTab : 'brands');
 })();
 </script>
 </body>
