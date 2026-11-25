@@ -1410,7 +1410,7 @@ tr:last-child td {
     <main class="main-content">
         
         <!-- Dashboard Tab (V3 Data Analytic) -->
-        <div id="dashboard" class="tab-content active">
+        <div id="dashboard" class="tab-content">
             <header>
                 <div style="display: flex; align-items: center;">
                     <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
@@ -3889,6 +3889,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Deep link support: /company-portal?tab=<tab-id> (used by the shared sidebar)
     const initialTab = new URLSearchParams(window.location.search).get('tab');
     if (initialTab) activateCompanyTab(initialTab);
+    else activateCompanyTab('dashboard');
 });
 
 // Hotkey Bindings (F1-F6)

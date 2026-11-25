@@ -1598,7 +1598,7 @@
         </div>
 
         <!-- Tab 1: Overview -->
-        <div id="tab-overview" class="tab-content active">
+        <div id="tab-overview" class="tab-content">
 
             <!-- AI & Goals -->
             <div class="intelligence-grid">
@@ -2922,6 +2922,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             const initialTab = new URLSearchParams(window.location.search).get('tab');
             if (initialTab && document.getElementById('tab-' + initialTab)) switchTab(initialTab);
+            else switchTab('overview');
         });
 
         // Auto-wrap all tables inside .table-card with a scroll container for mobile

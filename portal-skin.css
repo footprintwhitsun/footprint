@@ -2485,3 +2485,6 @@ td .okw-btn-danger:hover, tbody .okw-btn-danger:hover { background: #FDE8E8 !imp
 
 /* Prevent fixed-width modals from overflowing mobile viewports */
 .modal-content, .modal-container { max-width: calc(100vw - 24px) !important; box-sizing: border-box; }
+
+/* Prevent flash of default tab before ?tab=... activates on any multi-tab page */
+html.okw-tab-booting .tab-content { display: none !important; }

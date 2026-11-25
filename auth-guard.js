@@ -150,6 +150,13 @@
     // 7. Execute Immediate Synchronous Auth & RBAC Check
     const currentRoute = getCurrentRoute();
     const currentTab = new URLSearchParams(window.location.search).get('tab') || '';
+    // Prevent default-tab flash before page scripts activate ?tab=<id>
+    if (currentTab && typeof document !== 'undefined' && document.documentElement) {
+        document.documentElement.classList.add('okw-tab-booting');
+        const unhideTabBoot = () => setTimeout(() => document.documentElement.classList.remove('okw-tab-booting'), 0);
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', unhideTabBoot, { once: true });
+        else unhideTabBoot();
+    }
     const token = localStorage.getItem('authToken') || localStorage.getItem('companyToken');
     const userPayload = parseJwt(token);
 
