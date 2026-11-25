@@ -445,7 +445,7 @@
         const {
             title = 'Document Details',
             refNumber = '',
-            date = new Date().toLocaleString(),
+            date = '',
             status = '',
             paymentStatus = '',
             partyLabel = '',
@@ -464,10 +464,13 @@
             extraHtml = ''
         } = opts;
 
-        const detailsLine = [profile.address, profile.phone, profile.email].filter(Boolean).join('  •  ');
-        const allMeta = [
-            ...(refNumber ? [['Reference #', refNumber]] : []),
-            ...(date ? [['Date', date]] : []),
+        // 1. Deduplicate fields & keep the record's own Date in ONE dedicated section (never show 2 dates)
+        const isDateLabel = (lbl) => /^(date|date\s*\/\s*time|time|timestamp|created(\s*at)?|transaction date|deleted on)$/i.test(String(lbl || '').trim());
+        let resolvedDate = '';
+        let resolvedRef = refNumber || '';
+        let parsedItemsList = [];
+
+        const rawCombined = [
             ...(partyName ? [[partyLabel || 'Name', partyName]] : []),
             ...(branch ? [['Branch', branch]] : []),
             ...(status ? [['Status', status]] : []),
@@ -475,24 +478,59 @@
             ...metaRows
         ];
 
-        // Build structured 2-pair (4-column) executive details table in columns & rows
-        const metaTableRows = [];
-        for (let i = 0; i < allMeta.length; i += 2) {
-            const left = allMeta[i];
-            const right = allMeta[i + 1];
-            metaTableRows.push(`
-                <tr>
-                    <td class="pr-meta-lbl">${escapeHtml(left[0])}</td>
-                    <td class="pr-meta-val">${escapeHtml(left[1])}</td>
-                    <td class="pr-meta-lbl">${right ? escapeHtml(right[0]) : ''}</td>
-                    <td class="pr-meta-val">${right ? escapeHtml(right[1]) : ''}</td>
-                </tr>`);
+        const seenKeys = new Set();
+        const summaryFields = [];
+        for (const pair of rawCombined) {
+            if (!Array.isArray(pair) || pair.length < 2) continue;
+            const label = String(pair[0] || '').trim();
+            const val = pair[1] === null || pair[1] === undefined ? '' : String(pair[1]).trim();
+            if (!label) continue;
+            const normKey = label.toLowerCase();
+
+            // Capture the record's own date into the single dedicated Date section
+            if (isDateLabel(label)) {
+                if (!resolvedDate && val && val !== '—' && val !== '-') resolvedDate = val;
+                continue;
+            }
+            // Capture reference number for the top badge if not already set, while keeping it in the table too
+            if (!resolvedRef && /^(receipt\s*#|invoice\s*(#|no\.?)|ref(\.|erence)?\s*(#|no\.?)?|po\s*#|order\s*#)$/i.test(label) && val && val !== '—') {
+                resolvedRef = val;
+            }
+            // If there is a comma-separated "Items" text field and no structured items[] array, turn it into a proper Itemized table
+            if (!items.length && /^items?$/i.test(label) && val && val !== '—' && val !== '-') {
+                parsedItemsList = val.split(/\s*,\s*/).filter(Boolean).map(entry => {
+                    const m = entry.match(/^(.*?)\s*\((\d+(?:\.\d+)?)\)\s*$/);
+                    return m ? { name: m[1].trim(), qty: m[2] } : { name: entry.trim(), qty: '—' };
+                });
+                continue;
+            }
+            if (seenKeys.has(normKey)) continue;
+            seenKeys.add(normKey);
+            summaryFields.push([label, val || '—']);
         }
-        const metaTableHtml = metaTableRows.length ? `
+
+        if (!resolvedDate) {
+            resolvedDate = date || new Date().toLocaleString();
+        }
+
+        // 2. Render Document Summary in clean blue-header columns & white data rows (max 5 columns per row block)
+        const summaryBlocks = [];
+        const maxColsPerRow = 5;
+        for (let i = 0; i < summaryFields.length; i += maxColsPerRow) {
+            const chunk = summaryFields.slice(i, i + maxColsPerRow);
+            summaryBlocks.push(`
+                <table class="pr-col-tbl"${i > 0 ? ' style="margin-top:8px;"' : ''}>
+                    <thead>
+                        <tr>${chunk.map(([k]) => `<th>${escapeHtml(k)}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                        <tr>${chunk.map(([, v]) => `<td>${escapeHtml(v)}</td>`).join('')}</tr>
+                    </tbody>
+                </table>`);
+        }
+        const metaTableHtml = summaryBlocks.length ? `
             <div class="pr-section-bar">Document Summary</div>
-            <table class="pr-meta-tbl">
-                <tbody>${metaTableRows.join('')}</tbody>
-            </table>` : '';
+            ${summaryBlocks.join('')}` : '';
 
         const itemsHtml = items.length ? `
             <div class="pr-section-bar" style="margin-top:16px;">Itemized Breakdown</div>
@@ -522,7 +560,24 @@
                         </tr>`;
                     }).join('')}
                 </tbody>
-            </table>` : '';
+            </table>` : (parsedItemsList.length ? `
+            <div class="pr-section-bar" style="margin-top:16px;">Itemized Breakdown</div>
+            <table class="pr-items-tbl">
+                <thead>
+                    <tr>
+                        <th style="width:42px;">#</th>
+                        <th>Item Description</th>
+                        <th class="okw-num" style="width:90px;">Qty</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${parsedItemsList.map((it, idx) => `<tr>
+                        <td>${idx + 1}</td>
+                        <td><strong>${escapeHtml(it.name)}</strong></td>
+                        <td class="okw-num">${escapeHtml(it.qty)}</td>
+                    </tr>`).join('')}
+                </tbody>
+            </table>` : '');
 
         const totalRows = [];
         if (items.length) totalRows.push(['Total Items', `${items.length} (${items.reduce((s, i) => s + Number(i.qty ?? i.quantity ?? 1), 0)} units)`]);
@@ -555,11 +610,14 @@
             .pr-brand img { height:46px; max-width:150px; object-fit:contain; margin-bottom:4px; }
             .pr-company { font-size:16px; font-weight:800; color:#1F3A60; text-transform:uppercase; letter-spacing:0.02em; line-height:1.25; }
             .pr-company-sub { font-size:11px; color:#334155; margin-top:2px; line-height:1.45; }
-            .pr-doc-right { text-align:right; }
+            .pr-doc-right { text-align:right; display:flex; flex-direction:column; align-items:flex-end; gap:5px; }
             .pr-doc-title { font-size:17px; font-weight:800; color:#1F3A60; text-transform:uppercase; letter-spacing:0.03em; }
-            .pr-ref-pill { display:inline-block; margin-top:4px; padding:3px 10px; border-radius:4px; background:#EFF4FB; border:1px solid #BFDBFE; color:#1F3A60; font-size:11.5px; font-weight:700; }
+            .pr-ref-pill { display:inline-block; padding:3px 10px; border-radius:4px; background:#EFF4FB; border:1px solid #BFDBFE; color:#1F3A60; font-size:11.5px; font-weight:700; }
+            .pr-date-pill { display:inline-block; padding:3px 10px; border-radius:4px; background:#F8FAFC; border:1px solid #CBD5E1; color:#334155; font-size:11px; font-weight:600; }
             .pr-section-bar { background:#1F3A60; color:#FFFFFF; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; padding:6px 10px; border-radius:4px 4px 0 0; }
-            .pr-meta-tbl, .pr-items-tbl { width:100%; border-collapse:collapse; font-size:12.5px; border:1px solid #CBD5E1; }
+            .pr-col-tbl, .pr-meta-tbl, .pr-items-tbl { width:100%; border-collapse:collapse; font-size:12.5px; border:1px solid #CBD5E1; }
+            .pr-col-tbl thead th { background:#EFF4FB; color:#1F3A60; font-weight:700; font-size:10.5px; text-transform:uppercase; letter-spacing:0.04em; padding:7px 10px; border:1px solid #CBD5E1; text-align:left; }
+            .pr-col-tbl tbody td { background:#FFFFFF; color:#0f172a; font-weight:600; padding:8px 10px; border:1px solid #CBD5E1; vertical-align:top; word-break:break-word; }
             .pr-meta-lbl { background:#EFF4FB; color:#1F3A60; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; padding:7px 10px; border:1px solid #CBD5E1; width:18%; }
             .pr-meta-val { background:#FFFFFF; color:#0f172a; font-weight:600; padding:7px 10px; border:1px solid #CBD5E1; width:32%; }
             .pr-items-tbl thead th { background:#273990; color:#FFFFFF; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:8px 9px; border:1px solid #273990; text-align:left; }
@@ -583,7 +641,8 @@
                 </div>
                 <div class="pr-doc-right">
                     <div class="pr-doc-title">${escapeHtml(title)}</div>
-                    ${refNumber ? `<div class="pr-ref-pill">${escapeHtml(refNumber)}</div>` : ''}
+                    ${resolvedRef ? `<div class="pr-ref-pill">${escapeHtml(resolvedRef)}</div>` : ''}
+                    ${resolvedDate ? `<div class="pr-date-pill">Date: ${escapeHtml(resolvedDate)}</div>` : ''}
                 </div>
             </div>
             ${metaTableHtml}
