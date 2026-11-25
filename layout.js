@@ -78,11 +78,11 @@
         { label: 'Import Sales', url: '/sell?tab=import', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Pricing & Import', icon: 'upload' },
 
         // Cash Register (Till)
-        { label: 'Open Shift', url: '/open-shift', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Cash Register', icon: 'clock' },
-        { label: 'Close Shift', url: '/close-shift', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Cash Register', icon: 'logOut' },
-        { label: 'Daily Close', url: '/daily-close', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Cash Register', icon: 'fileCheck' },
-        { label: 'Transactions', url: '/transactions', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Cash Register', icon: 'receipt' },
-        { label: 'Reserved Orders (Part-Pay)', url: '/extras', roles: ['cashier', 'teller'], group: 'Cash Register', icon: 'layers' },
+        { label: 'Open Shift', url: '/open-shift', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'clock' },
+        { label: 'Close Shift', url: '/close-shift', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'logOut' },
+        { label: 'Daily Close', url: '/daily-close', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'fileCheck' },
+        { label: 'Transactions', url: '/transactions', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'receipt' },
+        { label: 'Reserved Orders (Part-Pay)', url: '/extras', roles: ['cashier', 'teller'], group: 'Till', icon: 'layers' },
 
         // Inventory (Current Stock, Purchasing, Movement, Catalog)
         { label: 'Current Stock', url: '/inventory?tab=stock', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Current Stock', icon: 'package' },
@@ -113,14 +113,14 @@
         { label: 'Manager Authorization', url: '/credit-customers?tab=auth', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'lock' },
 
         // Expenses & Accounts (Money)
-        { label: 'List Expenses', url: '/expenses?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'dollarSign' },
-        { label: 'Add Expense', url: '/expenses?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'receipt' },
-        { label: 'Expense Categories', url: '/expenses?tab=categories', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'folder' },
-        { label: 'Account & Cash', url: '/extras?tab=accounts', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'creditCard' },
-        { label: 'Chart of Accounts', url: '/money?tab=coa', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'General Ledger', icon: 'fileCheck' },
-        { label: 'Journal Entries', url: '/money?tab=journal', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'General Ledger', icon: 'receipt' },
-        { label: 'Trial Balance & Balance Sheet', url: '/money?tab=trial-balance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'General Ledger', icon: 'barChart' },
-        { label: 'Bank Reconciliation', url: '/money?tab=reconcile', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'General Ledger', icon: 'clipboardCheck' },
+        { label: 'List Expenses', url: '/expenses?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'Expenses & Cash', icon: 'dollarSign' },
+        { label: 'Add Expense', url: '/expenses?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'Expenses & Cash', icon: 'receipt' },
+        { label: 'Expense Categories', url: '/expenses?tab=categories', roles: ['admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'Expenses & Cash', icon: 'folder' },
+        { label: 'Account & Cash', url: '/extras?tab=accounts', roles: ['admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'Expenses & Cash', icon: 'creditCard' },
+        { label: 'Chart of Accounts', url: '/money?tab=coa', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'General Ledger', icon: 'fileCheck' },
+        { label: 'Journal Entries', url: '/money?tab=journal', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'General Ledger', icon: 'receipt' },
+        { label: 'Trial Balance & Balance Sheet', url: '/money?tab=trial-balance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'General Ledger', icon: 'barChart' },
+        { label: 'Bank Reconciliation', url: '/money?tab=reconcile', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'General Ledger', icon: 'clipboardCheck' },
 
         // Reports
         { label: 'Reports Overview', url: '/reports?tab=overview', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Overview', icon: 'pieChart' },
@@ -157,36 +157,36 @@
         { label: 'Deleted Transactions', url: '/reports?tab=detailed&report=deleted_transactions', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'fileCheck' },
 
         // Quick Reports (Items, Brands & Customers)
-        { label: 'Items Sold Today', url: '/reports?tab=drilldown&view=items_today', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Quick Reports', icon: 'shoppingBag' },
-        { label: 'Items Sold (Any Period)', url: '/reports?tab=drilldown&view=items_period', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Quick Reports', icon: 'barChart' },
-        { label: 'Sales by Brand', url: '/reports?tab=drilldown&view=by_brand', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Quick Reports', icon: 'tag' },
-        { label: 'Top Customers', url: '/reports?tab=drilldown&view=top_customers', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Quick Reports', icon: 'users' },
-        { label: 'Customers Owing (Aging)', url: '/reports?tab=drilldown&view=customers_owing', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Quick Reports', icon: 'creditCard' },
-        { label: 'Stock on Hand', url: '/reports?tab=drilldown&view=stock_on_hand', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Quick Reports', icon: 'package' },
+        { label: 'Items Sold Today', url: '/reports?tab=drilldown&view=items_today', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Insights', icon: 'shoppingBag' },
+        { label: 'Items Sold (Any Period)', url: '/reports?tab=drilldown&view=items_period', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Insights', icon: 'barChart' },
+        { label: 'Sales by Brand', url: '/reports?tab=drilldown&view=by_brand', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Insights', icon: 'tag' },
+        { label: 'Top Customers', url: '/reports?tab=drilldown&view=top_customers', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Insights', icon: 'users' },
+        { label: 'Customers Owing (Aging)', url: '/reports?tab=drilldown&view=customers_owing', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Insights', icon: 'creditCard' },
+        { label: 'Stock on Hand', url: '/reports?tab=drilldown&view=stock_on_hand', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Insights', icon: 'package' },
 
         // Staff & Payroll (Team)
-        { label: 'Users', url: '/pos-register?tab=users', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff & Payroll', icon: 'users' },
-        { label: 'Onboard New Staff', url: '/pos-register?tab=register', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff & Payroll', icon: 'user' },
-        { label: 'Roles & Permissions', url: '/roles', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff & Payroll', icon: 'lock' },
-        { label: 'Attendance', url: '/extras?tab=attendance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff & Payroll', icon: 'clock' },
-        { label: 'Payroll & Salaries', url: '/team?tab=payroll', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff & Payroll', icon: 'dollarSign' },
+        { label: 'Users', url: '/pos-register?tab=users', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'users' },
+        { label: 'Onboard New Staff', url: '/pos-register?tab=register', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'user' },
+        { label: 'Roles & Permissions', url: '/roles', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'lock' },
+        { label: 'Attendance', url: '/extras?tab=attendance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'clock' },
+        { label: 'Payroll & Salaries', url: '/team?tab=payroll', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'dollarSign' },
 
         // Store Settings (Business Settings, Locations & Tax, Messages, Security)
-        { label: 'Store Profile', url: '/settings?tab=store', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'home' },
-        { label: 'Business', url: '/settings?tab=business', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'settings' },
-        { label: 'Tax Defaults', url: '/settings?tab=tax', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'percent' },
-        { label: 'Product', url: '/settings?tab=product', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'package' },
-        { label: 'Invoice', url: '/settings?tab=invoice', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'receipt' },
-        { label: 'Barcode', url: '/settings?tab=barcode', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'tag' },
-        { label: 'Receipt Printers', url: '/settings?tab=printers', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Business Settings', icon: 'fileCheck' },
-        { label: 'Locations', url: '/settings?tab=locations', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Locations & Tax', icon: 'mapPin' },
-        { label: 'Tax Rates & Report', url: '/settings?tab=taxrates', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Locations & Tax', icon: 'percent' },
-        { label: 'Notification Templates', url: '/settings?tab=notifications', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Messages', icon: 'bell' },
-        { label: 'Activity Log', url: '/settings?tab=activity', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Store Settings', subgroup: 'Security', icon: 'activity' },
-        { label: 'Backups & Export', url: '/settings?tab=backups', roles: ['ceo', 'admin'], group: 'Store Settings', subgroup: 'Security', icon: 'database' },
+        { label: 'Store Profile', url: '/settings?tab=store', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', subgroup: 'Business Settings', icon: 'home' },
+        { label: 'Business', url: '/settings?tab=business', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', subgroup: 'Business Settings', icon: 'settings' },
+        { label: 'Tax Defaults', url: '/settings?tab=tax', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', subgroup: 'Business Settings', icon: 'percent' },
+        { label: 'Product', url: '/settings?tab=product', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', subgroup: 'Business Settings', icon: 'package' },
+        { label: 'Invoice', url: '/settings?tab=invoice', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', subgroup: 'Business Settings', icon: 'receipt' },
+        { label: 'Barcode', url: '/settings?tab=barcode', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', subgroup: 'Business Settings', icon: 'tag' },
+        { label: 'Receipt Printers', url: '/settings?tab=printers', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', subgroup: 'Business Settings', icon: 'fileCheck' },
+        { label: 'Locations', url: '/settings?tab=locations', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', subgroup: 'Locations & Tax', icon: 'mapPin' },
+        { label: 'Tax Rates & Report', url: '/settings?tab=taxrates', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', subgroup: 'Locations & Tax', icon: 'percent' },
+        { label: 'Notification Templates', url: '/settings?tab=notifications', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', subgroup: 'Messages', icon: 'bell' },
+        { label: 'Activity Log', url: '/settings?tab=activity', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Settings', subgroup: 'Security', icon: 'activity' },
+        { label: 'Backups & Export', url: '/settings?tab=backups', roles: ['ceo', 'admin'], group: 'Settings', subgroup: 'Security', icon: 'database' },
 
-        // Account
-        { label: 'My Profile', url: '/profile', roles: ['all'], group: 'Account', icon: 'user' }
+        // Profile
+        { label: 'Profile', url: '/profile', roles: ['all'], group: 'Profile', icon: 'user' }
     ];
 
     function getCurrentUser() {
@@ -946,26 +946,24 @@
         const items = [];
         if (isCompany) {
             items.push({ label: 'Home', href: '/dashboard' });
-            items.push({ label: 'Proforma invoices', href: '/company-portal?tab=proforma' });
-            items.push({ label: 'Company profile', href: '/company-portal?tab=company-profile' });
-            items.push({ label: 'Company settings', href: '/company-portal?tab=settings' });
+            items.push({ label: 'Proforma', href: '/company-portal?tab=proforma' });
+            items.push({ label: 'Profile', href: '/company-portal?tab=company-profile' });
+            items.push({ label: 'Settings', href: '/company-portal?tab=settings' });
         } else if (isAdmin || isCeo) {
-            items.push({ label: 'Reports overview', href: '/reports?tab=overview' });
             items.push({ label: 'Settings', href: '/settings?tab=store' });
-            items.push({ label: 'My profile & password', href: '/profile' });
+            items.push({ label: 'Profile', href: '/profile' });
         } else if (isManager) {
             items.push({ label: 'POS', href: '/pos' });
-            items.push({ label: 'Reports overview', href: '/reports?tab=overview' });
             items.push({ label: 'Settings', href: '/settings?tab=store' });
-            items.push({ label: 'My profile & password', href: '/profile' });
+            items.push({ label: 'Profile', href: '/profile' });
         } else if (isCashier) {
             items.push({ label: 'POS', href: '/pos' });
-            items.push({ label: 'Close shift', href: '/till?tab=close' });
-            items.push({ label: 'Reserved Orders (Part-Pay)', href: '/extras' });
-            items.push({ label: 'My profile & password', href: '/profile' });
+            items.push({ label: 'Shift', href: '/till?tab=close' });
+            items.push({ label: 'Orders', href: '/extras' });
+            items.push({ label: 'Profile', href: '/profile' });
         } else {
-            items.push({ label: 'Deliveries and counts', href: '/operations' });
-            items.push({ label: 'My profile & password', href: '/profile' });
+            items.push({ label: 'Deliveries', href: '/operations' });
+            items.push({ label: 'Profile', href: '/profile' });
         }
 
         const roleLabel = (role || 'staff').replace(/_/g, ' ').toUpperCase();
@@ -1085,15 +1083,15 @@
                 'CEO': 'shield',
                 'Company': 'layers',
                 'Sales': 'shoppingBag',
-                'Cash Register': 'clock',
+                'Till': 'clock',
                 'Inventory': 'package',
                 'Contacts': 'users',
-                'Expenses & Accounts': 'dollarSign',
+                'Accounts': 'dollarSign',
                 'Reports': 'barChart',
-                'Quick Reports': 'trendingUp',
-                'Staff & Payroll': 'users',
-                'Store Settings': 'settings',
-                'Account': 'user'
+                'Insights': 'trendingUp',
+                'Staff': 'users',
+                'Settings': 'settings',
+                'Profile': 'user'
             };
             nav.innerHTML = groups.map(([groupName, items]) => {
                 const distinctSubgroups = new Set(items.map(i => i.subgroup).filter(Boolean));
