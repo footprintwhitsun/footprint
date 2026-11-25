@@ -3661,10 +3661,6 @@ async function processQuickPayment(paymentMethod, shouldDownload = false, custom
             activeProformaId = null;
             selectedQuickCreditCustomer = null; 
             document.getElementById('customerName').value = '';
-            setTimeout(() => { window.__submittingQuickSale = false; }, 400);
-        } else {
-            window.__submittingQuickSale = false;
-        }
             document.getElementById('customerEmail').value = '';
             document.getElementById('customerPhone').value = '';
             document.getElementById('customerCompany').value = '';
@@ -3679,6 +3675,8 @@ async function processQuickPayment(paymentMethod, shouldDownload = false, custom
     } catch (error) {
         console.error('Error processing sale:', error);
         alert('Error processing sale. Please try again.');
+    } finally {
+        window.__submittingQuickSale = false;
     }
 }
 
