@@ -496,16 +496,8 @@
                             rows: d.dailySummary || [], exportFilename: "okwesiwa-daily-summary.xlsx", printTitle: "OKWESIWA CO LTD — Daily Summary"
                         });
                     } else if (reportType === "teller") {
-                        OkwUI.dataTable(host, {
-                            columns: [
-                                { key: "teller", label: "Teller" },
-                                { key: "receipts", label: "Receipts", numeric: true },
-                                { key: "sales", label: "Sales", numeric: true, render: fmt },
-                                { key: "discounts", label: "Discounts Given", numeric: true, render: fmt },
-                                { key: "voids", label: "Voids/Returns", numeric: true }
-                            ],
-                            rows: d.salesByTeller || [], exportFilename: "okwesiwa-sales-by-teller.xlsx", printTitle: "OKWESIWA CO LTD — Sales by Teller"
-                        });
+                        await renderSalesRepReport(host, ctx, { dateRange, selectedBranch, headers, fmt });
+                        return;
                     } else if (reportType === "method") {
                         OkwUI.dataTable(host, {
                             columns: [
@@ -729,16 +721,60 @@
                             rows: d.activityLogReport || [], exportFilename: "okwesiwa-activity-log.xlsx", printTitle: "Activity Log"
                         });
                     } else if (reportType === "deleted_transactions") {
+                        const delRows = (d.deletedTransactions || []).map(r => ({
+                            id: r.id,
+                            deleted_on: r.deleted_on ? new Date(r.deleted_on).toLocaleString() : (r.created_at ? new Date(r.created_at).toLocaleString() : '—'),
+                            txn_type: r.txn_type || 'Sell',
+                            receipt_number: r.receipt_number || ('#' + r.id),
+                            customer_name: r.customer_name || 'Walk-in',
+                            store_location: r.store_location || '—',
+                            created_at: r.created_at ? new Date(r.created_at).toLocaleString() : '—',
+                            status: String(r.status || 'Deleted').toUpperCase(),
+                            total_amount: Number(r.total_amount || 0),
+                            created_by_name: r.created_by_name || 'Staff',
+                            deleted_by_name: r.deleted_by_name || 'Manager'
+                        }));
                         OkwUI.dataTable(host, {
                             columns: [
-                                { key: "created_at", label: "Date", render: v => new Date(v).toLocaleString() },
-                                { key: "receipt_number", label: "Receipt #" },
-                                { key: "customer_name", label: "Customer" },
-                                { key: "store_location", label: "Branch" },
+                                { key: "deleted_on", label: "Deleted on" },
+                                { key: "txn_type", label: "Type" },
+                                { key: "receipt_number", label: "Invoice / Ref No." },
+                                { key: "customer_name", label: "Customer / Supplier" },
+                                { key: "store_location", label: "Location" },
+                                { key: "created_at", label: "Transaction date" },
+                                { key: "status", label: "Status", render: v => OkwUI.badge(v, "danger") },
                                 { key: "total_amount", label: "Amount", numeric: true, render: fmt },
-                                { key: "status", label: "Status" }
+                                { key: "created_by_name", label: "Created by" },
+                                { key: "deleted_by_name", label: "Deleted by" },
+                                {
+                                    key: "id",
+                                    label: "Restore",
+                                    render: id => `<button type="button" class="okw-btn okw-btn-outline" data-restore-txn="${OkwUI.escapeHtml(id)}" style="height:28px;padding:0 10px;font-size:12px;">Restore</button>`
+                                }
                             ],
-                            rows: d.deletedTransactions || [], exportFilename: "okwesiwa-deleted-transactions.xlsx", printTitle: "Deleted Transactions"
+                            rows: delRows,
+                            exportFilename: "okwesiwa-deleted-transactions.xlsx",
+                            printTitle: "Deleted Transactions",
+                            emptyText: "No deleted transactions in this period."
+                        });
+                        host.querySelectorAll("[data-restore-txn]").forEach(btn => {
+                            btn.onclick = async () => {
+                                const ok = await OkwUI.confirm("Restore Transaction", "Restore this deleted transaction back to completed sales?", { confirmText: "Restore" });
+                                if (!ok) return;
+                                const rr = await fetch(`/api/reports/deleted-transactions/${encodeURIComponent(btn.dataset.restoreTxn)}/restore`, {
+                                    method: "POST",
+                                    headers,
+                                    credentials: "include"
+                                });
+                                if (rr.ok) {
+                                    OkwUI.toast("Transaction restored", "success");
+                                    cacheAll = null;
+                                    loadAndRender();
+                                } else {
+                                    const errD = await rr.json().catch(() => ({}));
+                                    OkwUI.toast(errD.message || "Failed to restore transaction", "danger");
+                                }
+                            };
                         });
                     } else if (reportType === "slow_movers") {
                         const smRows = d.slowMovers || [];
@@ -848,6 +884,173 @@
             }
 
             loadAndRender();
+    }
+
+    async function renderSalesRepReport(host, ctx, { dateRange: initRange, selectedBranch: initBranch, headers, fmt }) {
+        let repRange = { ...initRange };
+        let repBranch = initBranch || 'All Branches';
+        let repUser = 'all';
+        let activeTab = 'sales_added';
+        let repData = null;
+
+        ctx.kpis.innerHTML = `<div class="okw-kpi-row" id="sr-kpis"></div>`;
+        ctx.toolbar.innerHTML = OkwUI.filterDropdown({
+            label: 'Filters',
+            contentHtml: `
+                <div class="okw-filter-field">
+                    <label for="sr-user">User</label>
+                    <select id="sr-user" class="okw-select" aria-label="User"><option value="all">All Users</option></select>
+                </div>
+                <div class="okw-filter-field">
+                    <label for="sr-branch">Business Location</label>
+                    <select id="sr-branch" class="okw-select" aria-label="Business Location"><option value="All Branches">All Locations</option></select>
+                </div>
+                <div class="okw-filter-field">
+                    <label>Date Range</label>
+                    <div id="sr-date-picker"></div>
+                </div>`
+        });
+
+        host.innerHTML = `
+            <div class="okw-card" id="sr-summary-card" style="margin-bottom:16px;padding:14px 18px;">
+                <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:var(--color-primary,#273990);margin-bottom:8px;">Summary</div>
+                <div id="sr-summary-lines" style="font-size:14px;line-height:1.7;">Loading summary...</div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;" id="sr-tabs">
+                <button type="button" class="okw-btn okw-btn-primary" data-sr-tab="sales_added">Sales Added</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-sr-tab="sales_commission">Sales With Commission</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-sr-tab="expenses">Expenses</button>
+            </div>
+            <div id="sr-table-host">Loading...</div>
+            <div id="sr-table-footer" class="okw-card" style="margin-top:10px;padding:12px 16px;"></div>
+        `;
+
+        const userSel = ctx.toolbar.querySelector('#sr-user');
+        const brSel = ctx.toolbar.querySelector('#sr-branch');
+        OkwUI.dateRangePicker('#sr-date-picker', (r) => { repRange = r; loadRep(); });
+        userSel.addEventListener('change', () => { repUser = userSel.value; loadRep(); });
+        brSel.addEventListener('change', () => { repBranch = brSel.value; loadRep(); });
+
+        host.querySelectorAll('[data-sr-tab]').forEach(btn => {
+            btn.onclick = () => {
+                activeTab = btn.dataset.srTab;
+                host.querySelectorAll('[data-sr-tab]').forEach(b => {
+                    b.className = b.dataset.srTab === activeTab ? 'okw-btn okw-btn-primary' : 'okw-btn okw-btn-outline';
+                });
+                renderTab();
+            };
+        });
+
+        function renderTab() {
+            if (!repData) return;
+            const s = repData.summary || {};
+            const tblHost = host.querySelector('#sr-table-host');
+            const footHost = host.querySelector('#sr-table-footer');
+
+            if (activeTab === 'sales_added' || activeTab === 'sales_commission') {
+                const rows = (activeTab === 'sales_added' ? repData.salesAdded : repData.salesWithCommission) || [];
+                const totAmt = rows.reduce((a, r) => a + Number(r.total_amount || 0), 0);
+                const totPaid = rows.reduce((a, r) => a + Number(r.total_paid || 0), 0);
+                const dueSell = rows.filter(r => !r.is_return).reduce((a, r) => a + Number(r.total_remaining || 0), 0);
+                const dueRet = rows.filter(r => r.is_return).reduce((a, r) => a + Number(r.total_remaining || 0), 0);
+
+                OkwUI.dataTable(tblHost, {
+                    columns: [
+                        { key: 'date', label: 'Date', render: v => v ? new Date(v).toLocaleString() : '' },
+                        { key: 'invoice_no', label: 'Invoice No.' },
+                        { key: 'customer_name', label: 'Customer name' },
+                        { key: 'location', label: 'Location' },
+                        { key: 'payment_status', label: 'Payment Status', render: v => OkwUI.badge(v, v === 'Paid' ? 'success' : (v === 'Partial' ? 'warning' : 'danger')) },
+                        { key: 'total_amount', label: 'Total amount', numeric: true, render: fmt },
+                        { key: 'total_paid', label: 'Total paid', numeric: true, render: fmt },
+                        { key: 'total_remaining', label: 'Total remaining', numeric: true, render: fmt }
+                    ],
+                    rows,
+                    exportFilename: activeTab === 'sales_added' ? 'sales-rep-sales-added.xlsx' : 'sales-rep-commission.xlsx',
+                    printTitle: activeTab === 'sales_added' ? 'Sales Representative — Sales Added' : 'Sales Representative — Sales With Commission',
+                    emptyText: 'No data available in table'
+                });
+
+                footHost.innerHTML = `
+                    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:14px;font-size:13.5px;">
+                        <strong>Total:</strong>
+                        <div style="display:flex;flex-wrap:wrap;gap:24px;align-items:center;">
+                            <div>Total amount: <strong>${fmt(totAmt)}</strong></div>
+                            <div>Total paid: <strong>${fmt(totPaid)}</strong></div>
+                            <div>
+                                <div>Sell Due - <strong>${fmt(dueSell)}</strong></div>
+                                <div>Sell Return Due - <strong>${fmt(dueRet)}</strong></div>
+                            </div>
+                        </div>
+                    </div>`;
+            } else {
+                const rows = repData.expenses || [];
+                const totExp = rows.reduce((a, r) => a + Number(r.total_amount || 0), 0);
+                OkwUI.dataTable(tblHost, {
+                    columns: [
+                        { key: 'date', label: 'Date', render: v => v ? new Date(v).toLocaleDateString() : '' },
+                        { key: 'reference_no', label: 'Reference No' },
+                        { key: 'category', label: 'Expense Category' },
+                        { key: 'location', label: 'Location' },
+                        { key: 'payment_status', label: 'Payment Status', render: v => OkwUI.badge(v, 'success') },
+                        { key: 'total_amount', label: 'Total amount', numeric: true, render: fmt },
+                        { key: 'expense_for', label: 'Expense for' },
+                        { key: 'expense_note', label: 'Expense note' }
+                    ],
+                    rows,
+                    exportFilename: 'sales-rep-expenses.xlsx',
+                    printTitle: 'Sales Representative — Expenses',
+                    emptyText: 'No data available in table'
+                });
+                footHost.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;align-items:center;font-size:14px;">
+                        <strong>Total:</strong>
+                        <strong>${fmt(totExp)}</strong>
+                    </div>`;
+            }
+        }
+
+        async function loadRep() {
+            const qs = new URLSearchParams({ from: repRange.from, to: repRange.to });
+            if (repBranch && repBranch !== 'All Branches') qs.set('branch', repBranch);
+            if (repUser && repUser !== 'all') qs.set('user_id', repUser);
+            const res = await fetch('/api/reports/sales-representative?' + qs.toString(), { headers, credentials: 'include' });
+            if (!res.ok) {
+                host.querySelector('#sr-table-host').innerHTML = '<div class="okw-empty">Failed to load sales representative report.</div>';
+                return;
+            }
+            repData = await res.json();
+            if (userSel.options.length <= 1 && Array.isArray(repData.users)) {
+                repData.users.forEach(u => {
+                    const o = document.createElement('option');
+                    o.value = String(u.id);
+                    o.textContent = `${u.name} (${u.role || 'Staff'})`;
+                    userSel.appendChild(o);
+                });
+            }
+            if (brSel.options.length <= 1 && Array.isArray(repData.branches)) {
+                repData.branches.forEach(b => {
+                    const o = document.createElement('option');
+                    o.value = b; o.textContent = b;
+                    brSel.appendChild(o);
+                });
+                if (repBranch !== 'All Branches') brSel.value = repBranch;
+            }
+
+            const s = repData.summary || {};
+            ctx.kpis.querySelector('#sr-kpis').innerHTML = [
+                OkwUI.kpiCard({ label: 'Total Sale', value: fmt(s.total_sale), tone: 'primary' }),
+                OkwUI.kpiCard({ label: 'Total Sales Return', value: fmt(s.total_sales_return), tone: 'warning' }),
+                OkwUI.kpiCard({ label: 'Net Sales', value: fmt(s.net_sale), tone: 'success' }),
+                OkwUI.kpiCard({ label: 'Total Expense', value: fmt(s.total_expense), tone: 'danger' })
+            ].join('');
+            host.querySelector('#sr-summary-lines').innerHTML = `
+                <div>Total Sale - Total Sales Return: <strong>${fmt(s.total_sale)}</strong> - <strong>${fmt(s.total_sales_return)}</strong> = <strong>${fmt(s.net_sale)}</strong></div>
+                <div>Total Expense: <strong>${fmt(s.total_expense)}</strong></div>`;
+            renderTab();
+        }
+
+        await loadRep();
     }
 
     /* ====================================================================

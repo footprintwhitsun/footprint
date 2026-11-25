@@ -51,7 +51,19 @@ router.get('/api/reports/all', authenticateToken, async (req, res) => {
             safeQuery(`SELECT sp.*, s.name AS supplier_name FROM supplier_payments sp LEFT JOIN suppliers s ON s.id = sp.supplier_id WHERE COALESCE(sp.tenant_id, 1) = $1 AND sp.created_at >= $2 AND sp.created_at <= $3 ORDER BY sp.created_at DESC`, [tenantId, fromTs, toTs]),
             safeQuery(`SELECT * FROM customer_groups WHERE COALESCE(tenant_id, 1) = $1 ORDER BY id ASC`, [tenantId]),
             safeQuery(`SELECT a.*, COALESCE(u.name, u.username, 'Staff') AS user_name FROM activity_logs a LEFT JOIN users u ON u.id = a.user_id WHERE COALESCE(a.tenant_id, 1) = $1 AND a.created_at >= $2 AND a.created_at <= $3 ORDER BY a.created_at DESC LIMIT 200`, [tenantId, fromTs, toTs]),
-            safeQuery(`SELECT id, receipt_number, customer_name, total_amount, status, store_location, created_at FROM transactions WHERE COALESCE(tenant_id, 1) = $1 AND LOWER(COALESCE(status,'')) IN ('deleted','voided','cancelled') AND created_at >= $2 AND created_at <= $3 ORDER BY created_at DESC LIMIT 100`, [tenantId, fromTs, toTs])
+            safeQuery(`SELECT t.id, t.receipt_number, COALESCE(t.customer_name, 'Walk-in') AS customer_name,
+                              t.total_amount, t.status, COALESCE(t.store_location, '') AS store_location,
+                              t.created_at, COALESCE(t.created_at) AS deleted_on,
+                              CASE WHEN COALESCE(t.is_return, false) THEN 'Sell Return' ELSE 'Sell' END AS txn_type,
+                              COALESCE(u.name, u.username, 'Staff') AS created_by_name,
+                              COALESCE(ap.name, u.name, u.username, 'Manager') AS deleted_by_name
+                       FROM transactions t
+                       LEFT JOIN users u ON u.id = t.user_id
+                       LEFT JOIN users ap ON ap.id = t.discount_approved_by
+                       WHERE COALESCE(t.tenant_id, 1) = $1
+                         AND LOWER(COALESCE(t.status,'')) IN ('deleted','voided','cancelled')
+                         AND t.created_at >= $2 AND t.created_at <= $3
+                       ORDER BY t.created_at DESC LIMIT 150`, [tenantId, fromTs, toTs])
         ]);
 
         const prodMap = new Map(products.map(p => [p.barcode, p]));
@@ -640,6 +652,134 @@ router.get('/api/notifications/feed', authenticateToken, async (req, res) => {
     } catch (err) {
         console.error('GET /api/notifications/feed error:', err);
         res.status(500).json({ message: 'Failed to load notifications' });
+    }
+});
+
+router.post('/api/reports/deleted-transactions/:id/restore', authenticateToken, async (req, res) => {
+    if (!MANAGER_ROLES.includes((req.user.role || '').toLowerCase())) {
+        return res.status(403).json({ message: 'Manager or CEO access required' });
+    }
+    const tenantId = req.user.tenant_id || 1;
+    try {
+        const upd = await pool.query(
+            `UPDATE transactions SET status = 'completed'
+             WHERE id = $1 AND COALESCE(tenant_id, 1) = $2
+               AND LOWER(COALESCE(status,'')) IN ('deleted','voided','cancelled')
+             RETURNING id, receipt_number, customer_name, total_amount`,
+            [req.params.id, tenantId]
+        );
+        if (!upd.rows.length) return res.status(404).json({ message: 'Deleted transaction not found' });
+        const { logActivity } = require('../services/audit');
+        await logActivity(req, 'RESTORE_TRANSACTION', {
+            transaction_id: upd.rows[0].id,
+            receipt_number: upd.rows[0].receipt_number,
+            customer_name: upd.rows[0].customer_name || 'Walk-in',
+            total: Number(upd.rows[0].total_amount || 0)
+        });
+        res.json({ success: true, transaction: upd.rows[0] });
+    } catch (err) {
+        console.error('POST /api/reports/deleted-transactions/:id/restore error:', err);
+        res.status(500).json({ message: 'Failed to restore transaction' });
+    }
+});
+
+router.get('/api/reports/sales-representative', authenticateToken, async (req, res) => {
+    if (!MANAGER_ROLES.includes((req.user.role || '').toLowerCase())) {
+        return res.status(403).json({ message: 'Manager or CEO access required' });
+    }
+    const tenantId = req.user.tenant_id || 1;
+    const today = new Date().toISOString().slice(0, 10);
+    const from = req.query.from || (today.slice(0, 8) + '01');
+    const to = req.query.to || today;
+    const branch = req.query.branch && req.query.branch !== 'All Branches' ? String(req.query.branch).trim() : '';
+    const userId = req.query.user_id && req.query.user_id !== 'all' ? Number(req.query.user_id) : null;
+    const fromTs = `${from} 00:00:00`;
+    const toTs = `${to} 23:59:59.999`;
+
+    try {
+        const txParams = [tenantId, fromTs, toTs];
+        let txWhere = `COALESCE(t.tenant_id, 1) = $1 AND t.created_at >= $2 AND t.created_at <= $3 AND LOWER(COALESCE(t.status,'')) NOT IN ('deleted','voided','cancelled')`;
+        if (branch) { txParams.push(branch); txWhere += ` AND LOWER(COALESCE(t.store_location,'')) = LOWER($${txParams.length})`; }
+        if (userId) { txParams.push(userId); txWhere += ` AND t.user_id = $${txParams.length}`; }
+
+        const expParams = [tenantId, fromTs, toTs];
+        let expWhere = `COALESCE(e.tenant_id, 1) = $1 AND COALESCE(e.expense_date::timestamptz, e.created_at) >= $2 AND COALESCE(e.expense_date::timestamptz, e.created_at) <= $3`;
+        if (branch) { expParams.push(branch); expWhere += ` AND LOWER(COALESCE(e.store_location,'')) = LOWER($${expParams.length})`; }
+        if (userId) { expParams.push(userId); expWhere += ` AND e.created_by = $${expParams.length}`; }
+
+        const [usersRes, brRes, txRes, expRes] = await Promise.all([
+            pool.query(`SELECT id, COALESCE(name, username, email) AS name, role FROM users WHERE COALESCE(tenant_id, 1) = $1 AND deleted_at IS NULL ORDER BY name ASC`, [tenantId]).catch(() => ({ rows: [] })),
+            pool.query(`SELECT name FROM branches WHERE COALESCE(tenant_id, 1) = $1 AND deleted_at IS NULL ORDER BY name ASC`, [tenantId]).catch(() => ({ rows: [] })),
+            pool.query(`SELECT t.id, t.created_at, t.receipt_number, COALESCE(t.customer_name, 'Walk-in') AS customer_name,
+                               COALESCE(t.store_location, '') AS location, t.total_amount, t.paid_amount, t.balance_due,
+                               t.status, t.is_return, t.user_id, COALESCE(u.name, u.username, 'Staff') AS user_name
+                        FROM transactions t
+                        LEFT JOIN users u ON u.id = t.user_id
+                        WHERE ${txWhere}
+                        ORDER BY t.created_at DESC LIMIT 500`, txParams).catch(() => ({ rows: [] })),
+            pool.query(`SELECT e.id, COALESCE(e.expense_date::timestamptz, e.created_at) AS date,
+                               COALESCE(e.reference_no, '') AS reference_no, COALESCE(e.category, '') AS category,
+                               COALESCE(e.store_location, '') AS location, e.amount, COALESCE(e.description, '') AS description,
+                               COALESCE(u.name, u.username, 'Staff') AS expense_for
+                        FROM expenses e
+                        LEFT JOIN users u ON u.id = e.created_by
+                        WHERE ${expWhere}
+                        ORDER BY date DESC LIMIT 500`, expParams).catch(() => ({ rows: [] }))
+        ]);
+
+        let totalSale = 0, totalSalesReturn = 0, sellDue = 0, sellReturnDue = 0;
+        const salesAdded = txRes.rows.map(t => {
+            const isRet = Boolean(t.is_return);
+            const totalAmt = Math.abs(Number(t.total_amount || 0));
+            const paidAmt = t.paid_amount !== null && t.paid_amount !== undefined ? Math.abs(Number(t.paid_amount)) : totalAmt;
+            const remAmt = t.balance_due !== null && t.balance_due !== undefined ? Math.max(0, Number(t.balance_due)) : Math.max(0, totalAmt - paidAmt);
+            if (isRet) { totalSalesReturn += totalAmt; sellReturnDue += remAmt; }
+            else { totalSale += totalAmt; sellDue += remAmt; }
+            const payStatus = remAmt <= 0.01 ? 'Paid' : (paidAmt > 0 ? 'Partial' : 'Due');
+            return {
+                date: t.created_at,
+                invoice_no: t.receipt_number || ('#' + t.id),
+                customer_name: t.customer_name,
+                location: t.location || 'Main Shop',
+                payment_status: payStatus,
+                total_amount: totalAmt,
+                total_paid: paidAmt,
+                total_remaining: remAmt,
+                is_return: isRet,
+                user_name: t.user_name
+            };
+        });
+
+        const expenses = expRes.rows.map(e => ({
+            date: e.date,
+            reference_no: e.reference_no || ('EXP-' + e.id),
+            category: e.category || 'General',
+            location: e.location || 'Main Shop',
+            payment_status: 'Paid',
+            total_amount: Number(e.amount || 0),
+            expense_for: e.expense_for || 'Staff',
+            expense_note: e.description || ''
+        }));
+        const totalExpense = expenses.reduce((s, e) => s + e.total_amount, 0);
+
+        res.json({
+            users: usersRes.rows,
+            branches: brRes.rows.map(b => b.name).filter(Boolean),
+            summary: {
+                total_sale: Number(totalSale.toFixed(2)),
+                total_sales_return: Number(totalSalesReturn.toFixed(2)),
+                net_sale: Number((totalSale - totalSalesReturn).toFixed(2)),
+                total_expense: Number(totalExpense.toFixed(2)),
+                sell_due: Number(sellDue.toFixed(2)),
+                sell_return_due: Number(sellReturnDue.toFixed(2))
+            },
+            salesAdded,
+            salesWithCommission: [],
+            expenses
+        });
+    } catch (err) {
+        console.error('GET /api/reports/sales-representative error:', err);
+        res.status(500).json({ message: 'Failed to load sales representative report' });
     }
 });
 
