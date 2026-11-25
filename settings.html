@@ -848,36 +848,280 @@
     }
 
     /* ====================================================================
-       Activity log (audit trail)
+       Activity log (full audit trail — Buy, Sell, Amend, Delete, Quotes, Drafts)
        ==================================================================== */
     function mountActivity(panel, ctx) {
-        ctx.toolbar.innerHTML = '<button type="button" class="okw-btn okw-btn-outline" id="al-refresh">Refresh</button>';
+        const fmtMoney = (n) => 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        let allLogs = [];
+        let dateRange = { from: '', to: '' };
+
+        ctx.kpis.innerHTML = `<div class="okw-kpi-row" id="al-kpis"></div>`;
+        ctx.toolbar.innerHTML = OkwUI.filterDropdown({
+            label: 'Filters',
+            contentHtml: `
+                <div class="okw-filter-field">
+                    <label for="al-role">Staff Role</label>
+                    <select id="al-role" class="okw-select" aria-label="Filter by role">
+                        <option value="">All Roles</option>
+                        <option value="ceo">CEO</option>
+                        <option value="admin">Admin</option>
+                        <option value="manager">Manager</option>
+                        <option value="store_manager">Store Manager</option>
+                        <option value="cashier">Cashier</option>
+                        <option value="teller">Teller</option>
+                    </select>
+                </div>
+                <div class="okw-filter-field">
+                    <label for="al-cat">Action Category</label>
+                    <select id="al-cat" class="okw-select" aria-label="Filter by category">
+                        <option value="">All Actions</option>
+                        <option value="sell">Sell / POS Sales</option>
+                        <option value="buy">Buy / Purchases &amp; Receiving</option>
+                        <option value="quotes">Quotes / Quotations</option>
+                        <option value="drafts">Drafts / Held Sales</option>
+                        <option value="amend">Amendments / Edits &amp; Stock</option>
+                        <option value="delete">Deletes &amp; Returns</option>
+                        <option value="finance">Expenses &amp; Finance</option>
+                        <option value="auth">Staff, Shifts &amp; Security</option>
+                    </select>
+                </div>
+                <div class="okw-filter-field">
+                    <label>Date Range</label>
+                    <div id="al-date-picker"></div>
+                </div>
+                <div class="okw-filter-actions">
+                    <button type="button" class="okw-btn okw-btn-outline" id="al-reset">Reset</button>
+                </div>`
+        }) + `<button type="button" class="okw-btn okw-btn-outline" id="al-refresh">Refresh</button>`;
         panel.innerHTML = '<div id="audit-table-host">Loading activity log...</div>';
-        async function load() {
-            const host = panel.querySelector('#audit-table-host');
-            const r = await api('/api/audit-logs?limit=250');
-            if (!r.ok) { host.innerHTML = '<div class="okw-empty">Unable to load the activity log (CEO or manager access required).</div>'; if (r.status === 0) OkwUI.toast(r.data.message, 'danger'); return; }
-            const list = Array.isArray(r.data) ? r.data : (r.data.logs || []);
-            const rows = list.map(l => ({
-                time: new Date(l.created_at).toLocaleString(),
-                user: l.user_name || l.user_email || 'System',
-                role: (l.user_role || 'system').toUpperCase(),
-                action: l.action,
-                details: typeof l.details === 'object' ? JSON.stringify(l.details) : (l.details || ''),
-                ip: l.ip_address || ''
-            }));
+
+        const roleSel = ctx.toolbar.querySelector('#al-role');
+        const catSel = ctx.toolbar.querySelector('#al-cat');
+        const resetBtn = ctx.toolbar.querySelector('#al-reset');
+
+        OkwUI.dateRangePicker('#al-date-picker', (r) => {
+            dateRange = r;
+            load();
+        });
+
+        function classifyAction(action) {
+            const a = String(action || '').toUpperCase();
+            if (/QUOTATION|QUOTE/.test(a)) return 'quotes';
+            if (/DRAFT|HOLD/.test(a)) return 'drafts';
+            if (/DELETE|RETURN|VOID|REJECT|REMOV/.test(a)) return 'delete';
+            if (/PO|RECEIVE_GOODS|BUY|PURCHASE|SUPPLIER/.test(a)) return 'buy';
+            if (/SALE|CHECKOUT|FINALIZE_TRANSACTION/.test(a)) return 'sell';
+            if (/AMEND|UPDATE|ADJUSTMENT|STOCK_TAKE|TRANSFER|RESTORE|EDIT/.test(a)) return 'amend';
+            if (/EXPENSE|GL_|PAYROLL|JOURNAL|RECONCIL/.test(a)) return 'finance';
+            return 'auth';
+        }
+
+        function actionBadgeTone(cat) {
+            if (cat === 'sell') return 'success';
+            if (cat === 'buy') return 'info';
+            if (cat === 'delete') return 'danger';
+            if (cat === 'amend' || cat === 'drafts') return 'warning';
+            return 'neutral';
+        }
+
+        function summarizeDetails(action, raw) {
+            const d = (raw && typeof raw === 'object') ? raw : {};
+            const parts = [];
+            if (d.receipt_number || d.receiptNumber) parts.push(`#${d.receipt_number || d.receiptNumber}`);
+            if (d.return_receipt) parts.push(`Return #${d.return_receipt}`);
+            if (d.original_receipt) parts.push(`Orig #${d.original_receipt}`);
+            if (d.quote_number) parts.push(d.quote_number);
+            if (d.po_id || d.poId) parts.push(`PO #${d.po_id || d.poId}`);
+            if (d.label) parts.push(d.label);
+            if (d.customer_name) parts.push(d.customer_name);
+            if (d.name && !d.customer_name) parts.push(d.name);
+            if (d.category && !d.changes) parts.push(d.category);
+            if (d.total !== undefined) parts.push(fmtMoney(d.total));
+            else if (d.total_amount !== undefined) parts.push(fmtMoney(d.total_amount));
+            else if (d.refund_total !== undefined) parts.push(`Refund ${fmtMoney(d.refund_total)}`);
+            else if (d.amount !== undefined) parts.push(fmtMoney(d.amount));
+            if (Array.isArray(d.items) && d.items.length) {
+                const preview = d.items.slice(0, 2).map(it => `${it.name || it.barcode} ×${it.qty}`).join(', ');
+                parts.push(`+${d.items.length} item${d.items.length === 1 ? '' : 's'} (${preview}${d.items.length > 2 ? ', …' : ''})`);
+            }
+            if (Array.isArray(d.items_removed) && d.items_removed.length) {
+                const preview = d.items_removed.slice(0, 2).map(it => `${it.name || it.barcode} ×${it.qty}`).join(', ');
+                parts.push(`Removed ${d.items_removed.length} (${preview}${d.items_removed.length > 2 ? ', …' : ''})`);
+            }
+            if (d.changes && typeof d.changes === 'object' && Object.keys(d.changes).length) {
+                const diffStr = Object.entries(d.changes).slice(0, 3).map(([k, v]) => `${k}: ${v.from} → ${v.to}`).join(', ');
+                parts.push(`Amended (${diffStr})`);
+            }
+            if (d.quantity_adjusted !== undefined) {
+                parts.push(`${d.product_barcode || ''} (${Number(d.quantity_adjusted) >= 0 ? '+' : ''}${d.quantity_adjusted})`);
+            }
+            if (d.reason) parts.push(`Reason: ${d.reason}`);
+            if (parts.length) return parts.join(' · ');
+            return typeof raw === 'object' ? JSON.stringify(raw) : String(raw || '');
+        }
+
+        function openDetailModal(log) {
+            const prev = document.getElementById('okw-audit-detail-modal');
+            if (prev) prev.remove();
+            const d = (log.rawDetails && typeof log.rawDetails === 'object') ? log.rawDetails : {};
+            const itemsAdded = Array.isArray(d.items) ? d.items : [];
+            const itemsRemoved = Array.isArray(d.items_removed) ? d.items_removed : [];
+            const changes = (d.changes && typeof d.changes === 'object') ? Object.entries(d.changes) : [];
+            const payments = Array.isArray(d.payments) ? d.payments : [];
+
+            const renderItemsTable = (title, list, tone) => !list.length ? '' : `
+                <div style="margin-top:14px;">
+                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:${tone};margin-bottom:6px;">${title} (${list.length})</div>
+                    <table class="okw-table" style="width:100%;font-size:12.5px;">
+                        <thead><tr><th>Item</th><th>Barcode</th><th class="okw-num">Qty</th><th class="okw-num">Price</th><th class="okw-num">Total</th></tr></thead>
+                        <tbody>
+                            ${list.map(it => `<tr>
+                                <td><strong>${esc(it.name || it.barcode || 'Item')}</strong></td>
+                                <td>${esc(it.barcode || '—')}</td>
+                                <td class="okw-num">${esc(it.qty ?? '')}</td>
+                                <td class="okw-num">${it.price !== undefined ? fmtMoney(it.price) : '—'}</td>
+                                <td class="okw-num"><strong>${it.line_total !== undefined ? fmtMoney(it.line_total) : (it.price !== undefined ? fmtMoney(Number(it.price) * Number(it.qty || 1)) : '—')}</strong></td>
+                            </tr>`).join('')}
+                        </tbody>
+                    </table>
+                </div>`;
+
+            const changesHtml = !changes.length ? '' : `
+                <div style="margin-top:14px;">
+                    <div style="font-size:12px;font-weight:700;text-transform:uppercase;color:#b45309;margin-bottom:6px;">Amended Fields (Before → After)</div>
+                    <table class="okw-table" style="width:100%;font-size:12.5px;">
+                        <thead><tr><th>Field</th><th>Before</th><th>After</th></tr></thead>
+                        <tbody>${changes.map(([k, v]) => `<tr><td><strong>${esc(k)}</strong></td><td>${esc(v.from ?? '—')}</td><td><strong>${esc(v.to ?? '—')}</strong></td></tr>`).join('')}</tbody>
+                    </table>
+                </div>`;
+
+            const paymentsHtml = !payments.length ? '' : `
+                <div style="margin-top:10px;font-size:12.5px;">
+                    <strong>Payments:</strong> ${payments.map(p => `${esc(p.method)}: ${fmtMoney(p.amount)}`).join(' · ')}
+                </div>`;
+
+            const backdrop = document.createElement('div');
+            backdrop.id = 'okw-audit-detail-modal';
+            backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.62);z-index:10050;display:flex;align-items:center;justify-content:center;padding:16px;';
+            backdrop.innerHTML = `
+                <div class="okw-card" style="width:100%;max-width:760px;max-height:88vh;overflow-y:auto;padding:20px 24px;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--edge,#e2e8f0);padding-bottom:10px;margin-bottom:14px;">
+                        <div>
+                            <h2 style="margin:0;font-size:17px;">${esc(log.action)}</h2>
+                            <div style="font-size:12px;color:var(--muted,#64748b);margin-top:2px;">${esc(log.time)} · ${esc(log.user)} (${esc(log.role)}) · IP ${esc(log.ip || '—')}</div>
+                        </div>
+                        <button type="button" id="al-modal-close" class="okw-btn okw-btn-outline">Close</button>
+                    </div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;font-size:12.5px;padding:10px 12px;border-radius:8px;background:var(--frame,#f8fafc);border:1px solid var(--edge,#e2e8f0);">
+                        <div><span style="color:var(--muted);">Branch:</span> <strong>${esc(d.store_location || d.branch || '—')}</strong></div>
+                        ${d.customer_name ? `<div><span style="color:var(--muted);">Customer:</span> <strong>${esc(d.customer_name)}</strong></div>` : ''}
+                        ${(d.receipt_number || d.receiptNumber || d.quote_number || d.po_id) ? `<div><span style="color:var(--muted);">Ref #:</span> <strong>${esc(d.receipt_number || d.receiptNumber || d.quote_number || ('PO-' + d.po_id))}</strong></div>` : ''}
+                        ${d.subtotal !== undefined ? `<div><span style="color:var(--muted);">Subtotal:</span> <strong>${fmtMoney(d.subtotal)}</strong></div>` : ''}
+                        ${d.discount_amount ? `<div><span style="color:var(--muted);">Discount:</span> <strong>-${fmtMoney(d.discount_amount)}</strong></div>` : ''}
+                        ${(d.total !== undefined || d.total_amount !== undefined || d.refund_total !== undefined || d.amount !== undefined) ? `<div><span style="color:var(--muted);">Total:</span> <strong>${fmtMoney(d.total ?? d.total_amount ?? d.refund_total ?? d.amount)}</strong></div>` : ''}
+                    </div>
+                    ${paymentsHtml}
+                    ${renderItemsTable('Items Added / Sold / Purchased', itemsAdded, '#15803d')}
+                    ${renderItemsTable('Items Removed / Returned / Deleted', itemsRemoved, '#b91c1c')}
+                    ${changesHtml}
+                    <details style="margin-top:14px;">
+                        <summary style="font-size:12px;color:var(--muted);cursor:pointer;">Raw audit payload</summary>
+                        <pre style="margin:8px 0 0;padding:10px;border-radius:8px;background:var(--frame,#f8fafc);font-size:11.5px;overflow:auto;">${esc(JSON.stringify(d, null, 2))}</pre>
+                    </details>
+                </div>`;
+            document.body.appendChild(backdrop);
+            backdrop.querySelector('#al-modal-close').onclick = () => backdrop.remove();
+            backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+        }
+
+        function renderFiltered() {
+            const roleVal = (roleSel.value || '').trim().toLowerCase();
+            const catVal = (catSel.value || '').trim().toLowerCase();
+            const filtered = allLogs.filter(l => {
+                if (roleVal && l.roleKey !== roleVal) return false;
+                if (catVal && l.category !== catVal) return false;
+                return true;
+            });
+
+            const kpiEl = ctx.kpis.querySelector('#al-kpis');
+            if (kpiEl) {
+                const salesBuys = filtered.filter(l => l.category === 'sell' || l.category === 'buy').length;
+                const quotesDrafts = filtered.filter(l => l.category === 'quotes' || l.category === 'drafts').length;
+                const amendsDeletes = filtered.filter(l => l.category === 'amend' || l.category === 'delete').length;
+                kpiEl.innerHTML = [
+                    OkwUI.kpiCard({ label: 'Total Events', value: filtered.length, tone: 'primary' }),
+                    OkwUI.kpiCard({ label: 'Buy & Sell', value: salesBuys, tone: 'success' }),
+                    OkwUI.kpiCard({ label: 'Quotes & Drafts', value: quotesDrafts, tone: 'info' }),
+                    OkwUI.kpiCard({ label: 'Amends, Returns & Deletes', value: amendsDeletes, tone: amendsDeletes > 0 ? 'warning' : 'neutral' })
+                ].join('');
+            }
+
             OkwUI.dataTable('#audit-table-host', {
                 columns: [
                     { key: 'time', label: 'Timestamp' },
                     { key: 'user', label: 'Staff' },
                     { key: 'role', label: 'Role', render: (val) => OkwUI.badge(val, 'info') },
-                    { key: 'action', label: 'Action' },
-                    { key: 'details', label: 'Details' },
-                    { key: 'ip', label: 'IP' }
+                    { key: 'action', label: 'Action', render: (val, row) => OkwUI.badge(val, actionBadgeTone(row.category)) },
+                    { key: 'details', label: 'Summary' },
+                    {
+                        key: 'id',
+                        label: 'Inspect',
+                        render: (id) => `<button type="button" class="okw-btn okw-btn-outline" data-al-view="${esc(id)}" style="height:28px;padding:0 10px;font-size:12px;">View</button>`
+                    }
                 ],
-                rows, searchPlaceholder: 'Search user, action, or details...', exportFilename: 'okwesiwa-activity-log.xlsx', printTitle: 'Activity log', pageSize: 25
+                rows: filtered,
+                searchPlaceholder: 'Search staff, role, action, item, or receipt...',
+                exportFilename: 'okwesiwa-activity-log.xlsx',
+                printTitle: 'Activity Log',
+                pageSize: 25
+            });
+
+            panel.querySelectorAll('[data-al-view]').forEach(btn => {
+                btn.onclick = () => {
+                    const hit = allLogs.find(x => String(x.id) === String(btn.dataset.alView));
+                    if (hit) openDetailModal(hit);
+                };
             });
         }
+
+        async function load() {
+            const host = panel.querySelector('#audit-table-host');
+            const qs = new URLSearchParams({ limit: '500' });
+            if (dateRange.from) qs.set('from', dateRange.from);
+            if (dateRange.to) qs.set('to', dateRange.to);
+            const r = await api('/api/audit-logs?' + qs.toString());
+            if (!r.ok) {
+                host.innerHTML = '<div class="okw-empty">Unable to load the activity log (CEO or manager access required).</div>';
+                if (r.status === 0) OkwUI.toast(r.data.message, 'danger');
+                return;
+            }
+            const list = Array.isArray(r.data) ? r.data : (r.data.logs || []);
+            allLogs = list.map((l, idx) => {
+                const roleRaw = String(l.user_role || (l.details && l.details.actor_role) || 'system');
+                return {
+                    id: l.id || idx,
+                    time: new Date(l.created_at).toLocaleString(),
+                    user: l.user_name || l.user_email || (l.details && l.details.actor_name) || 'System',
+                    role: roleRaw.replace(/_/g, ' ').toUpperCase(),
+                    roleKey: roleRaw.toLowerCase().replace(/[\s-]+/g, '_'),
+                    action: l.action,
+                    category: classifyAction(l.action),
+                    details: summarizeDetails(l.action, l.details),
+                    rawDetails: l.details,
+                    ip: l.ip_address || ''
+                };
+            });
+            renderFiltered();
+        }
+
+        roleSel.addEventListener('change', renderFiltered);
+        catSel.addEventListener('change', renderFiltered);
+        resetBtn.addEventListener('click', () => {
+            roleSel.value = '';
+            catSel.value = '';
+            dateRange = { from: '', to: '' };
+            load();
+        });
         ctx.toolbar.querySelector('#al-refresh').onclick = load;
         load();
     }

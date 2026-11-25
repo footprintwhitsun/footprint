@@ -73,8 +73,9 @@ router.delete('/api/expense-categories/:id', authenticateToken, requireRole(MANA
     await ensureExpensesSchema();
     const tenantId = req.user.tenant_id || 1;
     try {
-        const r = await pool.query('DELETE FROM expense_categories WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 RETURNING id', [req.params.id, tenantId]);
+        const r = await pool.query('DELETE FROM expense_categories WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 RETURNING *', [req.params.id, tenantId]);
         if (!r.rows.length) return res.status(404).json({ message: 'Category not found' });
+        await logActivity(req, 'EXPENSE_CATEGORY_DELETED', { id: r.rows[0].id, name: r.rows[0].name, code: r.rows[0].code || '' });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ message: 'Failed to delete expense category' });
@@ -127,7 +128,14 @@ router.post('/api/expenses', authenticateToken, requireRole(MANAGER_ROLES), requ
              VALUES ($1, $2, $3, $4, COALESCE($5::date, CURRENT_DATE), $6, $7, $8, $9) RETURNING *`,
             [tenantId, String(category).trim(), numAmt, String(description || ''), expense_date || null, req.user.store_id || (await mainBranchId(pool, tenantId)), String(store_location || req.user.store_location || ''), String(reference_no || ''), req.user.id || null]
         );
-        await logActivity(req, 'EXPENSE_CREATED', { id: r.rows[0].id, category, amount: numAmt });
+        await logActivity(req, 'EXPENSE_CREATED', {
+            id: r.rows[0].id,
+            reference_no: r.rows[0].reference_no || '',
+            category: r.rows[0].category,
+            amount: numAmt,
+            description: r.rows[0].description || '',
+            store_location: r.rows[0].store_location || ''
+        });
         res.status(201).json({ success: true, expense: r.rows[0] });
     } catch (err) {
         console.error('POST /api/expenses error:', err);
@@ -139,9 +147,17 @@ router.delete('/api/expenses/:id', authenticateToken, requireRole(MANAGER_ROLES)
     await ensureExpensesSchema();
     const tenantId = req.user.tenant_id || 1;
     try {
-        const r = await pool.query('DELETE FROM expenses WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 RETURNING id', [req.params.id, tenantId]);
+        const r = await pool.query('DELETE FROM expenses WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 RETURNING *', [req.params.id, tenantId]);
         if (!r.rows.length) return res.status(404).json({ message: 'Expense not found' });
-        await logActivity(req, 'EXPENSE_DELETED', { id: req.params.id });
+        const del = r.rows[0];
+        await logActivity(req, 'EXPENSE_DELETED', {
+            id: del.id,
+            reference_no: del.reference_no || '',
+            category: del.category || '',
+            amount: Number(del.amount || 0),
+            description: del.description || '',
+            store_location: del.store_location || ''
+        });
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ message: 'Failed to delete expense' });

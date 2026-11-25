@@ -120,10 +120,19 @@ async function logActivity(req, action, details = {}) {
                 for (const [k, t] of recentViewLogs) if (now - t > VIEW_LOG_INTERVAL_MS) recentViewLogs.delete(k);
             }
         }
+        const tenantId = req.user?.tenant_id || req.session?.user?.tenant_id || 1;
         const ip = req.headers?.['x-forwarded-for'] || req.socket?.remoteAddress || '0.0.0.0';
+        const payload = (details && typeof details === 'object' && !Array.isArray(details))
+            ? {
+                actor_name: req.user?.name || req.user?.username || undefined,
+                actor_role: req.user?.role || undefined,
+                branch: details.store_location || details.branch || req.user?.store_location || undefined,
+                ...details
+            }
+            : { value: details };
         await pool.query(
-            'INSERT INTO activity_logs (user_id, action, details, ip_address) VALUES ($1, $2, $3, $4)',
-            [userId, action, details, ip]  // Don't stringify for JSONB column
+            'INSERT INTO activity_logs (tenant_id, user_id, action, details, ip_address) VALUES ($1, $2, $3, $4, $5)',
+            [tenantId, userId, action, payload, ip]  // Don't stringify for JSONB column
         );
     } catch (err) {
         console.error('Audit Log Error:', err.message);
@@ -3785,9 +3794,9 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
 
         const stockValue = Number(stock) || 0;
 
-        // Get existing stock levels and tracking settings using ID scoped to tenant
+        // Get existing product snapshot using ID scoped to tenant for accurate amendment diff logging
         const checkRes = await pool.query(
-            'SELECT stock_levels, track_batch, track_expiry, barcode FROM products WHERE id = $1 AND COALESCE(tenant_id, 1) = $2',
+            'SELECT * FROM products WHERE id = $1 AND COALESCE(tenant_id, 1) = $2',
             [id, tenantId]
         );
 
@@ -3836,7 +3845,32 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
             await pool.query('UPDATE product_batches SET product_barcode = $1 WHERE product_barcode = $2', [newBarcode, currentBarcode]);
         }
 
-        res.json({ message: 'Product updated successfully', product: result.rows[0] });
+        const updatedProd = result.rows[0];
+        const changes = {};
+        const trackFields = [
+            ['barcode', current.barcode, updatedProd.barcode],
+            ['name', current.name, updatedProd.name],
+            ['category', current.category, updatedProd.category],
+            ['price', Number(current.price || 0), Number(updatedProd.price || 0)],
+            ['cost_price', Number(current.cost_price || 0), Number(updatedProd.cost_price || 0)],
+            ['stock', Number(current.stock || 0), Number(updatedProd.stock || 0)],
+            ['selling_unit', current.selling_unit, updatedProd.selling_unit],
+            ['reorder_level', Number(current.reorder_level || 0), Number(updatedProd.reorder_level || 0)]
+        ];
+        for (const [k, oldV, newV] of trackFields) {
+            if (String(oldV ?? '') !== String(newV ?? '')) changes[k] = { from: oldV, to: newV };
+        }
+        const stockDelta = Number(updatedProd.stock || 0) - Number(current.stock || 0);
+        await logActivity(req, 'AMEND_PRODUCT', {
+            product_id: updatedProd.id,
+            barcode: updatedProd.barcode,
+            name: updatedProd.name,
+            branch: userBranch,
+            stock_delta: stockDelta,
+            changes
+        });
+
+        res.json({ message: 'Product updated successfully', product: updatedProd });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error updating product' });
@@ -4257,7 +4291,19 @@ app.post('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), 
             );
         }
         await client.query('COMMIT');
-        await logActivity(req, 'CREATE_PO', { supplierId, total: serverTotal, itemCount: items.length });
+        await logActivity(req, 'CREATE_PO', {
+            po_id: poId,
+            supplier_id: supplierId,
+            total: serverTotal,
+            item_count: items.length,
+            items: items.map(it => ({
+                barcode: it.barcode || '',
+                name: it.name || it.barcode || 'Item',
+                qty: Math.max(0, Number(it.qty || 0)),
+                price: Math.max(0, Number(it.cost || 0)),
+                line_total: Number((Math.max(0, Number(it.qty || 0)) * Math.max(0, Number(it.cost || 0))).toFixed(2))
+            }))
+        });
         res.json({ success: true, id: poId, total: serverTotal });
     } catch (err) {
         await client.query('ROLLBACK');
@@ -4382,7 +4428,17 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, requireRole(MANA
         await client.query("UPDATE purchase_orders SET status = 'Received' WHERE id = $1", [id]);
 
         await client.query('COMMIT');
-        await logActivity(req, 'RECEIVE_GOODS', { poId: id, itemsReceived: itemsRes.rows.length });
+        await logActivity(req, 'RECEIVE_GOODS', {
+            po_id: id,
+            items_received: itemsRes.rows.length,
+            items: itemsRes.rows.map(it => ({
+                barcode: it.product_barcode,
+                name: it.product_name || it.product_barcode,
+                qty: Number(it.quantity || 0),
+                price: Number(it.unit_cost || 0),
+                line_total: Number((Number(it.quantity || 0) * Number(it.unit_cost || 0)).toFixed(2))
+            }))
+        });
         res.json({ success: true });
     } catch (err) {
         await client.query('ROLLBACK');
@@ -6334,11 +6390,35 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
 
             await client.query('COMMIT');
 
-            // Log appropriate activity
+            // Log appropriate activity with full itemized breakdown
+            const mappedItems = verifiedItems.map(it => ({
+                barcode: it.barcode,
+                name: it.name,
+                qty: Number(it.qty || 0),
+                price: Number(it.price || 0),
+                line_total: Number((Number(it.qty || 0) * Number(it.price || 0)).toFixed(2))
+            }));
             if (isReturn) {
-                await logActivity(req, 'RETURN_SALE', { total: -total, receiptNumber, itemCount: items.length, originalTransactionId });
+                await logActivity(req, 'RETURN_SALE', {
+                    receipt_number: receiptNumber,
+                    original_transaction_id: originalTransactionId,
+                    customer_name: customerName || 'Walk-in',
+                    payment_method: paymentMethod || 'cash',
+                    total: -Math.abs(Number(total || 0)),
+                    item_count: mappedItems.length,
+                    items_removed: mappedItems
+                });
             } else {
-                await logActivity(req, 'POS_SALE', { total, receiptNumber, itemCount: items.length });
+                await logActivity(req, 'POS_SALE', {
+                    receipt_number: receiptNumber,
+                    customer_name: customerName || 'Walk-in',
+                    payment_method: paymentMethod || 'cash',
+                    subtotal: Number(serverSubtotal.toFixed(2)),
+                    discount_amount: safeDiscount,
+                    total: authoritativeTotal,
+                    item_count: mappedItems.length,
+                    items: mappedItems
+                });
             }
 
             res.json({ success: true, receiptNumber, transactionId: txnRes.rows[0].id });
@@ -6614,7 +6694,15 @@ app.post('/api/stock-adjustments', authenticateToken, requireRole(MANAGER_ROLES)
             SELECT 'Stock Adjustment', $1::varchar, stock - $6, stock, $2, 'Adjustment', $3, $4, $5 FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $7
         `, [product_barcode, result.rows[0].id, user_id || req.user.id || null, branch_id || req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1)), reason || '', quantity_adjusted, tenantId]).catch(() => {});
 
-        await logActivity(req, 'STOCK_ADJUSTMENT', { product_barcode, quantity_adjusted, reason });
+        const adjQty = Number(quantity_adjusted || 0);
+        await logActivity(req, 'STOCK_ADJUSTMENT', {
+            product_barcode,
+            adjustment_type: adjustment_type || 'Correction',
+            branch: branchName,
+            quantity_adjusted: adjQty,
+            direction: adjQty >= 0 ? 'added' : 'removed',
+            reason: reason || ''
+        });
         res.json({ success: true, id: result.rows[0].id });
     } catch (err) {
         console.error(err);
@@ -6647,7 +6735,19 @@ app.post('/api/stock-adjustments/bulk', authenticateToken, requireRole(MANAGER_R
             count++;
         }
         await client.query('COMMIT');
-        await logActivity(req, 'BULK_STOCK_ADJUSTMENT', { count });
+        const adjItems = adjustments
+            .filter(a => a && a.product_barcode && Number(a.quantity_adjusted || 0) !== 0)
+            .map(a => ({
+                barcode: a.product_barcode,
+                name: a.product_name || a.product_barcode,
+                qty: Number(a.quantity_adjusted || 0),
+                reason: a.reason || a.adjustment_type || 'Bulk Adjustment'
+            }));
+        await logActivity(req, 'BULK_STOCK_ADJUSTMENT', {
+            count,
+            items: adjItems.filter(a => a.qty > 0),
+            items_removed: adjItems.filter(a => a.qty < 0).map(a => ({ ...a, qty: Math.abs(a.qty) }))
+        });
         res.json({ success: true, count });
     } catch (err) {
         await client.query('ROLLBACK').catch(() => {});

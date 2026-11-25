@@ -426,6 +426,19 @@ router.post('/api/pos/holds', authenticateToken, async (req, res) => {
              VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
             [req.user.tenant_id || 1, holdLabel, customer_id, customer_name, price_group, JSON.stringify(items), Math.max(0, Number(discount_amount || 0)), notes, store_location, req.user.id || null, req.user.name || 'Teller', JSON.stringify(meta && typeof meta === 'object' ? meta : {})]
         );
+        const draftTotal = items.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 1), 0);
+        await logActivity(req, 'DRAFT_CREATED', {
+            hold_id: result.rows[0].id,
+            label: holdLabel,
+            customer_name,
+            store_location: store_location || req.user.store_location || '',
+            price_group,
+            discount_amount: Math.max(0, Number(discount_amount || 0)),
+            total: Number(Math.max(0, draftTotal - Number(discount_amount || 0)).toFixed(2)),
+            notes,
+            item_count: items.length,
+            items: items.map(it => ({ barcode: it.barcode || '', name: it.name || it.barcode || 'Item', qty: Number(it.qty || 1), price: Number(it.price || 0), line_total: Number((Number(it.price || 0) * Number(it.qty || 1)).toFixed(2)) }))
+        });
         res.status(201).json({ success: true, hold: result.rows[0] });
     } catch (err) {
         res.status(500).json({ message: 'Failed to hold sale' });
@@ -434,7 +447,20 @@ router.post('/api/pos/holds', authenticateToken, async (req, res) => {
 
 router.delete('/api/pos/holds/:id', authenticateToken, async (req, res) => {
     try {
-        await pool.query('DELETE FROM pos_holds WHERE id = $1 AND tenant_id = $2', [req.params.id, req.user.tenant_id || 1]);
+        const del = await pool.query('DELETE FROM pos_holds WHERE id = $1 AND tenant_id = $2 RETURNING *', [req.params.id, req.user.tenant_id || 1]);
+        const removed = del.rows[0];
+        if (removed) {
+            const removedItems = Array.isArray(removed.items) ? removed.items : (typeof removed.items === 'string' ? JSON.parse(removed.items || '[]') : []);
+            await logActivity(req, 'DRAFT_DELETED', {
+                hold_id: removed.id,
+                label: removed.label,
+                customer_name: removed.customer_name || 'Walk-in',
+                store_location: removed.store_location || req.user.store_location || '',
+                notes: removed.notes || '',
+                item_count: removedItems.length,
+                items_removed: removedItems.map(it => ({ barcode: it.barcode || '', name: it.name || it.barcode || 'Item', qty: Number(it.qty || 1), price: Number(it.price || 0), line_total: Number((Number(it.price || 0) * Number(it.qty || 1)).toFixed(2)) }))
+            });
+        }
         res.json({ success: true });
     } catch (err) {
         res.status(500).json({ message: 'Failed to delete hold' });
@@ -550,7 +576,20 @@ router.post('/api/pos/quotations', authenticateToken, requirePermission('quotati
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
             [req.user.tenant_id || 1, quoteNumber, customer_id, customer_name, customer_phone, price_group, JSON.stringify(verifiedItems), subtotal, safeDisc, total, expiry, notes, store_location, req.user.id || null]
         );
-        await logActivity(req, 'QUOTATION_CREATED', { quote_number: quoteNumber, total_amount: total });
+        await logActivity(req, 'QUOTATION_CREATED', {
+            quote_number: quoteNumber,
+            customer_name,
+            customer_phone,
+            store_location: store_location || req.user.store_location || '',
+            price_group,
+            subtotal: Number(subtotal.toFixed(2)),
+            discount_amount: safeDisc,
+            total_amount: total,
+            valid_until: expiry,
+            notes,
+            item_count: verifiedItems.length,
+            items: verifiedItems.map(it => ({ barcode: it.barcode, name: it.name, qty: it.qty, unit_name: it.unit_name, price: it.price, line_total: Number((it.price * it.qty).toFixed(2)) }))
+        });
         res.status(201).json({ success: true, quotation: result.rows[0] });
     } catch (err) {
         console.error('POST /api/pos/quotations error:', err);
@@ -581,7 +620,16 @@ router.post('/api/pos/quotations/:id/convert', authenticateToken, async (req, re
              RETURNING *`,
             [req.params.id, tenantId, txId]
         );
-        await logActivity(req, 'QUOTATION_CONVERTED', { quotation_id: q.id, quote_number: q.quote_number, transaction_id: txId });
+        const qItems = Array.isArray(q.items) ? q.items : (typeof q.items === 'string' ? JSON.parse(q.items || '[]') : []);
+        await logActivity(req, 'QUOTATION_CONVERTED', {
+            quotation_id: q.id,
+            quote_number: q.quote_number,
+            customer_name: q.customer_name || 'Walk-in',
+            total_amount: Number(q.total_amount || 0),
+            transaction_id: txId,
+            item_count: qItems.length,
+            items: qItems.map(it => ({ barcode: it.barcode || '', name: it.name || '', qty: Number(it.qty || 1), price: Number(it.price || 0), line_total: Number((Number(it.price || 0) * Number(it.qty || 1)).toFixed(2)) }))
+        });
         res.json({ success: true, quotation: upd.rows[0] });
     } catch (err) {
         res.status(500).json({ message: 'Failed to convert quotation' });
@@ -898,7 +946,24 @@ router.post('/api/pos/checkout', authenticateToken, requirePermission('sales', '
         }
 
         await client.query('COMMIT');
-        await logActivity(req, 'POS_SALE_COMPLETED', { receipt_number: receiptNumber, total: grandTotal, status, splits: cleanPayments.length });
+        await logActivity(req, 'POS_SALE_COMPLETED', {
+            receipt_number: receiptNumber,
+            customer_name: customerName || 'Walk-in',
+            store_location: storeLoc || '',
+            price_group,
+            subtotal: Number(subtotal.toFixed(2)),
+            discount_amount: safeDiscount,
+            delivery_fee: deliveryFee,
+            total: grandTotal,
+            paid_amount: paidTotal,
+            balance_due: balanceDue,
+            change_amount: changeAmount,
+            status,
+            payments: cleanPayments.map(p => ({ method: p.method, amount: p.amount })),
+            quotation_id: quotation_id || null,
+            item_count: verifiedItems.length,
+            items: verifiedItems.map(it => ({ barcode: it.barcode, name: it.name, qty: it.qty, unit_name: it.unit_name, price: it.price, line_total: Number((it.price * it.qty).toFixed(2)) }))
+        });
 
         res.status(201).json({
             success: true,
@@ -1053,7 +1118,17 @@ router.post('/api/pos/returns', authenticateToken, async (req, res) => {
         await client.query('UPDATE transactions SET has_returns = true WHERE id = $1', [orig.id]);
         await client.query('COMMIT');
 
-        await logActivity(req, 'POS_RETURN_PROCESSED', { original: receipt_number, return_receipt: retReceipt, refund_total: refundTotal, refund_method, reason });
+        await logActivity(req, 'POS_RETURN_PROCESSED', {
+            original_receipt: receipt_number,
+            return_receipt: retReceipt,
+            customer_name: orig.customer_name || 'Walk-in',
+            store_location: storeLoc,
+            refund_total: refundTotal,
+            refund_method,
+            reason,
+            item_count: verifiedReturnItems.length,
+            items_removed: verifiedReturnItems.map(it => ({ barcode: it.barcode, name: it.name, qty: it.qty, price: it.price, line_total: Number((it.price * it.qty).toFixed(2)) }))
+        });
         res.status(201).json({ success: true, return_transaction: retRes.rows[0], refund_total: refundTotal });
     } catch (err) {
         await client.query('ROLLBACK').catch(() => {});
