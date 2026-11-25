@@ -945,18 +945,15 @@
 
         const items = [];
         if (isCompany) {
-            items.push({ label: 'Company dashboard', href: '/company-portal' });
+            items.push({ label: 'Home', href: '/dashboard' });
             items.push({ label: 'Proforma invoices', href: '/company-portal?tab=proforma' });
             items.push({ label: 'Company profile', href: '/company-portal?tab=company-profile' });
             items.push({ label: 'Company settings', href: '/company-portal?tab=settings' });
         } else if (isAdmin || isCeo) {
-            items.push({ label: 'CEO overview', href: '/ceo-portal?tab=overview' });
-            if (isAdmin) items.push({ label: 'Manager dashboard', href: '/dashboard' });
             items.push({ label: 'Reports overview', href: '/reports?tab=overview' });
             items.push({ label: 'Settings', href: '/settings?tab=store' });
             items.push({ label: 'My profile & password', href: '/profile' });
         } else if (isManager) {
-            items.push({ label: 'Dashboard', href: '/dashboard' });
             items.push({ label: 'POS', href: '/pos' });
             items.push({ label: 'Reports overview', href: '/reports?tab=overview' });
             items.push({ label: 'Settings', href: '/settings?tab=store' });
