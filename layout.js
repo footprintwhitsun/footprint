@@ -108,11 +108,11 @@
         { label: 'Bulk Import', url: '/bulk-upload', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Catalog', icon: 'upload' },
 
         // Contacts (Suppliers, Customers, Customer Groups)
-        { label: 'Suppliers', url: '/inventory?tab=suppliers', roles: ['admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'truck' },
-        { label: 'Customers', url: '/customers', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Contacts', icon: 'users' },
-        { label: 'Customer Groups', url: '/catalog-ops?tab=groups', roles: ['admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'layers' },
-        { label: 'Credit Clients', url: '/credit-customers?tab=clients', roles: ['admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'creditCard' },
-        { label: 'Manager Authorization', url: '/credit-customers?tab=auth', roles: ['admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'lock' },
+        { label: 'Suppliers', url: '/inventory?tab=suppliers', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'truck' },
+        { label: 'Customers', url: '/customers', roles: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Contacts', icon: 'users' },
+        { label: 'Customer Groups', url: '/catalog-ops?tab=groups', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'layers' },
+        { label: 'Credit Clients', url: '/credit-customers?tab=clients', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'creditCard' },
+        { label: 'Manager Authorization', url: '/credit-customers?tab=auth', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'lock' },
 
         // Expenses & Accounts (Money)
         { label: 'List Expenses', url: '/expenses?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Expenses & Accounts', subgroup: 'Expenses & Cash', icon: 'dollarSign' },
