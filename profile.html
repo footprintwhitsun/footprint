@@ -2,15 +2,15 @@
 <html lang="en">
 
 <head>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
-    <script src="auth-guard.js"></script>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OKWESIWA CO LTD | My Profile</title>
+    <title>OKWESIWA CO LTD | Profile</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" data-media-swap>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
+    <script src="auth-guard.js"></script>
     <script src="currency.js"></script>
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
@@ -18,21 +18,6 @@
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
     <link rel="stylesheet" href="/portal-skin.css">
-    <style id="profile-face">
-        /* a plain identity header: no banner, no overlap, the name in ink */
-        .profile-hero { box-shadow: none !important; border-radius: 12px !important; }
-        .profile-hero-banner { display: none !important; }
-        .profile-hero-body { padding: 24px 28px !important; align-items: center !important; }
-        .profile-identity { margin-top: 0 !important; align-items: center !important; }
-        .avatar-monogram { background: #273990 !important; box-shadow: none !important; border: 0 !important; border-radius: 16px !important; }
-        .profile-identity h1, .profile-identity h2, .profile-hero h1, .profile-hero h2 { color: var(--ink) !important; font-family: var(--font-display); }
-        .profile-shell { box-sizing: border-box !important; max-width: 100% !important; }
-        footer.okw-sub-footer { background: transparent !important; color: var(--muted) !important; border-top: 1px solid var(--edge) !important; }
-        footer.okw-sub-footer * { color: var(--muted) !important; }
-        /* both columns stay inside the page */
-        [class*="profile-grid"], [class*="profile-layout"], [class*="profile-columns"] { max-width: 100%; }
-        [class*="profile-grid"] > *, [class*="profile-layout"] > *, [class*="profile-columns"] > * { min-width: 0; }
-    </style>
     <style>
         .main-content {
             display: flex !important;
@@ -41,290 +26,310 @@
             padding: 0 !important;
         }
 
-        .profile-shell {
+        .pf-wrap {
             flex: 1 0 auto;
             width: 100%;
-            max-width: 1080px;
+            max-width: 1120px;
             margin: 0 auto;
-            padding: 28px 28px 36px;
+            padding: 24px 28px 36px;
             display: flex;
             flex-direction: column;
-            gap: 22px;
+            gap: 20px;
+            box-sizing: border-box;
         }
 
-        /* Signature Identity Hero */
-        .profile-hero {
-            position: relative;
-            border-radius: 14px;
-            overflow: hidden;
+        /* Executive Identity Header */
+        .pf-hero {
             background: var(--sheet, #ffffff);
             border: 1px solid var(--edge, #e2e8f0);
-            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.04);
-        }
-
-        .profile-hero-banner {
-            height: 92px;
-            background: linear-gradient(125deg, #1b2a6b 0%, #273990 58%, #344ab3 100%);
+            border-radius: 14px;
+            padding: 22px 26px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            flex-wrap: wrap;
             position: relative;
-            border-bottom: 2px solid #F9A51A;
+            overflow: hidden;
         }
 
-        .profile-hero-banner::after {
+        .pf-hero::before {
             content: '';
             position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at 88% 30%, rgba(249, 165, 26, 0.22), transparent 52%);
-            pointer-events: none;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #273990 0%, #273990 72%, #F9A51A 72%, #F9A51A 100%);
         }
 
-        .profile-hero-body {
-            padding: 0 28px 24px;
+        .pf-id-left {
             display: flex;
-            align-items: flex-end;
-            justify-content: space-between;
-            gap: 20px;
-            flex-wrap: wrap;
-        }
-
-        .profile-identity {
-            display: flex;
-            align-items: flex-end;
+            align-items: center;
             gap: 18px;
-            margin-top: -42px;
-            position: relative;
-            z-index: 2;
+            min-width: 0;
         }
 
-        .avatar-monogram {
-            width: 84px;
-            height: 84px;
-            border-radius: 18px;
+        .pf-avatar {
+            width: 68px;
+            height: 68px;
+            border-radius: 16px;
             background: linear-gradient(145deg, #273990, #16235e);
             color: #ffffff;
-            border: 3px solid var(--sheet, #ffffff);
-            box-shadow: 0 8px 20px rgba(39, 57, 144, 0.22);
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 28px;
-            font-weight: 700;
+            font-size: 24px;
+            font-weight: 800;
             letter-spacing: 0.04em;
             position: relative;
             flex-shrink: 0;
         }
 
-        .avatar-status-dot {
+        .pf-dot {
             position: absolute;
-            bottom: -3px;
-            right: -3px;
-            width: 16px;
-            height: 16px;
+            bottom: -2px;
+            right: -2px;
+            width: 15px;
+            height: 15px;
             border-radius: 50%;
             background: #16a34a;
             border: 3px solid var(--sheet, #ffffff);
         }
 
-        .identity-meta {
-            padding-bottom: 2px;
+        .pf-id-meta {
+            min-width: 0;
         }
 
-        .identity-meta h2 {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--ink, #0f172a);
+        .pf-id-meta h1 {
             margin: 0 0 6px;
+            font-size: 22px;
+            font-weight: 800;
+            color: var(--ink, #0f172a);
+            letter-spacing: -0.02em;
             line-height: 1.2;
         }
 
-        .identity-badges {
+        .pf-badges {
             display: flex;
-            align-items: center;
             flex-wrap: wrap;
+            align-items: center;
             gap: 8px;
         }
 
-        .role-pill {
+        .pf-pill {
             display: inline-flex;
             align-items: center;
             gap: 6px;
-            padding: 4px 10px;
+            padding: 3px 10px;
             border-radius: 999px;
             font-size: 11.5px;
             font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+        }
+
+        .pf-pill-role {
             background: rgba(39, 57, 144, 0.1);
             color: #273990;
-            border: 1px solid rgba(39, 57, 144, 0.2);
+            border: 1px solid rgba(39, 57, 144, 0.22);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
         }
 
-        [data-theme="dark"] .role-pill {
-            background: rgba(99, 125, 255, 0.16);
+        [data-theme="dark"] .pf-pill-role {
+            background: rgba(99, 125, 255, 0.18);
             color: #a5b4fc;
-            border-color: rgba(129, 140, 248, 0.28);
+            border-color: rgba(129, 140, 248, 0.3);
         }
 
-        .branch-pill {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 10px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 500;
+        .pf-pill-branch {
             background: var(--frame, #f8fafc);
             color: var(--ink-2, #475569);
             border: 1px solid var(--edge, #e2e8f0);
         }
 
-        .hero-actions {
+        .pf-pill-status {
+            background: rgba(22, 163, 74, 0.12);
+            color: #15803d;
+            border: 1px solid rgba(22, 163, 74, 0.24);
+        }
+
+        .pf-hero-actions {
             display: flex;
             align-items: center;
             gap: 10px;
-            padding-top: 12px;
+            flex-wrap: wrap;
         }
 
-        .btn-outline-soft {
+        .pf-btn-danger {
             display: inline-flex;
             align-items: center;
             gap: 7px;
             height: 36px;
-            padding: 0 14px;
-            border-radius: 8px;
-            border: 1px solid var(--edge, #cbd5e1);
-            background: var(--sheet, #ffffff);
-            color: var(--ink, #1e293b);
-            font-size: 13px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: background-color 140ms ease, border-color 140ms ease;
-        }
-
-        .btn-outline-soft:hover {
-            background: var(--frame-hover, #f1f5f9);
-            border-color: var(--ink-2, #94a3b8);
-        }
-
-        .btn-signout {
-            display: inline-flex;
-            align-items: center;
-            gap: 7px;
-            height: 36px;
-            padding: 0 14px;
+            padding: 0 15px;
             border-radius: 8px;
             border: 1px solid rgba(220, 38, 38, 0.28);
-            background: rgba(220, 38, 38, 0.06);
+            background: rgba(220, 38, 38, 0.07);
             color: #dc2626;
             font-size: 13px;
             font-weight: 600;
             cursor: pointer;
-            transition: background-color 140ms ease, color 140ms ease;
+            transition: all 0.15s ease;
         }
 
-        .btn-signout:hover {
+        .pf-btn-danger:hover {
             background: #dc2626;
             color: #ffffff;
+            border-color: #dc2626;
         }
 
-        /* Two-column workspace grid */
-        .profile-grid {
+        /* Summary Strip */
+        .pf-kpi-strip {
             display: grid;
-            grid-template-columns: 1.05fr 1.35fr;
-            gap: 22px;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            background: var(--sheet, #ffffff);
+            border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .pf-kpi-cell {
+            padding: 14px 18px;
+            border-left: 1px solid var(--edge, #e2e8f0);
+            min-width: 0;
+        }
+
+        .pf-kpi-cell:first-child {
+            border-left: 0;
+        }
+
+        .pf-kpi-lbl {
+            font-size: 11.5px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted, #64748b);
+            margin-bottom: 4px;
+        }
+
+        .pf-kpi-val {
+            font-size: 15.5px;
+            font-weight: 700;
+            color: var(--ink, #0f172a);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        /* 2-Column Workspace */
+        .pf-grid {
+            display: grid;
+            grid-template-columns: 1.05fr 1.25fr;
+            gap: 20px;
             align-items: start;
         }
 
-        .panel-card {
+        .pf-col {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-width: 0;
+        }
+
+        .pf-card {
             background: var(--sheet, #ffffff);
             border: 1px solid var(--edge, #e2e8f0);
             border-radius: 14px;
-            padding: 24px;
-            box-shadow: 0 2px 10px rgba(15, 23, 42, 0.03);
+            padding: 22px 24px;
+            min-width: 0;
         }
 
-        .panel-head {
+        .pf-card-head {
             display: flex;
             align-items: center;
-            justify-content: space-between;
+            gap: 12px;
             padding-bottom: 14px;
             margin-bottom: 18px;
             border-bottom: 1px solid var(--edge, #e2e8f0);
         }
 
-        .panel-head-title {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .panel-head-icon {
-            width: 32px;
-            height: 32px;
-            border-radius: 8px;
+        .pf-card-icon {
+            width: 34px;
+            height: 34px;
+            border-radius: 9px;
             background: rgba(39, 57, 144, 0.09);
             color: #273990;
             display: inline-flex;
             align-items: center;
             justify-content: center;
             font-size: 14px;
+            flex-shrink: 0;
         }
 
-        [data-theme="dark"] .panel-head-icon {
+        [data-theme="dark"] .pf-card-icon {
             background: rgba(99, 125, 255, 0.16);
             color: #a5b4fc;
         }
 
-        .panel-head h3 {
+        .pf-card-head h2 {
             margin: 0;
             font-size: 15.5px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--ink, #0f172a);
         }
 
-        .panel-head p {
+        .pf-card-head p {
             margin: 2px 0 0;
             font-size: 12px;
             color: var(--muted, #64748b);
         }
 
-        /* Account rows */
-        .detail-rows {
+        /* Structured Info List */
+        .pf-info-list {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 10px;
+            overflow: hidden;
         }
 
-        .detail-row {
+        .pf-info-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            padding: 12px 14px;
-            border-radius: 10px;
+            padding: 11px 14px;
+            border-top: 1px solid var(--edge, #e2e8f0);
+            background: var(--sheet, #ffffff);
+        }
+
+        .pf-info-row:first-child {
+            border-top: 0;
+        }
+
+        .pf-info-row:nth-child(even) {
             background: var(--frame, #f8fafc);
-            border: 1px solid var(--edge, #e2e8f0);
         }
 
-        .detail-label {
-            display: flex;
+        .pf-info-k {
+            display: inline-flex;
             align-items: center;
-            gap: 9px;
+            gap: 8px;
             font-size: 12.5px;
-            color: var(--muted, #64748b);
             font-weight: 500;
+            color: var(--muted, #64748b);
         }
 
-        .detail-label i {
-            width: 16px;
+        .pf-info-k i {
+            width: 15px;
             text-align: center;
             color: #273990;
         }
 
-        [data-theme="dark"] .detail-label i {
+        [data-theme="dark"] .pf-info-k i {
             color: #93c5fd;
         }
 
-        .detail-value {
+        .pf-info-v {
             font-size: 13.5px;
             font-weight: 600;
             color: var(--ink, #0f172a);
@@ -332,71 +337,93 @@
             word-break: break-word;
         }
 
-        .status-chip {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 3px 10px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 600;
-            background: rgba(22, 163, 74, 0.12);
-            color: #15803d;
-        }
-
-        .scope-box {
+        .pf-scope-wrap {
             margin-top: 16px;
-            padding: 14px;
-            border-radius: 10px;
-            border: 1px dashed var(--edge, #cbd5e1);
-            background: rgba(249, 165, 26, 0.05);
         }
 
-        .scope-box-title {
-            font-size: 11.5px;
+        .pf-scope-lbl {
+            font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
             letter-spacing: 0.05em;
-            color: var(--ink-2, #475569);
-            margin-bottom: 6px;
+            color: var(--muted, #64748b);
+            margin-bottom: 8px;
         }
 
-        .scope-tags {
+        .pf-scope-tags {
             display: flex;
             flex-wrap: wrap;
             gap: 6px;
         }
 
-        .scope-tag {
+        .pf-scope-tag {
             font-size: 11.5px;
-            font-weight: 500;
-            padding: 3px 8px;
+            font-weight: 600;
+            padding: 4px 9px;
             border-radius: 6px;
-            background: var(--sheet, #ffffff);
+            background: var(--frame, #f8fafc);
             border: 1px solid var(--edge, #e2e8f0);
             color: var(--ink-2, #334155);
         }
 
+        /* Preferences Row */
+        .pf-pref-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            background: var(--frame, #f8fafc);
+            border: 1px solid var(--edge, #e2e8f0);
+        }
+
+        .pf-theme-btns {
+            display: inline-flex;
+            gap: 6px;
+        }
+
+        .pf-theme-btn {
+            height: 32px;
+            padding: 0 12px;
+            border-radius: 7px;
+            border: 1px solid var(--edge, #cbd5e1);
+            background: var(--sheet, #ffffff);
+            color: var(--ink, #0f172a);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pf-theme-btn.active {
+            background: #273990;
+            border-color: #273990;
+            color: #ffffff;
+        }
+
         /* Password Form */
-        .form-group {
+        .pf-field {
             margin-bottom: 16px;
         }
 
-        .form-group label {
+        .pf-field label {
             display: block;
-            font-size: 13px;
-            font-weight: 500;
+            font-size: 12.5px;
+            font-weight: 600;
             color: var(--ink-2, #334155);
             margin-bottom: 6px;
         }
 
-        .input-wrap {
+        .pf-input-wrap {
             position: relative;
             display: flex;
             align-items: center;
         }
 
-        .input-wrap input {
+        .pf-input-wrap input {
             width: 100%;
             height: 40px;
             padding: 0 40px 0 12px;
@@ -406,17 +433,17 @@
             color: var(--ink, #0f172a);
             font-size: 13.5px;
             outline: none;
-            transition: border-color 140ms ease, box-shadow 140ms ease;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
 
-        .input-wrap input:focus {
+        .pf-input-wrap input:focus {
             border-color: #273990;
             box-shadow: 0 0 0 3px rgba(39, 57, 144, 0.12);
         }
 
-        .toggle-vis {
+        .pf-eye {
             position: absolute;
-            right: 8px;
+            right: 7px;
             width: 28px;
             height: 28px;
             border: 0;
@@ -429,48 +456,71 @@
             justify-content: center;
         }
 
-        .toggle-vis:hover {
-            background: var(--frame-hover, #f1f5f9);
+        .pf-eye:hover {
+            background: var(--frame, #f1f5f9);
             color: var(--ink, #0f172a);
         }
 
-        .strength-row {
+        .pf-strength {
             margin-top: 8px;
             display: flex;
             align-items: center;
             gap: 10px;
         }
 
-        .strength-bars {
+        .pf-bars {
             flex: 1;
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 4px;
         }
 
-        .strength-bar {
+        .pf-bar {
             height: 4px;
             border-radius: 999px;
             background: var(--edge, #e2e8f0);
-            transition: background-color 160ms ease;
+            transition: background-color 0.18s ease;
         }
 
-        .strength-label {
+        .pf-strength-txt {
             font-size: 11.5px;
-            font-weight: 600;
+            font-weight: 700;
             color: var(--muted, #64748b);
-            min-width: 58px;
+            min-width: 54px;
             text-align: right;
         }
 
-        .btn-save {
+        .pf-rules {
+            margin: 12px 0 18px;
+            padding: 12px 14px;
+            border-radius: 9px;
+            background: var(--frame, #f8fafc);
+            border: 1px solid var(--edge, #e2e8f0);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 7px 14px;
+            font-size: 12px;
+            color: var(--muted, #64748b);
+        }
+
+        .pf-rule {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pf-rule.met {
+            color: #15803d;
+            font-weight: 600;
+        }
+
+        .pf-submit {
             width: 100%;
             height: 42px;
-            margin-top: 4px;
-            background: #273990;
-            color: #ffffff;
             border: 0;
             border-radius: 8px;
+            background: #273990;
+            color: #ffffff;
             font-size: 14px;
             font-weight: 600;
             cursor: pointer;
@@ -478,19 +528,18 @@
             align-items: center;
             justify-content: center;
             gap: 8px;
-            transition: background-color 140ms ease, transform 120ms ease;
+            transition: background-color 0.15s ease;
         }
 
-        .btn-save:hover {
+        .pf-submit:hover {
             background: #1c2b70;
         }
 
-        .btn-save:disabled {
+        .pf-submit:disabled {
             opacity: 0.65;
             cursor: not-allowed;
         }
 
-        /* Notification Toast */
         .notification {
             position: fixed;
             top: 20px;
@@ -509,54 +558,36 @@
             font-weight: 500;
         }
 
-        .notification.show {
-            opacity: 1;
-            transform: translateX(-50%) translateY(8px);
-        }
-
+        .notification.show { opacity: 1; transform: translateX(-50%) translateY(8px); }
         .notification.success { background-color: #15803d; }
         .notification.error { background-color: #c62828; }
 
-        /* Pinned Bottom Footer */
-        footer.okw-sub-footer {
-            margin-top: auto !important;
+        footer.pf-footer {
+            margin-top: auto;
             flex-shrink: 0;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            text-align: center !important;
-            width: 100% !important;
-            max-width: 100% !important;
-            margin-left: 0 !important;
-            margin-right: 0 !important;
-            box-sizing: border-box !important;
-            background: #273990 !important;
-            color: #ffffff !important;
-            border-top: 2px solid #F9A51A !important;
+            text-align: center;
             padding: 12px 24px;
-            font-size: 12.5px;
-            font-weight: 500;
+            font-size: 12px;
+            color: var(--muted, #64748b);
+            border-top: 1px solid var(--edge, #e2e8f0);
         }
 
         @media (max-width: 900px) {
-            .profile-grid {
-                grid-template-columns: 1fr;
-            }
-            .profile-shell {
-                padding: 16px 16px 24px;
-            }
-            .profile-hero-body {
-                padding: 0 18px 20px;
-            }
+            .pf-wrap { padding: 16px 14px 28px; }
+            .pf-kpi-strip { grid-template-columns: 1fr; }
+            .pf-kpi-cell { border-left: 0; border-top: 1px solid var(--edge, #e2e8f0); }
+            .pf-kpi-cell:first-child { border-top: 0; }
+            .pf-grid { grid-template-columns: 1fr; }
+            .pf-rules { grid-template-columns: 1fr; }
         }
     </style>
     <script src="/okw-events.js"></script>
 </head>
 
 <body>
-    <div id="notification" class="notification"></div>
+    <div id="notification" class="notification" role="status" aria-live="polite"></div>
 
-    <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+    <button class="mobile-menu-btn" data-onclick="toggleSidebar()" aria-label="Toggle Menu"><i class="fas fa-bars"></i></button>
     <div class="overlay" data-onclick="toggleSidebar()"></div>
 
     <div class="sidebar">
@@ -567,143 +598,188 @@
     </div>
 
     <div class="main-content">
-        <div class="profile-shell">
-            <!-- Signature Identity Hero -->
-            <section class="profile-hero">
-                <div class="profile-hero-banner"></div>
-                <div class="profile-hero-body">
-                    <div class="profile-identity">
-                        <div class="avatar-monogram" id="avatarInitials">
-                            <span id="avatarLetters">OK</span>
-                            <span class="avatar-status-dot" title="Active Session"></span>
-                        </div>
-                        <div class="identity-meta">
-                            <h2 id="displayName">Loading...</h2>
-                            <div class="identity-badges">
-                                <span class="role-pill"><i class="fas fa-shield-alt"></i> <span id="displayRole">...</span></span>
-                                <span class="branch-pill"><i class="fas fa-map-marker-alt"></i> <span id="displayStoreHero">...</span></span>
-                            </div>
+        <div class="pf-wrap">
+            <!-- 1. Identity Header -->
+            <section class="pf-hero">
+                <div class="pf-id-left">
+                    <div class="pf-avatar" aria-hidden="true">
+                        <span id="avatarLetters"></span>
+                        <span class="pf-dot" title="Active Session"></span>
+                    </div>
+                    <div class="pf-id-meta">
+                        <h1 id="displayName"></h1>
+                        <div class="pf-badges">
+                            <span class="pf-pill pf-pill-role"><i class="fas fa-shield-alt"></i> <span id="displayRole"></span></span>
+                            <span class="pf-pill pf-pill-branch"><i class="fas fa-map-marker-alt"></i> <span id="displayStoreHero"></span></span>
+                            <span class="pf-pill pf-pill-status"><i class="fas fa-circle" style="font-size:7px;"></i> Active</span>
                         </div>
                     </div>
-                    <div class="hero-actions">
-                        <button type="button" class="btn-outline-soft" data-onclick="goBack()">
-                            <i class="fas fa-arrow-left"></i> Workspace
-                        </button>
-                        <button type="button" class="btn-signout" data-onclick="logout()">
-                            <i class="fas fa-sign-out-alt"></i> Sign Out
-                        </button>
-                    </div>
+                </div>
+                <div class="pf-hero-actions">
+                    <button type="button" class="pf-btn-danger" data-onclick="logout()">
+                        <i class="fas fa-sign-out-alt"></i> Sign Out
+                    </button>
                 </div>
             </section>
 
-            <!-- Two-Column Workspace -->
-            <div class="profile-grid">
-                <!-- Left: Account Details -->
-                <section class="panel-card">
-                    <div class="panel-head">
-                        <div class="panel-head-title">
-                            <span class="panel-head-icon"><i class="fas fa-id-badge"></i></span>
+            <!-- 2. Quick Summary Strip -->
+            <section class="pf-kpi-strip" aria-label="Account Summary">
+                <div class="pf-kpi-cell">
+                    <div class="pf-kpi-lbl">Username</div>
+                    <div class="pf-kpi-val" id="kpiUsername">—</div>
+                </div>
+                <div class="pf-kpi-cell">
+                    <div class="pf-kpi-lbl">Assigned Branch</div>
+                    <div class="pf-kpi-val" id="kpiBranch">—</div>
+                </div>
+                <div class="pf-kpi-cell">
+                    <div class="pf-kpi-lbl">Workspace Modules</div>
+                    <div class="pf-kpi-val" id="kpiScopes">—</div>
+                </div>
+            </section>
+
+            <!-- 3. Main Two-Column Content -->
+            <div class="pf-grid">
+                <!-- Left Column: Account Details + Preferences -->
+                <div class="pf-col">
+                    <section class="pf-card">
+                        <div class="pf-card-head">
+                            <span class="pf-card-icon"><i class="fas fa-id-badge"></i></span>
                             <div>
-                                <h3>Account Identity</h3>
-                                <p>Your verified role, branch, and login details</p>
+                                <h2>Account Information</h2>
+                                <p>Verified identity, role, and branch assignment</p>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="detail-rows">
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="fas fa-envelope"></i> Email Address</span>
-                            <span class="detail-value" id="displayEmail">-</span>
+                        <div class="pf-info-list">
+                            <div class="pf-info-row">
+                                <span class="pf-info-k"><i class="fas fa-user"></i> Full Name</span>
+                                <span class="pf-info-v" id="detailFullName">—</span>
+                            </div>
+                            <div class="pf-info-row">
+                                <span class="pf-info-k"><i class="fas fa-at"></i> Username</span>
+                                <span class="pf-info-v" id="displayUsername">—</span>
+                            </div>
+                            <div class="pf-info-row">
+                                <span class="pf-info-k"><i class="fas fa-envelope"></i> Email</span>
+                                <span class="pf-info-v" id="displayEmail">—</span>
+                            </div>
+                            <div class="pf-info-row">
+                                <span class="pf-info-k"><i class="fas fa-phone"></i> Phone</span>
+                                <span class="pf-info-v" id="displayPhone">—</span>
+                            </div>
+                            <div class="pf-info-row">
+                                <span class="pf-info-k"><i class="fas fa-store"></i> Branch</span>
+                                <span class="pf-info-v" id="displayStore">—</span>
+                            </div>
                         </div>
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="fas fa-user-tag"></i> Username</span>
-                            <span class="detail-value" id="displayUsername">-</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="fas fa-store"></i> Assigned Branch</span>
-                            <span class="detail-value" id="displayStore">-</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label"><i class="fas fa-check-circle"></i> Account Status</span>
-                            <span class="status-chip"><i class="fas fa-circle" style="font-size:7px;"></i> Active</span>
-                        </div>
-                    </div>
 
-                    <div class="scope-box">
-                        <div class="scope-box-title">Portal Access Scope</div>
-                        <div class="scope-tags" id="scopeTags"></div>
-                    </div>
-                </section>
+                        <div class="pf-scope-wrap">
+                            <div class="pf-scope-lbl">Access Scope</div>
+                            <div class="pf-scope-tags" id="scopeTags"></div>
+                        </div>
+                    </section>
 
-                <!-- Right: Security Settings -->
-                <section class="panel-card">
-                    <div class="panel-head">
-                        <div class="panel-head-title">
-                            <span class="panel-head-icon"><i class="fas fa-lock"></i></span>
+                    <section class="pf-card">
+                        <div class="pf-card-head">
+                            <span class="pf-card-icon"><i class="fas fa-sliders-h"></i></span>
                             <div>
-                                <h3>Security &amp; Password</h3>
-                                <p>Keep your account protected with a strong password</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <form data-onsubmit="updatePassword(event)">
-                        <div class="form-group">
-                            <label for="currentPass">Current Password</label>
-                            <div class="input-wrap">
-                                <input type="password" id="currentPass" placeholder="Enter current password" required>
-                                <button type="button" class="toggle-vis" data-onclick="togglePass('currentPass', this)" aria-label="Show password">
-                                    <i class="fas fa-eye"></i>
-                                </button>
+                                <h2>Appearance &amp; Session</h2>
+                                <p>Choose your workspace theme and manage your session</p>
                             </div>
                         </div>
 
-                        <div class="form-group">
-                            <label for="newPass">New Password</label>
-                            <div class="input-wrap">
-                                <input type="password" id="newPass" placeholder="At least 6 characters" required data-oninput="updateStrength(this.value)">
-                                <button type="button" class="toggle-vis" data-onclick="togglePass('newPass', this)" aria-label="Show password">
-                                    <i class="fas fa-eye"></i>
-                                </button>
+                        <div class="pf-pref-row">
+                            <div>
+                                <div style="font-size:13.5px;font-weight:600;color:var(--ink,#0f172a);">Interface Theme</div>
+                                <div style="font-size:12px;color:var(--muted,#64748b);">Applies across all pages for your account</div>
                             </div>
-                            <div class="strength-row">
-                                <div class="strength-bars" id="strengthBars">
-                                    <div class="strength-bar"></div>
-                                    <div class="strength-bar"></div>
-                                    <div class="strength-bar"></div>
-                                    <div class="strength-bar"></div>
+                            <div class="pf-theme-btns">
+                                <button type="button" class="pf-theme-btn" id="btnThemeLight" data-onclick="setProfileTheme('light')"><i class="fas fa-sun"></i> Light</button>
+                                <button type="button" class="pf-theme-btn" id="btnThemeDark" data-onclick="setProfileTheme('dark')"><i class="fas fa-moon"></i> Dark</button>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Right Column: Security & Password -->
+                <div class="pf-col">
+                    <section class="pf-card">
+                        <div class="pf-card-head">
+                            <span class="pf-card-icon"><i class="fas fa-lock"></i></span>
+                            <div>
+                                <h2>Security &amp; Password</h2>
+                                <p>Update your login password regularly to protect your account</p>
+                            </div>
+                        </div>
+
+                        <form id="passwordForm" data-onsubmit="updatePassword(event)">
+                            <div class="pf-field">
+                                <label for="currentPass">Current Password</label>
+                                <div class="pf-input-wrap">
+                                    <input type="password" id="currentPass" autocomplete="current-password" placeholder="Enter current password" required>
+                                    <button type="button" class="pf-eye" data-onclick="togglePass('currentPass', this)" aria-label="Show current password">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
                                 </div>
-                                <span class="strength-label" id="strengthLabel">Strength</span>
                             </div>
-                        </div>
 
-                        <div class="form-group">
-                            <label for="confirmPass">Confirm New Password</label>
-                            <div class="input-wrap">
-                                <input type="password" id="confirmPass" placeholder="Re-enter new password" required>
-                                <button type="button" class="toggle-vis" data-onclick="togglePass('confirmPass', this)" aria-label="Show password">
-                                    <i class="fas fa-eye"></i>
-                                </button>
+                            <div class="pf-field">
+                                <label for="newPass">New Password</label>
+                                <div class="pf-input-wrap">
+                                    <input type="password" id="newPass" autocomplete="new-password" placeholder="At least 6 characters" required data-oninput="updateStrength()">
+                                    <button type="button" class="pf-eye" data-onclick="togglePass('newPass', this)" aria-label="Show new password">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                                <div class="pf-strength">
+                                    <div class="pf-bars" id="strengthBars">
+                                        <div class="pf-bar"></div>
+                                        <div class="pf-bar"></div>
+                                        <div class="pf-bar"></div>
+                                        <div class="pf-bar"></div>
+                                    </div>
+                                    <span class="pf-strength-txt" id="strengthLabel">Strength</span>
+                                </div>
                             </div>
-                        </div>
 
-                        <button type="submit" class="btn-save">
-                            <i class="fas fa-key"></i> Update Password
-                        </button>
-                    </form>
-                </section>
+                            <div class="pf-field">
+                                <label for="confirmPass">Confirm New Password</label>
+                                <div class="pf-input-wrap">
+                                    <input type="password" id="confirmPass" autocomplete="new-password" placeholder="Re-enter new password" required data-oninput="updateStrength()">
+                                    <button type="button" class="pf-eye" data-onclick="togglePass('confirmPass', this)" aria-label="Show confirm password">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="pf-rules" aria-live="polite">
+                                <div class="pf-rule" id="ruleLen"><i class="fas fa-circle" style="font-size:7px;"></i> At least 6 characters</div>
+                                <div class="pf-rule" id="ruleCase"><i class="fas fa-circle" style="font-size:7px;"></i> Upper &amp; lowercase</div>
+                                <div class="pf-rule" id="ruleNum"><i class="fas fa-circle" style="font-size:7px;"></i> Includes a number</div>
+                                <div class="pf-rule" id="ruleMatch"><i class="fas fa-circle" style="font-size:7px;"></i> Passwords match</div>
+                            </div>
+
+                            <button type="submit" class="pf-submit" id="btnSavePass">
+                                <i class="fas fa-key"></i> Update Password
+                            </button>
+                        </form>
+                    </section>
+                </div>
             </div>
         </div>
 
-        <footer class="okw-sub-footer">
-            <div>&copy; 2026 OKWESIWA CO LTD &middot; Enterprise Retail &amp; Inventory Platform</div>
+        <footer class="pf-footer">
+            &copy; 2026 OKWESIWA CO LTD &middot; Enterprise Retail &amp; Inventory Platform
         </footer>
     </div>
 
     <script>
         let user = null;
-        try { user = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('companyUser') || 'null'); } catch (e) { user = null; }
+        try { user = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('companyUser') || 'null'); } catch (_) { user = null; }
         if (!user) { window.location.replace('/login'); throw new Error('Not signed in'); }
+
+        const esc = (v) => (window.OkwUI && OkwUI.escapeHtml) ? OkwUI.escapeHtml(v) : String(v ?? '').replace(/[&<>"']/g, s => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[s]));
 
         const ROLE_LABELS = {
             super_admin: 'Super Profile',
@@ -720,47 +796,84 @@
         };
 
         const ROLE_SCOPES = {
-            super_admin: ['CEO Portal', 'Manager Portal', 'Company Portal', 'POS & Till', 'Inventory', 'Reports', 'Staff & Roles'],
-            ceo: ['CEO Overview', 'Live Dashboard', 'Approvals', 'Branches', 'Audit Trail', 'Manager Operations'],
-            admin: ['CEO Overview', 'Manager Operations', 'Inventory', 'Reports', 'Staff & Roles'],
-            manager: ['Dashboard', 'Sell & POS', 'Inventory', 'Credit Management', 'Reports', 'Expenses'],
-            store_manager: ['Dashboard', 'Sell & POS', 'Inventory', 'Credit Management', 'Reports', 'Expenses'],
-            cashier: ['POS Checkout', 'Open / Close Shift', 'Daily Close', 'Transactions', 'Customers'],
-            teller: ['POS Checkout', 'Open / Close Shift', 'Daily Close', 'Transactions', 'Customers'],
-            company: ['Company Dashboard', 'Proforma Invoices', 'Transactions', 'Quick Sale'],
-            business_client: ['Company Dashboard', 'Proforma Invoices', 'Transactions', 'Quick Sale']
+            super_admin: ['Home', 'CEO', 'Company', 'Sales', 'Till', 'Inventory', 'Contacts', 'Accounts', 'Reports', 'Staff', 'Settings'],
+            ceo: ['Home', 'CEO', 'Contacts', 'Accounts', 'Reports', 'Insights', 'Staff', 'Settings'],
+            admin: ['Home', 'CEO', 'Sales', 'Till', 'Inventory', 'Contacts', 'Accounts', 'Reports', 'Staff', 'Settings'],
+            manager: ['Home', 'Sales', 'Till', 'Inventory', 'Contacts', 'Accounts', 'Reports', 'Staff', 'Settings'],
+            store_manager: ['Home', 'Sales', 'Till', 'Inventory', 'Contacts', 'Accounts', 'Reports', 'Staff', 'Settings'],
+            cashier: ['Sales (POS)', 'Till', 'Contacts'],
+            teller: ['Sales (POS)', 'Till', 'Contacts'],
+            company: ['Home', 'Company', 'Proforma'],
+            business_client: ['Home', 'Company', 'Proforma']
         };
+
+        function toggleSidebar() {
+            document.querySelector('.sidebar')?.classList.toggle('active');
+            document.querySelector('.overlay')?.classList.toggle('active');
+        }
 
         function populateProfile(u) {
             if (!u) return;
-            const fullName = u.name || u.company_name || u.username || 'Staff Member';
+            const fullName = u.name || u.company_name || u.username || 'User';
             const normRole = String(u.role || '').toLowerCase().trim().replace(/[\s-]+/g, '_');
-            const initials = fullName.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('') || 'OK';
+            const initials = fullName.split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0].toUpperCase()).join('') || 'U';
             const storeText = u.store_location || 'All Branches';
+            const usernameText = u.username || u.email || '—';
+            const scopes = ROLE_SCOPES[normRole] || ['Workspace'];
 
-            document.getElementById('avatarLetters').textContent = initials;
-            document.getElementById('displayName').textContent = fullName;
-            document.getElementById('displayRole').textContent = ROLE_LABELS[normRole] || normRole.replace(/_/g, ' ');
-            document.getElementById('displayEmail').textContent = u.email || '-';
-            document.getElementById('displayUsername').textContent = u.username || u.email || '-';
-            document.getElementById('displayStore').textContent = storeText;
-            document.getElementById('displayStoreHero').textContent = storeText;
+            const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+            setText('avatarLetters', initials);
+            setText('displayName', fullName);
+            setText('detailFullName', fullName);
+            setText('displayRole', ROLE_LABELS[normRole] || normRole.replace(/_/g, ' '));
+            setText('displayEmail', u.email || '—');
+            setText('displayPhone', u.phone || '—');
+            setText('displayUsername', usernameText);
+            setText('kpiUsername', usernameText);
+            setText('displayStore', storeText);
+            setText('displayStoreHero', storeText);
+            setText('kpiBranch', storeText);
+            setText('kpiScopes', `${scopes.length} Modules`);
 
-            const scopes = ROLE_SCOPES[normRole] || ['Standard Workspace'];
-            document.getElementById('scopeTags').innerHTML = scopes.map(s => `<span class="scope-tag">${s}</span>`).join('');
+            const tagsEl = document.getElementById('scopeTags');
+            if (tagsEl) tagsEl.innerHTML = scopes.map(s => `<span class="pf-scope-tag">${esc(s)}</span>`).join('');
+        }
+
+        function syncThemeButtons() {
+            const theme = document.documentElement.getAttribute('data-theme') || localStorage.getItem('okwesiwa_theme') || 'light';
+            document.getElementById('btnThemeLight')?.classList.toggle('active', theme !== 'dark');
+            document.getElementById('btnThemeDark')?.classList.toggle('active', theme === 'dark');
+        }
+
+        function setProfileTheme(mode) {
+            document.documentElement.setAttribute('data-theme', mode);
+            localStorage.setItem('okwesiwa_theme', mode);
+            if (user && user.id) localStorage.setItem(`okwesiwa_theme_${user.id}`, mode);
+            if (mode === 'dark' && !document.getElementById('okw-dark-fixes')) {
+                const l = document.createElement('link');
+                l.id = 'okw-dark-fixes';
+                l.rel = 'stylesheet';
+                l.href = '/dark-fixes.css';
+                document.head.appendChild(l);
+            }
+            const df = document.getElementById('okw-dark-fixes');
+            if (df) df.disabled = mode !== 'dark';
+            syncThemeButtons();
         }
 
         populateProfile(user);
+        syncThemeButtons();
 
         (async function syncSession() {
             try {
-                const token = localStorage.getItem('authToken');
+                const token = localStorage.getItem('authToken') || localStorage.getItem('companyToken');
                 if (!token) return;
                 const r = await fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` } });
                 if (r.ok) {
                     const d = await r.json();
                     if (d && d.user) {
                         user = d.user;
+                        localStorage.setItem('currentUser', JSON.stringify(user));
                         populateProfile(user);
                     }
                 }
@@ -776,49 +889,43 @@
             if (icon) icon.className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
         }
 
-        function updateStrength(val) {
-            const bars = document.querySelectorAll('#strengthBars .strength-bar');
+        function updateStrength() {
+            const val = document.getElementById('newPass')?.value || '';
+            const confirmVal = document.getElementById('confirmPass')?.value || '';
+            const bars = document.querySelectorAll('#strengthBars .pf-bar');
             const label = document.getElementById('strengthLabel');
+
+            const hasLen = val.length >= 6;
+            const hasCase = /[A-Z]/.test(val) && /[a-z]/.test(val);
+            const hasNum = /\d/.test(val);
+            const hasSpecial = /[^A-Za-z0-9]/.test(val) && val.length >= 8;
+            const isMatch = Boolean(val) && val === confirmVal;
+
+            const setRule = (id, ok) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.classList.toggle('met', ok);
+                const ic = el.querySelector('i');
+                if (ic) ic.className = ok ? 'fas fa-check-circle' : 'fas fa-circle';
+                if (ic) ic.style.fontSize = ok ? '12px' : '7px';
+            };
+            setRule('ruleLen', hasLen);
+            setRule('ruleCase', hasCase);
+            setRule('ruleNum', hasNum);
+            setRule('ruleMatch', isMatch);
+
             let score = 0;
-            if (val.length >= 6) score++;
-            if (/[A-Z]/.test(val) && /[a-z]/.test(val)) score++;
-            if (/\d/.test(val)) score++;
-            if (/[^A-Za-z0-9]/.test(val) && val.length >= 8) score++;
+            if (hasLen) score++;
+            if (hasCase) score++;
+            if (hasNum) score++;
+            if (hasSpecial) score++;
+
             const colors = ['#dc2626', '#f59e0b', '#2563eb', '#16a34a'];
             const labels = ['Weak', 'Fair', 'Good', 'Strong'];
-            bars.forEach((b, i) => {
-                b.style.backgroundColor = i < score ? colors[score - 1] : '';
-            });
-            label.textContent = val ? labels[Math.max(0, score - 1)] : 'Strength';
-            label.style.color = val ? colors[Math.max(0, score - 1)] : '';
-        }
-
-        async function goBack() {
-            const token = localStorage.getItem('authToken');
-            const role = String(user.role || '').toLowerCase();
-            const home = {
-                super_admin: 'dashboard',
-                ceo: 'ceo-portal',
-                admin: 'dashboard',
-                manager: 'dashboard',
-                store_manager: 'dashboard',
-                company: 'company-portal',
-                business_client: 'company-portal'
-            }[role];
-            if (home) {
-                window.location.href = home;
-            } else {
-                try {
-                    const res = await fetch('/api/shifts/active', { headers: { 'Authorization': `Bearer ${token}` } });
-                    if (res.ok) {
-                        const shiftData = await res.json();
-                        window.location.href = shiftData.active ? 'pos' : 'open-shift';
-                    } else {
-                        window.location.href = 'open-shift';
-                    }
-                } catch (e) {
-                    window.location.href = 'open-shift';
-                }
+            bars.forEach((b, i) => { b.style.backgroundColor = i < score ? colors[score - 1] : ''; });
+            if (label) {
+                label.textContent = val ? labels[Math.max(0, score - 1)] : 'Strength';
+                label.style.color = val ? colors[Math.max(0, score - 1)] : '';
             }
         }
 
@@ -827,11 +934,11 @@
                 return window.authGuard.logout();
             }
             try {
-                const token = localStorage.getItem('authToken');
+                const token = localStorage.getItem('authToken') || localStorage.getItem('companyToken');
                 if (token) {
                     await fetch('/api/logout', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } }).catch(() => {});
                 }
-            } catch (e) { } finally {
+            } finally {
                 localStorage.clear();
                 sessionStorage.clear();
                 window.location.replace('/login?logout=true');
@@ -850,14 +957,15 @@
             const currentPass = document.getElementById('currentPass').value;
             const newPass = document.getElementById('newPass').value;
             const confirmPass = document.getElementById('confirmPass').value;
-            const btn = document.querySelector('.btn-save');
+            const btn = document.getElementById('btnSavePass');
+            if (btn.disabled) return;
 
             if (newPass.length < 6) {
-                showNotification("New password must be at least 6 characters.", "error");
+                showNotification('New password must be at least 6 characters.', 'error');
                 return;
             }
             if (newPass !== confirmPass) {
-                showNotification("New passwords do not match!", "error");
+                showNotification('New passwords do not match!', 'error');
                 return;
             }
 
@@ -865,7 +973,7 @@
             btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
 
             try {
-                const token = localStorage.getItem('authToken');
+                const token = localStorage.getItem('authToken') || localStorage.getItem('companyToken');
                 const res = await fetch('/api/update-password', {
                     method: 'POST',
                     headers: {
@@ -874,16 +982,16 @@
                     },
                     body: JSON.stringify({ currentPassword: currentPass, newPassword: newPass })
                 });
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
                 if (res.ok) {
-                    showNotification(data.message || "Password updated successfully.", "success");
+                    showNotification(data.message || 'Password updated successfully.', 'success');
                     e.target.reset();
-                    updateStrength('');
+                    updateStrength();
                 } else {
-                    showNotification(data.message || "Could not update password.", "error");
+                    showNotification(data.message || 'Could not update password.', 'error');
                 }
-            } catch (err) {
-                showNotification("Connection error", "error");
+            } catch (_) {
+                showNotification('Connection error', 'error');
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-key"></i> Update Password';
