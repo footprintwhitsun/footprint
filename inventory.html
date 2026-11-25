@@ -1402,7 +1402,7 @@
 
     <!-- Add/Edit Modal -->
     <div id="productModal" class="modal">
-        <div class="modal-content" style="width: 800px; max-width: 95%;">
+        <div class="modal-content" style="width: 1020px; max-width: 96%; max-height: 92vh; overflow-y: auto;">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
                 <h3 style="margin:0;" id="modalTitle">Add New Product</h3>
                 <button type="button" id="btnToggleBulk" data-onclick="toggleBulkMode()" style="background:#e3f2fd; border:none; color:var(--primary-color); padding:8px 15px; border-radius:6px; cursor:pointer; font-weight:600; font-size:13px;">
@@ -1425,91 +1425,204 @@
             </div>
 
             <form id="productForm" data-onsubmit="saveProduct(event)">
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px;">
-                    <input type="hidden" id="pId">
-                    <!-- Left Column -->
-                    <div>
-                        <div class="form-group">
-                            <label>Barcode</label>
-                            <input type="text" id="pBarcode" required placeholder="Scan or type barcode">
+                <input type="hidden" id="pId">
+                <input type="hidden" id="pImageData">
+                <input type="hidden" id="pBrochureData">
+                <input type="hidden" id="pBrochureName">
+                <input type="hidden" id="pVariantImageData">
+
+                <!-- Section 1: Core Product Information -->
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:16px;">
+                    <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#273990;margin-bottom:12px;">Product Details</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 16px;">
+                        <div class="form-group" style="margin:0;">
+                            <label>Product Name *</label>
+                            <input type="text" id="pName" required placeholder="Enter product name">
                         </div>
-                        <div class="form-group">
-                            <label>Product Name</label>
-                            <input type="text" id="pName" required>
+                        <div class="form-group" style="margin:0;">
+                            <label>SKU / Barcode *</label>
+                            <input type="text" id="pBarcode" required placeholder="Scan or type SKU / barcode">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="margin:0;">
+                            <label>Barcode Type *</label>
+                            <select id="pBarcodeType" required style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">
+                                <option value="C128">Code 128 (C128)</option>
+                                <option value="C39">Code 39 (C39)</option>
+                                <option value="EAN13">EAN-13</option>
+                                <option value="EAN8">EAN-8</option>
+                                <option value="UPCA">UPC-A</option>
+                                <option value="UPCE">UPC-E</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Unit *</label>
+                            <input type="text" id="pSellingUnit" required list="unitPresetList" value="Unit" placeholder="e.g. Pieces, Bag, Bottle">
+                            <datalist id="unitPresetList">
+                                <option value="Unit"></option>
+                                <option value="Piece"></option>
+                                <option value="Bag"></option>
+                                <option value="Box"></option>
+                                <option value="Bottle"></option>
+                                <option value="Pack"></option>
+                                <option value="Roll"></option>
+                                <option value="Kg"></option>
+                                <option value="Litre"></option>
+                                <option value="Length"></option>
+                            </datalist>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Brand</label>
+                            <input type="text" id="pBrand" list="brandPresetList" placeholder="Select or type brand">
+                            <datalist id="brandPresetList"></datalist>
+                        </div>
+                        <div class="form-group" style="margin:0;">
                             <label>Category</label>
-                            <select id="pCategory">
-                                <!-- Populated dynamically -->
+                            <select id="pCategory"></select>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Sub Category</label>
+                            <input type="text" id="pSubCategory" placeholder="Optional sub category">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Business Locations</label>
+                            <select id="pLocations" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">
+                                <option value="All Locations">All Locations</option>
                             </select>
                         </div>
                     </div>
 
-                    <!-- Right Column -->
-                    <div>
-                        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
-                            <div class="form-group">
-                                <label>Cost</label>
-                                <input type="number" step="0.01" id="pCostPrice" placeholder="0.00" list="costPriceOptions" data-oninput="calculateSellingPrice()">
-                                <datalist id="costPriceOptions"></datalist>
-                            </div>
-                            <div class="form-group">
-                                <label>Markup</label>
-                                <select id="pMarkup" data-onchange="calculateSellingPrice()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
-                                    <option value="">Custom</option>
-                                    <option value="5">5%</option>
-                                    <option value="10">10%</option>
-                                    <option value="15">15%</option>
-                                    <option value="20">20%</option>
-                                    <option value="25">25%</option>
-                                    <option value="30">30%</option>
-                                    <option value="50">50%</option>
-                                </select>
-                            </div>
-                            <div class="form-group">
-                                <label>Price</label>
-                                <input type="number" step="0.01" id="pPrice" required placeholder="0.00" list="priceOptions" data-oninput="document.getElementById('pMarkup').value = ''">
-                                <datalist id="priceOptions"></datalist>
-                            </div>
+                    <!-- Stock Management Row -->
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:end;margin-top:14px;padding-top:14px;border-top:1px solid #e2e8f0;">
+                        <div class="form-group" style="margin:0;">
+                            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-weight:600;">
+                                <input type="checkbox" id="pManageStock" checked style="width:16px;height:16px;">
+                                <span>Manage Stock?</span>
+                            </label>
+                            <div style="font-size:11.5px;color:#64748b;margin-top:3px;">Enable stock management at product level</div>
                         </div>
-                        
-                        <div class="form-group">
+                        <div class="form-group" style="margin:0;">
                             <label>Current Stock</label>
                             <input type="number" id="pStock" placeholder="0" min="0">
                         </div>
-
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-                            <div class="form-group">
-                                <label>Batch / Lot Number</label>
-                                <input type="text" id="pBatchNumber" placeholder="Optional">
-                            </div>
-                            <div class="form-group">
-                                <label>Expiry Date (Optional)</label>
-                                <input type="date" id="pExpiryDate">
-                            </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Alert Quantity (Reorder Level)</label>
+                            <input type="number" id="pReorder" value="10" min="0">
                         </div>
-                        
-                        <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 15px; background: #f9f9f9; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
-                            <div class="form-group" style="margin-bottom:0;">
-                                <label>Selling Unit</label>
-                                <input type="text" id="pSellingUnit" placeholder="e.g. Bottle">
-                            </div>
-                            <div class="form-group" style="margin-bottom:0;">
-                                <label>Packaging Unit</label>
-                                <input type="text" id="pPackagingUnit" placeholder="e.g. Box">
-                            </div>
-                            <div class="form-group" style="margin-bottom:0;">
-                                <label>Items per Package</label>
-                                <input type="number" id="pConversion" value="1" min="1">
-                            </div>
-                            <div class="form-group" style="margin-bottom:0;">
-                                <label>Reorder Level</label>
-                                <input type="number" id="pReorder" value="10">
-                            </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Batch / Lot Number</label>
+                            <input type="text" id="pBatchNumber" placeholder="Optional">
                         </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Expiry Date (Optional)</label>
+                            <input type="date" id="pExpiryDate">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Packaging Unit</label>
+                            <input type="text" id="pPackagingUnit" placeholder="e.g. Box">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Items per Package</label>
+                            <input type="number" id="pConversion" value="1" min="1">
+                        </div>
+                    </div>
 
+                    <!-- Description & Media Row -->
+                    <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:14px;margin-top:14px;padding-top:14px;border-top:1px solid #e2e8f0;">
+                        <div class="form-group" style="margin:0;">
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+                                <label style="margin:0;">Product Description</label>
+                                <span id="pDescWordCount" style="font-size:11px;font-weight:600;color:#64748b;">0 WORDS</span>
+                            </div>
+                            <textarea id="pDescription" rows="3" placeholder="Enter product description..." data-oninput="updateProductDescWords()" style="width:100%;padding:9px;border:1px solid #ddd;border-radius:6px;resize:vertical;font-family:inherit;font-size:13px;"></textarea>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Product Image</label>
+                            <input type="file" id="pImageFile" accept="image/*" data-onchange="handleProductFile(this,'pImageData','pImagePreview',5)" style="width:100%;font-size:12px;">
+                            <div style="font-size:11px;color:#64748b;margin-top:4px;">Max file size: 5MB · Aspect ratio 1:1</div>
+                            <img id="pImagePreview" alt="" style="display:none;margin-top:6px;width:54px;height:54px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;">
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Product Brochure</label>
+                            <input type="file" id="pBrochureFile" accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png" data-onchange="handleProductFile(this,'pBrochureData','pBrochureLabel',5)" style="width:100%;font-size:12px;">
+                            <div style="font-size:11px;color:#64748b;margin-top:4px;">Max 5MB · .pdf, .csv, .zip, .doc, .docx, .jpg, .png</div>
+                            <div id="pBrochureLabel" style="font-size:11.5px;color:#273990;margin-top:4px;font-weight:600;"></div>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Section 2: Tax & Pricing -->
+                <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:16px;margin-bottom:16px;">
+                    <div style="font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;color:#273990;margin-bottom:12px;">Tax &amp; Pricing</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px 16px;margin-bottom:14px;">
+                        <div class="form-group" style="margin:0;">
+                            <label>Applicable Tax</label>
+                            <select id="pApplicableTax" data-onchange="syncProductPricing('tax')" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">
+                                <option value="0" data-name="None">None (0%)</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Selling Price Tax Type *</label>
+                            <select id="pTaxType" required data-onchange="syncProductPricing('tax')" style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">
+                                <option value="Exclusive">Exclusive</option>
+                                <option value="Inclusive">Inclusive</option>
+                            </select>
+                        </div>
+                        <div class="form-group" style="margin:0;">
+                            <label>Product Type *</label>
+                            <select id="pProductType" required style="width:100%;padding:10px;border:1px solid #ddd;border-radius:6px;">
+                                <option value="Single">Single</option>
+                                <option value="Variable">Variable</option>
+                                <option value="Combo">Combo</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="overflow-x:auto;">
+                        <table style="width:100%;border-collapse:collapse;background:#fff;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;">
+                            <thead>
+                                <tr style="background:#273990;color:#fff;">
+                                    <th style="padding:10px;text-align:left;color:#fff !important;background:#273990 !important;">Default Purchase Price</th>
+                                    <th style="padding:10px;text-align:left;color:#fff !important;background:#273990 !important;">x Margin (%)</th>
+                                    <th style="padding:10px;text-align:left;color:#fff !important;background:#273990 !important;">Default Selling Price</th>
+                                    <th style="padding:10px;text-align:left;color:#fff !important;background:#273990 !important;">Product Image</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td style="padding:10px;vertical-align:top;">
+                                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                            <div>
+                                                <label style="font-size:11.5px;font-weight:600;display:block;margin-bottom:4px;">Exc. tax: *</label>
+                                                <input type="number" step="0.01" id="pCostPrice" placeholder="0.00" list="costPriceOptions" data-oninput="syncProductPricing('cost_exc')" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">
+                                                <datalist id="costPriceOptions"></datalist>
+                                            </div>
+                                            <div>
+                                                <label style="font-size:11.5px;font-weight:600;display:block;margin-bottom:4px;">Inc. tax: *</label>
+                                                <input type="number" step="0.01" id="pCostIncTax" placeholder="0.00" data-oninput="syncProductPricing('cost_inc')" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td style="padding:10px;vertical-align:top;min-width:130px;">
+                                        <label style="font-size:11.5px;font-weight:600;display:block;margin-bottom:4px;">Margin (%)</label>
+                                        <input type="number" step="0.01" id="pMarkup" placeholder="25" data-oninput="syncProductPricing('margin')" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">
+                                    </td>
+                                    <td style="padding:10px;vertical-align:top;min-width:160px;">
+                                        <label style="font-size:11.5px;font-weight:600;display:block;margin-bottom:4px;">Exc. Tax *</label>
+                                        <input type="number" step="0.01" id="pPrice" required placeholder="0.00" list="priceOptions" data-oninput="syncProductPricing('sell')" style="width:100%;padding:8px;border:1px solid #ddd;border-radius:6px;">
+                                        <datalist id="priceOptions"></datalist>
+                                        <div id="pSellIncHint" style="font-size:11px;color:#64748b;margin-top:4px;"></div>
+                                    </td>
+                                    <td style="padding:10px;vertical-align:top;min-width:170px;">
+                                        <input type="file" id="pVariantImageFile" accept="image/*" data-onchange="handleProductFile(this,'pVariantImageData','pVariantImgPreview',5)" style="width:100%;font-size:11.5px;">
+                                        <div style="font-size:10.5px;color:#64748b;margin-top:3px;">Max 5MB · Aspect ratio 1:1</div>
+                                        <img id="pVariantImgPreview" alt="" style="display:none;margin-top:5px;width:44px;height:44px;object-fit:cover;border-radius:6px;border:1px solid #cbd5e1;">
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" data-onclick="closeModal()">Cancel</button>
                     <button type="submit" class="btn-save">Save Product</button>
@@ -2583,17 +2696,148 @@
             select.innerHTML = html;
         }
 
+        let _productFormLookupsLoaded = false;
+        async function loadProductFormLookups() {
+            if (_productFormLookupsLoaded) return;
+            _productFormLookupsLoaded = true;
+            const token = localStorage.getItem('authToken');
+            const hdrs = { Authorization: `Bearer ${token}` };
+            try {
+                const [brRes, taxRes, brandRes] = await Promise.all([
+                    fetch('/api/branches', { headers: hdrs }).catch(() => null),
+                    fetch('/api/taxes', { headers: hdrs }).catch(() => null),
+                    fetch('/api/brands', { headers: hdrs }).catch(() => null)
+                ]);
+                if (brRes && brRes.ok) {
+                    const brs = await brRes.json().catch(() => []);
+                    const list = Array.isArray(brs) ? brs : (brs.locations || []);
+                    const sel = document.getElementById('pLocations');
+                    if (sel && list.length) {
+                        sel.innerHTML = '<option value="All Locations">All Locations</option>' +
+                            list.map(b => `<option value="${OkwUI.escapeHtml(b.name || b.location_name)}">${OkwUI.escapeHtml(b.name || b.location_name)}</option>`).join('');
+                    }
+                }
+                if (taxRes && taxRes.ok) {
+                    const tx = await taxRes.json().catch(() => []);
+                    const list = Array.isArray(tx) ? tx : (tx.taxes || []);
+                    const sel = document.getElementById('pApplicableTax');
+                    if (sel && list.length) {
+                        sel.innerHTML = '<option value="0" data-name="None">None (0%)</option>' +
+                            list.map(t => `<option value="${Number(t.rate || 0)}" data-name="${OkwUI.escapeHtml(t.name)}">${OkwUI.escapeHtml(t.name)} (${Number(t.rate || 0)}%)</option>`).join('');
+                    }
+                }
+                if (brandRes && brandRes.ok) {
+                    const bd = await brandRes.json().catch(() => []);
+                    const list = Array.isArray(bd) ? bd : (bd.brands || []);
+                    const dl = document.getElementById('brandPresetList');
+                    if (dl && list.length) {
+                        dl.innerHTML = list.map(b => `<option value="${OkwUI.escapeHtml(b.name || b)}"></option>`).join('');
+                    }
+                }
+            } catch (_) { }
+        }
+
+        function updateProductDescWords() {
+            const el = document.getElementById('pDescription');
+            const out = document.getElementById('pDescWordCount');
+            if (!el || !out) return;
+            const words = el.value.trim() ? el.value.trim().split(/\s+/).length : 0;
+            out.textContent = `${words} WORD${words === 1 ? '' : 'S'}`;
+        }
+
+        function handleProductFile(input, hiddenId, previewId, maxMb) {
+            const file = input.files && input.files[0];
+            if (!file) return;
+            if (file.size > maxMb * 1024 * 1024) {
+                showNotification(`File exceeds ${maxMb}MB limit`, 'error');
+                input.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                const hid = document.getElementById(hiddenId);
+                if (hid) hid.value = reader.result || '';
+                if (hiddenId === 'pBrochureData') {
+                    const nEl = document.getElementById('pBrochureName');
+                    if (nEl) nEl.value = file.name;
+                    const lbl = document.getElementById(previewId);
+                    if (lbl) lbl.textContent = file.name;
+                } else {
+                    const img = document.getElementById(previewId);
+                    if (img) { img.src = reader.result; img.style.display = 'block'; }
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function syncProductPricing(source) {
+            const taxRate = parseFloat(document.getElementById('pApplicableTax')?.value || 0) || 0;
+            const factor = 1 + (taxRate / 100);
+            const costExcEl = document.getElementById('pCostPrice');
+            const costIncEl = document.getElementById('pCostIncTax');
+            const marginEl = document.getElementById('pMarkup');
+            const sellEl = document.getElementById('pPrice');
+            const hintEl = document.getElementById('pSellIncHint');
+
+            let costExc = parseFloat(costExcEl?.value);
+            let costInc = parseFloat(costIncEl?.value);
+            let margin = parseFloat(marginEl?.value);
+            let sell = parseFloat(sellEl?.value);
+
+            if (source === 'cost_exc' || source === 'tax') {
+                if (!isNaN(costExc)) {
+                    costInc = costExc * factor;
+                    if (costIncEl) costIncEl.value = costInc.toFixed(2);
+                    if (!isNaN(margin) && sellEl) {
+                        sell = costExc * (1 + margin / 100);
+                        sellEl.value = sell.toFixed(2);
+                    }
+                }
+            } else if (source === 'cost_inc') {
+                if (!isNaN(costInc)) {
+                    costExc = costInc / factor;
+                    if (costExcEl) costExcEl.value = costExc.toFixed(2);
+                    if (!isNaN(margin) && sellEl) {
+                        sell = costExc * (1 + margin / 100);
+                        sellEl.value = sell.toFixed(2);
+                    }
+                }
+            } else if (source === 'margin') {
+                if (!isNaN(costExc) && !isNaN(margin) && sellEl) {
+                    sell = costExc * (1 + margin / 100);
+                    sellEl.value = sell.toFixed(2);
+                }
+            } else if (source === 'sell') {
+                if (!isNaN(costExc) && costExc > 0 && !isNaN(sell) && marginEl) {
+                    marginEl.value = (((sell - costExc) / costExc) * 100).toFixed(2);
+                }
+            }
+
+            const finalSell = parseFloat(sellEl?.value);
+            if (hintEl) {
+                hintEl.textContent = (!isNaN(finalSell) && taxRate > 0)
+                    ? `Inc. tax (${taxRate}%): ${formatCurrency(finalSell * factor)}`
+                    : '';
+            }
+        }
+
         function prepareAddProduct() {
+            loadProductFormLookups();
             document.getElementById('productForm').reset();
             document.getElementById('pId').value = '';
             document.getElementById('pBarcode').value = '';
             document.getElementById('pBarcode').readOnly = false;
             document.getElementById('pBatchNumber').value = '';
             document.getElementById('pExpiryDate').value = '';
-            if(document.getElementById('pMarkup')) document.getElementById('pMarkup').value = '';
+            if (document.getElementById('pMarkup')) document.getElementById('pMarkup').value = '';
+            if (document.getElementById('pManageStock')) document.getElementById('pManageStock').checked = true;
+            ['pImageData', 'pBrochureData', 'pBrochureName', 'pVariantImageData'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            ['pImagePreview', 'pVariantImgPreview'].forEach(id => { const el = document.getElementById(id); if (el) el.style.display = 'none'; });
+            const bLbl = document.getElementById('pBrochureLabel'); if (bLbl) bLbl.textContent = '';
+            updateProductDescWords();
             document.getElementById('pBatchNumber').required = false;
             document.querySelector('#productModal h3').textContent = 'Add New Product';
-            resetBulkMode(); // Ensure we start in single entry mode
+            resetBulkMode();
             document.getElementById('productModal').classList.add('active'); 
         }
 
@@ -2603,6 +2847,7 @@
         }
 
         function editProduct(id) {
+            loadProductFormLookups();
             const product = products.find(p => p.id === parseInt(id));
             if (!product) return;
 
@@ -2612,6 +2857,25 @@
             document.getElementById('pName').value = product.name;
             document.getElementById('pCategory').value = product.category || 'General';
             document.getElementById('pPrice').value = product.price;
+            if (document.getElementById('pBarcodeType')) document.getElementById('pBarcodeType').value = product.barcode_type || 'C128';
+            if (document.getElementById('pBrand')) document.getElementById('pBrand').value = product.brand || '';
+            if (document.getElementById('pSubCategory')) document.getElementById('pSubCategory').value = product.sub_category || '';
+            if (document.getElementById('pLocations')) document.getElementById('pLocations').value = product.business_locations || 'All Locations';
+            if (document.getElementById('pManageStock')) document.getElementById('pManageStock').checked = product.manage_stock !== false;
+            if (document.getElementById('pDescription')) document.getElementById('pDescription').value = product.description || '';
+            updateProductDescWords();
+            if (document.getElementById('pApplicableTax')) document.getElementById('pApplicableTax').value = String(product.applicable_tax || 0);
+            if (document.getElementById('pTaxType')) document.getElementById('pTaxType').value = product.tax_type || 'Exclusive';
+            if (document.getElementById('pProductType')) document.getElementById('pProductType').value = product.product_type || 'Single';
+            if (document.getElementById('pCostIncTax')) document.getElementById('pCostIncTax').value = product.cost_inc_tax || product.cost_price || '';
+            if (document.getElementById('pImageData')) document.getElementById('pImageData').value = product.image_url || '';
+            const imgPrev = document.getElementById('pImagePreview');
+            if (imgPrev) {
+                if (product.image_url) { imgPrev.src = product.image_url; imgPrev.style.display = 'block'; }
+                else imgPrev.style.display = 'none';
+            }
+            const bLbl = document.getElementById('pBrochureLabel');
+            if (bLbl) bLbl.textContent = product.brochure_name || '';
             
             let currentStock = 0;
             // Use branchStockKey (from server X-Branch-Stock-Key header) for correct lookup
@@ -2721,11 +2985,26 @@
 
             const newProduct = {
                 barcode: barcode,
+                sku: barcode,
+                barcode_type: document.getElementById('pBarcodeType')?.value || 'C128',
                 name: document.getElementById('pName').value.trim(),
+                brand: document.getElementById('pBrand')?.value.trim() || '',
                 category: document.getElementById('pCategory').value,
+                sub_category: document.getElementById('pSubCategory')?.value.trim() || '',
+                business_locations: document.getElementById('pLocations')?.value || 'All Locations',
+                manage_stock: document.getElementById('pManageStock') ? document.getElementById('pManageStock').checked : true,
+                description: document.getElementById('pDescription')?.value || '',
+                image_url: document.getElementById('pImageData')?.value || document.getElementById('pVariantImageData')?.value || '',
+                brochure_url: document.getElementById('pBrochureData')?.value || '',
+                brochure_name: document.getElementById('pBrochureName')?.value || '',
+                applicable_tax: parseFloat(document.getElementById('pApplicableTax')?.value || 0) || 0,
+                tax_type: document.getElementById('pTaxType')?.value || 'Exclusive',
+                product_type: document.getElementById('pProductType')?.value || 'Single',
                 price: parseFloat(document.getElementById('pPrice').value),
-                stock: inputStock, // Note: Backend should handle total stock calculation if needed
+                stock: inputStock,
                 cost_price: parseFloat(document.getElementById('pCostPrice').value) || 0,
+                cost_inc_tax: parseFloat(document.getElementById('pCostIncTax')?.value || 0) || 0,
+                margin_pct: parseFloat(document.getElementById('pMarkup')?.value || 0) || 0,
                 selling_unit: document.getElementById('pSellingUnit').value || 'Unit',
                 packaging_unit: document.getElementById('pPackagingUnit').value || 'Box',
                 conversion_rate: parseInt(document.getElementById('pConversion').value) || 1,

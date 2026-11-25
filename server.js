@@ -3347,9 +3347,35 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
     }
 });
 
+async function ensureExtendedProductColumns() {
+    await pool.query(`
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode_type VARCHAR(30) DEFAULT 'C128';
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(120);
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS sub_category VARCHAR(120);
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS business_locations VARCHAR(255) DEFAULT 'All Locations';
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS manage_stock BOOLEAN DEFAULT TRUE;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS brochure_url TEXT;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS brochure_name VARCHAR(255);
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS applicable_tax NUMERIC(6,2) DEFAULT 0;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS tax_type VARCHAR(30) DEFAULT 'Exclusive';
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS product_type VARCHAR(30) DEFAULT 'Single';
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_inc_tax NUMERIC(12,2) DEFAULT 0;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS margin_pct NUMERIC(8,2) DEFAULT 0;
+    `).catch(() => {});
+}
+
 app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
-    const { barcode, name, category, price, stock, cost_price, selling_unit, packaging_unit, conversion_rate, reorder_level, track_batch, track_expiry, batch_number, expiry_date } = req.body;
+    const {
+        barcode, name, category, price, stock, cost_price, selling_unit, packaging_unit,
+        conversion_rate, reorder_level, track_batch, track_expiry, batch_number, expiry_date,
+        barcode_type = 'C128', brand = '', sub_category = '', business_locations = 'All Locations',
+        manage_stock = true, description = '', image_url = '', brochure_url = '', brochure_name = '',
+        applicable_tax = 0, tax_type = 'Exclusive', product_type = 'Single', cost_inc_tax = 0, margin_pct = 0
+    } = req.body;
     try {
+        await ensureExtendedProductColumns();
         const tenantId = req.user.tenant_id || 1;
         const finalBarcode = (barcode && barcode.trim()) ? barcode.trim() : ('FP-' + Date.now());
 
@@ -3370,7 +3396,6 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
         );
 
         if (deletedRes.rows.length > 0) {
-            // RESTORE: clear deleted_at and update all fields with the new values
             const existingId = deletedRes.rows[0].id;
             await pool.query(
                 `UPDATE products SET
@@ -3378,12 +3403,19 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
                     cost_price = $6, selling_unit = $7, packaging_unit = $8,
                     conversion_rate = $9, reorder_level = $10,
                     track_batch = $11, track_expiry = $12,
+                    barcode_type = $13, brand = $14, sub_category = $15, business_locations = $16,
+                    manage_stock = $17, description = $18, image_url = $19, brochure_url = $20, brochure_name = $21,
+                    applicable_tax = $22, tax_type = $23, product_type = $24, cost_inc_tax = $25, margin_pct = $26,
                     deleted_at = NULL
-                 WHERE id = $13 AND tenant_id = $14`,
+                 WHERE id = $27 AND tenant_id = $28`,
                 [name, category, price, stockValue, stockLevels,
                     cost_price || 0, selling_unit || 'Unit', packaging_unit || 'Box',
                     conversion_rate || 1, reorder_level || 10,
-                    track_batch ?? true, track_expiry ?? false, existingId, tenantId]
+                    track_batch ?? true, track_expiry ?? false,
+                    barcode_type, brand, sub_category, business_locations,
+                    manage_stock !== false, description, image_url, brochure_url, brochure_name,
+                    Number(applicable_tax || 0), tax_type, product_type, Number(cost_inc_tax || 0), Number(margin_pct || 0),
+                    existingId, tenantId]
             );
             await logActivity(req, 'RESTORE_PRODUCT', { barcode: finalBarcode, name, stock });
             return res.json({ success: true, restored: true });
@@ -3391,9 +3423,16 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
 
         // Fresh INSERT — no deleted record found for this barcode
         await pool.query(
-            `INSERT INTO products (barcode, name, category, price, stock, stock_levels, cost_price, selling_unit, packaging_unit, conversion_rate, reorder_level, track_batch, track_expiry, branch_id, tenant_id) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`,
-            [finalBarcode, name, category, price, stockValue, stockLevels, cost_price || 0, selling_unit || 'Unit', packaging_unit || 'Box', conversion_rate || 1, reorder_level || 10, track_batch ?? true, track_expiry ?? false, branchId, tenantId]
+            `INSERT INTO products (
+                barcode, name, category, price, stock, stock_levels, cost_price, selling_unit, packaging_unit,
+                conversion_rate, reorder_level, track_batch, track_expiry, branch_id, tenant_id,
+                barcode_type, brand, sub_category, business_locations, manage_stock, description,
+                image_url, brochure_url, brochure_name, applicable_tax, tax_type, product_type, cost_inc_tax, margin_pct
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)`,
+            [finalBarcode, name, category, price, stockValue, stockLevels, cost_price || 0, selling_unit || 'Unit', packaging_unit || 'Box',
+                conversion_rate || 1, reorder_level || 10, track_batch ?? true, track_expiry ?? false, branchId, tenantId,
+                barcode_type, brand, sub_category, business_locations, manage_stock !== false, description,
+                image_url, brochure_url, brochure_name, Number(applicable_tax || 0), tax_type, product_type, Number(cost_inc_tax || 0), Number(margin_pct || 0)]
         );
 
         // Insert Batch if provided and stock > 0
@@ -3783,10 +3822,16 @@ app.post('/api/products/bulk', authenticateToken, requireRole(MANAGER_ROLES), up
 });
 
 app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
-    const { barcode: newBarcode, name, category, price, stock, cost_price, selling_unit, packaging_unit, conversion_rate, reorder_level, track_batch, track_expiry, stock_levels: incomingStockLevels } = req.body;
+    const {
+        barcode: newBarcode, name, category, price, stock, cost_price, selling_unit, packaging_unit,
+        conversion_rate, reorder_level, track_batch, track_expiry, stock_levels: incomingStockLevels,
+        barcode_type, brand, sub_category, business_locations, manage_stock, description,
+        image_url, brochure_url, brochure_name, applicable_tax, tax_type, product_type, cost_inc_tax, margin_pct
+    } = req.body;
     const { id } = req.params;
     const tenantId = req.user.tenant_id || 1;
     try {
+        await ensureExtendedProductColumns();
         const userRes = await pool.query('SELECT store_id, store_location FROM users WHERE id = $1', [req.user.id]);
         const dbUser = userRes.rows[0];
         const userBranch = dbUser?.store_location || DEFAULT_BRANCH_NAME;
@@ -3833,11 +3878,33 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
                 barcode = $1, name = $2, category = $3, price = $4, stock = $5, 
                 cost_price = $6, selling_unit = $7, packaging_unit = $8, 
                 conversion_rate = $9, reorder_level = $10, track_batch = $11, 
-                track_expiry = $12, stock_levels = $13
-             WHERE id = $14 AND COALESCE(tenant_id, 1) = $15 RETURNING *`,
+                track_expiry = $12, stock_levels = $13,
+                barcode_type = COALESCE($14, barcode_type),
+                brand = COALESCE($15, brand),
+                sub_category = COALESCE($16, sub_category),
+                business_locations = COALESCE($17, business_locations),
+                manage_stock = COALESCE($18, manage_stock),
+                description = COALESCE($19, description),
+                image_url = CASE WHEN $20 <> '' THEN $20 ELSE image_url END,
+                brochure_url = CASE WHEN $21 <> '' THEN $21 ELSE brochure_url END,
+                brochure_name = CASE WHEN $22 <> '' THEN $22 ELSE brochure_name END,
+                applicable_tax = COALESCE($23, applicable_tax),
+                tax_type = COALESCE($24, tax_type),
+                product_type = COALESCE($25, product_type),
+                cost_inc_tax = COALESCE($26, cost_inc_tax),
+                margin_pct = COALESCE($27, margin_pct)
+             WHERE id = $28 AND COALESCE(tenant_id, 1) = $29 RETURNING *`,
             [finalBarcode, name, category, price, totalStock, cost_price, selling_unit, packaging_unit,
                 conversion_rate, reorder_level, track_batch ?? current.track_batch, track_expiry ?? current.track_expiry,
-                JSON.stringify(stockLevels), id, tenantId]
+                JSON.stringify(stockLevels),
+                barcode_type ?? null, brand ?? null, sub_category ?? null, business_locations ?? null,
+                manage_stock !== undefined ? !!manage_stock : null, description ?? null,
+                image_url || '', brochure_url || '', brochure_name || '',
+                applicable_tax !== undefined ? Number(applicable_tax) : null,
+                tax_type ?? null, product_type ?? null,
+                cost_inc_tax !== undefined ? Number(cost_inc_tax) : null,
+                margin_pct !== undefined ? Number(margin_pct) : null,
+                id, tenantId]
         );
 
         // Cascade barcode change to batches if barcode actually changed
