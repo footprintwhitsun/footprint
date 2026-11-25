@@ -801,6 +801,81 @@
         });
     }
 
+    function ensureRowExpandStyles() {
+        if (document.getElementById('okw-row-expand-styles')) return;
+        const st = document.createElement('style');
+        st.id = 'okw-row-expand-styles';
+        st.textContent = `
+            table tbody tr.okw-expandable-row { cursor: pointer; transition: background-color 0.14s ease; }
+            table tbody tr.okw-expandable-row:hover td { background: rgba(39, 57, 144, 0.045) !important; }
+            table tbody tr.okw-row-expanded td { background: #EFF4FB !important; border-bottom-color: #BFDBFE !important; }
+            table tbody tr.okw-row-expand-detail td { padding: 0 !important; background: #F8FAFC !important; border-bottom: 2px solid #273990 !important; }
+            .okw-expand-card { padding: 14px 18px; border-left: 4px solid #273990; background: #F8FAFC; }
+            .okw-expand-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #E2E8F0; }
+            .okw-expand-title { font-size: 12.5px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em; color: #1F3A60; }
+            .okw-expand-actions { display: inline-flex; gap: 8px; align-items: center; }
+            .okw-expand-btn { padding: 4px 10px; border-radius: 6px; font-size: 11.5px; font-weight: 600; cursor: pointer; border: 1px solid #CBD5E1; background: #FFFFFF; color: #1F3A60; }
+            .okw-expand-btn:hover { border-color: #273990; background: #EFF4FB; }
+            .okw-expand-btn-primary { background: #1F3A60; border-color: #1F3A60; color: #FFFFFF; }
+            .okw-expand-btn-primary:hover { background: #273990; color: #FFFFFF; }
+            .okw-expand-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 16px; }
+            .okw-expand-item { background: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 7px; padding: 8px 11px; min-width: 0; }
+            .okw-expand-lbl { font-size: 10.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #64748B; margin-bottom: 3px; }
+            .okw-expand-val { font-size: 13px; font-weight: 600; color: #0F172A; word-break: break-word; }
+        `;
+        document.head.appendChild(st);
+    }
+
+    function toggleExpandTableRow(tr, { title = 'Record Details', fields = [], colSpan = 1, onFullDetails = null } = {}) {
+        ensureRowExpandStyles();
+        if (!tr || !tr.parentNode) return;
+        const next = tr.nextElementSibling;
+        if (next && next.classList.contains('okw-row-expand-detail')) {
+            next.remove();
+            tr.classList.remove('okw-row-expanded');
+            return;
+        }
+        tr.classList.add('okw-row-expanded');
+        const detailTr = document.createElement('tr');
+        detailTr.className = 'okw-row-expand-detail';
+        const safeFields = (fields || []).filter(([k]) => k && !/^(action|actions|inspect)$/i.test(String(k).trim()));
+        const td = document.createElement('td');
+        td.colSpan = Math.max(1, colSpan);
+        td.innerHTML = `
+            <div class="okw-expand-card">
+                <div class="okw-expand-head">
+                    <span class="okw-expand-title">${escapeHtml(title)}</span>
+                    <div class="okw-expand-actions">
+                        ${typeof onFullDetails === 'function' ? '<button type="button" class="okw-expand-btn okw-expand-btn-primary" data-exp-full>Full Details</button>' : ''}
+                        <button type="button" class="okw-expand-btn ${typeof onFullDetails === 'function' ? '' : 'okw-expand-btn-primary'}" data-exp-print>Print Record</button>
+                        <button type="button" class="okw-expand-btn" data-exp-close>Collapse</button>
+                    </div>
+                </div>
+                <div class="okw-expand-grid">
+                    ${safeFields.map(([k, v]) => `
+                        <div class="okw-expand-item">
+                            <div class="okw-expand-lbl">${escapeHtml(k)}</div>
+                            <div class="okw-expand-val">${escapeHtml(v === null || v === undefined || v === '' ? '—' : v)}</div>
+                        </div>`).join('')}
+                </div>
+            </div>
+        `;
+        detailTr.appendChild(td);
+        tr.insertAdjacentElement('afterend', detailTr);
+
+        const closeBtn = detailTr.querySelector('[data-exp-close]');
+        if (closeBtn) closeBtn.addEventListener('click', (e) => { e.stopPropagation(); detailTr.remove(); tr.classList.remove('okw-row-expanded'); });
+        const printBtn = detailTr.querySelector('[data-exp-print]');
+        if (printBtn) printBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            openPrintableRecord({ title, metaRows: safeFields });
+        });
+        const fullBtn = detailTr.querySelector('[data-exp-full]');
+        if (fullBtn && typeof onFullDetails === 'function') {
+            fullBtn.addEventListener('click', (e) => { e.stopPropagation(); onFullDetails(); });
+        }
+    }
+
     function dataTable(container, opts) {
         const el = typeof container === 'string' ? document.querySelector(container) : container;
         if (!el) return;
@@ -935,34 +1010,32 @@
             } else if (slice.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${visCols.length}" style="text-align:center;padding:28px;color:var(--color-text-muted);">${escapeHtml(emptyText)}</td></tr>`;
             } else {
-                tbody.innerHTML = slice.map((r, rIdx) => `<tr data-row-idx="${rIdx}" style="cursor:pointer;">${visCols.map(c => {
+                tbody.innerHTML = slice.map((r, rIdx) => `<tr data-row-idx="${rIdx}" class="okw-expandable-row" style="cursor:pointer;">${visCols.map(c => {
                     const content = typeof c.render === 'function' ? c.render(r[c.key], r) : escapeHtml(r[c.key] ?? '');
                     return `<td class="${c.numeric ? 'numeric' : ''}">${content}</td>`;
                 }).join('')}</tr>`).join('');
                 tbody.querySelectorAll('tr[data-row-idx]').forEach(tr => {
                     tr.addEventListener('click', (e) => {
-                        if (e.target.closest('button, a, input, select, label, details')) return;
+                        if (e.target.closest('button, a, input, select, label, details, summary, [data-onclick], [onclick]')) return;
                         const row = slice[Number(tr.dataset.rowIdx)];
                         if (!row) return;
-                        if (typeof opts.onRowClick === 'function') {
-                            opts.onRowClick(row);
-                        } else if (opts.printableRow !== false) {
-                            const metaRows = visCols
-                                .filter(c => !/^(action|actions|inspect)$/i.test(String(c.label || '').trim()))
-                                .map(c => {
-                                    const rawVal = typeof c.exportValue === 'function'
-                                        ? c.exportValue(row)
-                                        : (row[c.key] ?? '');
-                                    const textVal = (rawVal && typeof rawVal === 'object')
-                                        ? Object.entries(rawVal).filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object').map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(' · ')
-                                        : String(rawVal);
-                                    return [c.label, textVal];
-                                });
-                            openPrintableRecord({
-                                title: getTitle(),
-                                metaRows
+                        const allMetaRows = columns
+                            .filter(c => !/^(action|actions|inspect)$/i.test(String(c.label || '').trim()))
+                            .map(c => {
+                                const rawVal = typeof c.exportValue === 'function'
+                                    ? c.exportValue(row)
+                                    : (row[c.key] ?? '');
+                                const textVal = (rawVal && typeof rawVal === 'object')
+                                    ? Object.entries(rawVal).filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object').map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(' · ')
+                                    : String(rawVal);
+                                return [c.label, textVal];
                             });
-                        }
+                        toggleExpandTableRow(tr, {
+                            title: getTitle(),
+                            fields: allMetaRows,
+                            colSpan: visCols.length,
+                            onFullDetails: typeof opts.onRowClick === 'function' ? () => opts.onRowClick(row) : null
+                        });
                     });
                 });
             }
@@ -1067,7 +1140,10 @@
                         }
                         ind.textContent = i === activeSortCol ? (activeSortDir === 1 ? '▲' : '▼') : '';
                     });
+                    tbody.querySelectorAll('tr.okw-row-expand-detail').forEach(d => d.remove());
+                    tbody.querySelectorAll('tr.okw-row-expanded').forEach(r => r.classList.remove('okw-row-expanded'));
                     const trs = Array.from(tbody.querySelectorAll('tr')).filter(tr => {
+                        if (tr.classList.contains('okw-row-expand-detail')) return false;
                         const cells = tr.querySelectorAll('td');
                         return cells.length > 1 || (cells.length === 1 && Number(cells[0].getAttribute('colspan') || 1) <= 1);
                     });
@@ -1144,9 +1220,36 @@
             const headCells = table.querySelectorAll('thead th');
             headCells.forEach((th, idx) => { th.style.display = hiddenIdx.has(idx) ? 'none' : ''; });
             tbody.querySelectorAll('tr').forEach(tr => {
+                if (tr.classList.contains('okw-row-expand-detail')) return;
                 const cells = tr.querySelectorAll('td');
                 if (cells.length === 1 && Number(cells[0].getAttribute('colspan') || 1) > 1) return;
+                tr.classList.add('okw-expandable-row');
                 cells.forEach((td, idx) => { td.style.display = hiddenIdx.has(idx) ? 'none' : ''; });
+            });
+        }
+
+        ensureRowExpandStyles();
+        applyColumnVisibility();
+        if (!tbody.dataset.okwExpandBound) {
+            tbody.dataset.okwExpandBound = '1';
+            tbody.addEventListener('click', (e) => {
+                if (e.target.closest('button, a, input, select, textarea, label, details, summary, [data-onclick], [onclick], .okw-row-expand-detail')) return;
+                const tr = e.target.closest('tr');
+                if (!tr || tr.parentNode !== tbody || tr.classList.contains('okw-row-expand-detail')) return;
+                const cells = Array.from(tr.querySelectorAll('td'));
+                if (!cells.length || (cells.length === 1 && Number(cells[0].getAttribute('colspan') || 1) > 1)) return;
+                const headCells = Array.from(table.querySelectorAll('thead th'));
+                const fields = headCells.map((th, idx) => {
+                    const lbl = th.textContent.replace(/[▲▼]/g, '').trim() || `Column ${idx + 1}`;
+                    const val = cells[idx] ? cells[idx].innerText.trim().replace(/\s+/g, ' ') : '';
+                    return [lbl, val];
+                });
+                const visibleCols = Math.max(1, headCells.length - hiddenIdx.size);
+                toggleExpandTableRow(tr, {
+                    title: resolveTableDocumentTitle(),
+                    fields,
+                    colSpan: visibleCols
+                });
             });
         }
 
@@ -1178,7 +1281,7 @@
             const cols = activeIndices.map(c => ({ key: `c${c.idx}`, label: c.label || `Col ${c.idx + 1}`, numeric: c.numeric }));
             const rows = [];
             tbody.querySelectorAll('tr').forEach(tr => {
-                if (tr.style.display === 'none') return;
+                if (tr.style.display === 'none' || tr.classList.contains('okw-row-expand-detail')) return;
                 const cells = Array.from(tr.querySelectorAll('td'));
                 if (!cells.length || (cells.length === 1 && Number(cells[0].getAttribute('colspan') || 1) > 1)) return;
                 const obj = {};
