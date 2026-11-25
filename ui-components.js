@@ -234,6 +234,15 @@
         return parts.join('  |  ');
     }
 
+    function formatCompanyDetailsStackedHtml(p) {
+        const lines = [];
+        if (p.address) lines.push(p.address);
+        if (p.phone) lines.push(`Tel: ${p.phone}`);
+        if (p.email) lines.push(`Email: ${p.email}`);
+        if (p.taxId) lines.push(`TIN: ${p.taxId}`);
+        return lines.map(l => `<div>${escapeHtml(l)}</div>`).join('');
+    }
+
     function exportRowsToExcel(columns, rows, filename = 'okwesiwa-export.xlsx', reportTitle = '') {
         const profile = getCompanyProfile();
         const title = reportTitle || filename.replace(/\.(xlsx|csv)$/i, '').replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -298,9 +307,9 @@
 
     function printRowsList(columns, rows, title = 'Report', orientation = 'portrait') {
         const profile = getCompanyProfile();
-        const detailsLine = formatCompanyDetailsLine(profile);
+        const detailsStackedHtml = formatCompanyDetailsStackedHtml(profile);
         const pageOrient = orientation === 'landscape' ? 'landscape' : 'portrait';
-        const printableCols = columns.filter(c => !/^(action|receipt)$/i.test(String(c.label || '').trim()) || typeof c.exportValue === 'function');
+        const printableCols = columns.filter(c => !/^(action|actions|receipt)$/i.test(String(c.label || '').trim()) || typeof c.exportValue === 'function');
         const colsToUse = printableCols.length ? printableCols : columns;
         const headerHtml = colsToUse.map(c => `<th style="text-align:${c.numeric ? 'right' : 'left'};">${escapeHtml(c.label)}</th>`).join('');
         const bodyHtml = rows.length
@@ -316,12 +325,12 @@
             body { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; margin: 0; padding: 0; font-size: 12px; background: #ffffff; }
             .doc-banner { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; border-bottom: 3px solid #1F3A60; padding-bottom: 12px; margin-bottom: 16px; position: relative; }
             .doc-banner::after { content: ""; position: absolute; left: 0; bottom: -3px; width: 120px; height: 3px; background: #F9A51A; }
-            .brand-wrap { display: flex; align-items: center; gap: 12px; text-align: left; }
-            .brand-logo { height: 44px; max-width: 130px; object-fit: contain; }
-            .brand-name { font-size: 18px; font-weight: 800; color: #1F3A60; margin: 0 0 3px; letter-spacing: 0.02em; text-transform: uppercase; }
-            .brand-details { font-size: 10.5px; color: #475569; margin: 0; line-height: 1.4; }
-            .report-meta { text-align: right; }
-            .report-title { font-size: 17px; font-weight: 800; color: #1F3A60; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+            .brand-wrap { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; text-align: left; }
+            .brand-logo { height: 46px; max-width: 150px; object-fit: contain; margin-bottom: 4px; }
+            .brand-name { font-size: 16px; font-weight: 800; color: #1F3A60; margin: 0; letter-spacing: 0.02em; text-transform: uppercase; line-height: 1.25; }
+            .brand-details { font-size: 11px; color: #334155; margin: 2px 0 0; line-height: 1.45; }
+            .report-meta { text-align: right; padding-top: 4px; }
+            .report-title { font-size: 18px; font-weight: 800; color: #1F3A60; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.03em; }
             .meta-pill { display: inline-block; background: #EFF4FB; color: #1F3A60; border: 1px solid #BFDBFE; border-radius: 4px; padding: 3px 9px; font-size: 10.5px; font-weight: 600; }
             table { width: 100%; border-collapse: collapse; font-size: 11.5px; border: 1px solid #CBD5E1; }
             thead th { background: #1F3A60 !important; color: #FFFFFF !important; font-weight: 700; text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.04em; padding: 8px 9px; border: 1px solid #1F3A60; }
@@ -332,10 +341,8 @@
             <div class="doc-banner">
                 <div class="brand-wrap">
                     <img class="brand-logo" src="${escapeHtml(profile.logoUrl)}" alt="${escapeHtml(profile.name)}">
-                    <div>
-                        <p class="brand-name">${escapeHtml(profile.name)}</p>
-                        ${detailsLine ? `<p class="brand-details">${escapeHtml(detailsLine)}</p>` : ''}
-                    </div>
+                    <p class="brand-name">${escapeHtml(profile.name)}</p>
+                    ${detailsStackedHtml ? `<div class="brand-details">${detailsStackedHtml}</div>` : ''}
                 </div>
                 <div class="report-meta">
                     <p class="report-title">${escapeHtml(title)}</p>
@@ -544,10 +551,10 @@
             * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .pr-banner { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; border-bottom:3px solid #1F3A60; padding-bottom:12px; margin-bottom:16px; position:relative; }
             .pr-banner::after { content:""; position:absolute; left:0; bottom:-3px; width:130px; height:3px; background:#F9A51A; }
-            .pr-brand { display:flex; align-items:center; gap:12px; text-align:left; }
-            .pr-brand img { height:42px; max-width:120px; object-fit:contain; }
-            .pr-company { font-size:17px; font-weight:800; color:#1F3A60; text-transform:uppercase; letter-spacing:0.02em; }
-            .pr-company-sub { font-size:11px; color:#475569; margin-top:2px; }
+            .pr-brand { display:flex; flex-direction:column; align-items:flex-start; gap:3px; text-align:left; }
+            .pr-brand img { height:46px; max-width:150px; object-fit:contain; margin-bottom:4px; }
+            .pr-company { font-size:16px; font-weight:800; color:#1F3A60; text-transform:uppercase; letter-spacing:0.02em; line-height:1.25; }
+            .pr-company-sub { font-size:11px; color:#334155; margin-top:2px; line-height:1.45; }
             .pr-doc-right { text-align:right; }
             .pr-doc-title { font-size:17px; font-weight:800; color:#1F3A60; text-transform:uppercase; letter-spacing:0.03em; }
             .pr-ref-pill { display:inline-block; margin-top:4px; padding:3px 10px; border-radius:4px; background:#EFF4FB; border:1px solid #BFDBFE; color:#1F3A60; font-size:11.5px; font-weight:700; }
@@ -566,14 +573,13 @@
             .pr-notes-box { margin-top:14px; padding:10px 12px; border-left:4px solid #1F3A60; background:#EFF4FB; color:#0f172a; font-size:12px; border-radius:0 6px 6px 0; }
         `;
 
+        const detailsStackedHtml = formatCompanyDetailsStackedHtml(profile);
         const bodyHtml = `
             <div class="pr-banner">
                 <div class="pr-brand">
                     <img src="${escapeHtml(profile.logoUrl)}" alt="${escapeHtml(profile.name)}" onerror="this.style.display='none'">
-                    <div>
-                        <div class="pr-company">${escapeHtml(profile.name)}</div>
-                        ${detailsLine ? `<div class="pr-company-sub">${escapeHtml(detailsLine)}</div>` : ''}
-                    </div>
+                    <div class="pr-company">${escapeHtml(profile.name)}</div>
+                    ${detailsStackedHtml ? `<div class="pr-company-sub">${detailsStackedHtml}</div>` : ''}
                 </div>
                 <div class="pr-doc-right">
                     <div class="pr-doc-title">${escapeHtml(title)}</div>
@@ -1077,9 +1083,33 @@
                 });
             });
         }
-        const pageTitle = opts.title || (document.title || 'Report').replace(/OKWESIWA CO LTD\s*\|\s*/i, '').replace(/\s*-\s*OKWESIWA CO LTD/i, '').trim() || 'Report';
-        const baseSlug = pageTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'report';
-        const filename = opts.filename || `okwesiwa-${baseSlug}.xlsx`;
+        function resolveTableDocumentTitle() {
+            if (opts.title) return String(opts.title).trim();
+            if (table.dataset.printTitle) return String(table.dataset.printTitle).trim();
+            const cleanHeading = (el) => {
+                if (!el) return '';
+                const t = String(el.textContent || '').replace(/[▲▼]/g, '').replace(/\s+/g, ' ').trim();
+                return t && !/^loading/i.test(t) ? t : '';
+            };
+            const tabContainer = table.closest('.tab-content, section, .modal-content');
+            if (tabContainer) {
+                const h = cleanHeading(tabContainer.querySelector('.page-header h1, .page-header h2, .page-header h3, .section-title, h2, h3'));
+                if (h) return h;
+            }
+            const cardContainer = table.closest('.inventory-card, .card, .table-card');
+            if (cardContainer && cardContainer.previousElementSibling) {
+                const h = cleanHeading(cardContainer.previousElementSibling.querySelector('h1, h2, h3') || (cardContainer.previousElementSibling.matches('h1, h2, h3') ? cardContainer.previousElementSibling : null));
+                if (h) return h;
+            }
+            const topHeading = cleanHeading(document.querySelector('#pageTitle, .topbar-title, .okw-topbar-title, main h1, .main-content .page-header h2, .main-content .page-header h3'));
+            if (topHeading) return topHeading;
+            return (document.title || 'Report').replace(/OKWESIWA CO LTD\s*\|\s*/i, '').replace(/\s*-\s*OKWESIWA CO LTD/i, '').trim() || 'Report';
+        }
+        function resolveFilename(docTitle) {
+            if (opts.filename) return opts.filename;
+            const slug = String(docTitle || 'report').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'report';
+            return `okwesiwa-${slug}.xlsx`;
+        }
 
         const bar = document.createElement('div');
         bar.className = 'okw-table-tools-bar';
@@ -1143,7 +1173,7 @@
         function snapshotTableData() {
             const headCells = Array.from(table.querySelectorAll('thead th'));
             const activeIndices = headCells
-                .map((th, idx) => ({ idx, label: th.textContent.trim(), numeric: th.classList.contains('numeric') }))
+                .map((th, idx) => ({ idx, label: th.textContent.replace(/[▲▼]/g, '').trim(), numeric: th.classList.contains('numeric') }))
                 .filter(c => !hiddenIdx.has(c.idx) && !/^(action|actions)$/i.test(c.label));
             const cols = activeIndices.map(c => ({ key: `c${c.idx}`, label: c.label || `Col ${c.idx + 1}`, numeric: c.numeric }));
             const rows = [];
@@ -1162,20 +1192,22 @@
 
         bar.querySelector('[data-t-csv]').onclick = () => {
             const { cols, rows } = snapshotTableData();
-            exportRowsToCsv(cols, rows, filename);
+            const docTitle = resolveTableDocumentTitle();
+            exportRowsToCsv(cols, rows, resolveFilename(docTitle));
         };
         bar.querySelector('[data-t-excel]').onclick = () => {
             const { cols, rows } = snapshotTableData();
-            exportRowsToExcel(cols, rows, filename, pageTitle);
+            const docTitle = resolveTableDocumentTitle();
+            exportRowsToExcel(cols, rows, resolveFilename(docTitle), docTitle);
         };
         bar.querySelector('[data-t-print]').onclick = () => {
             const { cols, rows } = snapshotTableData();
-            printRowsList(cols, rows, pageTitle, 'portrait');
+            printRowsList(cols, rows, resolveTableDocumentTitle(), 'portrait');
         };
         bar.querySelector('[data-t-pdf]').onclick = () => {
             const { cols, rows } = snapshotTableData();
             const orient = bar.querySelector('[data-t-orient]')?.value || 'portrait';
-            printRowsList(cols, rows, pageTitle, orient);
+            printRowsList(cols, rows, resolveTableDocumentTitle(), orient);
         };
     }
 
