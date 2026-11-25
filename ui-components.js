@@ -312,20 +312,24 @@
 
         const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>${escapeHtml(profile.name)} — ${escapeHtml(title)}</title><style>
             @page { size: ${pageOrient}; margin: 12mm; }
-            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; margin: 16px; }
-            .hdr { display: flex; justify-content: space-between; align-items: center; gap: 16px; border-bottom: 3px solid #273990; padding-bottom: 12px; margin-bottom: 16px; }
-            .brand-wrap { display: flex; align-items: center; gap: 12px; }
-            .brand-logo { height: 44px; max-width: 140px; object-fit: contain; }
-            .brand-name { font-size: 18px; font-weight: 800; color: #273990; margin: 0 0 2px; letter-spacing: 0.02em; }
-            .brand-details { font-size: 11px; color: #475569; margin: 0; }
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            body { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; margin: 0; padding: 0; font-size: 12px; background: #ffffff; }
+            .doc-banner { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; border-bottom: 3px solid #1F3A60; padding-bottom: 12px; margin-bottom: 16px; position: relative; }
+            .doc-banner::after { content: ""; position: absolute; left: 0; bottom: -3px; width: 120px; height: 3px; background: #F9A51A; }
+            .brand-wrap { display: flex; align-items: center; gap: 12px; text-align: left; }
+            .brand-logo { height: 44px; max-width: 130px; object-fit: contain; }
+            .brand-name { font-size: 18px; font-weight: 800; color: #1F3A60; margin: 0 0 3px; letter-spacing: 0.02em; text-transform: uppercase; }
+            .brand-details { font-size: 10.5px; color: #475569; margin: 0; line-height: 1.4; }
             .report-meta { text-align: right; }
-            .report-title { font-size: 15px; font-weight: 700; color: #0f172a; margin: 0 0 3px; }
-            .meta { font-size: 11px; color: #64748b; }
-            table { width: 100%; border-collapse: collapse; font-size: 12px; }
-            th, td { border-bottom: 1px solid #e2e8f0; padding: 7px 8px; }
-            th { background: #f8fafc; color: #334155; font-weight: 600; text-transform: uppercase; font-size: 11px; }
+            .report-title { font-size: 17px; font-weight: 800; color: #1F3A60; margin: 0 0 4px; text-transform: uppercase; letter-spacing: 0.03em; }
+            .meta-pill { display: inline-block; background: #EFF4FB; color: #1F3A60; border: 1px solid #BFDBFE; border-radius: 4px; padding: 3px 9px; font-size: 10.5px; font-weight: 600; }
+            table { width: 100%; border-collapse: collapse; font-size: 11.5px; border: 1px solid #CBD5E1; }
+            thead th { background: #1F3A60 !important; color: #FFFFFF !important; font-weight: 700; text-transform: uppercase; font-size: 10.5px; letter-spacing: 0.04em; padding: 8px 9px; border: 1px solid #1F3A60; }
+            tbody td { padding: 7px 9px; border: 1px solid #E2E8F0; color: #0f172a; background: #FFFFFF; }
+            tbody tr:nth-child(even) td { background: #F4F7FC !important; }
+            .doc-footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #CBD5E1; display: flex; justify-content: space-between; font-size: 10.5px; color: #64748b; }
         </style></head><body>
-            <div class="hdr">
+            <div class="doc-banner">
                 <div class="brand-wrap">
                     <img class="brand-logo" src="${escapeHtml(profile.logoUrl)}" alt="${escapeHtml(profile.name)}">
                     <div>
@@ -335,10 +339,14 @@
                 </div>
                 <div class="report-meta">
                     <p class="report-title">${escapeHtml(title)}</p>
-                    <span class="meta">${rows.length} item(s) &bull; ${escapeHtml(new Date().toLocaleString())}</span>
+                    <span class="meta-pill">${rows.length} Record(s) &bull; ${escapeHtml(new Date().toLocaleString())}</span>
                 </div>
             </div>
             <table><thead><tr>${headerHtml}</tr></thead><tbody>${bodyHtml}</tbody></table>
+            <div class="doc-footer">
+                <span>${escapeHtml(profile.name)} — Official Document</span>
+                <span>Printed: ${escapeHtml(new Date().toLocaleString())}</span>
+            </div>
         </body></html>`;
 
         let iframe = document.getElementById('okw-print-frame');
@@ -460,36 +468,54 @@
             ...metaRows
         ];
 
+        // Build structured 2-pair (4-column) executive details table in columns & rows
+        const metaTableRows = [];
+        for (let i = 0; i < allMeta.length; i += 2) {
+            const left = allMeta[i];
+            const right = allMeta[i + 1];
+            metaTableRows.push(`
+                <tr>
+                    <td class="pr-meta-lbl">${escapeHtml(left[0])}</td>
+                    <td class="pr-meta-val">${escapeHtml(left[1])}</td>
+                    <td class="pr-meta-lbl">${right ? escapeHtml(right[0]) : ''}</td>
+                    <td class="pr-meta-val">${right ? escapeHtml(right[1]) : ''}</td>
+                </tr>`);
+        }
+        const metaTableHtml = metaTableRows.length ? `
+            <div class="pr-section-bar">Document Summary</div>
+            <table class="pr-meta-tbl">
+                <tbody>${metaTableRows.join('')}</tbody>
+            </table>` : '';
+
         const itemsHtml = items.length ? `
-            <div style="margin-top:16px;">
-                <table class="okw-table" style="width:100%;border-collapse:collapse;font-size:13px;">
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Item</th>
-                            <th>Barcode</th>
-                            <th class="okw-num">Qty</th>
-                            <th class="okw-num">Unit Price / Cost</th>
-                            <th class="okw-num">Total</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${items.map((it, idx) => {
-                            const qty = Number(it.qty ?? it.quantity ?? 1);
-                            const unit = Number(it.price ?? it.unit_cost ?? it.cost ?? 0);
-                            const line = Number(it.line_total ?? (qty * unit));
-                            return `<tr>
-                                <td>${idx + 1}</td>
-                                <td><strong>${escapeHtml(it.name || it.product_name || it.product_barcode || it.barcode || 'Item')}</strong></td>
-                                <td>${escapeHtml(it.barcode || it.product_barcode || '—')}</td>
-                                <td class="okw-num">${escapeHtml(qty)}</td>
-                                <td class="okw-num">${fmtC(unit)}</td>
-                                <td class="okw-num"><strong>${fmtC(line)}</strong></td>
-                            </tr>`;
-                        }).join('')}
-                    </tbody>
-                </table>
-            </div>` : '';
+            <div class="pr-section-bar" style="margin-top:16px;">Itemized Breakdown</div>
+            <table class="pr-items-tbl">
+                <thead>
+                    <tr>
+                        <th style="width:36px;">#</th>
+                        <th>Item Description</th>
+                        <th>Barcode / SKU</th>
+                        <th class="okw-num" style="width:70px;">Qty</th>
+                        <th class="okw-num" style="width:120px;">Unit Price / Cost</th>
+                        <th class="okw-num" style="width:125px;">Line Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${items.map((it, idx) => {
+                        const qty = Number(it.qty ?? it.quantity ?? 1);
+                        const unit = Number(it.price ?? it.unit_cost ?? it.cost ?? 0);
+                        const line = Number(it.line_total ?? (qty * unit));
+                        return `<tr>
+                            <td>${idx + 1}</td>
+                            <td><strong>${escapeHtml(it.name || it.product_name || it.product_barcode || it.barcode || 'Item')}</strong></td>
+                            <td>${escapeHtml(it.barcode || it.product_barcode || '—')}</td>
+                            <td class="okw-num">${escapeHtml(qty)}</td>
+                            <td class="okw-num">${fmtC(unit)}</td>
+                            <td class="okw-num"><strong>${fmtC(line)}</strong></td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>` : '';
 
         const totalRows = [];
         if (items.length) totalRows.push(['Total Items', `${items.length} (${items.reduce((s, i) => s + Number(i.qty ?? i.quantity ?? 1), 0)} units)`]);
@@ -503,45 +529,72 @@
 
         const totalsHtml = totalRows.length ? `
             <div style="margin-top:16px;display:flex;justify-content:flex-end;">
-                <table style="min-width:280px;border-collapse:collapse;font-size:13px;">
+                <table class="pr-totals-tbl">
+                    <tbody>
                     ${totalRows.map(([k, v, bold]) => `
-                        <tr style="${bold ? 'border-top:2px solid #1e293b;font-size:15px;font-weight:700;' : 'border-bottom:1px solid #e2e8f0;'}">
-                            <td style="padding:6px 10px;color:${bold ? 'inherit' : 'var(--color-text-muted,#64748b)'};">${escapeHtml(k)}</td>
-                            <td style="padding:6px 10px;text-align:right;font-weight:${bold ? '700' : '600'};">${escapeHtml(v)}</td>
+                        <tr class="${bold ? 'pr-net-row' : ''}">
+                            <td class="pr-tot-lbl">${escapeHtml(k)}</td>
+                            <td class="pr-tot-val">${escapeHtml(v)}</td>
                         </tr>`).join('')}
+                    </tbody>
                 </table>
             </div>` : '';
 
+        const sharedDocStyles = `
+            * { box-sizing: border-box; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            .pr-banner { display:flex; justify-content:space-between; align-items:flex-start; gap:18px; border-bottom:3px solid #1F3A60; padding-bottom:12px; margin-bottom:16px; position:relative; }
+            .pr-banner::after { content:""; position:absolute; left:0; bottom:-3px; width:130px; height:3px; background:#F9A51A; }
+            .pr-brand { display:flex; align-items:center; gap:12px; text-align:left; }
+            .pr-brand img { height:42px; max-width:120px; object-fit:contain; }
+            .pr-company { font-size:17px; font-weight:800; color:#1F3A60; text-transform:uppercase; letter-spacing:0.02em; }
+            .pr-company-sub { font-size:11px; color:#475569; margin-top:2px; }
+            .pr-doc-right { text-align:right; }
+            .pr-doc-title { font-size:17px; font-weight:800; color:#1F3A60; text-transform:uppercase; letter-spacing:0.03em; }
+            .pr-ref-pill { display:inline-block; margin-top:4px; padding:3px 10px; border-radius:4px; background:#EFF4FB; border:1px solid #BFDBFE; color:#1F3A60; font-size:11.5px; font-weight:700; }
+            .pr-section-bar { background:#1F3A60; color:#FFFFFF; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; padding:6px 10px; border-radius:4px 4px 0 0; }
+            .pr-meta-tbl, .pr-items-tbl { width:100%; border-collapse:collapse; font-size:12.5px; border:1px solid #CBD5E1; }
+            .pr-meta-lbl { background:#EFF4FB; color:#1F3A60; font-weight:700; font-size:11px; text-transform:uppercase; letter-spacing:0.03em; padding:7px 10px; border:1px solid #CBD5E1; width:18%; }
+            .pr-meta-val { background:#FFFFFF; color:#0f172a; font-weight:600; padding:7px 10px; border:1px solid #CBD5E1; width:32%; }
+            .pr-items-tbl thead th { background:#273990; color:#FFFFFF; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; padding:8px 9px; border:1px solid #273990; text-align:left; }
+            .pr-items-tbl tbody td { padding:7px 9px; border:1px solid #E2E8F0; background:#FFFFFF; color:#0f172a; }
+            .pr-items-tbl tbody tr:nth-child(even) td { background:#F4F7FC; }
+            .okw-num { text-align:right !important; }
+            .pr-totals-tbl { min-width:300px; border-collapse:collapse; border:1px solid #CBD5E1; font-size:12.5px; }
+            .pr-tot-lbl { background:#EFF4FB; color:#1F3A60; font-weight:600; padding:7px 12px; border:1px solid #CBD5E1; }
+            .pr-tot-val { background:#FFFFFF; color:#0f172a; font-weight:700; text-align:right; padding:7px 12px; border:1px solid #CBD5E1; }
+            .pr-net-row .pr-tot-lbl, .pr-net-row .pr-tot-val { background:#1F3A60 !important; color:#FFFFFF !important; font-size:14px; font-weight:800; border-color:#1F3A60; }
+            .pr-notes-box { margin-top:14px; padding:10px 12px; border-left:4px solid #1F3A60; background:#EFF4FB; color:#0f172a; font-size:12px; border-radius:0 6px 6px 0; }
+        `;
+
         const bodyHtml = `
-            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:2px solid #273990;padding-bottom:12px;margin-bottom:14px;">
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <img src="${escapeHtml(profile.logoUrl)}" alt="${escapeHtml(profile.name)}" style="height:40px;max-width:110px;object-fit:contain;" onerror="this.style.display='none'">
+            <div class="pr-banner">
+                <div class="pr-brand">
+                    <img src="${escapeHtml(profile.logoUrl)}" alt="${escapeHtml(profile.name)}" onerror="this.style.display='none'">
                     <div>
-                        <div style="font-size:16px;font-weight:700;color:#273990;">${escapeHtml(profile.name)}</div>
-                        ${detailsLine ? `<div style="font-size:11.5px;color:var(--color-text-muted,#64748b);margin-top:2px;">${escapeHtml(detailsLine)}</div>` : ''}
+                        <div class="pr-company">${escapeHtml(profile.name)}</div>
+                        ${detailsLine ? `<div class="pr-company-sub">${escapeHtml(detailsLine)}</div>` : ''}
                     </div>
                 </div>
-                <div style="text-align:right;">
-                    <div style="font-size:16px;font-weight:700;">${escapeHtml(title)}</div>
-                    ${refNumber ? `<div style="font-size:12px;color:var(--color-text-muted,#64748b);margin-top:2px;">${escapeHtml(refNumber)}</div>` : ''}
+                <div class="pr-doc-right">
+                    <div class="pr-doc-title">${escapeHtml(title)}</div>
+                    ${refNumber ? `<div class="pr-ref-pill">${escapeHtml(refNumber)}</div>` : ''}
                 </div>
             </div>
-            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 14px;padding:12px 14px;border-radius:8px;background:var(--color-surface-muted,#f8fafc);border:1px solid var(--color-border,#e2e8f0);font-size:13px;">
-                ${allMeta.map(([k, v]) => `<div><div style="font-size:11px;text-transform:uppercase;color:var(--color-text-muted,#64748b);font-weight:600;">${escapeHtml(k)}</div><div style="font-weight:600;margin-top:2px;">${escapeHtml(v)}</div></div>`).join('')}
-            </div>
+            ${metaTableHtml}
             ${itemsHtml}
             ${extraHtml}
             ${totalsHtml}
-            ${notes ? `<div style="margin-top:14px;padding:10px 12px;border-radius:8px;background:var(--color-surface-muted,#f8fafc);border:1px solid var(--color-border,#e2e8f0);font-size:12.5px;"><strong>Notes:</strong> ${escapeHtml(notes)}</div>` : ''}
+            ${notes ? `<div class="pr-notes-box"><strong>Notes:</strong> ${escapeHtml(notes)}</div>` : ''}
         `;
 
         const backdrop = document.createElement('div');
         backdrop.id = 'okw-printable-record-modal';
         backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.62);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
         backdrop.innerHTML = `
-            <div class="okw-card" style="width:100%;max-width:820px;max-height:90vh;overflow-y:auto;padding:22px 26px;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+            <div class="okw-card" style="width:100%;max-width:860px;max-height:90vh;overflow-y:auto;padding:22px 26px;box-shadow:0 20px 50px rgba(0,0,0,0.3);background:#fff;color:#0f172a;">
+                <style>${sharedDocStyles}</style>
                 <div id="okw-print-record-body">${bodyHtml}</div>
-                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid var(--color-border,#e2e8f0);">
+                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0;">
                     <button type="button" class="okw-btn okw-btn-outline" id="okw-pr-close">Close</button>
                     <button type="button" class="okw-btn okw-btn-primary" id="okw-pr-print">Print Form</button>
                 </div>
@@ -550,16 +603,17 @@
         backdrop.querySelector('#okw-pr-close').onclick = () => backdrop.remove();
         backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
         backdrop.querySelector('#okw-pr-print').onclick = () => {
-            const printDoc = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
-                @page{size:A4 portrait;margin:14mm;}
-                body{font-family:Inter,system-ui,-apple-system,sans-serif;color:#0f172a;margin:0;padding:0;font-size:12.5px;}
-                table{width:100%;border-collapse:collapse;}
-                th,td{padding:7px 8px;border-bottom:1px solid #cbd5e1;text-align:left;}
-                th{background:#f1f5f9;font-size:11px;text-transform:uppercase;color:#334155;}
-                .okw-num{text-align:right;}
-                .sig-row{display:flex;justify-content:space-between;margin-top:36px;font-size:11.5px;color:#475569;}
-                .sig-box{width:42%;border-top:1px solid #94a3b8;padding-top:6px;}
-            </style></head><body>${bodyHtml}<div class="sig-row"><div class="sig-box">Prepared By / Signature</div><div class="sig-box">Approved / Received By</div></div></body></html>`;
+            const printDoc = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(profile.name)} — ${escapeHtml(title)}</title><style>
+                @page{size:A4 portrait;margin:13mm;}
+                body{font-family:Inter,system-ui,-apple-system,sans-serif;color:#0f172a;margin:0;padding:0;font-size:12px;background:#ffffff;}
+                ${sharedDocStyles}
+                .sig-row{display:flex;justify-content:space-between;margin-top:38px;font-size:11px;color:#475569;}
+                .sig-box{width:42%;border-top:1.5px solid #1F3A60;padding-top:6px;font-weight:600;color:#1F3A60;}
+                .pr-print-foot{margin-top:18px;padding-top:8px;border-top:1px solid #CBD5E1;display:flex;justify-content:space-between;font-size:10px;color:#64748b;}
+            </style></head><body>${bodyHtml}
+                <div class="sig-row"><div class="sig-box">Prepared By / Signature</div><div class="sig-box">Approved / Received By</div></div>
+                <div class="pr-print-foot"><span>${escapeHtml(profile.name)} — Official Document</span><span>Printed: ${escapeHtml(new Date().toLocaleString())}</span></div>
+            </body></html>`;
             let iframe = document.getElementById('okw-print-frame');
             if (iframe) iframe.remove();
             iframe = document.createElement('iframe');
