@@ -1626,23 +1626,66 @@
 
     <!-- PO Modal -->
     <div id="poModal" class="modal">
-        <div class="modal-content" style="width: 700px; max-width: 95%;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                <h3>Create Purchase Order</h3>
-                <span style="font-size:12px; color:#666;" id="poDateDisplay"></span>
+        <div class="modal-content" style="width: 820px; max-width: 96%; max-height: 92vh; overflow-y: auto;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom:1px solid #e2e8f0; padding-bottom:10px;">
+                <h3 style="margin:0;">Add Purchase Order</h3>
+                <span style="font-size:12px; color:#64748b;" id="poDateDisplay"></span>
             </div>
             
             <form data-onsubmit="createPO(event)">
-                <div class="form-group">
-                    <label>Supplier</label>
-                    <select id="poSupplier" required style="width:100%; padding:10px; border:1px solid #ddd; border-radius:6px;"></select>
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap:12px; margin-bottom:14px;">
+                    <div class="form-group" style="margin:0;">
+                        <label>Supplier *</label>
+                        <select id="poSupplier" required style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;"></select>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Purchase # / Reference</label>
+                        <input type="text" id="poRefNo" placeholder="Auto-generated if blank" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Purchase Date</label>
+                        <input type="date" id="poDate" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap:12px; margin-bottom:16px;">
+                    <div class="form-group" style="margin:0;">
+                        <label>Purchase Status</label>
+                        <select id="poPurchaseStatus" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                            <option value="Pending">Pending</option>
+                            <option value="Ordered">Ordered</option>
+                            <option value="Received">Received (Adds to Stock)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Payment Status</label>
+                        <select id="poPaymentStatus" data-onchange="updatePOList()" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                            <option value="Unpaid">Unpaid / Due</option>
+                            <option value="Partial">Partial Payment</option>
+                            <option value="Paid">Paid</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Payment Method</label>
+                        <select id="poPaymentMethod" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                            <option value="Cash">Cash</option>
+                            <option value="Mobile Money">Mobile Money</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="Credit">Supplier Credit</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Amount Paid</label>
+                        <input type="number" id="poPaidAmount" step="0.01" min="0" value="0" data-oninput="updatePOList()" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;">
+                    </div>
                 </div>
                 
-                <div style="background:#f9f9f9; padding:15px; border-radius:8px; margin-bottom:20px;">
-                    <label style="font-size:13px; font-weight:600; color:#555; display:block; margin-bottom:10px;">Order Items</label>
+                <div style="background:#f9f9f9; padding:14px; border-radius:8px; margin-bottom:16px;">
+                    <label style="font-size:13px; font-weight:600; color:#334155; display:block; margin-bottom:10px;">Purchase Items (tied to this purchase)</label>
                     
                     <!-- Input Row -->
-                    <div style="display:grid; grid-template-columns: 3fr 1fr 1fr auto; gap:10px; margin-bottom:15px;">
+                    <div style="display:grid; grid-template-columns: 3fr 1fr 1fr auto; gap:10px; margin-bottom:12px;">
                         <div>
                             <select id="poProduct" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
                                 <option value="">Select Product</option>
@@ -1652,7 +1695,7 @@
                             <input type="number" id="poQty" placeholder="Qty" min="1" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
                         </div>
                         <div>
-                            <input type="number" id="poCost" placeholder="Cost" step="0.01" min="0" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
+                            <input type="number" id="poCost" placeholder="Unit Cost" step="0.01" min="0" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
                         </div>
                         <div>
                             <button type="button" data-onclick="addPOItem()" style="background:var(--primary-color); color:white; border:none; padding:8px 15px; border-radius:4px; cursor:pointer;">
@@ -1668,27 +1711,49 @@
                                 <th style="padding:8px; text-align:left;">Product</th>
                                 <th style="padding:8px; text-align:center; width:80px;">Qty</th>
                                 <th style="padding:8px; text-align:right; width:100px;">Unit Cost</th>
-                                <th style="padding:8px; text-align:right; width:100px;">Total</th>
-                                <th style="padding:8px; text-align:center; width:50px;"></th>
+                                <th style="padding:8px; text-align:right; width:110px;">Line Total</th>
+                                <th style="padding:8px; text-align:center; width:45px;"></th>
                             </tr>
                         </thead>
-                        <tbody id="poItemsTableBody">
-                            <!-- Items go here -->
-                        </tbody>
+                        <tbody id="poItemsTableBody"></tbody>
                     </table>
-                    <div id="poEmptyState" style="text-align:center; padding:20px; color:#999; font-size:13px;">No items added yet.</div>
+                    <div id="poEmptyState" style="text-align:center; padding:18px; color:#999; font-size:13px;">No items added yet.</div>
                 </div>
 
-                <div style="display:flex; justify-content:flex-end; align-items:center; gap:20px; margin-bottom:20px;">
+                <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap:10px; margin-bottom:14px;">
+                    <div class="form-group" style="margin:0;">
+                        <label>Discount</label>
+                        <input type="number" id="poDiscount" step="0.01" min="0" value="0" data-oninput="updatePOList()" style="width:100%; padding:7px; border:1px solid #ddd; border-radius:6px;">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Tax</label>
+                        <input type="number" id="poTax" step="0.01" min="0" value="0" data-oninput="updatePOList()" style="width:100%; padding:7px; border:1px solid #ddd; border-radius:6px;">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Shipping</label>
+                        <input type="number" id="poShipping" step="0.01" min="0" value="0" data-oninput="updatePOList()" style="width:100%; padding:7px; border:1px solid #ddd; border-radius:6px;">
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label>Notes</label>
+                        <input type="text" id="poNotes" placeholder="Optional notes..." style="width:100%; padding:7px; border:1px solid #ddd; border-radius:6px;">
+                    </div>
+                </div>
+
+                <div style="display:flex; justify-content:space-between; align-items:flex-end; flex-wrap:wrap; gap:16px; padding:14px 16px; background:#f8fafc; border:1px solid #e2e8f0; border-radius:8px; margin-bottom:18px;">
+                    <div style="display:flex; gap:18px; flex-wrap:wrap; font-size:13px; color:#475569;">
+                        <div>Total Items: <strong id="poItemCount">0</strong></div>
+                        <div>Subtotal: <strong id="poSubtotal">0.00</strong></div>
+                        <div>Balance Due: <strong id="poBalanceDue">0.00</strong></div>
+                    </div>
                     <div style="text-align:right;">
-                        <div style="font-size:12px; color:#666;">Total Amount</div>
-                        <div style="font-size:24px; font-weight:bold; color:var(--primary-color);"><span id="poTotal">0.00</span></div>
+                        <div style="font-size:12px; color:#64748b; text-transform:uppercase; font-weight:600;">Net Total Amount</div>
+                        <div style="font-size:24px; font-weight:800; color:var(--primary-color);"><span id="poTotal">0.00</span></div>
                     </div>
                 </div>
 
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" data-onclick="document.getElementById('poModal').classList.remove('active')">Cancel</button>
-                    <button type="submit" class="btn-save">Create Order</button>
+                    <button type="submit" class="btn-save">Save Purchase Order</button>
                 </div>
             </form>
         </div>
@@ -3278,10 +3343,15 @@
             const dateEl = document.getElementById('poDateDisplay');
             if(dateEl) dateEl.textContent = new Date().toLocaleDateString();
 
-            // Populate products dropdown
+            // Populate products dropdown & reset new fields
             const prodSelect = document.getElementById('poProduct');
             prodSelect.innerHTML = '<option value="">-- Select Product --</option>' + products.map(p => `<option value="${OkwUI.escapeHtml(p.barcode)}" data-price="${p.price}">${OkwUI.escapeHtml(p.name)}</option>`).join('');
-            
+            const dIn = document.getElementById('poDate');
+            if (dIn) dIn.value = new Date().toISOString().slice(0, 10);
+            ['poRefNo', 'poNotes'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+            ['poDiscount', 'poTax', 'poShipping', 'poPaidAmount'].forEach(id => { const el = document.getElementById(id); if (el) el.value = '0'; });
+            const ps = document.getElementById('poPurchaseStatus'); if (ps) ps.value = 'Pending';
+            const payS = document.getElementById('poPaymentStatus'); if (payS) payS.value = 'Unpaid';
             
             document.getElementById('poModal').classList.add('active');
         }
@@ -3293,27 +3363,35 @@
                     headers: { 'Authorization': `Bearer ${token}` }
                 });
                 if (!res.ok) throw new Error("PO not found");
-                
                 const po = await res.json();
-                const supplierName = po.supplier_name || 'Unknown';
+                const items = po.items || [];
+                const subtotal = items.reduce((s, it) => s + Number(it.quantity || 0) * Number(it.unit_cost || 0), 0);
+                const netTotal = Number(po.total_amount ?? subtotal);
+                const paid = Number(po.paid_amount || 0);
+                const balance = Math.max(0, netTotal - paid);
 
-                document.getElementById('viewPOId').textContent = po.id;
-                document.getElementById('viewPOSupplier').textContent = supplierName;
-                document.getElementById('viewPODate').textContent = new Date(po.created_at).toLocaleString();
-                document.getElementById('viewPOStatus').textContent = po.status;
-                
-                const tbody = document.getElementById('viewPOItems');
-                tbody.innerHTML = (po.items || []).map(item => `
-                    <tr>
-                        <td style="padding:8px; border-bottom:1px solid #eee;">${item.name || item.product_barcode}</td>
-                        <td style="padding:8px; text-align:center; border-bottom:1px solid #eee;">${item.quantity}</td>
-                        <td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">${formatCurrency(item.unit_cost)}</td>
-                        <td style="padding:8px; text-align:right; border-bottom:1px solid #eee;">${formatCurrency(item.quantity * item.unit_cost)}</td>
-                    </tr>
-                `).join('');
-
-                document.getElementById('viewPOTotal').textContent = formatCurrency(po.total_amount);
-                document.getElementById('viewPOModal').classList.add('active');
+                if (window.OkwUI && typeof OkwUI.openPrintableRecord === 'function') {
+                    OkwUI.openPrintableRecord({
+                        title: 'Purchase Order',
+                        refNumber: po.reference_no || ('PO-' + po.id),
+                        date: po.purchase_date ? String(po.purchase_date).slice(0, 10) : new Date(po.created_at).toLocaleString(),
+                        partyLabel: 'Supplier',
+                        partyName: po.supplier_name || 'Unknown Supplier',
+                        branch: po.branch_name || '',
+                        status: po.status || 'Pending',
+                        paymentStatus: po.payment_status || 'Unpaid',
+                        metaRows: po.payment_method ? [['Payment Method', po.payment_method]] : [],
+                        items,
+                        subtotal,
+                        discount: Number(po.discount_amount || 0),
+                        tax: Number(po.tax_amount || 0),
+                        shipping: Number(po.shipping_cost || 0),
+                        netTotal,
+                        paidAmount: paid,
+                        balanceDue: balance,
+                        notes: po.notes || ''
+                    });
+                }
             } catch (e) {
                 console.error(e);
                 showNotification("Error loading PO details", "error");
@@ -3343,10 +3421,14 @@
             const tbody = document.getElementById('poItemsTableBody');
             const emptyState = document.getElementById('poEmptyState');
             const totalEl = document.getElementById('poTotal');
+            const subEl = document.getElementById('poSubtotal');
+            const cntEl = document.getElementById('poItemCount');
+            const balEl = document.getElementById('poBalanceDue');
             
             if (!tbody) return;
 
-            let total = 0;
+            let subtotal = 0;
+            let totalUnits = 0;
             
             if (poItems.length === 0) {
                 tbody.innerHTML = '';
@@ -3355,7 +3437,8 @@
                 if(emptyState) emptyState.style.display = 'none';
                 tbody.innerHTML = poItems.map((item, i) => {
                     const lineTotal = item.qty * item.cost;
-                    total += lineTotal;
+                    subtotal += lineTotal;
+                    totalUnits += Number(item.qty || 0);
                     return `
                         <tr>
                             <td style="padding:8px; border-bottom:1px solid #eee;">${OkwUI.escapeHtml(item.name)}</td>
@@ -3369,7 +3452,21 @@
                     `;
                 }).join('');
             }
-            if(totalEl) totalEl.textContent = total.toFixed(2);
+            const disc = Math.max(0, parseFloat(document.getElementById('poDiscount')?.value || 0) || 0);
+            const tax = Math.max(0, parseFloat(document.getElementById('poTax')?.value || 0) || 0);
+            const ship = Math.max(0, parseFloat(document.getElementById('poShipping')?.value || 0) || 0);
+            const netTotal = Math.max(0, subtotal - disc + tax + ship);
+            const payStatus = document.getElementById('poPaymentStatus')?.value || 'Unpaid';
+            const paidIn = document.getElementById('poPaidAmount');
+            if (payStatus === 'Paid' && paidIn) paidIn.value = netTotal.toFixed(2);
+            else if (payStatus === 'Unpaid' && paidIn) paidIn.value = '0';
+            const paid = Math.max(0, parseFloat(paidIn?.value || 0) || 0);
+            const balanceDue = Math.max(0, netTotal - paid);
+
+            if (cntEl) cntEl.textContent = `${poItems.length} (${totalUnits} units)`;
+            if (subEl) subEl.textContent = formatCurrency(subtotal);
+            if (totalEl) totalEl.textContent = formatCurrency(netTotal);
+            if (balEl) balEl.textContent = formatCurrency(balanceDue);
         }
 
         function removePOItem(index) {
@@ -3388,13 +3485,21 @@
             }
 
             const supplierId = document.getElementById('poSupplier').value;
-            const total = parseFloat(document.getElementById('poTotal').textContent);
-            
+            if (!supplierId) return showNotification("Please select a supplier for this purchase.", "error");
             if (poItems.length === 0) return showNotification("Please add items to the order first.", "error");
 
             const poData = {
-                supplierId: supplierId,
-                total: total,
+                supplierId,
+                referenceNo: document.getElementById('poRefNo')?.value || '',
+                purchaseDate: document.getElementById('poDate')?.value || null,
+                purchaseStatus: document.getElementById('poPurchaseStatus')?.value || 'Pending',
+                paymentStatus: document.getElementById('poPaymentStatus')?.value || 'Unpaid',
+                paymentMethod: document.getElementById('poPaymentMethod')?.value || 'Cash',
+                paidAmount: parseFloat(document.getElementById('poPaidAmount')?.value || 0) || 0,
+                discountAmount: parseFloat(document.getElementById('poDiscount')?.value || 0) || 0,
+                taxAmount: parseFloat(document.getElementById('poTax')?.value || 0) || 0,
+                shippingCost: parseFloat(document.getElementById('poShipping')?.value || 0) || 0,
+                notes: document.getElementById('poNotes')?.value || '',
                 items: poItems
             };
 

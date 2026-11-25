@@ -4243,42 +4243,82 @@ app.get('/api/purchase-orders/:id', authenticateToken, requireRole(MANAGER_ROLES
 });
 
 app.post('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('purchases', 'create'), async (req, res) => {
-    const { supplierId, items } = req.body;
+    const {
+        supplierId,
+        items,
+        referenceNo = '',
+        purchaseDate = null,
+        purchaseStatus = 'Pending',
+        paymentStatus = 'Unpaid',
+        paymentMethod = 'Cash',
+        paidAmount = 0,
+        discountAmount = 0,
+        taxAmount = 0,
+        shippingCost = 0,
+        notes = ''
+    } = req.body;
     const tenantId = req.user.tenant_id || 1;
     if (!supplierId || !Array.isArray(items) || !items.length) {
         return res.status(400).json({ message: 'Supplier and items are required' });
     }
     let branchId = req.user.store_id;
+    let branchName = req.user.store_location || DEFAULT_BRANCH_NAME;
 
-    // Ensure branchId is set (fallback to location lookup or default)
     if (!branchId) {
         if (req.user.store_location) {
             try {
-                const bRes = await pool.query('SELECT id FROM branches WHERE name = $1 OR location = $1', [req.user.store_location]);
-                if (bRes.rows.length > 0) branchId = bRes.rows[0].id;
+                const bRes = await pool.query('SELECT id, name FROM branches WHERE name = $1 OR location = $1', [req.user.store_location]);
+                if (bRes.rows.length > 0) { branchId = bRes.rows[0].id; branchName = bRes.rows[0].name; }
             } catch (e) { console.error('Branch lookup error in PO creation:', e); }
         }
-        if (!branchId) branchId = await mainBranchId(pool, tenantId); // the tenant's main branch
+        if (!branchId) branchId = await mainBranchId(pool, tenantId);
     }
 
     const client = await pool.connect();
     try {
+        await client.query(`
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS reference_no VARCHAR(80);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS purchase_date DATE;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(30) DEFAULT 'Unpaid';
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(40);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS paid_amount NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS tax_amount NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS shipping_cost NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS notes TEXT;
+        `);
         await client.query('BEGIN');
-        const supCheck = await client.query('SELECT id FROM suppliers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [supplierId, tenantId]);
+        const supCheck = await client.query('SELECT id, name FROM suppliers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [supplierId, tenantId]);
         if (!supCheck.rows.length) {
             await client.query('ROLLBACK');
             return res.status(404).json({ message: 'Supplier not found' });
         }
+        const supplierName = supCheck.rows[0].name;
 
-        const serverTotal = Number(items.reduce((sum, item) => {
+        const subtotal = Number(items.reduce((sum, item) => {
             const qty = Math.max(0, Number(item.qty || 0));
             const cost = Math.max(0, Number(item.cost || 0));
             return sum + qty * cost;
         }, 0).toFixed(2));
+        const safeDiscount = Math.max(0, Number(discountAmount || 0));
+        const safeTax = Math.max(0, Number(taxAmount || 0));
+        const safeShipping = Math.max(0, Number(shippingCost || 0));
+        const netTotal = Number(Math.max(0, subtotal - safeDiscount + safeTax + safeShipping).toFixed(2));
+        const safeStatus = ['Pending', 'Ordered', 'Received'].includes(String(purchaseStatus)) ? String(purchaseStatus) : 'Pending';
+        let safePayStatus = ['Paid', 'Partial', 'Unpaid'].includes(String(paymentStatus)) ? String(paymentStatus) : 'Unpaid';
+        let safePaid = Math.max(0, Number(paidAmount || 0));
+        if (safePayStatus === 'Paid' && safePaid <= 0) safePaid = netTotal;
+        if (safePayStatus === 'Unpaid') safePaid = 0;
+        if (safePaid >= netTotal && netTotal > 0) safePayStatus = 'Paid';
+        else if (safePaid > 0 && safePaid < netTotal) safePayStatus = 'Partial';
+
+        const refNo = String(referenceNo || '').trim() || ('PO-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + crypto.randomInt(1000, 9999));
 
         const poRes = await client.query(
-            'INSERT INTO purchase_orders (supplier_id, total_amount, status, branch_id, tenant_id) VALUES ($1, $2, $3, $4, $5) RETURNING id',
-            [supplierId, serverTotal, 'Pending', branchId, tenantId]
+            `INSERT INTO purchase_orders
+                (supplier_id, total_amount, status, branch_id, tenant_id, reference_no, purchase_date, payment_status, payment_method, paid_amount, discount_amount, tax_amount, shipping_cost, notes)
+             VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7::date, CURRENT_DATE),$8,$9,$10,$11,$12,$13,$14) RETURNING id, reference_no`,
+            [supplierId, netTotal, safeStatus, branchId, tenantId, refNo, purchaseDate || null, safePayStatus, String(paymentMethod || 'Cash'), safePaid, safeDiscount, safeTax, safeShipping, String(notes || '')]
         );
         const poId = poRes.rows[0].id;
 
@@ -4289,12 +4329,32 @@ app.post('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), 
                 'INSERT INTO purchase_order_items (po_id, product_barcode, quantity, unit_cost, tenant_id) VALUES ($1, $2, $3, $4, $5)',
                 [poId, item.barcode, qty, cost, tenantId]
             );
+            if (safeStatus === 'Received' && qty > 0 && item.barcode) {
+                await client.query(
+                    `UPDATE products
+                     SET stock = COALESCE(stock, 0) + $1,
+                         cost_price = CASE WHEN $2 > 0 THEN $2 ELSE cost_price END,
+                         stock_levels = jsonb_set(COALESCE(stock_levels, '{}'::jsonb), ARRAY[$3::text], to_jsonb(COALESCE((stock_levels->>$3::text)::numeric, 0) + $1))
+                     WHERE barcode = $4 AND COALESCE(tenant_id, 1) = $5`,
+                    [qty, cost, branchName, item.barcode, tenantId]
+                );
+            }
         }
         await client.query('COMMIT');
         await logActivity(req, 'CREATE_PO', {
             po_id: poId,
+            reference_no: refNo,
             supplier_id: supplierId,
-            total: serverTotal,
+            supplier_name: supplierName,
+            purchase_status: safeStatus,
+            payment_status: safePayStatus,
+            payment_method: paymentMethod,
+            subtotal,
+            discount_amount: safeDiscount,
+            tax_amount: safeTax,
+            shipping_cost: safeShipping,
+            total: netTotal,
+            paid_amount: safePaid,
             item_count: items.length,
             items: items.map(it => ({
                 barcode: it.barcode || '',
@@ -4304,9 +4364,10 @@ app.post('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), 
                 line_total: Number((Math.max(0, Number(it.qty || 0)) * Math.max(0, Number(it.cost || 0))).toFixed(2))
             }))
         });
-        res.json({ success: true, id: poId, total: serverTotal });
+        res.json({ success: true, id: poId, reference_no: refNo, total: netTotal, status: safeStatus, payment_status: safePayStatus });
     } catch (err) {
         await client.query('ROLLBACK');
+        console.error('POST /api/purchase-orders error:', err);
         res.status(500).json({ message: 'Error creating PO' });
     } finally { client.release(); }
 });

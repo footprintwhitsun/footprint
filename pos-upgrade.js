@@ -1451,6 +1451,41 @@
             else if (e.key === 'F9') { e.preventDefault(); openSplitPaymentModal(); }
             else if (e.key === 'F10') { e.preventDefault(); switchPosView('quotes'); }
         });
+
+        // If navigated from Drafts list ("POS" button: /pos?loadDraft=<id>), load draft directly into the cart
+        const draftId = new URLSearchParams(window.location.search).get('loadDraft');
+        if (draftId) {
+            fetch('/api/pos/holds', { headers: authHeaders() })
+                .then(r => (r.ok ? r.json() : {}))
+                .then(data => {
+                    const h = (data.holds || []).find(x => String(x.id) === String(draftId));
+                    if (!h) return;
+                    const items = Array.isArray(h.items) ? h.items : (typeof h.items === 'string' ? JSON.parse(h.items || '[]') : []);
+                    const t = activeTab();
+                    t.items = items.map(it => ({
+                        barcode: it.barcode || '',
+                        name: it.name || it.barcode || 'Item',
+                        qty: Number(it.qty || 1),
+                        price: Number(it.price || 0),
+                        unit_name: it.unit_name || 'Unit',
+                        unit_factor: Number(it.unit_factor || 1)
+                    }));
+                    t.priceGroup = h.price_group || 'retail';
+                    t.discountAmount = Number(h.discount_amount || 0);
+                    if (h.customer_name && h.customer_name !== 'Walk-in') {
+                        t.customer = { id: h.customer_id || null, name: h.customer_name };
+                    }
+                    pushTabStateToTill(t);
+                    renderAll();
+                    OkwUI.toast(`Draft "${h.label || ('#' + h.id)}" loaded into POS`, 'success');
+                    try {
+                        const clean = new URL(window.location.href);
+                        clean.searchParams.delete('loadDraft');
+                        window.history.replaceState(null, '', clean);
+                    } catch (_) { }
+                })
+                .catch(() => { });
+        }
     }
 
     document.addEventListener('DOMContentLoaded', mountUpgradeBar);

@@ -421,12 +421,14 @@ router.post('/api/pos/holds', authenticateToken, async (req, res) => {
         const { label, customer_id = null, customer_name = 'Walk-in', price_group = 'retail', items = [], discount_amount = 0, notes = '', store_location = '', meta = {} } = req.body;
         if (!Array.isArray(items) || !items.length) return res.status(400).json({ message: 'Cannot hold an empty cart' });
         const holdLabel = (label && label.trim()) ? label.trim() : `${customer_name} (${items.length} items)`;
+        await pool.query('ALTER TABLE pos_holds ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+        await pool.query('ALTER TABLE pos_holds ADD COLUMN IF NOT EXISTS total_amount NUMERIC(12,2) DEFAULT 0');
+        const draftTotal = Number(Math.max(0, items.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 1), 0) - Math.max(0, Number(discount_amount || 0))).toFixed(2));
         const result = await pool.query(
-            `INSERT INTO pos_holds (tenant_id, label, customer_id, customer_name, price_group, items, discount_amount, notes, store_location, created_by, created_by_name, meta)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
-            [req.user.tenant_id || 1, holdLabel, customer_id, customer_name, price_group, JSON.stringify(items), Math.max(0, Number(discount_amount || 0)), notes, store_location, req.user.id || null, req.user.name || 'Teller', JSON.stringify(meta && typeof meta === 'object' ? meta : {})]
+            `INSERT INTO pos_holds (tenant_id, label, customer_id, customer_name, price_group, items, discount_amount, total_amount, notes, store_location, created_by, created_by_name, meta, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP) RETURNING *`,
+            [req.user.tenant_id || 1, holdLabel, customer_id, customer_name, price_group, JSON.stringify(items), Math.max(0, Number(discount_amount || 0)), draftTotal, notes, store_location, req.user.id || null, req.user.name || 'Teller', JSON.stringify(meta && typeof meta === 'object' ? meta : {})]
         );
-        const draftTotal = items.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 1), 0);
         await logActivity(req, 'DRAFT_CREATED', {
             hold_id: result.rows[0].id,
             label: holdLabel,
@@ -434,7 +436,7 @@ router.post('/api/pos/holds', authenticateToken, async (req, res) => {
             store_location: store_location || req.user.store_location || '',
             price_group,
             discount_amount: Math.max(0, Number(discount_amount || 0)),
-            total: Number(Math.max(0, draftTotal - Number(discount_amount || 0)).toFixed(2)),
+            total: draftTotal,
             notes,
             item_count: items.length,
             items: items.map(it => ({ barcode: it.barcode || '', name: it.name || it.barcode || 'Item', qty: Number(it.qty || 1), price: Number(it.price || 0), line_total: Number((Number(it.price || 0) * Number(it.qty || 1)).toFixed(2)) }))
@@ -442,6 +444,61 @@ router.post('/api/pos/holds', authenticateToken, async (req, res) => {
         res.status(201).json({ success: true, hold: result.rows[0] });
     } catch (err) {
         res.status(500).json({ message: 'Failed to hold sale' });
+    }
+});
+
+router.put('/api/pos/holds/:id', authenticateToken, async (req, res) => {
+    try {
+        await ensurePosPhase2Schema();
+        await pool.query('ALTER TABLE pos_holds ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+        await pool.query('ALTER TABLE pos_holds ADD COLUMN IF NOT EXISTS total_amount NUMERIC(12,2) DEFAULT 0');
+        const tenantId = req.user.tenant_id || 1;
+        const prevRes = await pool.query('SELECT * FROM pos_holds WHERE id = $1 AND tenant_id = $2', [req.params.id, tenantId]);
+        if (!prevRes.rows.length) return res.status(404).json({ message: 'Draft not found' });
+        const prev = prevRes.rows[0];
+        const prevItems = Array.isArray(prev.items) ? prev.items : (typeof prev.items === 'string' ? JSON.parse(prev.items || '[]') : []);
+
+        const {
+            label = prev.label,
+            customer_name = prev.customer_name || 'Walk-in',
+            price_group = prev.price_group || 'retail',
+            items = prevItems,
+            discount_amount = prev.discount_amount || 0,
+            notes = prev.notes || ''
+        } = req.body || {};
+        if (!Array.isArray(items) || !items.length) return res.status(400).json({ message: 'Draft must contain at least one item' });
+
+        const holdLabel = (label && String(label).trim()) ? String(label).trim() : `${customer_name} (${items.length} items)`;
+        const safeDisc = Math.max(0, Number(discount_amount || 0));
+        const draftTotal = Number(Math.max(0, items.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 1), 0) - safeDisc).toFixed(2));
+        const upd = await pool.query(
+            `UPDATE pos_holds
+             SET label = $1, customer_name = $2, price_group = $3, items = $4, discount_amount = $5, total_amount = $6, notes = $7, updated_at = CURRENT_TIMESTAMP
+             WHERE id = $8 AND tenant_id = $9 RETURNING *`,
+            [holdLabel, customer_name, price_group, JSON.stringify(items), safeDisc, draftTotal, notes, req.params.id, tenantId]
+        );
+        const prevMap = new Map(prevItems.map(i => [String(i.barcode || i.name), Number(i.qty || 0)]));
+        const nextMap = new Map(items.map(i => [String(i.barcode || i.name), Number(i.qty || 0)]));
+        const removedItems = prevItems.filter(i => !nextMap.has(String(i.barcode || i.name)) || nextMap.get(String(i.barcode || i.name)) < Number(i.qty || 0));
+        const changes = {};
+        if (prev.customer_name !== customer_name) changes.customer_name = { from: prev.customer_name, to: customer_name };
+        if (Number(prev.total_amount || 0) !== draftTotal) changes.total = { from: Number(prev.total_amount || 0), to: draftTotal };
+        if (prevItems.length !== items.length) changes.item_count = { from: prevItems.length, to: items.length };
+
+        await logActivity(req, 'DRAFT_AMENDED', {
+            hold_id: upd.rows[0].id,
+            label: holdLabel,
+            customer_name,
+            total: draftTotal,
+            item_count: items.length,
+            changes,
+            items: items.map(it => ({ barcode: it.barcode || '', name: it.name || it.barcode || 'Item', qty: Number(it.qty || 1), price: Number(it.price || 0), line_total: Number((Number(it.price || 0) * Number(it.qty || 1)).toFixed(2)) })),
+            items_removed: removedItems.map(it => ({ barcode: it.barcode || '', name: it.name || it.barcode || 'Item', qty: Number(it.qty || 1), price: Number(it.price || 0), line_total: Number((Number(it.price || 0) * Number(it.qty || 1)).toFixed(2)) }))
+        });
+        res.json({ success: true, hold: upd.rows[0] });
+    } catch (err) {
+        console.error('PUT /api/pos/holds/:id error:', err);
+        res.status(500).json({ message: 'Failed to update draft' });
     }
 });
 

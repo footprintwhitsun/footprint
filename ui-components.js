@@ -415,6 +415,162 @@
             </details>`;
     }
 
+    /**
+     * Opens a clean, branded printable detail modal for any clicked item/record
+     * (Purchase Order, Draft, Sale, Quotation, or any table row).
+     */
+    async function openPrintableRecord(opts = {}) {
+        const prev = document.getElementById('okw-printable-record-modal');
+        if (prev) prev.remove();
+        const profile = await getCompanyProfile();
+        const fmtC = (n) => (typeof window.formatCurrency === 'function'
+            ? window.formatCurrency(n)
+            : 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+
+        const {
+            title = 'Document Details',
+            refNumber = '',
+            date = new Date().toLocaleString(),
+            status = '',
+            paymentStatus = '',
+            partyLabel = '',
+            partyName = '',
+            branch = '',
+            metaRows = [],
+            items = [],
+            subtotal = null,
+            discount = null,
+            tax = null,
+            shipping = null,
+            netTotal = null,
+            paidAmount = null,
+            balanceDue = null,
+            notes = ''
+        } = opts;
+
+        const detailsLine = [profile.address, profile.phone, profile.email].filter(Boolean).join('  •  ');
+        const allMeta = [
+            ...(refNumber ? [['Reference #', refNumber]] : []),
+            ...(date ? [['Date', date]] : []),
+            ...(partyName ? [[partyLabel || 'Name', partyName]] : []),
+            ...(branch ? [['Branch', branch]] : []),
+            ...(status ? [['Status', status]] : []),
+            ...(paymentStatus ? [['Payment Status', paymentStatus]] : []),
+            ...metaRows
+        ];
+
+        const itemsHtml = items.length ? `
+            <div style="margin-top:16px;">
+                <table class="okw-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Item</th>
+                            <th>Barcode</th>
+                            <th class="okw-num">Qty</th>
+                            <th class="okw-num">Unit Price / Cost</th>
+                            <th class="okw-num">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${items.map((it, idx) => {
+                            const qty = Number(it.qty ?? it.quantity ?? 1);
+                            const unit = Number(it.price ?? it.unit_cost ?? it.cost ?? 0);
+                            const line = Number(it.line_total ?? (qty * unit));
+                            return `<tr>
+                                <td>${idx + 1}</td>
+                                <td><strong>${escapeHtml(it.name || it.product_name || it.product_barcode || it.barcode || 'Item')}</strong></td>
+                                <td>${escapeHtml(it.barcode || it.product_barcode || '—')}</td>
+                                <td class="okw-num">${escapeHtml(qty)}</td>
+                                <td class="okw-num">${fmtC(unit)}</td>
+                                <td class="okw-num"><strong>${fmtC(line)}</strong></td>
+                            </tr>`;
+                        }).join('')}
+                    </tbody>
+                </table>
+            </div>` : '';
+
+        const totalRows = [];
+        if (items.length) totalRows.push(['Total Items', `${items.length} (${items.reduce((s, i) => s + Number(i.qty ?? i.quantity ?? 1), 0)} units)`]);
+        if (subtotal !== null) totalRows.push(['Subtotal', fmtC(subtotal)]);
+        if (discount !== null && Number(discount) > 0) totalRows.push(['Discount', '-' + fmtC(discount)]);
+        if (tax !== null && Number(tax) > 0) totalRows.push(['Tax', fmtC(tax)]);
+        if (shipping !== null && Number(shipping) > 0) totalRows.push(['Shipping', fmtC(shipping)]);
+        if (netTotal !== null) totalRows.push(['Net Total Amount', fmtC(netTotal), true]);
+        if (paidAmount !== null) totalRows.push(['Amount Paid', fmtC(paidAmount)]);
+        if (balanceDue !== null) totalRows.push(['Balance Due', fmtC(balanceDue)]);
+
+        const totalsHtml = totalRows.length ? `
+            <div style="margin-top:16px;display:flex;justify-content:flex-end;">
+                <table style="min-width:280px;border-collapse:collapse;font-size:13px;">
+                    ${totalRows.map(([k, v, bold]) => `
+                        <tr style="${bold ? 'border-top:2px solid #1e293b;font-size:15px;font-weight:700;' : 'border-bottom:1px solid #e2e8f0;'}">
+                            <td style="padding:6px 10px;color:${bold ? 'inherit' : 'var(--color-text-muted,#64748b)'};">${escapeHtml(k)}</td>
+                            <td style="padding:6px 10px;text-align:right;font-weight:${bold ? '700' : '600'};">${escapeHtml(v)}</td>
+                        </tr>`).join('')}
+                </table>
+            </div>` : '';
+
+        const bodyHtml = `
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;border-bottom:2px solid #273990;padding-bottom:12px;margin-bottom:14px;">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <img src="${escapeHtml(profile.logoUrl)}" alt="${escapeHtml(profile.name)}" style="height:40px;max-width:110px;object-fit:contain;" onerror="this.style.display='none'">
+                    <div>
+                        <div style="font-size:16px;font-weight:700;color:#273990;">${escapeHtml(profile.name)}</div>
+                        ${detailsLine ? `<div style="font-size:11.5px;color:var(--color-text-muted,#64748b);margin-top:2px;">${escapeHtml(detailsLine)}</div>` : ''}
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div style="font-size:16px;font-weight:700;">${escapeHtml(title)}</div>
+                    ${refNumber ? `<div style="font-size:12px;color:var(--color-text-muted,#64748b);margin-top:2px;">${escapeHtml(refNumber)}</div>` : ''}
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px 14px;padding:12px 14px;border-radius:8px;background:var(--color-surface-muted,#f8fafc);border:1px solid var(--color-border,#e2e8f0);font-size:13px;">
+                ${allMeta.map(([k, v]) => `<div><div style="font-size:11px;text-transform:uppercase;color:var(--color-text-muted,#64748b);font-weight:600;">${escapeHtml(k)}</div><div style="font-weight:600;margin-top:2px;">${escapeHtml(v)}</div></div>`).join('')}
+            </div>
+            ${itemsHtml}
+            ${totalsHtml}
+            ${notes ? `<div style="margin-top:14px;padding:10px 12px;border-radius:8px;background:var(--color-surface-muted,#f8fafc);border:1px solid var(--color-border,#e2e8f0);font-size:12.5px;"><strong>Notes:</strong> ${escapeHtml(notes)}</div>` : ''}
+        `;
+
+        const backdrop = document.createElement('div');
+        backdrop.id = 'okw-printable-record-modal';
+        backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.62);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
+        backdrop.innerHTML = `
+            <div class="okw-card" style="width:100%;max-width:820px;max-height:90vh;overflow-y:auto;padding:22px 26px;box-shadow:0 20px 50px rgba(0,0,0,0.3);">
+                <div id="okw-print-record-body">${bodyHtml}</div>
+                <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:18px;padding-top:14px;border-top:1px solid var(--color-border,#e2e8f0);">
+                    <button type="button" class="okw-btn okw-btn-outline" id="okw-pr-close">Close</button>
+                    <button type="button" class="okw-btn okw-btn-primary" id="okw-pr-print">Print Form</button>
+                </div>
+            </div>`;
+        document.body.appendChild(backdrop);
+        backdrop.querySelector('#okw-pr-close').onclick = () => backdrop.remove();
+        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.remove(); });
+        backdrop.querySelector('#okw-pr-print').onclick = () => {
+            const printDoc = `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(title)}</title><style>
+                @page{size:A4 portrait;margin:14mm;}
+                body{font-family:Inter,system-ui,-apple-system,sans-serif;color:#0f172a;margin:0;padding:0;font-size:12.5px;}
+                table{width:100%;border-collapse:collapse;}
+                th,td{padding:7px 8px;border-bottom:1px solid #cbd5e1;text-align:left;}
+                th{background:#f1f5f9;font-size:11px;text-transform:uppercase;color:#334155;}
+                .okw-num{text-align:right;}
+                .sig-row{display:flex;justify-content:space-between;margin-top:36px;font-size:11.5px;color:#475569;}
+                .sig-box{width:42%;border-top:1px solid #94a3b8;padding-top:6px;}
+            </style></head><body>${bodyHtml}<div class="sig-row"><div class="sig-box">Prepared By / Signature</div><div class="sig-box">Approved / Received By</div></div></body></html>`;
+            let iframe = document.getElementById('okw-print-frame');
+            if (iframe) iframe.remove();
+            iframe = document.createElement('iframe');
+            iframe.id = 'okw-print-frame';
+            iframe.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden;';
+            document.body.appendChild(iframe);
+            const doc = iframe.contentWindow.document;
+            doc.open(); doc.write(printDoc); doc.close();
+            iframe.contentWindow.focus();
+            setTimeout(() => { iframe.contentWindow.print(); }, 120);
+        };
+    }
+
     function dataTable(container, opts) {
         const el = typeof container === 'string' ? document.querySelector(container) : container;
         if (!el) return;
@@ -546,10 +702,33 @@
             } else if (slice.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${visCols.length}" style="text-align:center;padding:28px;color:var(--color-text-muted);">${escapeHtml(emptyText)}</td></tr>`;
             } else {
-                tbody.innerHTML = slice.map(r => `<tr>${visCols.map(c => {
+                tbody.innerHTML = slice.map((r, rIdx) => `<tr data-row-idx="${rIdx}" style="cursor:pointer;">${visCols.map(c => {
                     const content = typeof c.render === 'function' ? c.render(r[c.key], r) : escapeHtml(r[c.key] ?? '');
                     return `<td class="${c.numeric ? 'numeric' : ''}">${content}</td>`;
                 }).join('')}</tr>`).join('');
+                tbody.querySelectorAll('tr[data-row-idx]').forEach(tr => {
+                    tr.addEventListener('click', (e) => {
+                        if (e.target.closest('button, a, input, select, label, details')) return;
+                        const row = slice[Number(tr.dataset.rowIdx)];
+                        if (!row) return;
+                        if (typeof opts.onRowClick === 'function') {
+                            opts.onRowClick(row);
+                        } else if (opts.printableRow !== false) {
+                            const metaRows = visCols
+                                .filter(c => !/^(action|actions|inspect)$/i.test(String(c.label || '').trim()))
+                                .map(c => {
+                                    const rawVal = typeof c.exportValue === 'function'
+                                        ? c.exportValue(row)
+                                        : (row[c.key] ?? '');
+                                    return [c.label, String(rawVal)];
+                                });
+                            openPrintableRecord({
+                                title: getTitle(),
+                                metaRows
+                            });
+                        }
+                    });
+                });
             }
             pager.innerHTML = `
                 <span>Showing ${slice.length} of ${filtered.length}</span>
@@ -984,6 +1163,7 @@
         enhanceAllTables,
         productTypeahead,
         dataTable,
+        openPrintableRecord,
         warnIfPartial,
         sectionPage
     };
