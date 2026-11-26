@@ -4116,6 +4116,142 @@ app.post('/api/products/bulk', authenticateToken, requireRole(MANAGER_ROLES), up
     }
 });
 
+// Bulk Import Opening Stock for existing products (logs Opening Stock in stock_adjustments)
+app.post('/api/products/opening-stock/bulk', authenticateToken, requireRole(MANAGER_ROLES), upload.single('file'), async (req, res) => {
+    if (!req.file) {
+        return res.status(400).json({ success: false, message: 'No file uploaded' });
+    }
+    try {
+        const tenantId = req.user.tenant_id || 1;
+        const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
+        const sheetName = workbook.SheetNames[0];
+        const rawData = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+        if (!rawData || rawData.length === 0) {
+            return res.status(400).json({ success: false, message: 'The uploaded file is empty' });
+        }
+
+        const [userRes, branchesRes] = await Promise.all([
+            pool.query('SELECT store_id, store_location FROM users WHERE id = $1', [req.user.id]),
+            pool.query('SELECT id, name FROM branches WHERE COALESCE(tenant_id, 1) = $1 AND deleted_at IS NULL', [tenantId]).catch(() => ({ rows: [] }))
+        ]);
+        const dbUser = userRes.rows[0];
+        const defaultBranchName = dbUser?.store_location || req.user.store_location || DEFAULT_BRANCH_NAME;
+        const defaultBranchId = dbUser?.store_id || req.user.store_id || (await mainBranchId(pool, tenantId));
+        const branchList = branchesRes.rows || [];
+
+        const results = { success: 0, failed: 0, errors: [] };
+        const cleanNum = (val) => {
+            if (typeof val === 'number') return val;
+            if (!val) return 0;
+            const n = parseFloat(String(val).replace(/[^0-9.-]+/g, ''));
+            return Number.isFinite(n) ? n : 0;
+        };
+
+        for (let i = 0; i < rawData.length; i++) {
+            const row = rawData[i];
+            const rowNum = i + 2;
+            const findCol = (keys) => {
+                for (const k of keys) {
+                    const m = Object.keys(row).find((rk) => rk.toLowerCase().replace(/[^a-z0-9]/g, '') === k.toLowerCase().replace(/[^a-z0-9]/g, ''));
+                    if (m && row[m] !== undefined && row[m] !== null && String(row[m]).trim() !== '') return row[m];
+                }
+                return '';
+            };
+
+            const sku = String(findCol(['sku', 'barcode', 'productcode']) || '').trim();
+            if (!sku) continue;
+
+            try {
+                const qty = toQty(findCol(['quantity', 'openingstock', 'qty', 'newstock', 'stock']));
+                if (!Number.isFinite(qty) || qty <= 0) {
+                    throw new Error('Quantity must be greater than 0');
+                }
+                const locRaw = String(findCol(['location', 'businesslocation', 'branch']) || '').trim();
+                const unitCost = cleanNum(findCol(['unitcostbeforetax', 'unitcost', 'cost', 'costprice']));
+                const lotNumber = String(findCol(['lotnumber', 'batchnumber', 'batch', 'lot']) || '').trim();
+                const expiryRaw = findCol(['expirydate', 'expiry', 'expirationdate']);
+                const expiryDate = expiryRaw ? (parseFlexibleDate(expiryRaw) || null) : null;
+
+                const prodRes = await pool.query(
+                    'SELECT * FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL LIMIT 1',
+                    [sku, tenantId]
+                );
+                if (!prodRes.rows.length) {
+                    throw new Error(`SKU "${sku}" not found in catalog (import the product first)`);
+                }
+                const prod = prodRes.rows[0];
+
+                let targetBranchName = defaultBranchName;
+                let targetBranchId = defaultBranchId;
+                if (locRaw) {
+                    const matchedBranch = branchList.find((b) => String(b.name || '').toLowerCase() === locRaw.toLowerCase());
+                    if (matchedBranch) {
+                        targetBranchName = matchedBranch.name;
+                        targetBranchId = matchedBranch.id;
+                    } else {
+                        targetBranchName = locRaw;
+                    }
+                }
+
+                let levels = prod.stock_levels;
+                if (typeof levels === 'string') {
+                    try { levels = JSON.parse(levels); } catch (_) { levels = {}; }
+                }
+                if (!levels || typeof levels !== 'object') levels = {};
+
+                const existingBranchQty = toQty(levels[targetBranchName] || 0);
+                levels[targetBranchName] = Number((existingBranchQty + qty).toFixed(3));
+                const newTotalStock = Object.values(levels).reduce((s, v) => s + toQty(v), 0);
+
+                if (unitCost > 0) {
+                    await pool.query(
+                        'UPDATE products SET stock = $1, stock_levels = $2, cost_price = $3 WHERE id = $4 AND COALESCE(tenant_id, 1) = $5',
+                        [newTotalStock, JSON.stringify(levels), unitCost, prod.id, tenantId]
+                    );
+                } else {
+                    await pool.query(
+                        'UPDATE products SET stock = $1, stock_levels = $2 WHERE id = $3 AND COALESCE(tenant_id, 1) = $4',
+                        [newTotalStock, JSON.stringify(levels), prod.id, tenantId]
+                    );
+                }
+
+                // Log Opening Stock movement so Product Stock History -> Quantities In -> Opening Stock reflects it
+                await pool.query(
+                    `INSERT INTO stock_adjustments (product_barcode, adjustment_type, quantity_adjusted, reason, branch_id, tenant_id)
+                     VALUES ($1, 'Opening Stock', $2::numeric, $3, $4, $5)`,
+                    [sku, qty, `Opening Stock (${targetBranchName})`, targetBranchId, tenantId]
+                ).catch(() => {});
+
+                if (lotNumber || expiryDate) {
+                    const finalLot = lotNumber || `OPEN-${Date.now()}`;
+                    await pool.query(
+                        `INSERT INTO product_batches (product_barcode, batch_number, expiry_date, quantity, quantity_available, quantity_received, branch_id, tenant_id, status)
+                         VALUES ($1, $2, $3, $4::numeric, $5::numeric, $6::numeric, $7, $8, 'Active')
+                         ON CONFLICT (tenant_id, product_barcode, batch_number, branch_id)
+                         DO UPDATE SET
+                             expiry_date = COALESCE(EXCLUDED.expiry_date, product_batches.expiry_date),
+                             quantity = product_batches.quantity + EXCLUDED.quantity,
+                             quantity_available = product_batches.quantity_available + EXCLUDED.quantity_available,
+                             quantity_received = product_batches.quantity_received + EXCLUDED.quantity_received`,
+                        [sku, finalLot, expiryDate, qty, qty, qty, targetBranchId, tenantId]
+                    ).catch(() => {});
+                }
+
+                results.success++;
+            } catch (e) {
+                results.failed++;
+                results.errors.push(`Row ${rowNum} (${sku}): ${e.message}`);
+            }
+        }
+
+        await logActivity(req, 'IMPORT_OPENING_STOCK', { updated: results.success, failed: results.failed });
+        res.json({ success: true, results });
+    } catch (err) {
+        console.error('POST /api/products/opening-stock/bulk error:', err);
+        res.status(500).json({ success: false, message: 'Error importing opening stock' });
+    }
+});
+
 app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const {
         barcode: newBarcode, name, category, price, stock, cost_price, selling_unit, packaging_unit,

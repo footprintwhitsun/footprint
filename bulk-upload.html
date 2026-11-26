@@ -69,7 +69,7 @@
                 </div>
             </div>
             <div class="container" style="max-width:100%;margin:0;">
-                <p class="description">Download the sample Excel template first to avoid column or formatting errors, then upload your completed <code>.xlsx</code>, <code>.xls</code>, or <code>.csv</code> file.<br><strong>Required columns:</strong> Product Name, Category, Cost, Markup, Price, New Stock, Batch Number, Selling Unit, Packaging Unit, Items per Package, Reorder Level <small>(Expiry Date is optional)</small>.</p>
+                <p class="description" id="bulkDesc">Download the sample Excel template first to avoid column or formatting errors, then upload your completed <code>.xlsx</code>, <code>.xls</code>, or <code>.csv</code> file.<br><strong>Required columns:</strong> Product Name, Category, Cost, Markup, Price, New Stock, Batch Number, Selling Unit, Packaging Unit, Items per Package, Reorder Level <small>(Expiry Date is optional)</small>.</p>
 
                 <div class="form-group">
                     <label for="fileInput">Select Excel / CSV File</label>
@@ -89,19 +89,40 @@
 </div>
 
     <script>
+        const bulkMode = new URLSearchParams(window.location.search).get('mode');
+        const isOpeningStockMode = bulkMode === 'opening-stock';
+
         (function () {
-            const mode = new URLSearchParams(window.location.search).get('mode');
-            if (mode === 'opening-stock') {
+            if (isOpeningStockMode) {
                 const t = document.getElementById('bulkPageTitle');
                 const s = document.getElementById('bulkPageSub');
+                const d = document.getElementById('bulkDesc');
                 const btn = document.getElementById('uploadBtn');
                 if (t) t.textContent = 'Import Opening Stock';
-                if (s) s.textContent = 'Upload opening stock quantities, batch numbers, and branch levels from Excel or CSV.';
+                if (s) s.textContent = 'Set starting stock quantities for existing products by SKU and location, logged directly to Product Stock History.';
+                if (d) d.innerHTML = 'Download the Opening Stock Excel template first, then upload your completed <code>.xlsx</code>, <code>.xls</code>, or <code>.csv</code> file.<br><strong>Required columns:</strong> SKU, Quantity <small>(Optional: Location, Unit Cost (Before Tax), Lot Number, Expiry Date)</small>.';
                 if (btn) btn.textContent = 'Upload Opening Stock';
             }
         })();
         function downloadSampleTemplate() {
-            const sampleRows = [
+            const sampleRows = isOpeningStockMode ? [
+                {
+                    "SKU": "HW-1001",
+                    "Location": "TEMA MAIN",
+                    "Quantity": 50,
+                    "Unit Cost (Before Tax)": 490,
+                    "Lot Number": "OPEN-2026-01",
+                    "Expiry Date": ""
+                },
+                {
+                    "SKU": "HW-1005",
+                    "Location": "TEMA MAIN",
+                    "Quantity": 30,
+                    "Unit Cost (Before Tax)": 315,
+                    "Lot Number": "OPEN-2026-02",
+                    "Expiry Date": ""
+                }
+            ] : [
                 {
                     "Product Name": "Portland Cement (50kg Bag)",
                     "Category": "Building Materials",
@@ -146,12 +167,14 @@
                 }
             ];
 
+            const baseFile = isOpeningStockMode ? 'okwesiwa-opening-stock-sample' : 'okwesiwa-bulk-import-sample';
+            const sheetTitle = isOpeningStockMode ? 'Opening_Stock' : 'Sample_Products';
             if (window.XLSX) {
                 const ws = window.XLSX.utils.json_to_sheet(sampleRows);
                 ws['!cols'] = Object.keys(sampleRows[0]).map(k => ({ wch: Math.max(16, k.length + 4) }));
                 const wb = window.XLSX.utils.book_new();
-                window.XLSX.utils.book_append_sheet(wb, ws, 'Sample_Products');
-                window.XLSX.writeFile(wb, 'okwesiwa-bulk-import-sample.xlsx');
+                window.XLSX.utils.book_append_sheet(wb, ws, sheetTitle);
+                window.XLSX.writeFile(wb, `${baseFile}.xlsx`);
                 return;
             }
             const headers = Object.keys(sampleRows[0]);
@@ -160,7 +183,7 @@
             const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
             const a = document.createElement('a');
             a.href = URL.createObjectURL(blob);
-            a.download = 'okwesiwa-bulk-import-sample.csv';
+            a.download = `${baseFile}.csv`;
             a.click();
         }
 
@@ -183,7 +206,8 @@
 
             try {
                 const token = localStorage.getItem('authToken');
-                const res = await fetch('/api/products/bulk', {
+                const endpoint = isOpeningStockMode ? '/api/products/opening-stock/bulk' : '/api/products/bulk';
+                const res = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
                     body: formData
@@ -194,7 +218,8 @@
                 statusDiv.style.display = 'block';
                 if (data.success) {
                     statusDiv.className = 'success';
-                    statusDiv.innerHTML = `<strong>Upload complete.</strong><br>Successfully Added: ${data.results.success}<br>Failed: ${data.results.failed}`;
+                    const doneLabel = isOpeningStockMode ? 'Opening Stock Updated' : 'Successfully Added';
+                    statusDiv.innerHTML = `<strong>Upload complete.</strong><br>${doneLabel}: ${data.results.success}<br>Failed: ${data.results.failed}`;
                     if (data.results.errors.length > 0) {
                         const escapeHtml = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                         statusDiv.innerHTML += '<br><br><strong>Errors:</strong><br>' + data.results.errors.map(escapeHtml).join('<br>');
@@ -209,7 +234,7 @@
                 statusDiv.innerText = 'System error: ' + err.message;
             } finally {
                 btn.disabled = false;
-                btn.innerText = 'Upload Products';
+                btn.innerText = isOpeningStockMode ? 'Upload Opening Stock' : 'Upload Products';
             }
         }
     </script>
