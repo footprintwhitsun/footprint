@@ -1268,7 +1268,7 @@
             manager: 'Store Manager',
             store_manager: 'Store Manager',
             cashier: 'Cashier',
-            teller: 'Teller',
+            teller: 'Cashier',
             storekeeper: 'Store Keeper',
             driver: 'Driver',
             company: 'Business Client',

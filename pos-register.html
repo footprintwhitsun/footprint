@@ -228,7 +228,6 @@
                 <div class="um-filters">
                     <select id="roleFilter" class="um-select" aria-label="Filter by role" data-onchange="filterUsers()">
                         <option value="">All Roles</option>
-                        <option value="teller">Teller</option>
                         <option value="cashier">Cashier</option>
                         <option value="manager">Manager</option>
                         <option value="store_manager">Store Manager</option>
@@ -324,7 +323,6 @@
                                     <label for="role">Role *</label>
                                     <select id="role" required>
                                         <option value="">Select Role</option>
-                                        <option value="teller">Teller</option>
                                         <option value="cashier">Cashier</option>
                                         <option value="manager">Manager</option>
                                         <option value="store_manager">Store Manager</option>
@@ -395,7 +393,6 @@
                         <div class="form-group">
                             <label for="editRole">Role *</label>
                             <select id="editRole" required>
-                                <option value="teller">Teller</option>
                                 <option value="cashier">Cashier</option>
                                 <option value="manager">Manager</option>
                                 <option value="store_manager">Store Manager</option>
@@ -551,7 +548,7 @@
                     email: u.email || '',
                     phone: u.phone || '',
                     employeeId: u.employee_id || u.employeeId || '',
-                    role: (u.role || 'staff').toLowerCase(),
+                    role: ((u.role || 'cashier').toLowerCase() === 'teller' ? 'cashier' : (u.role || 'cashier').toLowerCase()),
                     store: u.store_location || u.store || '',
                     status: u.status || 'Active'
                 }));

@@ -168,8 +168,8 @@
     function getUserRole() {
         try {
             const u = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || sessionStorage.getItem('user') || '{}');
-            return (u.role || 'teller').toLowerCase();
-        } catch (e) { return 'teller'; }
+            return (u.role || 'cashier').toLowerCase();
+        } catch (e) { return 'cashier'; }
     }
 
     function resolveUnitPrice(product, priceGroup, unitFactor, qty) {
