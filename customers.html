@@ -250,9 +250,15 @@
             return raw.length > 14 ? `${raw.slice(0, 4)}-${raw.slice(-6)}` : raw;
         };
 
-        const renderDescriptionCell = (ev, showItems, isPrint) => {
+        const renderDescriptionLabel = (ev) => {
+            if (ev.type === 'Payment') return esc(ev.description || 'Payment Received');
+            return esc(ev.type || 'Purchase');
+        };
+
+        const renderItemsCell = (ev, showItems, isPrint) => {
             const items = Array.isArray(ev.items) ? ev.items : [];
-            if (showItems && items.length > 0) {
+            if (items.length === 0) return '—';
+            if (showItems) {
                 const lineCls = isPrint ? 'p-item-line' : 'stmt-item-line';
                 const nameCls = isPrint ? 'p-item-name' : 'stmt-item-name';
                 const qtyCls = isPrint ? 'p-item-qty' : 'stmt-item-qty';
@@ -265,12 +271,8 @@
                     return `<div class="${lineCls}"><span class="${nameCls}">${esc(it.name)}</span><span class="${qtyCls}">${meta}</span></div>`;
                 }).join('')}</div>`;
             }
-            if (ev.type === 'Payment') {
-                return `<div class="${isPrint ? 'p-item-name' : 'stmt-item-name'}">${esc(ev.description || 'Account Payment')}</div>`;
-            }
             const count = items.reduce((sum, it) => sum + (Number(it.qty) || 0), 0) || items.length;
-            const label = count ? `${ev.type} (${count} item${count === 1 ? '' : 's'})` : (ev.description || ev.type);
-            return `<div class="${isPrint ? 'p-item-name' : 'stmt-item-name'}">${esc(label)}</div>`;
+            return `<span style="color:var(--muted,#64748b);">${esc(count)} item${count === 1 ? '' : 's'}</span>`;
         };
 
         function printBankStatement(data, showItems) {
@@ -287,7 +289,7 @@
                     <td class="nowrap">${esc(fmtDate(data.period?.from))}</td>
                     <td>—</td>
                     <td>—</td>
-                    <td colspan="4">Opening Balance Brought Forward</td>
+                    <td colspan="5">Opening Balance Brought Forward</td>
                     <td class="num">${esc(money(s.opening_balance))}</td>
                 </tr>` : '';
 
@@ -296,12 +298,13 @@
                     <td class="nowrap">${esc(fmtDate(ev.date))}</td>
                     <td class="nowrap mono" title="${esc(ev.ref)}">${esc(shortRef(ev.ref))}</td>
                     <td class="nowrap loc-col">${esc(ev.branch || '—')}</td>
-                    <td>${renderDescriptionCell(ev, showItems, true)}</td>
+                    <td class="nowrap bold">${renderDescriptionLabel(ev)}</td>
+                    <td>${renderItemsCell(ev, showItems, true)}</td>
                     <td class="nowrap">${esc(ev.payment_method)}</td>
                     <td class="num">${ev.debit > 0 ? esc(money(ev.debit)) : '—'}</td>
                     <td class="num">${ev.credit > 0 ? esc(money(ev.credit)) : '—'}</td>
                     <td class="num bold">${esc(money(ev.running_balance))}</td>
-                </tr>`).join('') : `<tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b;">No transactions recorded for this statement period.</td></tr>`;
+                </tr>`).join('') : `<tr><td colspan="9" style="text-align:center;padding:24px;color:#64748b;">No transactions recorded for this statement period.</td></tr>`;
 
             const html = `<!DOCTYPE html>
 <html lang="en">
@@ -408,7 +411,8 @@
                 <th>Date</th>
                 <th>Ref #</th>
                 <th>Location</th>
-                <th>Description / Items</th>
+                <th>Description</th>
+                <th>Items</th>
                 <th>Method</th>
                 <th class="num">Debit</th>
                 <th class="num">Credit</th>
@@ -419,7 +423,7 @@
             ${openingRowHtml}
             ${rowsHtml}
             <tr class="foot-row">
-                <td colspan="5">Period Totals &amp; Closing Balance</td>
+                <td colspan="6">Period Totals &amp; Closing Balance</td>
                 <td class="num">${esc(money(s.total_charges))}</td>
                 <td class="num">${esc(money(s.total_payments))}</td>
                 <td class="num">${esc(money(s.closing_balance))}</td>
@@ -509,7 +513,8 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                                         <th>Date</th>
                                         <th>Ref #</th>
                                         <th>Location</th>
-                                        <th>Description / Items</th>
+                                        <th>Description</th>
+                                        <th>Items</th>
                                         <th>Method</th>
                                         <th class="num">Debit</th>
                                         <th class="num">Credit</th>
@@ -517,7 +522,7 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                                     </tr>
                                 </thead>
                                 <tbody id="stmtTableBody">
-                                    <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted);">Loading statement...</td></tr>
+                                    <tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted);">Loading statement...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -543,7 +548,7 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                         <td>${esc(fmtDate(currentData.period?.from))}</td>
                         <td>—</td>
                         <td>—</td>
-                        <td colspan="4">Opening Balance Brought Forward</td>
+                        <td colspan="5">Opening Balance Brought Forward</td>
                         <td class="num">${esc(money(s.opening_balance))}</td>
                     </tr>` : '';
 
@@ -552,16 +557,17 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                             <td style="white-space:nowrap;">${esc(fmtDate(ev.date))}</td>
                             <td style="white-space:nowrap;font-family:ui-monospace,monospace;font-size:11.5px;" title="${esc(ev.ref)}">${esc(shortRef(ev.ref))}</td>
                             <td style="white-space:nowrap;color:var(--ink-2,#334155);font-size:12px;">${esc(ev.branch || '—')}</td>
-                            <td>${renderDescriptionCell(ev, showItems, false)}</td>
+                            <td style="white-space:nowrap;font-weight:600;">${renderDescriptionLabel(ev)}</td>
+                            <td>${renderItemsCell(ev, showItems, false)}</td>
                             <td style="white-space:nowrap;">${esc(ev.payment_method)}</td>
                             <td class="num">${ev.debit > 0 ? esc(money(ev.debit)) : '—'}</td>
                             <td class="num">${ev.credit > 0 ? esc(money(ev.credit)) : '—'}</td>
                             <td class="num" style="font-weight:700;">${esc(money(ev.running_balance))}</td>
-                        </tr>`).join('') : `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted);">No purchases or payments recorded in this period.</td></tr>`;
+                        </tr>`).join('') : `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted);">No purchases or payments recorded in this period.</td></tr>`;
 
                 const closingRow = `
                     <tr class="stmt-summary-row">
-                        <td colspan="5">Period Totals (${esc(s.period_orders || 0)} orders) &amp; Closing Balance</td>
+                        <td colspan="6">Period Totals (${esc(s.period_orders || 0)} orders) &amp; Closing Balance</td>
                         <td class="num">${esc(money(s.total_charges))}</td>
                         <td class="num">${esc(money(s.total_payments))}</td>
                         <td class="num">${esc(money(s.closing_balance))}</td>
@@ -577,7 +583,7 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                 if (fromVal) qs.set('from', fromVal);
                 if (toVal) qs.set('to', toVal);
                 const tbody = backdrop.querySelector('#stmtTableBody');
-                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted);">Loading statement...</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--muted);">Loading statement...</td></tr>';
                 try {
                     const token = localStorage.getItem('authToken') || localStorage.getItem('token');
                     const res = await fetch(`/api/customers/${encodeURIComponent(customerId)}/profile-statement?${qs.toString()}`, {
@@ -602,7 +608,7 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                     backdrop.querySelector('#stmtKpiAvail').textContent = money(c.available_credit);
                     renderLedger();
                 } catch (err) {
-                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#dc2626;">Could not load customer statement.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:24px;color:#dc2626;">Could not load customer statement.</td></tr>';
                 }
             }
 

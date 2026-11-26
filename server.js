@@ -8408,7 +8408,7 @@ app.get('/api/customers/:id/profile-statement', authenticateToken, requireRole(P
             if (s === 'momo' || s === 'mobile_money') return 'Mobile Money';
             if (s === 'card') return 'Card';
             if (s === 'bank' || s === 'bank_transfer') return 'Bank Transfer';
-            if (s === 'credit') return 'Credit Account';
+            if (s === 'credit') return 'Credit';
             if (s === 'split') return 'Split Payment';
             return s.charAt(0).toUpperCase() + s.slice(1);
         };
