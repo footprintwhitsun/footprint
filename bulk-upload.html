@@ -241,9 +241,9 @@
                                         <th style="padding:8px 10px;text-align:left;">SKU</th>
                                         <th style="padding:8px 10px;text-align:left;">Product</th>
                                         <th style="padding:8px 10px;text-align:left;">Location</th>
-                                        <th style="padding:8px 10px;text-align:right;">Current</th>
+                                        <th style="padding:8px 10px;text-align:right;">Current (Branch / All)</th>
                                         <th style="padding:8px 10px;text-align:right;">Opening Qty</th>
-                                        <th style="padding:8px 10px;text-align:right;">New Stock</th>
+                                        <th style="padding:8px 10px;text-align:right;">New Branch Stock</th>
                                         <th style="padding:8px 10px;text-align:left;">Status</th>
                                     </tr>
                                 </thead>
@@ -252,12 +252,15 @@
                                         const bg = r.status === 'error' ? '#fef2f2' : (r.status === 'replace' ? '#fffbeb' : '');
                                         const pillBg = r.status === 'error' ? '#fee2e2' : (r.status === 'replace' ? '#fef3c7' : '#dcfce7');
                                         const pillColor = r.status === 'error' ? '#dc2626' : (r.status === 'replace' ? '#92400e' : '#15803d');
+                                        const curLabel = (r.total_stock != null && Number(r.total_stock) !== Number(r.current_stock))
+                                            ? `${r.current_stock} <span style="color:#64748b;font-size:11px;">(All: ${r.total_stock})</span>`
+                                            : `${r.current_stock}`;
                                         return `<tr style="border-bottom:1px solid #f1f5f9;${bg ? 'background:' + bg + ';' : ''}">
                                             <td style="padding:8px 10px;">${r.row}</td>
                                             <td style="padding:8px 10px;font-family:ui-monospace,monospace;">${esc(r.sku)}</td>
                                             <td style="padding:8px 10px;font-weight:600;">${esc(r.product_name)}</td>
                                             <td style="padding:8px 10px;">${esc(r.location)}</td>
-                                            <td style="padding:8px 10px;text-align:right;">${esc(r.current_stock)}</td>
+                                            <td style="padding:8px 10px;text-align:right;">${curLabel}</td>
                                             <td style="padding:8px 10px;text-align:right;font-weight:600;">${esc(r.opening_qty)}</td>
                                             <td style="padding:8px 10px;text-align:right;font-weight:700;">${esc(r.new_stock)}</td>
                                             <td style="padding:8px 10px;"><span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;background:${pillBg};color:${pillColor};">${esc(r.note)}</span></td>

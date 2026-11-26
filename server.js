@@ -4203,12 +4203,12 @@ app.post('/api/products/opening-stock/bulk', authenticateToken, requireRole(MANA
                 if (!levels || typeof levels !== 'object') levels = {};
 
                 const existingBranchQty = toQty(levels[targetBranchName] || 0);
+                const existingTotalQty = toQty(prod.stock || 0);
 
-                // Check for prior Opening Stock adjustment at this branch (for idempotent replace mode)
+                // Check for prior Opening Stock adjustment at this branch
                 let prevOpeningId = null;
-                let prevOpeningQty = 0;
                 const prevOpenRes = await pool.query(
-                    `SELECT id, quantity_adjusted FROM stock_adjustments
+                    `SELECT id FROM stock_adjustments
                      WHERE product_barcode = $1 AND COALESCE(tenant_id, 1) = $2
                        AND LOWER(COALESCE(adjustment_type, '')) LIKE '%opening%'
                        AND (branch_id = $3 OR branch_id IS NULL)
@@ -4217,11 +4217,10 @@ app.post('/api/products/opening-stock/bulk', authenticateToken, requireRole(MANA
                 ).catch(() => ({ rows: [] }));
                 if (prevOpenRes.rows.length) {
                     prevOpeningId = prevOpenRes.rows[0].id;
-                    prevOpeningQty = toQty(prevOpenRes.rows[0].quantity_adjusted || 0);
                 }
 
                 const newBranchQty = importMode === 'replace'
-                    ? Math.max(0, Number((existingBranchQty - prevOpeningQty + qty).toFixed(3)))
+                    ? qty
                     : Number((existingBranchQty + qty).toFixed(3));
 
                 if (isDryRun) {
@@ -4231,13 +4230,14 @@ app.post('/api/products/opening-stock/bulk', authenticateToken, requireRole(MANA
                         product_name: prod.name,
                         location: targetBranchName,
                         current_stock: existingBranchQty,
+                        total_stock: existingTotalQty,
                         opening_qty: qty,
                         new_stock: newBranchQty,
                         unit_cost: unitCost > 0 ? unitCost : Number(prod.cost_price || 0),
-                        status: prevOpeningId && importMode === 'replace' ? 'replace' : 'ready',
-                        note: prevOpeningId && importMode === 'replace'
-                            ? `Replaces previous opening stock (${prevOpeningQty})`
-                            : (importMode === 'add' ? 'Adds to current stock' : 'Sets opening stock')
+                        status: importMode === 'replace' && existingBranchQty > 0 ? 'replace' : 'ready',
+                        note: importMode === 'replace'
+                            ? `Sets ${targetBranchName} stock from ${existingBranchQty} to ${newBranchQty}`
+                            : `Adds ${qty} to ${existingBranchQty} → ${newBranchQty}`
                     });
                     results.success++;
                     continue;
