@@ -8250,6 +8250,270 @@ app.get('/api/customers/:id/statement-data', authenticateToken, requireRole(PAGE
     }
 });
 
+// Detailed bank/credit-card-style Customer Profile & Account Statement (all purchases, returns, invoices & payments)
+app.get('/api/customers/:id/profile-statement', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
+    try {
+        const customerId = parseInt(req.params.id, 10);
+        if (!Number.isFinite(customerId) || customerId <= 0) {
+            return res.status(400).json({ message: 'Invalid customer ID' });
+        }
+        const tenantId = req.user.tenant_id || 1;
+        const custRes = await pool.query(
+            `SELECT id, name, phone, email, account_number, credit_limit, current_balance, status,
+                    COALESCE(customer_type, 'Retail') AS customer_type,
+                    COALESCE(company_name, '') AS company_name,
+                    COALESCE(site_location, '') AS site_location,
+                    COALESCE(price_group, 'retail') AS price_group,
+                    created_at
+             FROM customers
+             WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL`,
+            [customerId, tenantId]
+        );
+        if (custRes.rows.length === 0) {
+            return res.status(404).json({ message: 'Customer not found' });
+        }
+        const customer = custRes.rows[0];
+
+        // Optional date window (YYYY-MM-DD); if omitted or from='all', return full history
+        const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+        const fromDate = (req.query.from && dateRe.test(String(req.query.from))) ? String(req.query.from) : null;
+        const toDate = (req.query.to && dateRe.test(String(req.query.to))) ? String(req.query.to) : null;
+
+        // Fetch company details for statement masthead
+        let business = { name: 'OKWESIWA CO LTD', address: '', phone: '', email: '', tin: '' };
+        try {
+            const setRes = await pool.query(
+                `SELECT business_name, business_address, business_phone, business_email, tin_number
+                 FROM system_settings WHERE COALESCE(tenant_id, 1) = $1 ORDER BY id ASC LIMIT 1`,
+                [tenantId]
+            );
+            if (setRes.rows.length > 0) {
+                const s = setRes.rows[0];
+                business = {
+                    name: s.business_name || business.name,
+                    address: s.business_address || '',
+                    phone: s.business_phone || '',
+                    email: s.business_email || '',
+                    tin: s.tin_number || ''
+                };
+            }
+        } catch (_) { /* fallback to default business info */ }
+
+        // Fetch ALL linked POS/sales transactions for this customer (Cash, MoMo, Card, Credit, Split, Returns)
+        const txRes = await pool.query(
+            `SELECT id, receipt_number, total_amount, payment_method, store_location, items,
+                    created_at, status, COALESCE(is_return, false) AS is_return
+             FROM transactions
+             WHERE customer_id = $1 AND COALESCE(tenant_id, 1) = $2
+               AND COALESCE(status, 'completed') NOT IN ('void', 'cancelled', 'parked')
+             ORDER BY created_at ASC, id ASC`,
+            [customerId, tenantId]
+        );
+
+        // Fetch ALL credit payments made by this customer
+        const payRes = await pool.query(
+            `SELECT id, amount, payment_date, payment_method, reference, notes
+             FROM customer_payments
+             WHERE customer_id = $1
+             ORDER BY payment_date ASC, id ASC`,
+            [customerId]
+        ).catch(async () => {
+            // Fallback if optional columns (payment_method/reference/notes) don't exist on older schemas
+            return pool.query(
+                `SELECT id, amount, payment_date
+                 FROM customer_payments
+                 WHERE customer_id = $1
+                 ORDER BY payment_date ASC, id ASC`,
+                [customerId]
+            );
+        });
+
+        const parseItems = (raw) => {
+            if (!raw) return [];
+            let arr = raw;
+            if (typeof raw === 'string') {
+                try { arr = JSON.parse(raw); } catch (_) { return []; }
+            }
+            if (!Array.isArray(arr)) return [];
+            return arr.map((it) => {
+                const qty = Number(it.qty ?? it.quantity ?? 1) || 1;
+                const price = Number(it.price ?? it.unit_price ?? 0) || 0;
+                const lineTotal = Number(it.total ?? (qty * price)) || 0;
+                return {
+                    name: String(it.name || it.product_name || 'Item'),
+                    qty,
+                    price,
+                    total: Number(lineTotal.toFixed(2))
+                };
+            });
+        };
+
+        const fmtMethod = (m) => {
+            const s = String(m || 'cash').toLowerCase();
+            if (s === 'momo' || s === 'mobile_money') return 'Mobile Money';
+            if (s === 'card') return 'Card';
+            if (s === 'bank' || s === 'bank_transfer') return 'Bank Transfer';
+            if (s === 'credit') return 'Credit Account';
+            if (s === 'split') return 'Split Payment';
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        };
+
+        // Build unified chronological activity stream
+        const events = [];
+        let lifetimeSpend = 0;
+        let lifetimeOrders = 0;
+
+        for (const tx of txRes.rows) {
+            const amt = Math.abs(Number(tx.total_amount || 0));
+            const methodRaw = String(tx.payment_method || 'cash').toLowerCase();
+            const isCredit = methodRaw === 'credit';
+            const isReturn = Boolean(tx.is_return) || Number(tx.total_amount || 0) < 0;
+            const items = parseItems(tx.items);
+            const itemCount = items.reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
+
+            if (!isReturn) {
+                lifetimeSpend += amt;
+                lifetimeOrders += 1;
+            } else {
+                lifetimeSpend = Math.max(0, lifetimeSpend - amt);
+            }
+
+            if (isReturn) {
+                events.push({
+                    date: tx.created_at,
+                    ref: tx.receipt_number || `REF-${tx.id}`,
+                    type: 'Return / Refund',
+                    payment_method: fmtMethod(methodRaw),
+                    branch: tx.store_location || '',
+                    description: `Return / Refund (${itemCount || items.length || 1} item${(itemCount || items.length) === 1 ? '' : 's'})`,
+                    items,
+                    sale_amount: -amt,
+                    debit: 0,
+                    credit: amt,
+                    balance_impact: isCredit ? -amt : 0,
+                    settled_immediately: !isCredit
+                });
+            } else {
+                events.push({
+                    date: tx.created_at,
+                    ref: tx.receipt_number || `RCP-${tx.id}`,
+                    type: isCredit ? 'Credit Purchase' : 'Purchase',
+                    payment_method: fmtMethod(methodRaw),
+                    branch: tx.store_location || '',
+                    description: `${isCredit ? 'Credit Purchase' : 'Purchase'} (${itemCount || items.length || 1} item${(itemCount || items.length) === 1 ? '' : 's'})`,
+                    items,
+                    sale_amount: amt,
+                    debit: amt,
+                    credit: isCredit ? 0 : amt,
+                    balance_impact: isCredit ? amt : 0,
+                    settled_immediately: !isCredit
+                });
+            }
+        }
+
+        for (const pay of payRes.rows) {
+            const amt = Math.abs(Number(pay.amount || 0));
+            events.push({
+                date: pay.payment_date,
+                ref: pay.reference || `PAY-${pay.id}`,
+                type: 'Payment',
+                payment_method: fmtMethod(pay.payment_method || 'payment'),
+                branch: '',
+                description: pay.notes ? `Account Payment — ${pay.notes}` : 'Account Payment Received',
+                items: [],
+                sale_amount: 0,
+                debit: 0,
+                credit: amt,
+                balance_impact: -amt,
+                settled_immediately: false
+            });
+        }
+
+        events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        const fromTs = fromDate ? new Date(`${fromDate}T00:00:00.000Z`).getTime() : null;
+        const toTs = toDate ? new Date(`${toDate}T23:59:59.999Z`).getTime() : null;
+
+        let openingBalance = 0;
+        let runningBalance = 0;
+        let totalPurchases = 0;
+        let totalCharges = 0;
+        let totalPayments = 0;
+        let totalReturns = 0;
+        let periodOrderCount = 0;
+        const entries = [];
+
+        for (const ev of events) {
+            const ts = new Date(ev.date).getTime();
+            if (fromTs !== null && ts < fromTs) {
+                openingBalance += ev.balance_impact;
+                runningBalance = openingBalance;
+                continue;
+            }
+            if (toTs !== null && ts > toTs) {
+                continue;
+            }
+            runningBalance += ev.balance_impact;
+            if (ev.type === 'Purchase' || ev.type === 'Credit Purchase') {
+                totalPurchases += ev.sale_amount;
+                periodOrderCount += 1;
+            }
+            if (ev.type === 'Return / Refund') {
+                totalReturns += Math.abs(ev.sale_amount);
+            }
+            totalCharges += ev.debit;
+            totalPayments += ev.credit;
+            entries.push({
+                ...ev,
+                running_balance: Number(runningBalance.toFixed(2))
+            });
+        }
+
+        const creditLimit = Number(customer.credit_limit || 0);
+        const currentBalance = Number(customer.current_balance || 0);
+        const closingBalance = Number(runningBalance.toFixed(2));
+
+        res.json({
+            business,
+            customer: {
+                id: customer.id,
+                name: customer.name,
+                phone: customer.phone || '',
+                email: customer.email || '',
+                account_number: customer.account_number || `CUST-${String(customer.id).padStart(5, '0')}`,
+                credit_limit: creditLimit,
+                current_balance: currentBalance,
+                available_credit: Math.max(0, Number((creditLimit - currentBalance).toFixed(2))),
+                status: customer.status || 'Active',
+                customer_type: customer.customer_type,
+                company_name: customer.company_name,
+                site_location: customer.site_location,
+                price_group: customer.price_group,
+                created_at: customer.created_at
+            },
+            period: {
+                from: fromDate || (entries.length ? new Date(entries[0].date).toISOString().slice(0, 10) : null),
+                to: toDate || new Date().toISOString().slice(0, 10)
+            },
+            summary: {
+                opening_balance: Number(openingBalance.toFixed(2)),
+                total_purchases: Number(totalPurchases.toFixed(2)),
+                total_charges: Number(totalCharges.toFixed(2)),
+                total_payments: Number(totalPayments.toFixed(2)),
+                total_returns: Number(totalReturns.toFixed(2)),
+                closing_balance: closingBalance,
+                period_orders: periodOrderCount,
+                lifetime_spend: Number(lifetimeSpend.toFixed(2)),
+                lifetime_orders: lifetimeOrders
+            },
+            entries
+        });
+    } catch (err) {
+        console.error('Error building customer profile statement:', err);
+        res.status(500).json({ message: err.message || 'Failed to load customer statement' });
+    }
+});
+
 app.post('/api/customers/:id/email-statement', authenticateToken, requireRole(PAGE_ROLES.STAFF_ALL), async (req, res) => {
     try {
         const customerId = req.params.id;
