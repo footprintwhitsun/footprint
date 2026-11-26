@@ -49,8 +49,12 @@ async function ensurePhase4Schema() {
                 name VARCHAR(80) NOT NULL,
                 price_group VARCHAR(40) DEFAULT 'retail',
                 discount_pct DECIMAL(5,2) DEFAULT 0.00,
+                price_calculation_type VARCHAR(40) DEFAULT 'percentage',
+                selling_price_group_id INTEGER NULL,
                 created_at TIMESTAMPTZ DEFAULT NOW()
             );
+            ALTER TABLE customer_groups ADD COLUMN IF NOT EXISTS price_calculation_type VARCHAR(40) DEFAULT 'percentage';
+            ALTER TABLE customer_groups ADD COLUMN IF NOT EXISTS selling_price_group_id INTEGER NULL;
             ALTER TABLE customer_groups DROP CONSTRAINT IF EXISTS customer_groups_name_key;
             CREATE UNIQUE INDEX IF NOT EXISTS customer_groups_tenant_name_idx ON customer_groups (tenant_id, name);
 
@@ -249,21 +253,77 @@ router.get('/api/prices/history', authenticateToken, async (req, res) => {
 router.get('/api/customer-groups', authenticateToken, async (req, res) => {
     await ensurePhase4Schema();
     const tenantId = req.user.tenant_id || 1;
-    const groups = await safeQuery('SELECT * FROM customer_groups WHERE COALESCE(tenant_id, 1) = $1 ORDER BY id ASC', [tenantId]);
+    const groups = await safeQuery(`
+        SELECT cg.*, spg.name AS selling_price_group_name
+        FROM customer_groups cg
+        LEFT JOIN selling_price_groups spg ON spg.id = cg.selling_price_group_id AND COALESCE(spg.tenant_id, 1) = $1
+        WHERE COALESCE(cg.tenant_id, 1) = $1
+        ORDER BY cg.id ASC
+    `, [tenantId]);
     res.json({ groups });
 });
 
 router.post('/api/customer-groups', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('customers', 'edit'), async (req, res) => {
     await ensurePhase4Schema();
     const tenantId = req.user.tenant_id || 1;
-    const { name, price_group = 'retail', discount_pct = 0 } = req.body;
-    if (!name) return res.status(400).json({ message: 'Group name required' });
+    const {
+        name,
+        price_group = 'retail',
+        discount_pct = 0,
+        price_calculation_type = 'percentage',
+        selling_price_group_id = null
+    } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ message: 'Customer Group Name is required' });
+    const calcType = price_calculation_type === 'selling_price_group' ? 'selling_price_group' : 'percentage';
+    const spgId = calcType === 'selling_price_group' && selling_price_group_id ? parseInt(selling_price_group_id, 10) : null;
+    const pct = calcType === 'percentage' ? Number(discount_pct || 0) : 0;
     const r = await pool.query(
-        `INSERT INTO customer_groups (tenant_id, name, price_group, discount_pct) VALUES ($1,$2,$3,$4)
-         ON CONFLICT (tenant_id, name) DO UPDATE SET price_group = EXCLUDED.price_group, discount_pct = EXCLUDED.discount_pct RETURNING *`,
-        [tenantId, name.trim(), price_group, Number(discount_pct || 0)]
+        `INSERT INTO customer_groups (tenant_id, name, price_group, discount_pct, price_calculation_type, selling_price_group_id)
+         VALUES ($1,$2,$3,$4,$5,$6)
+         ON CONFLICT (tenant_id, name) DO UPDATE SET
+             price_group = EXCLUDED.price_group,
+             discount_pct = EXCLUDED.discount_pct,
+             price_calculation_type = EXCLUDED.price_calculation_type,
+             selling_price_group_id = EXCLUDED.selling_price_group_id
+         RETURNING *`,
+        [tenantId, String(name).trim(), price_group, pct, calcType, spgId]
     );
+    await logActivity(req, 'SAVE_CUSTOMER_GROUP', { name: String(name).trim(), price_calculation_type: calcType });
     res.status(201).json({ success: true, group: r.rows[0] });
+});
+
+router.put('/api/customer-groups/:id', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('customers', 'edit'), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    const {
+        name,
+        discount_pct = 0,
+        price_calculation_type = 'percentage',
+        selling_price_group_id = null
+    } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ message: 'Customer Group Name is required' });
+    const calcType = price_calculation_type === 'selling_price_group' ? 'selling_price_group' : 'percentage';
+    const spgId = calcType === 'selling_price_group' && selling_price_group_id ? parseInt(selling_price_group_id, 10) : null;
+    const pct = calcType === 'percentage' ? Number(discount_pct || 0) : 0;
+    const r = await pool.query(
+        `UPDATE customer_groups
+         SET name = $1, discount_pct = $2, price_calculation_type = $3, selling_price_group_id = $4
+         WHERE id = $5 AND COALESCE(tenant_id, 1) = $6
+         RETURNING *`,
+        [String(name).trim(), pct, calcType, spgId, req.params.id, tenantId]
+    );
+    if (r.rowCount === 0) return res.status(404).json({ message: 'Customer group not found' });
+    await logActivity(req, 'UPDATE_CUSTOMER_GROUP', { id: req.params.id, name: String(name).trim() });
+    res.json({ success: true, group: r.rows[0] });
+});
+
+router.delete('/api/customer-groups/:id', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('customers', 'edit'), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    const r = await pool.query('DELETE FROM customer_groups WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [req.params.id, tenantId]);
+    if (r.rowCount === 0) return res.status(404).json({ message: 'Customer group not found' });
+    await logActivity(req, 'DELETE_CUSTOMER_GROUP', { id: req.params.id });
+    res.json({ success: true });
 });
 
 router.get('/api/customer-sites', authenticateToken, async (req, res) => {

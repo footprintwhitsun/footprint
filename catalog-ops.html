@@ -42,6 +42,7 @@
                     <h1 class="okw-page-title" id="cat-page-title">Brands, Units, Bulk Prices &amp; Customer Groups</h1>
                     <p class="okw-page-subtitle" id="cat-page-subtitle">Manage building-material brands, unit conversions, bulk price updates with history, customer groups, and project sites.</p>
                 </div>
+                <div class="okw-page-header-actions" id="cat-page-actions"></div>
             </div>
 
             <div class="tabs-row" id="cat-tabs">
@@ -198,74 +199,183 @@
         });
     }
 
-    async function renderGroups(selectedView = 'groups') {
-        const [gRes, sRes] = await Promise.all([
+    async function renderGroups() {
+        const [gRes, spgRes] = await Promise.all([
             fetch('/api/customer-groups', { headers }),
-            fetch('/api/customer-sites', { headers })
+            fetch('/api/selling-price-groups', { headers })
         ]);
         const gData = await gRes.json().catch(() => ({}));
-        const sData = await sRes.json().catch(() => ({}));
+        const spgData = await spgRes.json().catch(() => ({}));
+        const allGroups = gData.groups || [];
+        const priceGroups = spgData.price_groups || [];
         const panel = document.getElementById('cat-panel');
+        const actionsHost = document.getElementById('cat-page-actions');
+        const esc = (v) => OkwUI.escapeHtml(v == null ? '' : String(v));
 
-        function drawView(view) {
-            panel.innerHTML = `
-                <div class="okw-filter-bar" style="margin-bottom:16px;">
-                    <label for="cg-view-type">Filter Type</label>
-                    <select id="cg-view-type" class="okw-select">
-                        <option value="groups"${view === 'groups' ? ' selected' : ''}>Customer Groups</option>
-                        <option value="sites"${view === 'sites' ? ' selected' : ''}>Customer Project Sites</option>
-                    </select>
-                </div>
-                <div id="cg-view-body"></div>
-            `;
-
-            document.getElementById('cg-view-type').onchange = (e) => drawView(e.target.value);
-            const body = document.getElementById('cg-view-body');
-
-            if (view === 'groups') {
-                body.innerHTML = `
-                    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-                        <input type="text" id="cg-name" class="okw-input" placeholder="Group name (e.g. VIP)">
-                        <select id="cg-pg" class="okw-select"><option value="retail">Retail</option><option value="contractor">Contractor</option><option value="wholesale">Wholesale</option></select>
-                        <input type="number" id="cg-disc" class="okw-input" placeholder="Discount %" step="0.1">
-                        <button type="button" class="okw-btn okw-btn-primary" id="cg-add">Save Group</button>
-                    </div>
-                    <div id="cg-tbl"></div>
-                `;
-                OkwUI.dataTable('#cg-tbl', {
-                    columns: [
-                        { key: 'name', label: 'Group' },
-                        { key: 'price_group', label: 'Price List' },
-                        { key: 'discount_pct', label: 'Default Discount %', numeric: true, render: v => `${v}%` }
-                    ],
-                    rows: gData.groups || []
-                });
-                document.getElementById('cg-add').onclick = async () => {
-                    const r = await fetch('/api/customer-groups', {
-                        method: 'POST', headers,
-                        body: JSON.stringify({
-                            name: document.getElementById('cg-name').value,
-                            price_group: document.getElementById('cg-pg').value,
-                            discount_pct: document.getElementById('cg-disc').value
-                        })
-                    });
-                    if (r.ok) { OkwUI.toast('Customer group saved', 'success'); renderGroups('groups'); }
-                };
-            } else {
-                body.innerHTML = `<div id="cs-tbl"></div>`;
-                OkwUI.dataTable('#cs-tbl', {
-                    columns: [
-                        { key: 'customer_name', label: 'Customer' },
-                        { key: 'site_name', label: 'Site Name' },
-                        { key: 'address', label: 'Address' },
-                        { key: 'contact_phone', label: 'Phone' }
-                    ],
-                    rows: sData.sites || []
-                });
-            }
+        if (actionsHost) {
+            actionsHost.innerHTML = `<button type="button" class="okw-btn okw-btn-primary" id="btnAddCustomerGroup">+ Add Customer Group</button>`;
         }
 
-        drawView(selectedView);
+        panel.innerHTML = `
+            <div style="margin-bottom:16px;">
+                <input type="search" id="cg-search" class="okw-input" placeholder="Search customer groups..." style="width:100%;height:42px;padding:0 14px;border-radius:8px;font-size:14px;">
+            </div>
+            <div style="overflow-x:auto;">
+                <table data-no-table-tools="1" style="width:100%;border-collapse:collapse;font-size:13.5px;">
+                    <thead>
+                        <tr>
+                            <th style="text-align:left;padding:10px 12px;">Customer Group Name</th>
+                            <th style="text-align:right;padding:10px 12px;">Calculation Percentage (%)</th>
+                            <th style="text-align:left;padding:10px 12px;">Selling Price Group</th>
+                            <th style="text-align:right;padding:10px 12px;">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="cg-tbody"></tbody>
+                </table>
+            </div>
+            <div id="cg-footer" style="margin-top:12px;font-size:13px;color:var(--muted,#64748b);"></div>
+        `;
+
+        function drawRows(query = '') {
+            const q = String(query || '').trim().toLowerCase();
+            const list = q
+                ? allGroups.filter((g) =>
+                    String(g.name || '').toLowerCase().includes(q) ||
+                    String(g.selling_price_group_name || g.price_group || '').toLowerCase().includes(q))
+                : allGroups;
+            const tbody = document.getElementById('cg-tbody');
+            const footer = document.getElementById('cg-footer');
+            if (!list.length) {
+                tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:28px;color:var(--muted,#64748b);">No data available in table</td></tr>`;
+                footer.textContent = 'Showing 0 to 0 of 0 entries';
+                return;
+            }
+            tbody.innerHTML = list.map((g) => {
+                const isSpg = g.price_calculation_type === 'selling_price_group';
+                const pctDisplay = isSpg ? '—' : `${Number(g.discount_pct || 0)}%`;
+                const spgDisplay = isSpg
+                    ? (g.selling_price_group_name || '—')
+                    : (g.selling_price_group_name || '—');
+                return `
+                    <tr>
+                        <td style="padding:11px 12px;font-weight:600;">${esc(g.name)}</td>
+                        <td style="padding:11px 12px;text-align:right;font-variant-numeric:tabular-nums;">${esc(pctDisplay)}</td>
+                        <td style="padding:11px 12px;">${esc(spgDisplay)}</td>
+                        <td style="padding:11px 12px;text-align:right;white-space:nowrap;">
+                            <button type="button" class="okw-btn okw-btn-outline" data-cg-edit="${g.id}" style="height:30px;padding:0 10px;font-size:12px;margin-right:6px;">Edit</button>
+                            <button type="button" class="okw-btn okw-btn-outline" data-cg-del="${g.id}" style="height:30px;padding:0 10px;font-size:12px;color:#dc2626;border-color:#fecaca;">Delete</button>
+                        </td>
+                    </tr>`;
+            }).join('');
+            footer.textContent = `Showing 1 to ${list.length} of ${list.length} ${list.length === 1 ? 'entry' : 'entries'}`;
+        }
+
+        function openCustomerGroupModal(existing = null) {
+            const prev = document.getElementById('okw-cg-modal');
+            if (prev) prev.remove();
+            const isEdit = Boolean(existing);
+            const initType = (existing && existing.price_calculation_type === 'selling_price_group') ? 'selling_price_group' : 'percentage';
+
+            const backdrop = document.createElement('div');
+            backdrop.id = 'okw-cg-modal';
+            backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.6);backdrop-filter:blur(2px);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
+            backdrop.innerHTML = `
+                <div role="dialog" aria-modal="true" style="background:var(--sheet,#fff);color:var(--ink,#0f172a);border:1px solid var(--edge,#e2e8f0);border-radius:12px;width:100%;max-width:460px;box-shadow:0 20px 50px rgba(0,0,0,0.25);overflow:hidden;">
+                    <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--edge,#e2e8f0);background:var(--frame,#f8fafc);">
+                        <h3 style="margin:0;font-size:16px;font-weight:700;">${isEdit ? 'Edit Customer Group' : 'Add Customer Group'}</h3>
+                        <button type="button" id="cgm-close" aria-label="Close" style="border:0;background:transparent;font-size:20px;line-height:1;color:var(--muted,#64748b);cursor:pointer;">&times;</button>
+                    </div>
+                    <div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px;">
+                        <div style="display:flex;flex-direction:column;gap:5px;">
+                            <label for="cgm-name" style="font-size:12.5px;font-weight:600;">Customer Group Name:*</label>
+                            <input type="text" id="cgm-name" class="okw-input" placeholder="e.g. Wholesale, VIP, Contractors" value="${esc(existing ? existing.name : '')}" required>
+                        </div>
+                        <div style="display:flex;flex-direction:column;gap:5px;">
+                            <label for="cgm-type" style="font-size:12.5px;font-weight:600;">Price calculation type:</label>
+                            <select id="cgm-type" class="okw-select">
+                                <option value="percentage"${initType === 'percentage' ? ' selected' : ''}>Percentage</option>
+                                <option value="selling_price_group"${initType === 'selling_price_group' ? ' selected' : ''}>Selling Price Group</option>
+                            </select>
+                        </div>
+                        <div id="cgm-pct-wrap" style="display:${initType === 'percentage' ? 'flex' : 'none'};flex-direction:column;gap:5px;">
+                            <label for="cgm-pct" style="font-size:12.5px;font-weight:600;">Calculation Percentage (%):</label>
+                            <input type="number" id="cgm-pct" class="okw-input" step="0.01" placeholder="e.g. 5 or -10" value="${esc(existing ? existing.discount_pct : '')}">
+                        </div>
+                        <div id="cgm-spg-wrap" style="display:${initType === 'selling_price_group' ? 'flex' : 'none'};flex-direction:column;gap:5px;">
+                            <label for="cgm-spg" style="font-size:12.5px;font-weight:600;">Selling Price Group:</label>
+                            <select id="cgm-spg" class="okw-select">
+                                <option value="">-- Select Selling Price Group --</option>
+                                ${priceGroups.map((pg) => `<option value="${pg.id}"${existing && String(existing.selling_price_group_id) === String(pg.id) ? ' selected' : ''}>${esc(pg.name)}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--edge,#e2e8f0);background:var(--frame,#f8fafc);">
+                        <button type="button" class="okw-btn okw-btn-outline" id="cgm-cancel">Close</button>
+                        <button type="button" class="okw-btn okw-btn-primary" id="cgm-save">${isEdit ? 'Update' : 'Save'}</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(backdrop);
+
+            const close = () => backdrop.remove();
+            backdrop.querySelector('#cgm-close').onclick = close;
+            backdrop.querySelector('#cgm-cancel').onclick = close;
+            backdrop.addEventListener('click', (ev) => { if (ev.target === backdrop) close(); });
+
+            backdrop.querySelector('#cgm-type').onchange = (e) => {
+                const isSpg = e.target.value === 'selling_price_group';
+                backdrop.querySelector('#cgm-pct-wrap').style.display = isSpg ? 'none' : 'flex';
+                backdrop.querySelector('#cgm-spg-wrap').style.display = isSpg ? 'flex' : 'none';
+            };
+
+            backdrop.querySelector('#cgm-save').onclick = async () => {
+                const name = backdrop.querySelector('#cgm-name').value.trim();
+                if (!name) return OkwUI.toast('Customer Group Name is required', 'warning');
+                const calcType = backdrop.querySelector('#cgm-type').value;
+                const payload = {
+                    name,
+                    price_calculation_type: calcType,
+                    discount_pct: calcType === 'percentage' ? Number(backdrop.querySelector('#cgm-pct').value || 0) : 0,
+                    selling_price_group_id: calcType === 'selling_price_group' ? (backdrop.querySelector('#cgm-spg').value || null) : null
+                };
+                const url = isEdit ? `/api/customer-groups/${existing.id}` : '/api/customer-groups';
+                const method = isEdit ? 'PUT' : 'POST';
+                const r = await fetch(url, { method, headers, body: JSON.stringify(payload) });
+                if (r.ok) {
+                    close();
+                    OkwUI.toast(isEdit ? 'Customer group updated' : 'Customer group saved', 'success');
+                    renderGroups();
+                } else {
+                    const err = await r.json().catch(() => ({}));
+                    OkwUI.toast(err.message || 'Failed to save customer group', 'danger');
+                }
+            };
+        }
+
+        const addBtn = document.getElementById('btnAddCustomerGroup');
+        if (addBtn) addBtn.onclick = () => openCustomerGroupModal(null);
+
+        document.getElementById('cg-search').addEventListener('input', (e) => drawRows(e.target.value));
+        document.getElementById('cg-tbody').addEventListener('click', async (e) => {
+            const editBtn = e.target.closest('[data-cg-edit]');
+            if (editBtn) {
+                const grp = allGroups.find((g) => String(g.id) === editBtn.getAttribute('data-cg-edit'));
+                if (grp) openCustomerGroupModal(grp);
+                return;
+            }
+            const delBtn = e.target.closest('[data-cg-del]');
+            if (delBtn) {
+                const id = delBtn.getAttribute('data-cg-del');
+                const r = await fetch(`/api/customer-groups/${id}`, { method: 'DELETE', headers });
+                if (r.ok) {
+                    OkwUI.toast('Customer group deleted', 'success');
+                    renderGroups();
+                } else {
+                    OkwUI.toast('Failed to delete customer group', 'danger');
+                }
+            }
+        });
+
+        drawRows('');
     }
 
     async function renderVariations() {
@@ -413,6 +523,8 @@
         const subEl = document.getElementById('cat-page-subtitle');
         if (titleEl) titleEl.textContent = meta.title;
         if (subEl) subEl.textContent = meta.subtitle;
+        const actionsHost = document.getElementById('cat-page-actions');
+        if (actionsHost) actionsHost.innerHTML = '';
         document.getElementById('cat-tabs').querySelectorAll('[data-ctab]').forEach(b => {
             b.className = b.dataset.ctab === tab ? 'okw-btn okw-btn-primary' : 'okw-btn okw-btn-outline';
         });
