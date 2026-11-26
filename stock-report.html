@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Report - OKWESIWA CO LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/currency.js"></script>
+    <script src="/telemetry-guard.js"></script>
+    <script src="/instant-nav.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style>
+        .sr-kpis {
+            display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
+            background: var(--sheet, #fff); border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 12px; overflow: hidden; margin-bottom: 16px;
+        }
+        .sr-kpi { padding: 14px 18px; border-left: 1px solid var(--edge, #e2e8f0); min-width: 0; }
+        .sr-kpi:first-child { border-left: 0; }
+        .sr-kpi-lbl { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted, #64748b); margin-bottom: 5px; }
+        .sr-kpi-val { font-size: 20px; font-weight: 700; color: var(--ink, #0f172a); font-variant-numeric: tabular-nums; line-height: 1.2; }
+        .sr-kpi-val.good { color: #15803d; }
+        .sr-kpi-val.brand { color: #273990; }
+
+        .sr-filters {
+            display: grid; grid-template-columns: 2fr 1fr 1fr 1fr; gap: 10px;
+            margin-bottom: 16px;
+        }
+        .sr-input, .sr-select {
+            width: 100%; height: 40px; padding: 0 12px;
+            border: 1px solid var(--edge-strong, #cbd5e1); border-radius: 8px;
+            background: var(--sheet, #fff); color: var(--ink, #0f172a);
+            font-family: var(--font-ui); font-size: 13.5px; outline: none;
+        }
+        .sr-input:focus, .sr-select:focus { border-color: var(--brand, #273990); box-shadow: 0 0 0 3px rgba(39,57,144,0.12); }
+
+        .sr-card { background: var(--sheet, #fff); border: 1px solid var(--edge, #e2e8f0); border-radius: 12px; overflow: hidden; }
+        .sr-tbl-wrap { overflow-x: auto; }
+        .sr-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+        .sr-table th {
+            text-align: left; padding: 10px 10px; font-size: 11px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted, #64748b);
+            background: var(--frame, #f8fafc); border-bottom: 1px solid var(--edge, #e2e8f0);
+            white-space: nowrap;
+        }
+        .sr-table td { padding: 10px 10px; border-bottom: 1px solid var(--edge, #f1f5f9); vertical-align: middle; }
+        .sr-table th.num, .sr-table td.num { text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+        .sr-table tfoot td {
+            background: var(--frame, #f8fafc); font-weight: 700; color: var(--ink, #0f172a);
+            border-top: 2px solid var(--edge-strong, #cbd5e1); padding: 11px 10px;
+        }
+        .sr-hist-btn {
+            height: 28px; padding: 0 10px; border-radius: 6px;
+            border: 1px solid #bfdbfe; background: #eff6ff; color: #1d4ed8;
+            font-size: 11.5px; font-weight: 600; cursor: pointer; white-space: nowrap;
+            display: inline-flex; align-items: center; gap: 5px;
+        }
+        .sr-hist-btn:hover { background: #273990; border-color: #273990; color: #fff; }
+
+        /* Product Stock History Modal */
+        .sh-backdrop {
+            position: fixed; inset: 0; background: rgba(11,16,23,0.62); backdrop-filter: blur(2px);
+            z-index: 10070; display: flex; align-items: center; justify-content: center; padding: 16px;
+        }
+        .sh-modal {
+            background: var(--sheet, #fff); color: var(--ink, #0f172a);
+            border: 1px solid var(--edge, #e2e8f0); border-radius: 14px;
+            width: 100%; max-width: 980px; max-height: 92vh; display: flex; flex-direction: column;
+            box-shadow: 0 24px 60px rgba(0,0,0,0.28); overflow: hidden;
+        }
+        .sh-head {
+            display: flex; justify-content: space-between; align-items: flex-start; gap: 14px;
+            padding: 16px 22px; border-bottom: 1px solid var(--edge, #e2e8f0); background: var(--frame, #f8fafc);
+        }
+        .sh-head h2 { margin: 0; font-size: 18px; font-weight: 700; }
+        .sh-head p { margin: 3px 0 0; font-size: 12.5px; color: var(--muted, #64748b); }
+        .sh-body { padding: 18px 22px; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; }
+        .sh-selectors { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+        .sh-field { display: flex; flex-direction: column; gap: 4px; }
+        .sh-field label { font-size: 12px; font-weight: 600; color: var(--muted, #64748b); }
+        .sh-3col { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+        .sh-box {
+            border: 1px solid var(--edge, #e2e8f0); border-radius: 10px; padding: 14px 16px;
+            background: var(--frame, #f8fafc);
+        }
+        .sh-box-title {
+            font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+            color: #273990; border-bottom: 1px solid var(--edge, #e2e8f0); padding-bottom: 6px; margin-bottom: 8px;
+        }
+        .sh-kv { display: flex; justify-content: space-between; padding: 4px 0; font-size: 13px; }
+        .sh-kv span:first-child { color: var(--ink-2, #334155); }
+        .sh-kv strong { font-variant-numeric: tabular-nums; }
+        .sh-total-val { font-size: 24px; font-weight: 800; color: #273990; margin-top: 8px; font-variant-numeric: tabular-nums; }
+        .sh-qty-pos { color: #15803d; font-weight: 700; }
+        .sh-qty-neg { color: #dc2626; font-weight: 700; }
+
+        @media (max-width: 900px) {
+            .sr-kpis { grid-template-columns: 1fr 1fr; }
+            .sr-filters { grid-template-columns: 1fr 1fr; }
+            .sh-3col, .sh-selectors { grid-template-columns: 1fr; }
+        }
+    </style>
+    <script src="/okw-events.js"></script>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD"></div>
+        <div class="nav-links"></div>
+        <div class="user-profile">
+            <div class="user-profile-row">
+                <div class="user-avatar"><i class="fas fa-user"></i></div>
+                <div class="user-info">
+                    <div id="userName"></div>
+                    <div id="userRole"></div>
+                </div>
+            </div>
+            <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <div class="okw-page-header">
+            <div class="okw-page-header-text">
+                <h1 class="okw-page-title">Stock Report</h1>
+                <p class="okw-page-subtitle">Track current stock, valuation by purchase and sale price, potential profit, and product stock history.</p>
+            </div>
+            <div class="okw-page-header-actions">
+                <button type="button" class="okw-btn okw-btn-outline" id="btnRefreshStock"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <button type="button" class="okw-btn okw-btn-primary" id="btnExportCsv"><i class="fas fa-file-export"></i> Export CSV</button>
+            </div>
+        </div>
+
+        <div class="sr-kpis">
+            <div class="sr-kpi">
+                <div class="sr-kpi-lbl">Closing stock (By purchase price)</div>
+                <div class="sr-kpi-val" id="kpiPurchaseVal"><span class="okw-sk-bar" style="width:110px;height:22px;"></span></div>
+            </div>
+            <div class="sr-kpi">
+                <div class="sr-kpi-lbl">Closing stock (By sale price)</div>
+                <div class="sr-kpi-val brand" id="kpiSaleVal"><span class="okw-sk-bar" style="width:110px;height:22px;"></span></div>
+            </div>
+            <div class="sr-kpi">
+                <div class="sr-kpi-lbl">Potential profit</div>
+                <div class="sr-kpi-val good" id="kpiProfit"><span class="okw-sk-bar" style="width:110px;height:22px;"></span></div>
+            </div>
+            <div class="sr-kpi">
+                <div class="sr-kpi-lbl">Profit Margin %</div>
+                <div class="sr-kpi-val good" id="kpiMargin"><span class="okw-sk-bar" style="width:68px;height:22px;"></span></div>
+            </div>
+        </div>
+
+        <div class="sr-filters">
+            <input type="search" id="srSearch" class="sr-input" placeholder="Search by SKU, product name, variation, or category...">
+            <select id="srLocation" class="sr-select" aria-label="Business Location">
+                <option value="">All Business Locations</option>
+            </select>
+            <select id="srCategory" class="sr-select" aria-label="Category">
+                <option value="">All Categories</option>
+            </select>
+            <select id="srBrand" class="sr-select" aria-label="Brand">
+                <option value="">All Brands</option>
+            </select>
+        </div>
+
+        <div class="sr-card">
+            <div class="sr-tbl-wrap">
+                <table class="sr-table" data-no-table-tools="1">
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>SKU</th>
+                            <th>Product</th>
+                            <th>Variation</th>
+                            <th>Category</th>
+                            <th>Location</th>
+                            <th class="num">Unit Selling Price</th>
+                            <th class="num">Current stock</th>
+                            <th class="num">Current Stock Value<br>(By purchase price)</th>
+                            <th class="num">Current Stock Value<br>(By sale price)</th>
+                            <th class="num">Potential profit</th>
+                            <th class="num">Total unit sold</th>
+                            <th class="num">Total Unit Transfered</th>
+                            <th class="num">Total Unit Adjusted</th>
+                            <th class="num">Current Stock (Manufacturing)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="srBody">
+                        <tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:110px;"></span></td><td><span class="okw-sk-bar" style="width:64px;"></span></td><td><span class="okw-sk-bar" style="width:140px;"></span></td><td><span class="okw-sk-bar" style="width:60px;"></span></td><td><span class="okw-sk-bar" style="width:82px;"></span></td><td><span class="okw-sk-bar" style="width:88px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:68px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:72px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:72px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:72px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td></tr>
+                        <tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:110px;"></span></td><td><span class="okw-sk-bar" style="width:64px;"></span></td><td><span class="okw-sk-bar" style="width:162px;"></span></td><td><span class="okw-sk-bar" style="width:60px;"></span></td><td><span class="okw-sk-bar" style="width:76px;"></span></td><td><span class="okw-sk-bar" style="width:88px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:68px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:72px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:72px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:72px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td></tr>
+                        <tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:110px;"></span></td><td><span class="okw-sk-bar" style="width:64px;"></span></td><td><span class="okw-sk-bar" style="width:128px;"></span></td><td><span class="okw-sk-bar" style="width:60px;"></span></td><td><span class="okw-sk-bar" style="width:88px;"></span></td><td><span class="okw-sk-bar" style="width:88px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:68px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:72px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:72px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:72px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td></tr>
+                        <tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:110px;"></span></td><td><span class="okw-sk-bar" style="width:64px;"></span></td><td><span class="okw-sk-bar" style="width:152px;"></span></td><td><span class="okw-sk-bar" style="width:60px;"></span></td><td><span class="okw-sk-bar" style="width:80px;"></span></td><td><span class="okw-sk-bar" style="width:88px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:68px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:72px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:72px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:72px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:64px;"></span></td></tr>
+                    </tbody>
+                    <tfoot id="srFoot"></tfoot>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+    (function () {
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+        const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const money = (n) => (typeof formatCurrency === 'function' ? formatCurrency(Number(n) || 0) : 'GH₵ ' + (Number(n) || 0).toFixed(2));
+        const qtyFmt = (n, unit = 'Pc(s)') => `${Number(n || 0).toFixed(2)} ${unit}`;
+        const fmtDateTime = (d) => {
+            if (!d) return '—';
+            const dt = new Date(d);
+            return isNaN(dt.getTime()) ? String(d) : dt.toLocaleString(undefined, { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+        };
+
+        let allRows = [];
+        let filteredRows = [];
+        let branches = [];
+        let branchesLoaded = false;
+
+        function populateFilterDropdowns() {
+            if (!branchesLoaded) {
+                branchesLoaded = true;
+                const locSel = document.getElementById('srLocation');
+                locSel.innerHTML = `<option value="">All Business Locations</option>` + branches.map((b) =>
+                    `<option value="${esc(b.name)}">${esc(b.name)}</option>`
+                ).join('');
+            }
+            const cats = [...new Set(allRows.map((r) => r.category).filter(Boolean))].sort();
+            const brands = [...new Set(allRows.map((r) => r.brand).filter(Boolean))].sort();
+            const catSel = document.getElementById('srCategory');
+            const prevCat = catSel.value;
+            catSel.innerHTML = `<option value="">All Categories</option>` + cats.map((c) => `<option value="${esc(c)}"${prevCat === c ? ' selected' : ''}>${esc(c)}</option>`).join('');
+            const brSel = document.getElementById('srBrand');
+            const prevBr = brSel.value;
+            brSel.innerHTML = `<option value="">All Brands</option>` + brands.map((b) => `<option value="${esc(b)}"${prevBr === b ? ' selected' : ''}>${esc(b)}</option>`).join('');
+        }
+
+        function renderTable() {
+            const q = document.getElementById('srSearch').value.trim().toLowerCase();
+            const cat = document.getElementById('srCategory').value;
+            const brand = document.getElementById('srBrand').value;
+
+            filteredRows = allRows.filter((r) => {
+                if (cat && r.category !== cat) return false;
+                if (brand && r.brand !== brand) return false;
+                if (q && ![r.sku, r.product, r.variation, r.category, r.location].some((v) => String(v || '').toLowerCase().includes(q))) return false;
+                return true;
+            });
+
+            const tbody = document.getElementById('srBody');
+            const tfoot = document.getElementById('srFoot');
+
+            if (!filteredRows.length) {
+                tbody.innerHTML = `<tr><td colspan="15" style="text-align:center;padding:28px;color:var(--muted,#64748b);">No products match the selected filters.</td></tr>`;
+                tfoot.innerHTML = '';
+                return;
+            }
+
+            let totStock = 0, totPurchase = 0, totSale = 0, totProfit = 0, totSold = 0, totTrf = 0, totAdj = 0, totMfg = 0;
+            tbody.innerHTML = filteredRows.map((r) => {
+                totStock += Number(r.current_stock || 0);
+                totPurchase += Number(r.stock_value_purchase || 0);
+                totSale += Number(r.stock_value_sale || 0);
+                totProfit += Number(r.potential_profit || 0);
+                totSold += Number(r.total_unit_sold || 0);
+                totTrf += Number(r.total_unit_transferred || 0);
+                totAdj += Number(r.total_unit_adjusted || 0);
+                totMfg += Number(r.manufacturing_stock || 0);
+                const u = r.unit || 'Pc(s)';
+                return `
+                    <tr>
+                        <td><button type="button" class="sr-hist-btn" data-hist-id="${r.id}"><i class="fas fa-history"></i> Product stock history</button></td>
+                        <td style="font-family:ui-monospace,monospace;font-size:12px;">${esc(r.sku)}</td>
+                        <td style="font-weight:600;color:var(--ink,#0f172a);">${esc(r.product)}</td>
+                        <td>${esc(r.variation || '')}</td>
+                        <td>${esc(r.category || '')}</td>
+                        <td>${esc(r.location || '')}</td>
+                        <td class="num">${esc(money(r.unit_selling_price))}</td>
+                        <td class="num">${esc(qtyFmt(r.current_stock, u))}</td>
+                        <td class="num">${esc(money(r.stock_value_purchase))}</td>
+                        <td class="num">${esc(money(r.stock_value_sale))}</td>
+                        <td class="num" style="color:${r.potential_profit >= 0 ? '#15803d' : '#dc2626'};font-weight:600;">${esc(money(r.potential_profit))}</td>
+                        <td class="num">${esc(qtyFmt(r.total_unit_sold, u))}</td>
+                        <td class="num">${esc(qtyFmt(r.total_unit_transferred, u))}</td>
+                        <td class="num">${esc(qtyFmt(r.total_unit_adjusted, u))}</td>
+                        <td class="num">${esc(qtyFmt(r.manufacturing_stock, u))}</td>
+                    </tr>`;
+            }).join('');
+
+            tfoot.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align:right;">Total:</td>
+                    <td class="num">${totStock.toFixed(2)}</td>
+                    <td class="num">${esc(money(totPurchase))}</td>
+                    <td class="num">${esc(money(totSale))}</td>
+                    <td class="num">${esc(money(totProfit))}</td>
+                    <td class="num">${totSold.toFixed(2)}</td>
+                    <td class="num">${totTrf.toFixed(2)}</td>
+                    <td class="num">${totAdj.toFixed(2)}</td>
+                    <td class="num">${totMfg.toFixed(2)}</td>
+                </tr>`;
+
+            const margin = totSale > 0 ? ((totProfit / totSale) * 100).toFixed(2) : '0.00';
+            document.getElementById('kpiPurchaseVal').textContent = money(totPurchase);
+            document.getElementById('kpiSaleVal').textContent = money(totSale);
+            document.getElementById('kpiProfit').textContent = money(totProfit);
+            document.getElementById('kpiMargin').textContent = `${margin}%`;
+        }
+
+        async function loadReport() {
+            const loc = document.getElementById('srLocation').value;
+            const qs = loc ? `?location=${encodeURIComponent(loc)}` : '';
+            try {
+                const res = await fetch(`/api/products/stock-report${qs}`, { headers, credentials: 'include' });
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+                const d = await res.json();
+                branches = d.branches || branches;
+                allRows = d.rows || [];
+                populateFilterDropdowns();
+                renderTable();
+            } catch (e) {
+                document.getElementById('srBody').innerHTML = `<tr><td colspan="15" style="text-align:center;padding:24px;color:#dc2626;">Could not load stock report.</td></tr>`;
+            }
+        }
+
+        function openStockHistoryModal(initialProductId) {
+            const prev = document.getElementById('okw-stock-history-modal');
+            if (prev) prev.remove();
+            const initLoc = document.getElementById('srLocation').value || '';
+
+            const backdrop = document.createElement('div');
+            backdrop.id = 'okw-stock-history-modal';
+            backdrop.className = 'sh-backdrop';
+            backdrop.innerHTML = `
+                <div class="sh-modal" role="dialog" aria-modal="true">
+                    <div class="sh-head">
+                        <div>
+                            <h2 id="shTitle">Product stock history</h2>
+                            <p id="shSub"><span class="okw-sk-bar" style="width:180px;height:12px;"></span></p>
+                        </div>
+                        <button type="button" id="shClose" aria-label="Close" style="border:0;background:transparent;font-size:22px;line-height:1;color:var(--muted,#64748b);cursor:pointer;">&times;</button>
+                    </div>
+                    <div class="sh-body">
+                        <div class="sh-selectors">
+                            <div class="sh-field">
+                                <label for="shProdSel">Product:</label>
+                                <select id="shProdSel" class="sr-select" style="height:36px;">
+                                    ${allRows.map((r) => `<option value="${r.id}"${String(r.id) === String(initialProductId) ? ' selected' : ''}>${esc(r.product)} (${esc(r.sku)})</option>`).join('')}
+                                </select>
+                            </div>
+                            <div class="sh-field">
+                                <label for="shLocSel">Business Location:</label>
+                                <select id="shLocSel" class="sr-select" style="height:36px;">
+                                    <option value="">All Locations</option>
+                                    ${branches.map((b) => `<option value="${esc(b.name)}"${initLoc === b.name ? ' selected' : ''}>${esc(b.name)}</option>`).join('')}
+                                </select>
+                            </div>
+                            <button type="button" class="okw-btn okw-btn-outline" id="shPrintBtn" style="height:36px;"><i class="fas fa-print"></i> Print</button>
+                        </div>
+
+                        <div class="sh-3col">
+                            <div class="sh-box">
+                                <div class="sh-box-title">Quantities In</div>
+                                <div class="sh-kv"><span>Total Purchase</span><strong id="shInPurchase">0.00</strong></div>
+                                <div class="sh-kv"><span>Opening Stock</span><strong id="shInOpening">0.00</strong></div>
+                                <div class="sh-kv"><span>Total Sell Return</span><strong id="shInSellRet">0.00</strong></div>
+                                <div class="sh-kv"><span>Stock Transfers (In)</span><strong id="shInTrf">0.00</strong></div>
+                            </div>
+                            <div class="sh-box">
+                                <div class="sh-box-title">Quantities Out</div>
+                                <div class="sh-kv"><span>Total Sold</span><strong id="shOutSold">0.00</strong></div>
+                                <div class="sh-kv"><span>Total Stock Adjustment</span><strong id="shOutAdj">0.00</strong></div>
+                                <div class="sh-kv"><span>Total Purchase Return</span><strong id="shOutPurchRet">0.00</strong></div>
+                                <div class="sh-kv"><span>Stock Transfers (Out)</span><strong id="shOutTrf">0.00</strong></div>
+                            </div>
+                            <div class="sh-box">
+                                <div class="sh-box-title">Totals</div>
+                                <div style="font-size:13px;color:var(--muted,#64748b);">Current stock</div>
+                                <div class="sh-total-val" id="shCurrentStock">0.00</div>
+                            </div>
+                        </div>
+
+                        <div style="border:1px solid var(--edge,#e2e8f0);border-radius:10px;overflow-x:auto;">
+                            <table class="sr-table" data-no-table-tools="1">
+                                <thead>
+                                    <tr>
+                                        <th>Type</th>
+                                        <th class="num">Quantity change</th>
+                                        <th class="num">New Quantity</th>
+                                        <th>Date</th>
+                                        <th>Reference No</th>
+                                        <th>Customer/Supplier information</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="shTableBody">
+                                    <tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:90px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:54px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:54px;"></span></td><td><span class="okw-sk-bar" style="width:110px;"></span></td><td><span class="okw-sk-bar" style="width:88px;"></span></td><td><span class="okw-sk-bar" style="width:140px;"></span></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>`;
+            document.body.appendChild(backdrop);
+
+            const close = () => backdrop.remove();
+            backdrop.querySelector('#shClose').addEventListener('click', close);
+            backdrop.addEventListener('click', (ev) => { if (ev.target === backdrop) close(); });
+
+            let lastData = null;
+            async function fetchHistory() {
+                const pid = backdrop.querySelector('#shProdSel').value;
+                const loc = backdrop.querySelector('#shLocSel').value;
+                const qs = loc ? `?location=${encodeURIComponent(loc)}` : '';
+                const tbody = backdrop.querySelector('#shTableBody');
+                tbody.innerHTML = `<tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:90px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:54px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:54px;"></span></td><td><span class="okw-sk-bar" style="width:110px;"></span></td><td><span class="okw-sk-bar" style="width:88px;"></span></td><td><span class="okw-sk-bar" style="width:140px;"></span></td></tr>`;
+                try {
+                    const res = await fetch(`/api/products/${encodeURIComponent(pid)}/stock-history${qs}`, { headers, credentials: 'include' });
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const d = await res.json();
+                    lastData = d;
+                    const p = d.product || {};
+                    const qi = d.quantities_in || {};
+                    const qo = d.quantities_out || {};
+                    backdrop.querySelector('#shTitle').textContent = `Product stock history — ${p.name || ''}`;
+                    backdrop.querySelector('#shSub').textContent = `SKU: ${p.sku || '—'} · Location: ${d.location || 'All Locations'}`;
+                    backdrop.querySelector('#shInPurchase').textContent = Number(qi.total_purchase || 0).toFixed(2);
+                    backdrop.querySelector('#shInOpening').textContent = Number(qi.opening_stock || 0).toFixed(2);
+                    backdrop.querySelector('#shInSellRet').textContent = Number(qi.total_sell_return || 0).toFixed(2);
+                    backdrop.querySelector('#shInTrf').textContent = Number(qi.transfers_in || 0).toFixed(2);
+                    backdrop.querySelector('#shOutSold').textContent = Number(qo.total_sold || 0).toFixed(2);
+                    backdrop.querySelector('#shOutAdj').textContent = Number(qo.total_stock_adjustment || 0).toFixed(2);
+                    backdrop.querySelector('#shOutPurchRet').textContent = Number(qo.total_purchase_return || 0).toFixed(2);
+                    backdrop.querySelector('#shOutTrf').textContent = Number(qo.transfers_out || 0).toFixed(2);
+                    backdrop.querySelector('#shCurrentStock').textContent = `${Number(d.current_stock || 0).toFixed(2)} ${p.unit || ''}`;
+
+                    const list = d.history || [];
+                    tbody.innerHTML = list.length ? list.map((h) => {
+                        const q = Number(h.quantity_change || 0);
+                        const sign = q > 0 ? `+${q.toFixed(2)}` : q.toFixed(2);
+                        return `
+                            <tr>
+                                <td style="font-weight:600;">${esc(h.type)}</td>
+                                <td class="num ${q >= 0 ? 'sh-qty-pos' : 'sh-qty-neg'}">${esc(sign)}</td>
+                                <td class="num" style="font-weight:600;">${Number(h.new_quantity || 0).toFixed(2)}</td>
+                                <td style="white-space:nowrap;">${esc(fmtDateTime(h.date))}</td>
+                                <td style="font-family:ui-monospace,monospace;font-size:12px;">${esc(h.reference_no || '—')}</td>
+                                <td>${esc(h.party_info || '—')}</td>
+                            </tr>`;
+                    }).join('') : `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted,#64748b);">No stock history found</td></tr>`;
+                } catch (e) {
+                    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:#dc2626;">Could not load stock history.</td></tr>`;
+                }
+            }
+
+            backdrop.querySelector('#shProdSel').addEventListener('change', fetchHistory);
+            backdrop.querySelector('#shLocSel').addEventListener('change', fetchHistory);
+            backdrop.querySelector('#shPrintBtn').addEventListener('click', () => {
+                if (!lastData) return;
+                window.print();
+            });
+            fetchHistory();
+        }
+
+        document.getElementById('srBody').addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-hist-id]');
+            if (btn) openStockHistoryModal(btn.getAttribute('data-hist-id'));
+        });
+        document.getElementById('srSearch').addEventListener('input', renderTable);
+        document.getElementById('srCategory').addEventListener('change', renderTable);
+        document.getElementById('srBrand').addEventListener('change', renderTable);
+        document.getElementById('srLocation').addEventListener('change', loadReport);
+        document.getElementById('btnRefreshStock').addEventListener('click', loadReport);
+        document.getElementById('btnExportCsv').addEventListener('click', () => {
+            if (!filteredRows.length) return OkwUI.toast('No rows to export', 'warning');
+            const cols = ['SKU', 'Product', 'Variation', 'Category', 'Location', 'Unit Selling Price', 'Current stock', 'Current Stock Value (Purchase)', 'Current Stock Value (Sale)', 'Potential profit', 'Total unit sold', 'Total Unit Transfered', 'Total Unit Adjusted', 'Current Stock (Manufacturing)'];
+            const csv = [cols.join(',')].concat(filteredRows.map((r) => [
+                r.sku, r.product, r.variation, r.category, r.location, r.unit_selling_price,
+                r.current_stock, r.stock_value_purchase, r.stock_value_sale, r.potential_profit,
+                r.total_unit_sold, r.total_unit_transferred, r.total_unit_adjusted, r.manufacturing_stock
+            ].map((v) => `"${String(v == null ? '' : v).replace(/"/g, '""')}"`).join(','))).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = `stock-report-${new Date().toISOString().slice(0, 10)}.csv`;
+            a.click();
+        });
+
+        document.addEventListener('DOMContentLoaded', loadReport);
+    })();
+    </script>
+</body>
+</html>

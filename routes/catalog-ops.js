@@ -588,5 +588,416 @@ router.delete('/api/warranties/:id', authenticateToken, requireRole(MANAGER_ROLE
     }
 });
 
+// --- STOCK REPORT & PRODUCT STOCK HISTORY ---
+router.get('/api/products/stock-report', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
+    const locationFilter = String(req.query.location || '').trim();
+    try {
+        const [prodRes, branchRes] = await Promise.all([
+            pool.query(
+                `SELECT * FROM products
+                 WHERE COALESCE(tenant_id, 1) = $1 AND deleted_at IS NULL
+                 ORDER BY name ASC`,
+                [tenantId]
+            ),
+            pool.query(
+                `SELECT id, name, location FROM branches
+                 WHERE COALESCE(tenant_id, 1) = $1 AND deleted_at IS NULL
+                 ORDER BY id ASC`,
+                [tenantId]
+            ).catch(() => ({ rows: [] }))
+        ]);
+
+        const branches = branchRes.rows || [];
+        const branchNameById = new Map(branches.map((b) => [Number(b.id), b.name]));
+        const defaultBranchName = branches[0]?.name || 'Main Branch';
+
+        // 1. Units sold per barcode (completed non-return sales)
+        const soldByBarcode = new Map();
+        try {
+            const txParams = [tenantId];
+            let locSql = '';
+            if (locationFilter) {
+                txParams.push(locationFilter);
+                locSql = ` AND LOWER(COALESCE(store_location, '')) = LOWER($2)`;
+            }
+            const txRes = await pool.query(
+                `SELECT items FROM transactions
+                 WHERE COALESCE(tenant_id, 1) = $1
+                   AND COALESCE(is_return, false) = false
+                   AND COALESCE(status, 'completed') NOT IN ('void', 'cancelled', 'parked')${locSql}`,
+                txParams
+            );
+            for (const row of txRes.rows) {
+                let items = row.items;
+                if (typeof items === 'string') {
+                    try { items = JSON.parse(items); } catch (_) { items = []; }
+                }
+                if (!Array.isArray(items)) continue;
+                for (const it of items) {
+                    const bc = String(it.barcode || '').trim();
+                    if (!bc) continue;
+                    const q = Number(it.qty ?? it.quantity ?? 0) || 0;
+                    soldByBarcode.set(bc, (soldByBarcode.get(bc) || 0) + q);
+                }
+            }
+        } catch (_) { /* ignore */ }
+
+        // 2. Units transferred per barcode
+        const transferredByBarcode = new Map();
+        try {
+            const trRes = await pool.query(
+                `SELECT sti.product_barcode, COALESCE(sti.quantity_received, sti.quantity_sent, 0) AS qty,
+                        st.from_location, st.to_location, st.from_branch_id, st.to_branch_id
+                 FROM stock_transfer_items sti
+                 JOIN stock_transfers st ON st.id = sti.transfer_id
+                 WHERE COALESCE(st.tenant_id, 1) = $1`,
+                [tenantId]
+            );
+            for (const r of trRes.rows) {
+                const bc = String(r.product_barcode || '').trim();
+                if (!bc) continue;
+                if (locationFilter) {
+                    const fromName = r.from_location || branchNameById.get(Number(r.from_branch_id)) || '';
+                    const toName = r.to_location || branchNameById.get(Number(r.to_branch_id)) || '';
+                    if (fromName.toLowerCase() !== locationFilter.toLowerCase() && toName.toLowerCase() !== locationFilter.toLowerCase()) continue;
+                }
+                transferredByBarcode.set(bc, (transferredByBarcode.get(bc) || 0) + Math.abs(Number(r.qty || 0)));
+            }
+        } catch (_) { /* ignore */ }
+
+        // 3. Units adjusted per barcode
+        const adjustedByBarcode = new Map();
+        try {
+            const adjRes = await pool.query(
+                `SELECT product_barcode, quantity_adjusted, branch_id
+                 FROM stock_adjustments
+                 WHERE COALESCE(tenant_id, 1) = $1`,
+                [tenantId]
+            );
+            for (const r of adjRes.rows) {
+                const bc = String(r.product_barcode || '').trim();
+                if (!bc) continue;
+                if (locationFilter) {
+                    const bName = branchNameById.get(Number(r.branch_id)) || '';
+                    if (bName.toLowerCase() !== locationFilter.toLowerCase()) continue;
+                }
+                adjustedByBarcode.set(bc, (adjustedByBarcode.get(bc) || 0) + Math.abs(Number(r.quantity_adjusted || 0)));
+            }
+        } catch (_) { /* ignore */ }
+
+        let totalPurchaseVal = 0;
+        let totalSaleVal = 0;
+        let totalStockQty = 0;
+        let totalUnitsSold = 0;
+        let totalUnitsTransferred = 0;
+        let totalUnitsAdjusted = 0;
+
+        const rows = prodRes.rows.map((p) => {
+            const bc = String(p.barcode || '').trim();
+            const levels = (p.stock_levels && typeof p.stock_levels === 'object') ? p.stock_levels : {};
+            let currentStock = Number(p.stock || 0);
+            let locLabel = locationFilter || p.business_locations || defaultBranchName;
+            if (locationFilter) {
+                const matchKey = Object.keys(levels).find((k) => k.toLowerCase() === locationFilter.toLowerCase());
+                currentStock = matchKey ? Number(levels[matchKey] || 0) : 0;
+                locLabel = locationFilter;
+            } else {
+                const levelKeys = Object.keys(levels);
+                if (levelKeys.length === 1) locLabel = levelKeys[0];
+                else if (levelKeys.length > 1) locLabel = 'All Locations';
+            }
+
+            const unitPrice = Number(p.price || 0);
+            const costPrice = Number(p.cost_price || 0);
+            const purchaseVal = Number((currentStock * costPrice).toFixed(2));
+            const saleVal = Number((currentStock * unitPrice).toFixed(2));
+            const potentialProfit = Number((saleVal - purchaseVal).toFixed(2));
+            const sold = Number((soldByBarcode.get(bc) || 0).toFixed(2));
+            const transferred = Number((transferredByBarcode.get(bc) || 0).toFixed(2));
+            const adjusted = Number((adjustedByBarcode.get(bc) || 0).toFixed(2));
+
+            totalPurchaseVal += purchaseVal;
+            totalSaleVal += saleVal;
+            totalStockQty += currentStock;
+            totalUnitsSold += sold;
+            totalUnitsTransferred += transferred;
+            totalUnitsAdjusted += adjusted;
+
+            return {
+                id: p.id,
+                sku: bc || String(p.id),
+                product: p.name || '',
+                variation: p.variation || p.sub_category || '',
+                category: p.category || '',
+                brand: p.brand || '',
+                unit: p.selling_unit || 'Pc(s)',
+                location: locLabel,
+                unit_selling_price: unitPrice,
+                unit_cost_price: costPrice,
+                current_stock: Number(currentStock.toFixed(2)),
+                stock_value_purchase: purchaseVal,
+                stock_value_sale: saleVal,
+                potential_profit: potentialProfit,
+                total_unit_sold: sold,
+                total_unit_transferred: transferred,
+                total_unit_adjusted: adjusted,
+                manufacturing_stock: 0
+            };
+        });
+
+        const totalProfit = Number((totalSaleVal - totalPurchaseVal).toFixed(2));
+        const profitMarginPct = totalSaleVal > 0 ? Number(((totalProfit / totalSaleVal) * 100).toFixed(2)) : 0;
+
+        res.json({
+            branches,
+            summary: {
+                closing_stock_purchase: Number(totalPurchaseVal.toFixed(2)),
+                closing_stock_sale: Number(totalSaleVal.toFixed(2)),
+                potential_profit: totalProfit,
+                profit_margin_pct: profitMarginPct,
+                total_stock_qty: Number(totalStockQty.toFixed(2)),
+                total_unit_sold: Number(totalUnitsSold.toFixed(2)),
+                total_unit_transferred: Number(totalUnitsTransferred.toFixed(2)),
+                total_unit_adjusted: Number(totalUnitsAdjusted.toFixed(2))
+            },
+            rows
+        });
+    } catch (err) {
+        console.error('GET /api/products/stock-report error:', err);
+        res.status(500).json({ message: 'Failed to load stock report' });
+    }
+});
+
+router.get('/api/products/:id/stock-history', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
+    const productId = parseInt(req.params.id, 10);
+    const locationFilter = String(req.query.location || '').trim();
+    if (!Number.isFinite(productId) || productId <= 0) {
+        return res.status(400).json({ message: 'Invalid product ID' });
+    }
+    try {
+        const [prodRes, branchRes] = await Promise.all([
+            pool.query('SELECT * FROM products WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL', [productId, tenantId]),
+            pool.query('SELECT id, name FROM branches WHERE COALESCE(tenant_id, 1) = $1 AND deleted_at IS NULL ORDER BY id ASC', [tenantId]).catch(() => ({ rows: [] }))
+        ]);
+        if (prodRes.rows.length === 0) return res.status(404).json({ message: 'Product not found' });
+        const product = prodRes.rows[0];
+        const barcode = String(product.barcode || '').trim();
+        const branchNameById = new Map((branchRes.rows || []).map((b) => [Number(b.id), b.name]));
+
+        const levels = (product.stock_levels && typeof product.stock_levels === 'object') ? product.stock_levels : {};
+        let currentStock = Number(product.stock || 0);
+        if (locationFilter) {
+            const matchKey = Object.keys(levels).find((k) => k.toLowerCase() === locationFilter.toLowerCase());
+            currentStock = matchKey ? Number(levels[matchKey] || 0) : 0;
+        }
+
+        const events = [];
+        let totalPurchase = 0;
+        let openingStock = 0;
+        let totalSellReturn = 0;
+        let transfersIn = 0;
+        let totalSold = 0;
+        let totalStockAdjustment = 0;
+        let totalPurchaseReturn = 0;
+        let transfersOut = 0;
+
+        // 1. Purchases (Purchase Orders Received)
+        if (barcode) {
+            try {
+                const poRes = await pool.query(
+                    `SELECT po.id, po.created_at, po.status, po.branch_id, b.name AS branch_name, s.name AS supplier_name,
+                            poi.quantity
+                     FROM purchase_order_items poi
+                     JOIN purchase_orders po ON po.id = poi.po_id
+                     LEFT JOIN suppliers s ON s.id = po.supplier_id
+                     LEFT JOIN branches b ON b.id = po.branch_id
+                     WHERE poi.product_barcode = $1 AND COALESCE(po.tenant_id, 1) = $2
+                       AND LOWER(COALESCE(po.status, '')) = 'received'
+                     ORDER BY po.created_at ASC`,
+                    [barcode, tenantId]
+                );
+                for (const r of poRes.rows) {
+                    const bName = r.branch_name || branchNameById.get(Number(r.branch_id)) || '';
+                    if (locationFilter && bName.toLowerCase() !== locationFilter.toLowerCase()) continue;
+                    const q = Math.abs(Number(r.quantity || 0));
+                    totalPurchase += q;
+                    events.push({
+                        type: 'Purchase',
+                        quantity_change: q,
+                        date: r.created_at,
+                        reference_no: `PO-${String(r.id).padStart(4, '0')}`,
+                        party_info: r.supplier_name || 'Supplier'
+                    });
+                }
+            } catch (_) { /* ignore */ }
+
+            // 2. Sales & Sell Returns (Transactions)
+            try {
+                const txRes = await pool.query(
+                    `SELECT id, receipt_number, created_at, store_location, customer_name, items, COALESCE(is_return, false) AS is_return
+                     FROM transactions
+                     WHERE COALESCE(tenant_id, 1) = $1
+                       AND COALESCE(status, 'completed') NOT IN ('void', 'cancelled', 'parked')
+                     ORDER BY created_at ASC`,
+                    [tenantId]
+                );
+                for (const tx of txRes.rows) {
+                    if (locationFilter && String(tx.store_location || '').toLowerCase() !== locationFilter.toLowerCase()) continue;
+                    let items = tx.items;
+                    if (typeof items === 'string') {
+                        try { items = JSON.parse(items); } catch (_) { items = []; }
+                    }
+                    if (!Array.isArray(items)) continue;
+                    let matchedQty = 0;
+                    for (const it of items) {
+                        if (String(it.barcode || '').trim() === barcode) {
+                            matchedQty += Math.abs(Number(it.qty ?? it.quantity ?? 0) || 0);
+                        }
+                    }
+                    if (matchedQty <= 0) continue;
+                    if (tx.is_return) {
+                        totalSellReturn += matchedQty;
+                        events.push({
+                            type: 'Sell Return',
+                            quantity_change: matchedQty,
+                            date: tx.created_at,
+                            reference_no: tx.receipt_number || `REF-${tx.id}`,
+                            party_info: tx.customer_name || 'Walk-in Customer'
+                        });
+                    } else {
+                        totalSold += matchedQty;
+                        events.push({
+                            type: 'Sell',
+                            quantity_change: -matchedQty,
+                            date: tx.created_at,
+                            reference_no: tx.receipt_number || `RCP-${tx.id}`,
+                            party_info: tx.customer_name || 'Walk-in Customer'
+                        });
+                    }
+                }
+            } catch (_) { /* ignore */ }
+
+            // 3. Stock Adjustments (including Opening Stock if marked)
+            try {
+                const adjRes = await pool.query(
+                    `SELECT id, adjustment_type, quantity_adjusted, reason, branch_id, created_at
+                     FROM stock_adjustments
+                     WHERE product_barcode = $1 AND COALESCE(tenant_id, 1) = $2
+                     ORDER BY created_at ASC`,
+                    [barcode, tenantId]
+                );
+                for (const r of adjRes.rows) {
+                    const bName = branchNameById.get(Number(r.branch_id)) || '';
+                    if (locationFilter && bName.toLowerCase() !== locationFilter.toLowerCase()) continue;
+                    const rawQty = Number(r.quantity_adjusted || 0);
+                    const adjType = String(r.adjustment_type || '').toLowerCase();
+                    if (adjType.includes('opening')) {
+                        openingStock += Math.abs(rawQty);
+                        events.push({
+                            type: 'Opening Stock',
+                            quantity_change: Math.abs(rawQty),
+                            date: r.created_at,
+                            reference_no: `OPEN-${r.id}`,
+                            party_info: r.reason || bName || 'Opening Stock'
+                        });
+                    } else {
+                        const signed = adjType.includes('add') || adjType.includes('in') || rawQty > 0 ? rawQty : -Math.abs(rawQty);
+                        totalStockAdjustment += Math.abs(signed);
+                        events.push({
+                            type: 'Stock Adjustment',
+                            quantity_change: signed,
+                            date: r.created_at,
+                            reference_no: `ADJ-${r.id}`,
+                            party_info: r.reason || r.adjustment_type || 'Adjustment'
+                        });
+                    }
+                }
+            } catch (_) { /* ignore */ }
+
+            // 4. Stock Transfers (In & Out)
+            try {
+                const trRes = await pool.query(
+                    `SELECT sti.quantity_sent, sti.quantity_received, st.id, st.transfer_date,
+                            st.from_location, st.to_location, st.from_branch_id, st.to_branch_id
+                     FROM stock_transfer_items sti
+                     JOIN stock_transfers st ON st.id = sti.transfer_id
+                     WHERE sti.product_barcode = $1 AND COALESCE(st.tenant_id, 1) = $2
+                     ORDER BY st.transfer_date ASC`,
+                    [barcode, tenantId]
+                );
+                for (const r of trRes.rows) {
+                    const fromName = r.from_location || branchNameById.get(Number(r.from_branch_id)) || '';
+                    const toName = r.to_location || branchNameById.get(Number(r.to_branch_id)) || '';
+                    const qty = Math.abs(Number(r.quantity_received || r.quantity_sent || 0));
+                    if (qty <= 0) continue;
+                    if (!locationFilter || toName.toLowerCase() === locationFilter.toLowerCase()) {
+                        transfersIn += qty;
+                        events.push({
+                            type: 'Stock Transfer (In)',
+                            quantity_change: qty,
+                            date: r.transfer_date,
+                            reference_no: `TRF-${String(r.id).padStart(4, '0')}`,
+                            party_info: `From ${fromName || 'Branch'} → ${toName || 'Branch'}`
+                        });
+                    }
+                    if (!locationFilter || fromName.toLowerCase() === locationFilter.toLowerCase()) {
+                        transfersOut += qty;
+                        events.push({
+                            type: 'Stock Transfer (Out)',
+                            quantity_change: -qty,
+                            date: r.transfer_date,
+                            reference_no: `TRF-${String(r.id).padStart(4, '0')}`,
+                            party_info: `From ${fromName || 'Branch'} → ${toName || 'Branch'}`
+                        });
+                    }
+                }
+            } catch (_) { /* ignore */ }
+        }
+
+        // Sort chronologically and compute running New Quantity
+        events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+        const netDelta = events.reduce((s, e) => s + Number(e.quantity_change || 0), 0);
+        // Reconcile implied opening balance if currentStock differs from sum of logged events
+        const impliedOpening = Number((currentStock - netDelta).toFixed(2));
+        let running = impliedOpening > 0 ? impliedOpening : 0;
+        if (impliedOpening > 0 && openingStock === 0) {
+            openingStock = impliedOpening;
+        }
+        const history = events.map((ev) => {
+            running = Number((running + Number(ev.quantity_change || 0)).toFixed(2));
+            return { ...ev, new_quantity: running };
+        }).reverse();
+
+        res.json({
+            product: {
+                id: product.id,
+                name: product.name,
+                sku: barcode || String(product.id),
+                unit: product.selling_unit || 'Pc(s)'
+            },
+            location: locationFilter || 'All Locations',
+            quantities_in: {
+                total_purchase: Number(totalPurchase.toFixed(2)),
+                opening_stock: Number(openingStock.toFixed(2)),
+                total_sell_return: Number(totalSellReturn.toFixed(2)),
+                transfers_in: Number(transfersIn.toFixed(2))
+            },
+            quantities_out: {
+                total_sold: Number(totalSold.toFixed(2)),
+                total_stock_adjustment: Number(totalStockAdjustment.toFixed(2)),
+                total_purchase_return: Number(totalPurchaseReturn.toFixed(2)),
+                transfers_out: Number(transfersOut.toFixed(2))
+            },
+            current_stock: Number(currentStock.toFixed(2)),
+            history
+        });
+    } catch (err) {
+        console.error('GET /api/products/:id/stock-history error:', err);
+        res.status(500).json({ message: 'Failed to load product stock history' });
+    }
+});
+
 module.exports = router;
 
