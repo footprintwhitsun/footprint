@@ -51,6 +51,11 @@
         { label: 'Users', url: '/pos-register?tab=users', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'User Management', icon: 'users' },
         { label: 'Roles', url: '/roles', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'User Management', icon: 'lock' },
 
+        // Contacts (immediately under User Management: Suppliers, Customers, Customer Groups)
+        { label: 'Suppliers', url: '/inventory?tab=suppliers', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'truck' },
+        { label: 'Customers', url: '/customers', roles: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Contacts', icon: 'users' },
+        { label: 'Customer Groups', url: '/catalog-ops?tab=groups', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'layers' },
+
         { label: 'Pending Approvals', url: '/ceo-portal?tab=approvals-pending', roles: ['ceo', 'admin'], group: 'CEO', icon: 'clock' },
         { label: 'Approval History', url: '/ceo-portal?tab=approvals-history', roles: ['ceo', 'admin'], group: 'CEO', icon: 'fileCheck' },
         { label: 'Branches', url: '/ceo-portal?tab=branches', roles: ['ceo', 'admin'], group: 'CEO', icon: 'mapPin' },
@@ -109,12 +114,9 @@
         { label: 'Brands, Units & Prices', url: '/catalog-ops', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Catalog', icon: 'tag' },
         { label: 'Bulk Import', url: '/bulk-upload', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Catalog', icon: 'upload' },
 
-        // Contacts (Suppliers, Customers, Customer Groups)
-        { label: 'Suppliers', url: '/inventory?tab=suppliers', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'truck' },
-        { label: 'Customers', url: '/customers', roles: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Contacts', icon: 'users' },
-        { label: 'Customer Groups', url: '/catalog-ops?tab=groups', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'layers' },
-        { label: 'Credit Clients', url: '/credit-customers?tab=clients', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'creditCard' },
-        { label: 'Manager Authorization', url: '/credit-customers?tab=auth', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'lock' },
+        // Credit (moved under Sales so Contacts holds strictly Suppliers, Customers, Customer Groups)
+        { label: 'Credit Clients', url: '/credit-customers?tab=clients', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Credit', icon: 'creditCard' },
+        { label: 'Manager Authorization', url: '/credit-customers?tab=auth', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Credit', icon: 'lock' },
 
         // Expenses & Accounts (Money)
         { label: 'List Expenses', url: '/expenses?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'Expenses & Cash', icon: 'dollarSign' },
