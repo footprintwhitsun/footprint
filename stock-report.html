@@ -198,6 +198,7 @@
                     <tfoot id="srFoot"></tfoot>
                 </table>
             </div>
+            <div id="srPager" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-top:1px solid var(--edge,#e2e8f0);font-size:13px;color:var(--muted,#64748b);background:var(--sheet,#fff);"></div>
         </div>
     </main>
 
@@ -223,6 +224,8 @@
         let filteredRows = [];
         let branches = [];
         let branchesLoaded = false;
+        let srPage = 1;
+        let srPageSize = 25;
 
         function populateFilterDropdowns() {
             if (!branchesLoaded) {
@@ -256,15 +259,17 @@
 
             const tbody = document.getElementById('srBody');
             const tfoot = document.getElementById('srFoot');
+            const pager = document.getElementById('srPager');
 
             if (!filteredRows.length) {
                 tbody.innerHTML = `<tr><td colspan="15" style="text-align:center;padding:28px;color:var(--muted,#64748b);">No products match the selected filters.</td></tr>`;
                 tfoot.innerHTML = '';
+                if (pager) pager.innerHTML = '<span>Showing 0 of 0</span>';
                 return;
             }
 
             let totStock = 0, totPurchase = 0, totSale = 0, totProfit = 0, totSold = 0, totTrf = 0, totAdj = 0, totMfg = 0;
-            tbody.innerHTML = filteredRows.map((r) => {
+            filteredRows.forEach((r) => {
                 totStock += Number(r.current_stock || 0);
                 totPurchase += Number(r.stock_value_purchase || 0);
                 totSale += Number(r.stock_value_sale || 0);
@@ -273,6 +278,15 @@
                 totTrf += Number(r.total_unit_transferred || 0);
                 totAdj += Number(r.total_unit_adjusted || 0);
                 totMfg += Number(r.manufacturing_stock || 0);
+            });
+
+            const effSize = srPageSize === 'all' ? filteredRows.length : Number(srPageSize || 25);
+            const totalPages = Math.max(1, Math.ceil(filteredRows.length / effSize));
+            if (srPage > totalPages) srPage = totalPages;
+            const startIdx = (srPage - 1) * effSize;
+            const pageSlice = filteredRows.slice(startIdx, startIdx + effSize);
+
+            tbody.innerHTML = pageSlice.map((r) => {
                 const u = r.unit || 'Pc(s)';
                 return `
                     <tr>
@@ -293,6 +307,37 @@
                         <td class="num">${esc(qtyFmt(r.manufacturing_stock, u))}</td>
                     </tr>`;
             }).join('');
+
+            if (pager) {
+                const fromN = startIdx + 1;
+                const toN = startIdx + pageSlice.length;
+                pager.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span>Showing ${fromN}–${toN} of ${filteredRows.length}</span>
+                        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;">
+                            Rows:
+                            <select id="srPageSize" class="sr-select" style="height:30px;padding:0 8px;font-size:12.5px;">
+                                <option value="25"${String(srPageSize) === '25' ? ' selected' : ''}>25</option>
+                                <option value="50"${String(srPageSize) === '50' ? ' selected' : ''}>50</option>
+                                <option value="100"${String(srPageSize) === '100' ? ' selected' : ''}>100</option>
+                                <option value="all"${String(srPageSize) === 'all' ? ' selected' : ''}>All</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <button type="button" id="srPrevPage" class="okw-btn okw-btn-outline" style="height:32px;padding:0 12px;font-size:12.5px;" ${srPage <= 1 ? 'disabled' : ''}>Prev</button>
+                        <span style="font-size:12.5px;font-weight:600;color:var(--ink,#0f172a);">Page ${srPage} / ${totalPages}</span>
+                        <button type="button" id="srNextPage" class="okw-btn okw-btn-outline" style="height:32px;padding:0 12px;font-size:12.5px;" ${srPage >= totalPages ? 'disabled' : ''}>Next</button>
+                    </div>
+                `;
+                pager.querySelector('#srPrevPage').onclick = () => { if (srPage > 1) { srPage--; renderTable(); } };
+                pager.querySelector('#srNextPage').onclick = () => { if (srPage < totalPages) { srPage++; renderTable(); } };
+                pager.querySelector('#srPageSize').onchange = (ev) => {
+                    srPageSize = ev.target.value === 'all' ? 'all' : Number(ev.target.value);
+                    srPage = 1;
+                    renderTable();
+                };
+            }
 
             tfoot.innerHTML = `
                 <tr>

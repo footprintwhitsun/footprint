@@ -1091,9 +1091,11 @@
             });
 
             const filtered = getFiltered();
-            const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+            const effPageSize = pageSize === 'all' ? Math.max(1, filtered.length) : Number(pageSize || 25);
+            const totalPages = Math.max(1, Math.ceil(filtered.length / effPageSize));
             if (page > totalPages) page = totalPages;
-            const slice = filtered.slice((page - 1) * pageSize, page * pageSize);
+            const startIdx = (page - 1) * effPageSize;
+            const slice = filtered.slice(startIdx, startIdx + effPageSize);
 
             if (!visCols.length) {
                 tbody.innerHTML = `<tr><td style="text-align:center;padding:28px;color:var(--color-text-muted);">No columns selected.</td></tr>`;
@@ -1129,8 +1131,21 @@
                     });
                 });
             }
+            const fromN = filtered.length ? startIdx + 1 : 0;
+            const toN = startIdx + slice.length;
             pager.innerHTML = `
-                <span>Showing ${slice.length} of ${filtered.length}</span>
+                <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                    <span>Showing ${fromN}–${toN} of ${filtered.length}</span>
+                    <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--color-text-muted,#64748b);">
+                        Rows:
+                        <select data-pagesize class="okw-select" style="height:30px;padding:0 8px;font-size:12.5px;width:auto;">
+                            <option value="25"${String(pageSize) === '25' ? ' selected' : ''}>25</option>
+                            <option value="50"${String(pageSize) === '50' ? ' selected' : ''}>50</option>
+                            <option value="100"${String(pageSize) === '100' ? ' selected' : ''}>100</option>
+                            <option value="all"${String(pageSize) === 'all' ? ' selected' : ''}>All</option>
+                        </select>
+                    </label>
+                </div>
                 <div style="display:flex;gap:6px;align-items:center;">
                     <button type="button" class="okw-btn okw-btn-outline" data-prev ${page <= 1 ? 'disabled' : ''}>Prev</button>
                     <span>Page ${page} / ${totalPages}</span>
@@ -1139,6 +1154,8 @@
             `;
             pager.querySelector('[data-prev]').onclick = () => { if (page > 1) { page--; render(); } };
             pager.querySelector('[data-next]').onclick = () => { if (page < totalPages) { page++; render(); } };
+            const psSel = pager.querySelector('[data-pagesize]');
+            if (psSel) psSel.onchange = () => { pageSize = psSel.value === 'all' ? 'all' : Number(psSel.value); page = 1; render(); };
         }
 
         searchIn.addEventListener('input', () => { query = searchIn.value; page = 1; render(); });
@@ -1311,6 +1328,104 @@
         if (anchor.parentNode) anchor.parentNode.insertBefore(bar, anchor);
         compactExportMenu(bar, { csv: '[data-t-csv]', excel: '[data-t-excel]', print: '[data-t-print]', orient: '[data-t-orient]', pdf: '[data-t-pdf]' });
 
+        if (!document.getElementById('okw-auto-pager-style')) {
+            const ps = document.createElement('style');
+            ps.id = 'okw-auto-pager-style';
+            ps.textContent = `tr[data-okw-page-hidden="1"]{display:none !important;}.okw-auto-pager{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border-top:1px solid var(--edge,#e2e8f0);font-size:13px;color:var(--muted,#64748b);background:var(--sheet,#fff);}`;
+            document.head.appendChild(ps);
+        }
+
+        const hostSection = anchor.parentNode;
+        const hasNativePager = Boolean(
+            table.dataset.noPagination === '1'
+            || table.closest('.modal, .okw-dt, #okw-printable-record-modal')
+            || (hostSection && hostSection.querySelector('.pagination-controls, .okw-table-pager, .okw-auto-pager'))
+        );
+
+        let autoPager = null;
+        let autoPage = 1;
+        let autoPageSize = 25;
+        let autoUpdating = false;
+
+        if (!hasNativePager && anchor.parentNode) {
+            autoPager = document.createElement('div');
+            autoPager.className = 'okw-auto-pager';
+            autoPager.style.display = 'none';
+            if (anchor.nextSibling) anchor.parentNode.insertBefore(autoPager, anchor.nextSibling);
+            else anchor.parentNode.appendChild(autoPager);
+        }
+
+        function applyAutoPagination() {
+            if (!autoPager || autoUpdating) return;
+            autoUpdating = true;
+            try {
+                const allTrs = Array.from(tbody.children).filter(el => el.tagName === 'TR');
+                const dataRows = allTrs.filter(tr => {
+                    if (tr.classList.contains('okw-sk-tr') || tr.classList.contains('okw-row-expand-detail')) return false;
+                    if (tr.style.display === 'none') return false;
+                    const cells = tr.querySelectorAll('td');
+                    if (!cells.length || (cells.length === 1 && Number(cells[0].getAttribute('colspan') || 1) > 1)) return false;
+                    return true;
+                });
+                if (dataRows.length === 0) {
+                    allTrs.forEach(tr => tr.removeAttribute('data-okw-page-hidden'));
+                    autoPager.style.display = 'none';
+                    return;
+                }
+                const effSize = autoPageSize === 'all' ? dataRows.length : Number(autoPageSize || 25);
+                const totalPages = Math.max(1, Math.ceil(dataRows.length / effSize));
+                if (autoPage > totalPages) autoPage = totalPages;
+                const start = (autoPage - 1) * effSize;
+                const end = start + effSize;
+
+                dataRows.forEach((tr, idx) => {
+                    const hide = idx < start || idx >= end;
+                    if (hide) {
+                        tr.setAttribute('data-okw-page-hidden', '1');
+                        const next = tr.nextElementSibling;
+                        if (next && next.classList.contains('okw-row-expand-detail')) {
+                            next.setAttribute('data-okw-page-hidden', '1');
+                        }
+                    } else {
+                        tr.removeAttribute('data-okw-page-hidden');
+                        const next = tr.nextElementSibling;
+                        if (next && next.classList.contains('okw-row-expand-detail')) {
+                            next.removeAttribute('data-okw-page-hidden');
+                        }
+                    }
+                });
+
+                autoPager.style.display = 'flex';
+                const fromN = start + 1;
+                const toN = Math.min(end, dataRows.length);
+                autoPager.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span>Showing ${fromN}–${toN} of ${dataRows.length}</span>
+                        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;">
+                            Rows:
+                            <select data-ap-size class="okw-select" style="height:30px;padding:0 8px;font-size:12.5px;width:auto;">
+                                <option value="25"${String(autoPageSize) === '25' ? ' selected' : ''}>25</option>
+                                <option value="50"${String(autoPageSize) === '50' ? ' selected' : ''}>50</option>
+                                <option value="100"${String(autoPageSize) === '100' ? ' selected' : ''}>100</option>
+                                <option value="all"${String(autoPageSize) === 'all' ? ' selected' : ''}>All</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <button type="button" class="okw-btn okw-btn-outline" data-ap-prev style="height:32px;padding:0 12px;font-size:12.5px;" ${autoPage <= 1 ? 'disabled' : ''}>Prev</button>
+                        <span style="font-size:12.5px;font-weight:600;color:var(--ink,#0f172a);">Page ${autoPage} / ${totalPages}</span>
+                        <button type="button" class="okw-btn okw-btn-outline" data-ap-next style="height:32px;padding:0 12px;font-size:12.5px;" ${autoPage >= totalPages ? 'disabled' : ''}>Next</button>
+                    </div>
+                `;
+                autoPager.querySelector('[data-ap-prev]').onclick = () => { if (autoPage > 1) { autoPage--; applyAutoPagination(); } };
+                autoPager.querySelector('[data-ap-next]').onclick = () => { if (autoPage < totalPages) { autoPage++; applyAutoPagination(); } };
+                const szSel = autoPager.querySelector('[data-ap-size]');
+                if (szSel) szSel.onchange = () => { autoPageSize = szSel.value === 'all' ? 'all' : Number(szSel.value); autoPage = 1; applyAutoPagination(); };
+            } finally {
+                autoUpdating = false;
+            }
+        }
+
         function applyColumnVisibility() {
             const headCells = table.querySelectorAll('thead th');
             headCells.forEach((th, idx) => { th.style.display = hiddenIdx.has(idx) ? 'none' : ''; });
@@ -1325,6 +1440,7 @@
 
         ensureRowExpandStyles();
         applyColumnVisibility();
+        applyAutoPagination();
         if (!tbody.dataset.okwExpandBound) {
             tbody.dataset.okwExpandBound = '1';
             tbody.addEventListener('click', (e) => {
@@ -1351,8 +1467,9 @@
         const obs = new MutationObserver(() => {
             if (!table.isConnected) { obs.disconnect(); return; }
             applyColumnVisibility();
+            applyAutoPagination();
         });
-        obs.observe(tbody, { childList: true });
+        obs.observe(tbody, { childList: true, subtree: true, attributes: true, attributeFilter: ['style'] });
 
         const colBtn = bar.querySelector('[data-t-colbtn]');
         const colMenu = bar.querySelector('[data-t-colmenu]');

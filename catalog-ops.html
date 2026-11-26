@@ -206,6 +206,8 @@
         const brands = [...new Set(products.map((p) => p.brand).filter(Boolean))].sort();
         const esc = (v) => OkwUI.escapeHtml(v == null ? '' : String(v));
         let changedOnly = false;
+        let bpPage = 1;
+        let bpPageSize = 25;
         const selectedBarcodes = new Set();
 
         const actionsHost = document.getElementById('cat-page-actions');
@@ -342,6 +344,7 @@
                     </thead>
                     <tbody id="bp-prod-body"></tbody>
                 </table>
+                <div id="bp-pager" style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-top:1px solid var(--edge,#e2e8f0);font-size:13px;color:var(--muted,#64748b);background:var(--sheet,#fff);"></div>
             </div>
         `;
 
@@ -422,12 +425,20 @@
         function drawProducts() {
             const list = getFiltered();
             const tbody = document.getElementById('bp-prod-body');
+            const pager = document.getElementById('bp-pager');
             if (!list.length) {
                 tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--muted,#64748b);">${changedOnly ? 'No pending price changes yet.' : 'No products match your filter.'}</td></tr>`;
+                if (pager) pager.innerHTML = '<span>Showing 0 of 0</span>';
                 syncStats(list);
                 return;
             }
-            tbody.innerHTML = list.map((p) => {
+            const effSize = bpPageSize === 'all' ? list.length : Number(bpPageSize || 25);
+            const totalPages = Math.max(1, Math.ceil(list.length / effSize));
+            if (bpPage > totalPages) bpPage = totalPages;
+            const startIdx = (bpPage - 1) * effSize;
+            const pageSlice = list.slice(startIdx, startIdx + effSize);
+
+            tbody.innerHTML = pageSlice.map((p) => {
                 const diff = Number((p.new_price - p.old_price).toFixed(2));
                 const isChanged = Math.abs(diff) > 0.004;
                 const isSelected = selectedBarcodes.has(p.barcode);
@@ -458,6 +469,37 @@
                         <td style="padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;">${diffHtml}</td>
                     </tr>`;
             }).join('');
+
+            if (pager) {
+                const fromN = startIdx + 1;
+                const toN = startIdx + pageSlice.length;
+                pager.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+                        <span>Showing ${fromN}–${toN} of ${list.length}</span>
+                        <label style="display:inline-flex;align-items:center;gap:6px;font-size:12.5px;">
+                            Rows:
+                            <select id="bp-page-size" class="okw-select" style="height:30px;padding:0 8px;font-size:12.5px;width:auto;">
+                                <option value="25"${String(bpPageSize) === '25' ? ' selected' : ''}>25</option>
+                                <option value="50"${String(bpPageSize) === '50' ? ' selected' : ''}>50</option>
+                                <option value="100"${String(bpPageSize) === '100' ? ' selected' : ''}>100</option>
+                                <option value="all"${String(bpPageSize) === 'all' ? ' selected' : ''}>All</option>
+                            </select>
+                        </label>
+                    </div>
+                    <div style="display:flex;gap:6px;align-items:center;">
+                        <button type="button" id="bp-prev-page" class="okw-btn okw-btn-outline" style="height:32px;padding:0 12px;font-size:12.5px;" ${bpPage <= 1 ? 'disabled' : ''}>Prev</button>
+                        <span style="font-size:12.5px;font-weight:600;color:var(--ink,#0f172a);">Page ${bpPage} / ${totalPages}</span>
+                        <button type="button" id="bp-next-page" class="okw-btn okw-btn-outline" style="height:32px;padding:0 12px;font-size:12.5px;" ${bpPage >= totalPages ? 'disabled' : ''}>Next</button>
+                    </div>
+                `;
+                pager.querySelector('#bp-prev-page').onclick = () => { if (bpPage > 1) { bpPage--; drawProducts(); } };
+                pager.querySelector('#bp-next-page').onclick = () => { if (bpPage < totalPages) { bpPage++; drawProducts(); } };
+                pager.querySelector('#bp-page-size').onchange = (ev) => {
+                    bpPageSize = ev.target.value === 'all' ? 'all' : Number(ev.target.value);
+                    bpPage = 1;
+                    drawProducts();
+                };
+            }
             syncStats(list);
         }
 
