@@ -9,6 +9,7 @@
     <script src="/auth-guard.js"></script>
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
+    <script src="/vendor/xlsx-0.20.2.full.min.js" defer></script>
     <style>
         .app-shell { display: flex; min-height: 100vh; }
         .main-content { flex: 1; margin-left: var(--sidebar-width); min-width: 0; display: flex; flex-direction: column; }
@@ -189,56 +190,260 @@
     }
 
     async function renderPrices() {
-        const histRes = await fetch('/api/prices/history', { headers });
+        const [prodRes, histRes] = await Promise.all([
+            fetch('/api/products?limit=all', { headers, credentials: 'include' }),
+            fetch('/api/prices/history', { headers, credentials: 'include' })
+        ]);
+        const prodRaw = await prodRes.json().catch(() => ([]));
         const histData = await histRes.json().catch(() => ({}));
+        const products = (Array.isArray(prodRaw) ? prodRaw : (prodRaw.products || prodRaw.data || [])).map((p) => ({
+            id: p.id,
+            barcode: String(p.barcode || ''),
+            name: String(p.name || ''),
+            brand: String(p.brand || ''),
+            category: String(p.category || ''),
+            cost_price: Number(p.cost_price || 0),
+            old_price: Number(p.price || 0),
+            new_price: Number(p.price || 0)
+        }));
+        const categories = [...new Set(products.map((p) => p.category).filter(Boolean))].sort();
+        const brands = [...new Set(products.map((p) => p.brand).filter(Boolean))].sort();
+        const esc = (v) => OkwUI.escapeHtml(v == null ? '' : String(v));
+
+        const actionsHost = document.getElementById('cat-page-actions');
+        if (actionsHost) {
+            actionsHost.innerHTML = `
+                <button type="button" class="okw-btn okw-btn-outline" id="bp-export-xlsx">Export Product Prices (.xlsx)</button>
+                <button type="button" class="okw-btn okw-btn-outline" id="bp-import-btn">Import Prices (.xlsx / .csv)</button>
+                <input type="file" id="bp-import-file" accept=".xlsx,.xls,.csv" style="display:none;">
+                <button type="button" class="okw-btn okw-btn-primary" id="bp-apply" disabled>Save Price Changes (0)</button>
+            `;
+        }
+
         const panel = document.getElementById('cat-panel');
         panel.innerHTML = `
-            <h3 style="margin:0 0 10px;">Bulk Price Update</h3>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-                <input type="text" id="bp-brand" class="okw-input" placeholder="Filter by brand (optional)">
-                <input type="text" id="bp-cat" class="okw-input" placeholder="Filter by category (optional)">
-                <select id="bp-mode" class="okw-select"><option value="percent">% Change</option><option value="amount">Fixed GH₵ Change</option></select>
-                <input type="number" id="bp-val" class="okw-input" placeholder="e.g. 5 or -10" step="0.01">
-                <button type="button" class="okw-btn okw-btn-primary" id="bp-preview">Preview Changes</button>
-                <button type="button" class="okw-btn okw-btn-accent" id="bp-apply" style="display:none;">Apply Update</button>
+            <div style="display:grid;grid-template-columns:2fr 1fr 1fr;gap:10px;margin-bottom:12px;">
+                <input type="search" id="bp-search" class="okw-input" placeholder="Search product by name or SKU..." style="width:100%;height:40px;">
+                <select id="bp-cat" class="okw-select" style="width:100%;height:40px;">
+                    <option value="">All Categories</option>
+                    ${categories.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+                </select>
+                <select id="bp-brand" class="okw-select" style="width:100%;height:40px;">
+                    <option value="">All Brands</option>
+                    ${brands.map((b) => `<option value="${esc(b)}">${esc(b)}</option>`).join('')}
+                </select>
             </div>
-            <div id="bp-preview-host" style="margin-bottom:20px;"></div>
-            <h3 style="margin:0 0 10px;">Price Change History</h3>
+
+            <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:12px 14px;border:1px solid var(--edge,#e2e8f0);border-radius:10px;background:var(--frame,#f8fafc);margin-bottom:14px;">
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
+                    <strong style="font-size:12.5px;color:var(--ink-2,#334155);">Quick Bulk Adjust:</strong>
+                    <select id="bp-mode" class="okw-select" style="height:34px;">
+                        <option value="percent">% Change</option>
+                        <option value="amount">Fixed GH₵ Change</option>
+                    </select>
+                    <input type="number" id="bp-val" class="okw-input" placeholder="e.g. 5 or -10" step="0.01" style="width:130px;height:34px;">
+                    <button type="button" class="okw-btn okw-btn-outline" id="bp-bulk-calc" style="height:34px;">Apply to Filtered</button>
+                    <button type="button" class="okw-btn okw-btn-outline" id="bp-reset" style="height:34px;">Reset</button>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px;">
+                    <input type="text" id="bp-reason" class="okw-input" placeholder="Reason (e.g. Market price update)" style="width:240px;height:34px;">
+                </div>
+            </div>
+
+            <div style="border:1px solid var(--edge,#e2e8f0);border-radius:10px;overflow-x:auto;margin-bottom:22px;">
+                <table data-no-table-tools="1" style="width:100%;border-collapse:collapse;font-size:13px;">
+                    <thead>
+                        <tr style="background:var(--frame,#f8fafc);border-bottom:1px solid var(--edge,#e2e8f0);">
+                            <th style="text-align:left;padding:10px 12px;">SKU</th>
+                            <th style="text-align:left;padding:10px 12px;">Product</th>
+                            <th style="text-align:left;padding:10px 12px;">Category</th>
+                            <th style="text-align:right;padding:10px 12px;">Cost Price</th>
+                            <th style="text-align:right;padding:10px 12px;">Current Price</th>
+                            <th style="text-align:right;padding:10px 12px;width:150px;">New Selling Price</th>
+                            <th style="text-align:right;padding:10px 12px;">Change</th>
+                        </tr>
+                    </thead>
+                    <tbody id="bp-prod-body"></tbody>
+                </table>
+            </div>
+
+            <h3 style="margin:0 0 10px;font-size:15px;">Price Change History</h3>
             <div id="bp-history-host"></div>
         `;
 
-        let previewRows = [];
-        document.getElementById('bp-preview').onclick = async () => {
-            const r = await fetch('/api/prices/bulk-preview', {
-                method: 'POST', headers,
-                body: JSON.stringify({
-                    brand: document.getElementById('bp-brand').value,
-                    category: document.getElementById('bp-cat').value,
-                    mode: document.getElementById('bp-mode').value,
-                    value: document.getElementById('bp-val').value
-                })
+        function getFiltered() {
+            const q = document.getElementById('bp-search').value.trim().toLowerCase();
+            const cat = document.getElementById('bp-cat').value;
+            const brand = document.getElementById('bp-brand').value;
+            return products.filter((p) => {
+                if (cat && p.category !== cat) return false;
+                if (brand && p.brand !== brand) return false;
+                if (q && !p.name.toLowerCase().includes(q) && !p.barcode.toLowerCase().includes(q)) return false;
+                return true;
             });
-            const d = await r.json().catch(() => ({}));
-            previewRows = d.preview || [];
-            document.getElementById('bp-apply').style.display = previewRows.length ? 'inline-flex' : 'none';
-            OkwUI.dataTable('#bp-preview-host', {
-                columns: [
-                    { key: 'name', label: 'Product' },
-                    { key: 'brand', label: 'Brand' },
-                    { key: 'old_price', label: 'Old Price', numeric: true, render: v => fmt(v) },
-                    { key: 'new_price', label: 'New Price', numeric: true, render: v => `<strong>${fmt(v)}</strong>` }
-                ],
-                rows: previewRows,
-                exportFilename: 'okwesiwa-price-preview.xlsx'
+        }
+
+        function getChangedItems() {
+            return products.filter((p) => Math.abs(Number(p.new_price) - Number(p.old_price)) > 0.004);
+        }
+
+        function syncSaveButton() {
+            const changed = getChangedItems();
+            const btn = document.getElementById('bp-apply');
+            if (!btn) return;
+            btn.disabled = changed.length === 0;
+            btn.textContent = `Save Price Changes (${changed.length})`;
+        }
+
+        function drawProducts() {
+            const list = getFiltered();
+            const tbody = document.getElementById('bp-prod-body');
+            if (!list.length) {
+                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted,#64748b);">No products match your filter.</td></tr>`;
+                syncSaveButton();
+                return;
+            }
+            tbody.innerHTML = list.map((p) => {
+                const diff = Number((p.new_price - p.old_price).toFixed(2));
+                const isChanged = Math.abs(diff) > 0.004;
+                const diffHtml = isChanged
+                    ? `<span style="font-weight:700;color:${diff > 0 ? '#15803d' : '#dc2626'};">${diff > 0 ? '+' : ''}${esc(fmt(diff))}</span>`
+                    : `<span style="color:var(--muted,#64748b);">—</span>`;
+                return `
+                    <tr data-bp-bc="${esc(p.barcode)}" style="${isChanged ? 'background:#fffbeb;' : ''}">
+                        <td style="padding:9px 12px;font-family:ui-monospace,monospace;font-size:12px;">${esc(p.barcode)}</td>
+                        <td style="padding:9px 12px;font-weight:600;">${esc(p.name)}</td>
+                        <td style="padding:9px 12px;">${esc(p.category || '—')}</td>
+                        <td style="padding:9px 12px;text-align:right;font-variant-numeric:tabular-nums;">${esc(fmt(p.cost_price))}</td>
+                        <td style="padding:9px 12px;text-align:right;font-variant-numeric:tabular-nums;">${esc(fmt(p.old_price))}</td>
+                        <td style="padding:9px 12px;text-align:right;">
+                            <input type="number" step="0.01" min="0" class="okw-input bp-row-price" data-bp-bc="${esc(p.barcode)}" value="${p.new_price.toFixed(2)}" style="width:120px;height:32px;text-align:right;font-weight:600;">
+                        </td>
+                        <td style="padding:9px 12px;text-align:right;font-variant-numeric:tabular-nums;">${diffHtml}</td>
+                    </tr>`;
+            }).join('');
+            syncSaveButton();
+        }
+
+        document.getElementById('bp-search').addEventListener('input', drawProducts);
+        document.getElementById('bp-cat').addEventListener('change', drawProducts);
+        document.getElementById('bp-brand').addEventListener('change', drawProducts);
+
+        document.getElementById('bp-prod-body').addEventListener('change', (e) => {
+            const inp = e.target.closest('.bp-row-price');
+            if (!inp) return;
+            const bc = inp.getAttribute('data-bp-bc');
+            const prod = products.find((p) => p.barcode === bc);
+            const val = parseFloat(inp.value);
+            if (prod && Number.isFinite(val) && val >= 0) {
+                prod.new_price = Number(val.toFixed(2));
+                drawProducts();
+            }
+        });
+
+        document.getElementById('bp-bulk-calc').onclick = () => {
+            const val = parseFloat(document.getElementById('bp-val').value);
+            if (!Number.isFinite(val) || val === 0) {
+                return OkwUI.toast('Enter a non-zero percentage or amount', 'warning');
+            }
+            const mode = document.getElementById('bp-mode').value;
+            const targets = getFiltered();
+            targets.forEach((p) => {
+                const updated = mode === 'percent' ? p.old_price * (1 + val / 100) : p.old_price + val;
+                p.new_price = Number(Math.max(0, updated).toFixed(2));
             });
+            drawProducts();
+            OkwUI.toast(`Previewed price update for ${targets.length} product(s). Click Save Price Changes to apply.`, 'success');
+        };
+
+        document.getElementById('bp-reset').onclick = () => {
+            products.forEach((p) => { p.new_price = p.old_price; });
+            document.getElementById('bp-val').value = '';
+            drawProducts();
+        };
+
+        document.getElementById('bp-export-xlsx').onclick = () => {
+            const rows = getFiltered().map((p) => ({
+                'SKU': p.barcode,
+                'Product Name': p.name,
+                'Category': p.category,
+                'Brand': p.brand,
+                'Cost Price': p.cost_price,
+                'Current Price': p.old_price,
+                'New Price': p.new_price
+            }));
+            if (typeof XLSX !== 'undefined') {
+                const ws = XLSX.utils.json_to_sheet(rows);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, 'Product Prices');
+                XLSX.writeFile(wb, `product-prices-${new Date().toISOString().slice(0, 10)}.xlsx`);
+            } else {
+                const cols = Object.keys(rows[0] || {});
+                const csv = [cols.join(',')].concat(rows.map((r) => cols.map((c) => `"${String(r[c] ?? '').replace(/"/g, '""')}"`).join(','))).join('\n');
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+                a.download = `product-prices-${new Date().toISOString().slice(0, 10)}.csv`;
+                a.click();
+            }
+        };
+
+        const importInput = document.getElementById('bp-import-file');
+        document.getElementById('bp-import-btn').onclick = () => importInput.click();
+        importInput.onchange = async () => {
+            const file = importInput.files && importInput.files[0];
+            if (!file) return;
+            if (typeof XLSX === 'undefined') {
+                return OkwUI.toast('Excel parser is still loading, try again in a second', 'warning');
+            }
+            try {
+                const buf = await file.arrayBuffer();
+                const wb = XLSX.read(buf, { type: 'array' });
+                const sheet = wb.Sheets[wb.SheetNames[0]];
+                const imported = XLSX.utils.sheet_to_json(sheet);
+                let matched = 0;
+                for (const row of imported) {
+                    const sku = String(row['SKU'] || row['Barcode'] || row['barcode'] || row['sku'] || '').trim();
+                    const np = parseFloat(row['New Price'] ?? row['Selling Price'] ?? row['Price'] ?? row['price']);
+                    if (!sku || !Number.isFinite(np) || np < 0) continue;
+                    const prod = products.find((p) => p.barcode === sku);
+                    if (prod) {
+                        prod.new_price = Number(np.toFixed(2));
+                        matched++;
+                    }
+                }
+                drawProducts();
+                OkwUI.toast(`Loaded ${matched} updated price(s) from file. Review and click Save Price Changes.`, 'success');
+            } catch (err) {
+                OkwUI.toast('Failed to read spreadsheet file', 'danger');
+            } finally {
+                importInput.value = '';
+            }
         };
 
         document.getElementById('bp-apply').onclick = async () => {
-            if (!previewRows.length) return;
-            const reason = prompt('Reason for price change (e.g. Supplier price increase):', 'Market price update') || 'Bulk price update';
-            const r = await fetch('/api/prices/bulk-apply', { method: 'POST', headers, body: JSON.stringify({ items: previewRows, reason }) });
-            if (r.ok) { OkwUI.toast(`Updated ${previewRows.length} prices`, 'success'); renderPrices(); }
+            const changed = getChangedItems();
+            if (!changed.length) return;
+            const btn = document.getElementById('bp-apply');
+            btn.disabled = true;
+            const reason = document.getElementById('bp-reason').value.trim() || 'Price update';
+            try {
+                const r = await fetch('/api/prices/bulk-apply', {
+                    method: 'POST', headers, credentials: 'include',
+                    body: JSON.stringify({ items: changed, reason })
+                });
+                if (!r.ok) {
+                    const err = await r.json().catch(() => ({}));
+                    throw new Error(err.message || 'Price update failed');
+                }
+                OkwUI.toast(`Updated ${changed.length} product price(s)`, 'success');
+                renderPrices();
+            } catch (err) {
+                OkwUI.toast(err.message || 'Failed to save price changes', 'danger');
+                syncSaveButton();
+            }
         };
+
+        drawProducts();
 
         OkwUI.dataTable('#bp-history-host', {
             columns: [
