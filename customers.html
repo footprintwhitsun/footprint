@@ -138,9 +138,16 @@
         .stmt-badge-ret { background: #fee2e2; color: #b91c1c; }
         .stmt-summary-row td { background: var(--frame, #f8fafc); font-weight: 700; }
         @media (max-width: 720px) {
-            .stmt-kpis { grid-template-columns: 1fr 1fr; }
-            .stmt-kpi { border-left: 0; border-top: 1px solid var(--edge, #e2e8f0); }
+            .stmt-kpis, .cust-kpis { grid-template-columns: 1fr 1fr; }
+            .stmt-kpi, .cust-kpi { border-left: 0; border-top: 1px solid var(--edge, #e2e8f0); }
         }
+        .cust-kpis { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: var(--sheet, #fff); border: 1px solid var(--edge, #e2e8f0); border-radius: 12px; overflow: hidden; margin-bottom: 16px; }
+        .cust-kpi { padding: 14px 18px; border-left: 1px solid var(--edge, #e2e8f0); min-width: 0; }
+        .cust-kpi:first-child { border-left: 0; }
+        .cust-kpi-lbl { font-size: 11.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted, #64748b); margin-bottom: 5px; }
+        .cust-kpi-val { font-size: 21px; font-weight: 700; color: var(--ink, #0f172a); font-variant-numeric: tabular-nums; line-height: 1.2; }
+        .cust-kpi-val.due { color: #b45309; }
+        .cust-kpi-val.good { color: #15803d; }
     </style>
     <script src="/okw-events.js"></script>
 </head>
@@ -168,10 +175,28 @@
         <div class="okw-page-header">
             <div class="okw-page-header-text">
                 <h1 class="okw-page-title">Customers</h1>
-                <p class="okw-page-subtitle" id="custSummary"><span class="okw-sk-bar" style="width:210px;height:12px;"></span></p>
+                <p class="okw-page-subtitle" id="custSummary">Manage customer profiles, credit limits, purchase history, and statements.</p>
             </div>
             <div class="okw-page-header-actions">
                 <button type="button" class="okw-btn okw-btn-primary" id="btnAddCustomer"><i class="fas fa-user-plus"></i> Add Customer</button>
+            </div>
+        </div>
+        <div class="cust-kpis">
+            <div class="cust-kpi">
+                <div class="cust-kpi-lbl">Total Customers</div>
+                <div class="cust-kpi-val" id="kpiCustTotal"><span class="okw-sk-bar" style="width:48px;height:22px;"></span></div>
+            </div>
+            <div class="cust-kpi">
+                <div class="cust-kpi-lbl">With Balance Owed</div>
+                <div class="cust-kpi-val due" id="kpiCustOwing"><span class="okw-sk-bar" style="width:42px;height:22px;"></span></div>
+            </div>
+            <div class="cust-kpi">
+                <div class="cust-kpi-lbl">Total Balance Owed</div>
+                <div class="cust-kpi-val due" id="kpiCustDebt"><span class="okw-sk-bar" style="width:104px;height:22px;"></span></div>
+            </div>
+            <div class="cust-kpi">
+                <div class="cust-kpi-lbl">Total Credit Limit</div>
+                <div class="cust-kpi-val good" id="kpiCustLimit"><span class="okw-sk-bar" style="width:104px;height:22px;"></span></div>
             </div>
         </div>
         <div class="cust-search-wrap">
@@ -674,12 +699,20 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                 const res = await fetch('/api/customers', { headers: { Authorization: 'Bearer ' + localStorage.getItem('authToken') } });
                 if (!res.ok) throw new Error('HTTP ' + res.status);
                 all = await res.json();
-                const owing = all.filter((c) => Number(c.current_balance) > 0).length;
-                document.getElementById('custSummary').textContent = `${all.length} customers, ${owing} with a balance owed`;
+                const owingRows = all.filter((c) => Number(c.current_balance) > 0);
+                const totalDebt = owingRows.reduce((s, c) => s + (Number(c.current_balance) || 0), 0);
+                const totalLimit = all.reduce((s, c) => s + (Number(c.credit_limit) || 0), 0);
+                document.getElementById('kpiCustTotal').textContent = all.length.toLocaleString();
+                document.getElementById('kpiCustOwing').textContent = owingRows.length.toLocaleString();
+                document.getElementById('kpiCustDebt').textContent = money(totalDebt);
+                document.getElementById('kpiCustLimit').textContent = money(totalLimit);
                 filter();
             } catch (e) {
-                document.getElementById('custSummary').textContent = 'Could not load customers.';
-                document.getElementById('custBody').innerHTML = '<tr><td colspan="6">Could not load customers. Check your connection and refresh.</td></tr>';
+                ['kpiCustTotal', 'kpiCustOwing', 'kpiCustDebt', 'kpiCustLimit'].forEach((id) => {
+                    const el = document.getElementById(id);
+                    if (el) el.textContent = '—';
+                });
+                document.getElementById('custBody').innerHTML = '<tr><td colspan="7">Could not load customers. Check your connection and refresh.</td></tr>';
             }
         }
         document.getElementById('custSearch').addEventListener('input', filter);
