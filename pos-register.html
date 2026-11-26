@@ -680,6 +680,14 @@
             renderUsersTable();
         }
 
+        function getAuthHeaders(includeJson = false) {
+            const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+            const h = {};
+            if (includeJson) h['Content-Type'] = 'application/json';
+            if (token && token !== 'null' && token !== 'undefined') h['Authorization'] = `Bearer ${token}`;
+            return h;
+        }
+
         async function quickToggleStatus(userId, nextStatus) {
             const u = users.find(x => Number(x.id) === Number(userId));
             const label = u ? (u.fullName || u.username) : `User #${userId}`;
@@ -687,16 +695,18 @@
             if (!confirm(`Are you sure you want to ${verb} ${label}?`)) return;
 
             try {
-                const token = localStorage.getItem('authToken');
                 const res = await fetch(`/api/users/${userId}/status`, {
                     method: 'PATCH',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: getAuthHeaders(true),
+                    credentials: 'include',
                     body: JSON.stringify({ status: nextStatus })
                 });
                 const data = await res.json().catch(() => ({}));
                 if (res.ok) {
                     showNotification(data.message || `User set to ${nextStatus}`, 'success');
                     await loadUsers();
+                } else if (res.status === 401) {
+                    showNotification('Your session expired. Please sign in again.', 'error');
                 } else {
                     showNotification(data.message || 'Could not update user status', 'error');
                 }
@@ -752,10 +762,10 @@
             };
 
             try {
-                const token = localStorage.getItem('authToken');
                 const res = await fetch(`/api/users/${userId}`, {
                     method: 'PUT',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: getAuthHeaders(true),
+                    credentials: 'include',
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json().catch(() => ({}));
@@ -796,10 +806,10 @@
             };
 
             try {
-                const token = localStorage.getItem('authToken');
                 const res = await fetch('/api/users', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: getAuthHeaders(true),
+                    credentials: 'include',
                     body: JSON.stringify(payload)
                 });
                 const data = await res.json().catch(() => ({}));
@@ -841,10 +851,10 @@
 
             const userId = parseInt(document.getElementById('resetUserId').value, 10);
             try {
-                const token = localStorage.getItem('authToken');
                 const res = await fetch(`/api/users/${userId}/reset-password`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    headers: getAuthHeaders(true),
+                    credentials: 'include',
                     body: JSON.stringify({ password: newPassword })
                 });
                 const data = await res.json().catch(() => ({}));
@@ -876,10 +886,10 @@
             const id = userToDeleteId;
             closeConfirmation();
             try {
-                const token = localStorage.getItem('authToken');
                 const res = await fetch(`/api/users/${id}`, {
                     method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: getAuthHeaders(false),
+                    credentials: 'include'
                 });
                 const data = await res.json().catch(() => ({}));
                 if (res.ok) {
