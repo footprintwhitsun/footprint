@@ -15,7 +15,7 @@
     <script src="/ui-components.js"></script>
     <link rel="stylesheet" href="/portal-skin.css">
     <style>
-        .ap-form { display: flex; flex-direction: column; gap: 18px; max-width: 1120px; }
+        .ap-form { display: flex; flex-direction: column; gap: 18px; max-width: 1180px; }
         .ap-card {
             background: var(--sheet, #fff);
             border: 1px solid var(--edge, #e2e8f0);
@@ -36,41 +36,118 @@
         .ap-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
         .ap-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
         .ap-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-2, #334155); }
-        .ap-input, .ap-select, .ap-textarea {
+        .ap-input, .ap-select {
             width: 100%; height: 38px; padding: 0 12px;
             border: 1px solid var(--edge-strong, #cbd5e1); border-radius: 8px;
             background: var(--sheet, #fff); color: var(--ink, #0f172a);
             font-family: var(--font-ui); font-size: 13.5px; outline: none;
         }
-        .ap-textarea { height: auto; min-height: 92px; padding: 10px 12px; resize: vertical; }
-        .ap-input:focus, .ap-select:focus, .ap-textarea:focus {
+        .ap-input:focus, .ap-select:focus {
             border-color: var(--brand, #273990);
             box-shadow: 0 0 0 3px rgba(39, 57, 144, 0.12);
         }
         .ap-input-group { display: flex; gap: 8px; }
-        .ap-input-group .ap-input { flex: 1; min-width: 0; }
+        .ap-input-group .ap-input, .ap-input-group .ap-select { flex: 1; min-width: 0; }
         .ap-chk {
             display: inline-flex; align-items: center; gap: 8px;
             font-size: 13px; font-weight: 600; color: var(--ink, #0f172a);
-            cursor: pointer; user-select: none; margin-top: 24px;
+            cursor: pointer; user-select: none;
         }
-        .ap-chk input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--brand, #273990); cursor: pointer; }
-        .ap-hint { font-size: 11.5px; color: var(--muted, #64748b); }
+        .ap-chk input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--brand, #273990); cursor: pointer; flex-shrink: 0; }
+        .ap-chk-wrap { display: flex; flex-wrap: wrap; gap: 14px 26px; padding-top: 8px; }
+        .ap-hint { font-size: 11.5px; color: var(--muted, #64748b); line-height: 1.4; }
+
+        /* Rich Text Editor */
+        .ap-rte {
+            border: 1px solid var(--edge-strong, #cbd5e1);
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--sheet, #fff);
+        }
+        .ap-rte:focus-within {
+            border-color: var(--brand, #273990);
+            box-shadow: 0 0 0 3px rgba(39, 57, 144, 0.12);
+        }
+        .ap-rte-toolbar {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 4px;
+            padding: 8px 10px;
+            background: #f8fafc;
+            border-bottom: 1px solid var(--edge, #e2e8f0);
+        }
+        .ap-rte-select {
+            height: 30px; padding: 0 8px; border: 1px solid var(--edge-strong, #cbd5e1);
+            border-radius: 6px; background: #fff; color: var(--ink, #0f172a);
+            font-size: 12.5px; font-family: var(--font-ui); cursor: pointer;
+        }
+        .ap-rte-btn {
+            width: 30px; height: 30px; border: 1px solid transparent; border-radius: 6px;
+            background: transparent; color: var(--ink-2, #334155);
+            display: inline-flex; align-items: center; justify-content: center;
+            cursor: pointer; font-size: 13px;
+        }
+        .ap-rte-btn:hover { background: #e2e8f0; color: var(--ink, #0f172a); }
+        .ap-rte-sep { width: 1px; height: 20px; background: var(--edge, #e2e8f0); margin: 0 3px; }
+        .ap-rte-editor {
+            min-height: 170px; max-height: 380px; overflow-y: auto;
+            padding: 12px 14px; font-size: 14px; line-height: 1.6;
+            color: var(--ink, #0f172a); outline: none;
+        }
+        .ap-rte-editor:empty::before {
+            content: attr(data-placeholder);
+            color: #94a3b8; pointer-events: none;
+        }
+        .ap-rte-editor p { margin: 0 0 8px; }
+        .ap-rte-editor ul, .ap-rte-editor ol { margin: 0 0 8px; padding-left: 22px; }
+        .ap-rte-status {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 6px 12px; background: #f8fafc;
+            border-top: 1px solid var(--edge, #e2e8f0);
+            font-size: 11px; font-weight: 600; color: var(--muted, #64748b);
+            text-transform: uppercase; letter-spacing: 0.04em;
+        }
+
+        /* Media Uploads */
         .ap-img-preview {
-            margin-top: 8px; max-width: 140px; max-height: 140px; border-radius: 8px;
+            margin-top: 8px; width: 112px; height: 112px; border-radius: 8px;
             border: 1px solid var(--edge, #e2e8f0); object-fit: cover; display: none;
         }
+        .ap-file-chip {
+            display: none; align-items: center; gap: 8px; margin-top: 8px;
+            padding: 6px 10px; border-radius: 8px; background: #f1f5f9;
+            border: 1px solid var(--edge, #e2e8f0); font-size: 12.5px; color: var(--ink, #0f172a);
+        }
+        .ap-file-chip button {
+            margin-left: auto; border: 0; background: transparent; color: #dc2626;
+            cursor: pointer; font-weight: 700; font-size: 14px; line-height: 1;
+        }
+
+        /* Pricing Table */
+        .ap-price-table-wrap {
+            margin-top: 16px; border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 10px; overflow-x: auto;
+        }
+        .ap-price-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+        .ap-price-table th {
+            background: #273990; color: #fff; font-size: 12px; font-weight: 600;
+            text-align: left; padding: 10px 12px; white-space: nowrap;
+        }
+        .ap-price-table td {
+            padding: 12px; border-top: 1px solid var(--edge, #e2e8f0);
+            vertical-align: top; background: var(--sheet, #fff);
+        }
+        .ap-subgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .ap-sublabel { font-size: 11.5px; font-weight: 600; color: var(--muted, #64748b); margin-bottom: 4px; display: block; }
+
         .ap-footer {
             display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px;
             padding: 16px 22px; background: var(--sheet, #fff);
             border: 1px solid var(--edge, #e2e8f0); border-radius: 12px;
         }
-        @media (max-width: 900px) {
+        @media (max-width: 960px) {
             .ap-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
         }
-        @media (max-width: 600px) {
-            .ap-grid-3, .ap-grid-2 { grid-template-columns: 1fr; }
-            .ap-chk { margin-top: 4px; }
+        @media (max-width: 640px) {
+            .ap-grid-3, .ap-grid-2, .ap-subgrid { grid-template-columns: 1fr; }
         }
     </style>
     <script src="/okw-events.js"></script>
@@ -95,7 +172,7 @@
         <div class="okw-page-header">
             <div class="okw-page-header-text">
                 <h1 class="okw-page-title">Add Product</h1>
-                <p class="okw-page-subtitle">Create a new product with pricing, stock levels, categories, brands, and tax details.</p>
+                <p class="okw-page-subtitle">Create a new product with full catalog attributes, rich description, media, stock settings, and tax pricing.</p>
             </div>
             <div class="okw-page-header-actions">
                 <a href="/inventory?tab=stock" class="okw-btn okw-btn-outline" style="text-decoration:none;"><i class="fas fa-boxes"></i> List Products</a>
@@ -112,27 +189,29 @@
                         <input type="text" id="apName" class="ap-input" placeholder="e.g. Portland Cement 50kg Bag" required>
                     </div>
                     <div class="ap-field">
-                        <label for="apBarcode">SKU / Barcode</label>
+                        <label for="apBarcode">SKU</label>
                         <div class="ap-input-group">
                             <input type="text" id="apBarcode" class="ap-input" placeholder="Leave blank to auto-generate">
                             <button type="button" id="btnGenSku" class="okw-btn okw-btn-outline" style="height:38px;padding:0 12px;white-space:nowrap;">Generate</button>
                         </div>
                     </div>
                     <div class="ap-field">
-                        <label for="apBarcodeType">Barcode Type</label>
+                        <label for="apBarcodeType">Barcode Type *</label>
                         <select id="apBarcodeType" class="ap-select">
                             <option value="C128" selected>Code 128 (C128)</option>
                             <option value="C39">Code 39 (C39)</option>
                             <option value="EAN13">EAN-13</option>
                             <option value="EAN8">EAN-8</option>
                             <option value="UPCA">UPC-A</option>
+                            <option value="UPCE">UPC-E</option>
                         </select>
                     </div>
 
                     <div class="ap-field">
                         <label for="apUnit">Unit *</label>
-                        <select id="apUnit" class="ap-select">
-                            <option value="Piece">Piece</option>
+                        <select id="apUnit" class="ap-select" required>
+                            <option value="">Please Select</option>
+                            <option value="Pieces (Pc(s))" selected>Pieces (Pc(s))</option>
                             <option value="Bag">Bag</option>
                             <option value="Box">Box</option>
                             <option value="Pack">Pack</option>
@@ -147,19 +226,21 @@
                     <div class="ap-field">
                         <label for="apBrand">Brand</label>
                         <select id="apBrand" class="ap-select">
-                            <option value="">-- Select Brand --</option>
+                            <option value="">Please Select</option>
                         </select>
                     </div>
                     <div class="ap-field">
                         <label for="apCategory">Category *</label>
                         <select id="apCategory" class="ap-select" required>
-                            <option value="">-- Select Category --</option>
+                            <option value="">Please Select</option>
                         </select>
                     </div>
 
                     <div class="ap-field">
-                        <label for="apSubCategory">Sub-category</label>
-                        <input type="text" id="apSubCategory" class="ap-input" placeholder="Optional sub-category">
+                        <label for="apSubCategory">Sub category</label>
+                        <select id="apSubCategory" class="ap-select">
+                            <option value="">Please Select</option>
+                        </select>
                     </div>
                     <div class="ap-field">
                         <label for="apLocations">Business Locations</label>
@@ -168,52 +249,77 @@
                         </select>
                     </div>
                     <div class="ap-field">
-                        <label for="apProductType">Product Type</label>
-                        <select id="apProductType" class="ap-select">
-                            <option value="Single" selected>Single</option>
-                            <option value="Variable">Variable</option>
-                            <option value="Combo">Combo</option>
-                        </select>
+                        <label for="apDeviceModel">Device Model</label>
+                        <div class="ap-input-group">
+                            <select id="apDeviceModel" class="ap-select">
+                                <option value="">Please Select</option>
+                            </select>
+                            <button type="button" id="btnAddDeviceModel" class="okw-btn okw-btn-outline" style="height:38px;padding:0 12px;" title="Add new device model"><i class="fas fa-plus"></i></button>
+                        </div>
                     </div>
                 </div>
             </section>
 
-            <!-- 2. Stock & Inventory -->
+            <!-- 2. Stock & Inventory Options -->
             <section class="ap-card">
-                <h2 class="ap-section-title">2. Stock &amp; Inventory</h2>
+                <h2 class="ap-section-title">2. Stock &amp; Inventory Options</h2>
                 <div class="ap-grid-3">
-                    <div class="ap-field">
+                    <div class="ap-field" style="justify-content:center;">
                         <label class="ap-chk">
                             <input type="checkbox" id="apManageStock" checked>
-                            Manage Stock? (Enable stock tracking)
+                            Manage Stock?
                         </label>
+                        <span class="ap-hint">Enable stock management at product level</span>
                     </div>
-                    <div class="ap-field">
+                    <div class="ap-field" id="apAlertQtyWrap">
+                        <label for="apReorder">Alert quantity</label>
+                        <input type="number" id="apReorder" class="ap-input" step="1" min="0" value="10" placeholder="10">
+                    </div>
+                    <div class="ap-field" id="apOpeningStockWrap">
                         <label for="apStock">Opening Stock Quantity</label>
                         <input type="number" id="apStock" class="ap-input" step="any" min="0" value="0" placeholder="0">
                     </div>
-                    <div class="ap-field">
-                        <label for="apReorder">Alert / Reorder Quantity</label>
-                        <input type="number" id="apReorder" class="ap-input" step="1" min="0" value="10" placeholder="10">
-                    </div>
 
+                    <div class="ap-field">
+                        <label for="apWeight">Weight</label>
+                        <input type="text" id="apWeight" class="ap-input" placeholder="e.g. 0.5 kg">
+                    </div>
+                    <div class="ap-field">
+                        <label for="apPrepTime">Service staff timer/Preparation time (In minutes)</label>
+                        <input type="number" id="apPrepTime" class="ap-input" step="1" min="0" value="0" placeholder="0">
+                    </div>
                     <div class="ap-field">
                         <label for="apPackUnit">Packaging Unit</label>
                         <input type="text" id="apPackUnit" class="ap-input" value="Box" placeholder="e.g. Box, Pallet, Bundle">
                     </div>
+
                     <div class="ap-field">
                         <label for="apConvRate">Items per Package</label>
                         <input type="number" id="apConvRate" class="ap-input" step="any" min="1" value="1">
                     </div>
                     <div class="ap-field">
-                        <label for="apBatch">Batch Number (Optional)</label>
+                        <label for="apBatch">Batch / Lot Number (Optional)</label>
                         <input type="text" id="apBatch" class="ap-input" placeholder="e.g. LOT-2026-01">
                     </div>
-
                     <div class="ap-field">
                         <label for="apExpiry">Expiry Date (Optional)</label>
                         <input type="date" id="apExpiry" class="ap-input">
                     </div>
+                </div>
+
+                <div class="ap-chk-wrap" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--edge,#e2e8f0);">
+                    <label class="ap-chk">
+                        <input type="checkbox" id="apEnableSrNo">
+                        Enable Product description, IMEI or Serial Number
+                    </label>
+                    <label class="ap-chk">
+                        <input type="checkbox" id="apNotForSelling">
+                        Not for selling
+                    </label>
+                    <label class="ap-chk">
+                        <input type="checkbox" id="apDisableWoo">
+                        Disable Woocommerce Sync
+                    </label>
                 </div>
             </section>
 
@@ -222,50 +328,202 @@
                 <h2 class="ap-section-title">3. Pricing &amp; Tax</h2>
                 <div class="ap-grid-3">
                     <div class="ap-field">
-                        <label for="apTaxRate">Applicable Tax (%)</label>
-                        <input type="number" id="apTaxRate" class="ap-input" step="0.01" min="0" value="0" placeholder="0">
+                        <label for="apTaxSelect">Applicable Tax</label>
+                        <select id="apTaxSelect" class="ap-select">
+                            <option value="0" data-name="None" selected>None</option>
+                            <option value="15" data-name="VAT">VAT (15%)</option>
+                        </select>
                     </div>
                     <div class="ap-field">
-                        <label for="apTaxType">Selling Price Tax Type</label>
+                        <label for="apTaxType">Selling Price Tax Type *</label>
                         <select id="apTaxType" class="ap-select">
                             <option value="Exclusive" selected>Exclusive</option>
                             <option value="Inclusive">Inclusive</option>
                         </select>
                     </div>
                     <div class="ap-field">
-                        <label for="apCostExc">Purchase Price (Exc. Tax)</label>
-                        <input type="number" id="apCostExc" class="ap-input" step="0.01" min="0" placeholder="0.00">
+                        <label for="apProductType">Product Type *</label>
+                        <select id="apProductType" class="ap-select">
+                            <option value="Single" selected>Single</option>
+                            <option value="Variable">Variable</option>
+                            <option value="Combo">Combo</option>
+                        </select>
                     </div>
+                </div>
 
-                    <div class="ap-field">
-                        <label for="apCostInc">Purchase Price (Inc. Tax)</label>
-                        <input type="number" id="apCostInc" class="ap-input" step="0.01" min="0" placeholder="0.00">
+                <!-- Single Product Pricing Table -->
+                <div id="apSinglePricingWrap" class="ap-price-table-wrap">
+                    <table class="ap-price-table" data-no-table-tools="1">
+                        <thead>
+                            <tr>
+                                <th>Default Purchase Price</th>
+                                <th>x Margin (%)</th>
+                                <th>Default Selling Price</th>
+                                <th>Product image</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>
+                                    <div class="ap-subgrid">
+                                        <div>
+                                            <span class="ap-sublabel">Exc. tax *</span>
+                                            <input type="number" id="apCostExc" class="ap-input" step="0.01" min="0" placeholder="0.00">
+                                        </div>
+                                        <div>
+                                            <span class="ap-sublabel">Inc. tax *</span>
+                                            <input type="number" id="apCostInc" class="ap-input" step="0.01" min="0" placeholder="0.00">
+                                        </div>
+                                    </div>
+                                </td>
+                                <td style="width:140px;">
+                                    <span class="ap-sublabel">Margin (%)</span>
+                                    <input type="number" id="apMargin" class="ap-input" step="0.01" placeholder="25">
+                                </td>
+                                <td>
+                                    <div class="ap-subgrid">
+                                        <div>
+                                            <span class="ap-sublabel">Exc. Tax *</span>
+                                            <input type="number" id="apSellExc" class="ap-input" step="0.01" min="0" placeholder="0.00">
+                                        </div>
+                                        <div>
+                                            <span class="ap-sublabel">Inc. Tax *</span>
+                                            <input type="number" id="apSellPrice" class="ap-input" step="0.01" min="0" placeholder="0.00" required>
+                                        </div>
+                                    </div>
+                                    <span id="apPriceHint" class="ap-hint" style="display:block;margin-top:4px;"></span>
+                                </td>
+                                <td style="width:220px;">
+                                    <input type="file" id="apPriceImageFile" class="ap-input" accept="image/*" style="padding-top:6px;">
+                                    <span class="ap-hint">Max File size: 5MB<br>Aspect ratio should be 1:1</span>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Variable Product Pricing Table -->
+                <div id="apVariablePricingWrap" style="display:none;margin-top:16px;">
+                    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px;">
+                        <div class="ap-field" style="min-width:240px;">
+                            <label for="apVarTemplate">Select Variation Template</label>
+                            <select id="apVarTemplate" class="ap-select">
+                                <option value="">-- Choose Variation --</option>
+                            </select>
+                        </div>
+                        <button type="button" id="btnApplyVarTemplate" class="okw-btn okw-btn-outline" style="height:38px;">Load Values</button>
+                        <button type="button" id="btnAddVarRow" class="okw-btn okw-btn-outline" style="height:38px;"><i class="fas fa-plus"></i> Add Variation Row</button>
                     </div>
-                    <div class="ap-field">
-                        <label for="apMargin">Margin (%)</label>
-                        <input type="number" id="apMargin" class="ap-input" step="0.01" placeholder="e.g. 25">
+                    <div class="ap-price-table-wrap" style="margin-top:0;">
+                        <table class="ap-price-table" data-no-table-tools="1">
+                            <thead>
+                                <tr>
+                                    <th>Variation</th>
+                                    <th>Value</th>
+                                    <th>Sub-SKU</th>
+                                    <th>Exc. tax</th>
+                                    <th>Inc. tax</th>
+                                    <th>Margin (%)</th>
+                                    <th>Selling (Exc.)</th>
+                                    <th>Selling (Inc.)</th>
+                                    <th style="width:52px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="apVarRowsBody"></tbody>
+                        </table>
                     </div>
-                    <div class="ap-field">
-                        <label for="apSellPrice">Default Selling Price *</label>
-                        <input type="number" id="apSellPrice" class="ap-input" step="0.01" min="0" placeholder="0.00" required>
-                        <span id="apPriceHint" class="ap-hint"></span>
+                </div>
+
+                <!-- Combo Product Builder -->
+                <div id="apComboPricingWrap" style="display:none;margin-top:16px;">
+                    <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:10px;">
+                        <div class="ap-field" style="flex:1;min-width:260px;">
+                            <label for="apComboProductSelect">Add Product to Combo</label>
+                            <select id="apComboProductSelect" class="ap-select">
+                                <option value="">-- Select Product --</option>
+                            </select>
+                        </div>
+                        <button type="button" id="btnAddComboRow" class="okw-btn okw-btn-outline" style="height:38px;"><i class="fas fa-plus"></i> Add Item</button>
+                    </div>
+                    <div class="ap-price-table-wrap" style="margin-top:0;">
+                        <table class="ap-price-table" data-no-table-tools="1">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th style="width:120px;">Quantity</th>
+                                    <th style="width:150px;">Unit Purchase Price</th>
+                                    <th style="width:150px;">Total Purchase Price</th>
+                                    <th style="width:52px;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="apComboRowsBody"></tbody>
+                        </table>
                     </div>
                 </div>
             </section>
 
-            <!-- 4. Description & Image -->
+            <!-- 4. Description & Media -->
             <section class="ap-card">
                 <h2 class="ap-section-title">4. Description &amp; Media</h2>
+                <div class="ap-field" style="margin-bottom:16px;">
+                    <label>Product Description</label>
+                    <div class="ap-rte" id="apRteWrap">
+                        <div class="ap-rte-toolbar" role="toolbar" aria-label="Text formatting">
+                            <select id="rteFormatBlock" class="ap-rte-select" title="Text style">
+                                <option value="P">Paragraph</option>
+                                <option value="H2">Heading 2</option>
+                                <option value="H3">Heading 3</option>
+                                <option value="H4">Heading 4</option>
+                                <option value="BLOCKQUOTE">Quote</option>
+                            </select>
+                            <span class="ap-rte-sep"></span>
+                            <button type="button" class="ap-rte-btn" data-cmd="bold" title="Bold"><i class="fas fa-bold"></i></button>
+                            <button type="button" class="ap-rte-btn" data-cmd="italic" title="Italic"><i class="fas fa-italic"></i></button>
+                            <button type="button" class="ap-rte-btn" data-cmd="underline" title="Underline"><i class="fas fa-underline"></i></button>
+                            <button type="button" class="ap-rte-btn" data-cmd="strikeThrough" title="Strikethrough"><i class="fas fa-strikethrough"></i></button>
+                            <span class="ap-rte-sep"></span>
+                            <button type="button" class="ap-rte-btn" data-cmd="insertUnorderedList" title="Bullet list"><i class="fas fa-list-ul"></i></button>
+                            <button type="button" class="ap-rte-btn" data-cmd="insertOrderedList" title="Numbered list"><i class="fas fa-list-ol"></i></button>
+                            <span class="ap-rte-sep"></span>
+                            <button type="button" class="ap-rte-btn" data-cmd="justifyLeft" title="Align left"><i class="fas fa-align-left"></i></button>
+                            <button type="button" class="ap-rte-btn" data-cmd="justifyCenter" title="Align center"><i class="fas fa-align-center"></i></button>
+                            <button type="button" class="ap-rte-btn" data-cmd="justifyRight" title="Align right"><i class="fas fa-align-right"></i></button>
+                            <span class="ap-rte-sep"></span>
+                            <button type="button" class="ap-rte-btn" id="rteLinkBtn" title="Insert link"><i class="fas fa-link"></i></button>
+                            <button type="button" class="ap-rte-btn" data-cmd="undo" title="Undo"><i class="fas fa-undo"></i></button>
+                            <button type="button" class="ap-rte-btn" data-cmd="redo" title="Redo"><i class="fas fa-redo"></i></button>
+                            <button type="button" class="ap-rte-btn" data-cmd="removeFormat" title="Clear formatting"><i class="fas fa-eraser"></i></button>
+                        </div>
+                        <div id="apDescEditor" class="ap-rte-editor" contenteditable="true" data-placeholder="Enter product specifications, features, usage notes, or warranty terms..."></div>
+                        <div class="ap-rte-status">
+                            <span id="rteTagPath">P</span>
+                            <span id="rteWordCount">0 WORDS</span>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="ap-grid-2">
                     <div class="ap-field">
-                        <label for="apDesc">Product Description</label>
-                        <textarea id="apDesc" class="ap-textarea" placeholder="Enter product specifications, usage notes, or dimensions..."></textarea>
+                        <label for="apImageFile">Product image</label>
+                        <input type="file" id="apImageFile" class="ap-input" accept="image/*" style="padding-top:6px;">
+                        <span class="ap-hint">Max File size: 5MB · Aspect ratio should be 1:1</span>
+                        <input type="hidden" id="apImageData">
+                        <div style="display:flex;align-items:flex-start;gap:10px;">
+                            <img id="apImagePreview" class="ap-img-preview" alt="Product preview">
+                            <button type="button" id="btnClearImage" class="okw-btn okw-btn-outline" style="display:none;margin-top:8px;height:30px;padding:0 10px;font-size:12px;">Remove</button>
+                        </div>
                     </div>
                     <div class="ap-field">
-                        <label for="apImageFile">Product Image (Optional)</label>
-                        <input type="file" id="apImageFile" class="ap-input" accept="image/*" style="padding-top:6px;">
-                        <input type="hidden" id="apImageData">
-                        <img id="apImagePreview" class="ap-img-preview" alt="Product preview">
+                        <label for="apBrochureFile">Product brochure</label>
+                        <input type="file" id="apBrochureFile" class="ap-input" accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png" style="padding-top:6px;">
+                        <span class="ap-hint">Max File size: 5MB · Allowed File: .pdf, .csv, .zip, .doc, .docx, .jpeg, .jpg, .png</span>
+                        <input type="hidden" id="apBrochureData">
+                        <input type="hidden" id="apBrochureName">
+                        <div id="apBrochureChip" class="ap-file-chip">
+                            <i class="fas fa-file-alt" style="color:var(--brand,#273990);"></i>
+                            <span id="apBrochureLabel"></span>
+                            <button type="button" id="btnClearBrochure" title="Remove brochure">&times;</button>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -284,140 +542,495 @@
         const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
         const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const money = (n) => (typeof formatCurrency === 'function' ? formatCurrency(Number(n) || 0) : 'GH₵ ' + (Number(n) || 0).toFixed(2));
-        let submitting = false;
+        const MAX_FILE_BYTES = 5 * 1024 * 1024;
+        const BROCHURE_EXTS = new Set(['pdf', 'csv', 'zip', 'doc', 'docx', 'jpeg', 'jpg', 'png']);
 
+        let submitting = false;
+        let variationTemplates = [];
+        let catalogProducts = [];
+        let comboItems = [];
+
+        function getTaxRate() {
+            return parseFloat(document.getElementById('apTaxSelect').value) || 0;
+        }
+        function getTaxName() {
+            const sel = document.getElementById('apTaxSelect');
+            const opt = sel.options[sel.selectedIndex];
+            return opt ? (opt.getAttribute('data-name') || opt.textContent.trim()) : 'None';
+        }
+
+        // --- Rich Text Editor ---
+        const rteEditor = document.getElementById('apDescEditor');
+        const rteWordCount = document.getElementById('rteWordCount');
+        const rteTagPath = document.getElementById('rteTagPath');
+
+        function updateRteStats() {
+            const txt = (rteEditor.innerText || '').trim();
+            const words = txt ? txt.split(/\s+/).filter(Boolean).length : 0;
+            rteWordCount.textContent = `${words} ${words === 1 ? 'WORD' : 'WORDS'}`;
+            const sel = window.getSelection();
+            let node = sel && sel.anchorNode ? sel.anchorNode : null;
+            if (node && node.nodeType === 3) node = node.parentElement;
+            const tags = [];
+            while (node && node !== rteEditor && rteEditor.contains(node)) {
+                tags.unshift(node.tagName);
+                node = node.parentElement;
+            }
+            rteTagPath.textContent = tags.length ? tags.join(' » ') : 'P';
+        }
+
+        document.querySelectorAll('.ap-rte-btn[data-cmd]').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                rteEditor.focus();
+                document.execCommand(btn.getAttribute('data-cmd'), false, null);
+                updateRteStats();
+            });
+        });
+
+        document.getElementById('rteFormatBlock').addEventListener('change', (e) => {
+            rteEditor.focus();
+            document.execCommand('formatBlock', false, e.target.value);
+            updateRteStats();
+        });
+
+        document.getElementById('rteLinkBtn').addEventListener('click', () => {
+            const url = window.prompt('Enter URL (https://...):', 'https://');
+            if (!url || !/^https?:\/\//i.test(url.trim())) return;
+            rteEditor.focus();
+            document.execCommand('createLink', false, url.trim());
+            updateRteStats();
+        });
+
+        rteEditor.addEventListener('input', updateRteStats);
+        rteEditor.addEventListener('keyup', updateRteStats);
+        rteEditor.addEventListener('mouseup', updateRteStats);
+
+        function sanitizeHtml(html) {
+            const doc = new DOMParser().parseFromString(html || '', 'text/html');
+            doc.querySelectorAll('script,style,iframe,object,embed,form').forEach((el) => el.remove());
+            doc.querySelectorAll('*').forEach((el) => {
+                [...el.attributes].forEach((attr) => {
+                    const n = attr.name.toLowerCase();
+                    if (n.startsWith('on') || (n === 'href' && !/^https?:\/\//i.test(attr.value.trim()))) {
+                        el.removeAttribute(attr.name);
+                    }
+                });
+            });
+            return doc.body.innerHTML.trim();
+        }
+
+        // --- Lookups ---
         async function loadLookups() {
             try {
-                const [catRes, brandRes, unitRes, brRes] = await Promise.all([
-                    fetch('/api/categories', { headers, credentials: 'include' }),
-                    fetch('/api/brands', { headers, credentials: 'include' }),
-                    fetch('/api/units', { headers, credentials: 'include' }),
-                    fetch('/api/branches', { headers, credentials: 'include' })
+                const [catRes, brRes, unitRes, locRes, taxRes, dmRes, varRes, prodRes] = await Promise.all([
+                    fetch('/api/categories', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => []),
+                    fetch('/api/brands', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => []),
+                    fetch('/api/units', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => []),
+                    fetch('/api/branches', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => []),
+                    fetch('/api/taxes/active', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => []),
+                    fetch('/api/device-models', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : {}).catch(() => ({})),
+                    fetch('/api/variations', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : {}).catch(() => ({})),
+                    fetch('/api/products?limit=250', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => [])
                 ]);
-                if (catRes.ok) {
-                    const cats = await catRes.json();
-                    const list = Array.isArray(cats) ? cats : (cats.categories || []);
-                    const sel = document.getElementById('apCategory');
-                    sel.innerHTML = `<option value="">-- Select Category --</option>` +
-                        list.map((c) => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('') +
-                        `<option value="General">General</option>`;
-                }
-                if (brandRes.ok) {
-                    const bd = await brandRes.json();
-                    const list = Array.isArray(bd) ? bd : (bd.brands || []);
-                    const sel = document.getElementById('apBrand');
-                    sel.innerHTML = `<option value="">-- Select Brand --</option>` +
-                        list.map((b) => `<option value="${esc(b.name)}">${esc(b.name)}</option>`).join('');
-                }
-                if (unitRes.ok) {
-                    const ud = await unitRes.json();
-                    const list = Array.isArray(ud) ? ud : (ud.units || []);
-                    const baseUnits = [...new Set(list.map((u) => u.base_unit).filter(Boolean))];
-                    const sel = document.getElementById('apUnit');
-                    const existing = new Set(Array.from(sel.options).map((o) => o.value.toLowerCase()));
-                    baseUnits.forEach((u) => {
-                        if (!existing.has(u.toLowerCase())) {
+
+                const cats = Array.isArray(catRes) ? catRes : (catRes.categories || []);
+                const catSel = document.getElementById('apCategory');
+                const subSel = document.getElementById('apSubCategory');
+                const catOptions = cats.map((c) => {
+                    const name = typeof c === 'string' ? c : (c.name || '');
+                    return name ? `<option value="${esc(name)}">${esc(name)}</option>` : '';
+                }).join('');
+                catSel.innerHTML = '<option value="">Please Select</option>' + catOptions;
+                subSel.innerHTML = '<option value="">Please Select</option>' + catOptions;
+
+                const brands = Array.isArray(brRes) ? brRes : (brRes.brands || []);
+                document.getElementById('apBrand').innerHTML = '<option value="">Please Select</option>' +
+                    brands.map((b) => {
+                        const name = typeof b === 'string' ? b : (b.name || '');
+                        return name ? `<option value="${esc(name)}">${esc(name)}</option>` : '';
+                    }).join('');
+
+                const units = Array.isArray(unitRes) ? unitRes : (unitRes.units || []);
+                if (units.length) {
+                    const unitSel = document.getElementById('apUnit');
+                    const existing = new Set([...unitSel.options].map((o) => o.value.toLowerCase()));
+                    units.forEach((u) => {
+                        const name = typeof u === 'string' ? u : (u.name || u.unit_name || '');
+                        if (name && !existing.has(name.toLowerCase())) {
                             const opt = document.createElement('option');
-                            opt.value = u;
-                            opt.textContent = u;
-                            sel.appendChild(opt);
+                            opt.value = name;
+                            opt.textContent = name;
+                            unitSel.appendChild(opt);
                         }
                     });
                 }
-                if (brRes.ok) {
-                    const brd = await brRes.json();
-                    const list = Array.isArray(brd) ? brd : (brd.branches || []);
-                    const sel = document.getElementById('apLocations');
-                    sel.innerHTML = `<option value="All Locations">All Locations</option>` +
-                        list.map((b) => `<option value="${esc(b.name)}">${esc(b.name)}</option>`).join('');
+
+                const branches = Array.isArray(locRes) ? locRes : (locRes.branches || []);
+                const locSel = document.getElementById('apLocations');
+                locSel.innerHTML = '<option value="All Locations">All Locations</option>' +
+                    branches.map((b, idx) => {
+                        const name = b.name || '';
+                        const code = b.code || `BL${String(b.id || idx + 1).padStart(4, '0')}`;
+                        return name ? `<option value="${esc(name)}">${esc(name)} (${esc(code)})</option>` : '';
+                    }).join('');
+
+                const taxes = Array.isArray(taxRes) ? taxRes : [];
+                const taxSel = document.getElementById('apTaxSelect');
+                let taxHtml = '<option value="0" data-name="None" selected>None</option>';
+                let hasVat = false;
+                taxes.forEach((t) => {
+                    const rate = Number(t.rate || 0);
+                    const name = t.name || 'Tax';
+                    if (name.toUpperCase() === 'VAT') hasVat = true;
+                    taxHtml += `<option value="${rate}" data-name="${esc(name)}">${esc(name)} (${rate}%)</option>`;
+                });
+                if (!hasVat) {
+                    taxHtml += '<option value="15" data-name="VAT">VAT (15%)</option>';
                 }
-            } catch (e) {
-                console.error('Add Product lookup error:', e);
-            }
+                taxSel.innerHTML = taxHtml;
+
+                const dms = Array.isArray(dmRes) ? dmRes : (dmRes.device_models || []);
+                document.getElementById('apDeviceModel').innerHTML = '<option value="">Please Select</option>' +
+                    dms.map((d) => `<option value="${esc(d.name)}">${esc(d.name)}</option>`).join('');
+
+                variationTemplates = Array.isArray(varRes) ? varRes : (varRes.variations || []);
+                document.getElementById('apVarTemplate').innerHTML = '<option value="">-- Choose Variation --</option>' +
+                    variationTemplates.map((v) => `<option value="${v.id}">${esc(v.name)} (${esc(v.values_text || '')})</option>`).join('');
+
+                catalogProducts = Array.isArray(prodRes) ? prodRes : (prodRes.products || []);
+                document.getElementById('apComboProductSelect').innerHTML = '<option value="">-- Select Product --</option>' +
+                    catalogProducts.map((p) => `<option value="${p.id}">${esc(p.name)} (${esc(p.barcode || '')}) — ${esc(money(p.cost_price || p.price || 0))}</option>`).join('');
+            } catch (_) {}
         }
 
+        // Quick-add Device Model
+        document.getElementById('btnAddDeviceModel').addEventListener('click', async () => {
+            const modelName = window.prompt('Enter new Device Model name:');
+            if (!modelName || !modelName.trim()) return;
+            try {
+                const res = await fetch('/api/device-models', {
+                    method: 'POST',
+                    headers,
+                    credentials: 'include',
+                    body: JSON.stringify({ name: modelName.trim(), brand: document.getElementById('apBrand').value || '' })
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.message || 'Could not save device model');
+                const sel = document.getElementById('apDeviceModel');
+                const savedName = d.device_model?.name || modelName.trim();
+                if (![...sel.options].some((o) => o.value === savedName)) {
+                    const opt = document.createElement('option');
+                    opt.value = savedName;
+                    opt.textContent = savedName;
+                    sel.appendChild(opt);
+                }
+                sel.value = savedName;
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Device model added', 'success');
+            } catch (err) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast(err.message || 'Failed to add device model', 'error');
+            }
+        });
+
+        // Manage Stock toggle
+        const manageStockEl = document.getElementById('apManageStock');
+        function syncManageStock() {
+            const on = manageStockEl.checked;
+            document.getElementById('apAlertQtyWrap').style.display = on ? '' : 'none';
+            document.getElementById('apOpeningStockWrap').style.display = on ? '' : 'none';
+        }
+        manageStockEl.addEventListener('change', syncManageStock);
+
+        // SKU Generator
+        document.getElementById('btnGenSku').addEventListener('click', () => {
+            const rnd = String(Math.floor(100000 + Math.random() * 900000));
+            document.getElementById('apBarcode').value = 'SKU-' + rnd;
+        });
+
+        // --- Single Product Live Pricing ---
         function recalcPricing(source) {
-            const taxRate = Math.max(0, parseFloat(document.getElementById('apTaxRate').value) || 0);
-            const factor = 1 + (taxRate / 100);
+            const tax = getTaxRate();
+            const mult = 1 + (tax / 100);
             const costExcEl = document.getElementById('apCostExc');
             const costIncEl = document.getElementById('apCostInc');
             const marginEl = document.getElementById('apMargin');
-            const sellEl = document.getElementById('apSellPrice');
-            const hintEl = document.getElementById('apPriceHint');
+            const sellExcEl = document.getElementById('apSellExc');
+            const sellIncEl = document.getElementById('apSellPrice');
 
-            let costExc = parseFloat(costExcEl.value);
-            let costInc = parseFloat(costIncEl.value);
+            let costExc = parseFloat(costExcEl.value) || 0;
+            let costInc = parseFloat(costIncEl.value) || 0;
             let margin = parseFloat(marginEl.value);
-            let sell = parseFloat(sellEl.value);
+            let sellExc = parseFloat(sellExcEl.value) || 0;
+            let sellInc = parseFloat(sellIncEl.value) || 0;
 
             if (source === 'costExc' || source === 'tax') {
-                if (Number.isFinite(costExc) && costExc >= 0) {
-                    costIncEl.value = (costExc * factor).toFixed(2);
-                    if (Number.isFinite(margin)) {
-                        sellEl.value = (costExc * (1 + margin / 100)).toFixed(2);
-                    }
+                costInc = Number((costExc * mult).toFixed(2));
+                costIncEl.value = costExc > 0 ? costInc : '';
+                if (!Number.isNaN(margin) && costExc > 0) {
+                    sellExc = Number((costExc * (1 + margin / 100)).toFixed(2));
+                    sellInc = Number((sellExc * mult).toFixed(2));
+                    sellExcEl.value = sellExc;
+                    sellIncEl.value = sellInc;
                 }
             } else if (source === 'costInc') {
-                if (Number.isFinite(costInc) && costInc >= 0) {
-                    costExc = costInc / factor;
-                    costExcEl.value = costExc.toFixed(2);
-                    if (Number.isFinite(margin)) {
-                        sellEl.value = (costExc * (1 + margin / 100)).toFixed(2);
-                    }
+                costExc = mult > 0 ? Number((costInc / mult).toFixed(2)) : costInc;
+                costExcEl.value = costInc > 0 ? costExc : '';
+                if (!Number.isNaN(margin) && costExc > 0) {
+                    sellExc = Number((costExc * (1 + margin / 100)).toFixed(2));
+                    sellInc = Number((sellExc * mult).toFixed(2));
+                    sellExcEl.value = sellExc;
+                    sellIncEl.value = sellInc;
                 }
             } else if (source === 'margin') {
-                if (Number.isFinite(costExc) && costExc > 0 && Number.isFinite(margin)) {
-                    sellEl.value = (costExc * (1 + margin / 100)).toFixed(2);
+                if (costExc > 0 && !Number.isNaN(margin)) {
+                    sellExc = Number((costExc * (1 + margin / 100)).toFixed(2));
+                    sellInc = Number((sellExc * mult).toFixed(2));
+                    sellExcEl.value = sellExc;
+                    sellIncEl.value = sellInc;
                 }
-            } else if (source === 'sell') {
-                if (Number.isFinite(costExc) && costExc > 0 && Number.isFinite(sell)) {
-                    marginEl.value = (((sell - costExc) / costExc) * 100).toFixed(2);
+            } else if (source === 'sellExc') {
+                sellInc = Number((sellExc * mult).toFixed(2));
+                sellIncEl.value = sellExc > 0 ? sellInc : '';
+                if (costExc > 0 && sellExc > 0) {
+                    marginEl.value = (((sellExc - costExc) / costExc) * 100).toFixed(2);
+                }
+            } else if (source === 'sellInc') {
+                sellExc = mult > 0 ? Number((sellInc / mult).toFixed(2)) : sellInc;
+                sellExcEl.value = sellInc > 0 ? sellExc : '';
+                if (costExc > 0 && sellExc > 0) {
+                    marginEl.value = (((sellExc - costExc) / costExc) * 100).toFixed(2);
                 }
             }
 
-            const finalSell = parseFloat(sellEl.value);
-            hintEl.textContent = (Number.isFinite(finalSell) && taxRate > 0)
-                ? `Inc. tax (${taxRate}%): ${money(finalSell * factor)}`
+            const finalExc = parseFloat(sellExcEl.value) || 0;
+            const finalInc = parseFloat(sellIncEl.value) || 0;
+            const profit = finalExc - costExc;
+            document.getElementById('apPriceHint').textContent = (costExc > 0 && finalInc > 0)
+                ? `Est. profit/unit: ${money(profit)}`
                 : '';
         }
 
         document.getElementById('apCostExc').addEventListener('input', () => recalcPricing('costExc'));
         document.getElementById('apCostInc').addEventListener('input', () => recalcPricing('costInc'));
         document.getElementById('apMargin').addEventListener('input', () => recalcPricing('margin'));
-        document.getElementById('apSellPrice').addEventListener('input', () => recalcPricing('sell'));
-        document.getElementById('apTaxRate').addEventListener('input', () => recalcPricing('tax'));
+        document.getElementById('apSellExc').addEventListener('input', () => recalcPricing('sellExc'));
+        document.getElementById('apSellPrice').addEventListener('input', () => recalcPricing('sellInc'));
+        document.getElementById('apTaxSelect').addEventListener('change', () => recalcPricing('tax'));
 
-        document.getElementById('btnGenSku').addEventListener('click', () => {
-            const rand = Math.floor(100000 + Math.random() * 900000);
-            document.getElementById('apBarcode').value = `OKW-${rand}`;
+        // --- Product Type switcher (Single / Variable / Combo) ---
+        function syncProductType() {
+            const type = document.getElementById('apProductType').value;
+            document.getElementById('apSinglePricingWrap').style.display = type === 'Single' ? '' : 'none';
+            document.getElementById('apVariablePricingWrap').style.display = type === 'Variable' ? '' : 'none';
+            document.getElementById('apComboPricingWrap').style.display = type === 'Combo' ? '' : 'none';
+            document.getElementById('apSellPrice').required = (type === 'Single');
+        }
+        document.getElementById('apProductType').addEventListener('change', syncProductType);
+
+        // Variable rows
+        function addVariationRow(varName = '', varVal = '', subSku = '') {
+            const tbody = document.getElementById('apVarRowsBody');
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><input type="text" class="ap-input var-name" value="${esc(varName)}" placeholder="e.g. Size"></td>
+                <td><input type="text" class="ap-input var-val" value="${esc(varVal)}" placeholder="e.g. Large"></td>
+                <td><input type="text" class="ap-input var-sku" value="${esc(subSku)}" placeholder="Sub-SKU"></td>
+                <td><input type="number" class="ap-input var-exc" step="0.01" min="0" placeholder="0.00"></td>
+                <td><input type="number" class="ap-input var-inc" step="0.01" min="0" placeholder="0.00"></td>
+                <td><input type="number" class="ap-input var-mgn" step="0.01" placeholder="25"></td>
+                <td><input type="number" class="ap-input var-sexc" step="0.01" min="0" placeholder="0.00"></td>
+                <td><input type="number" class="ap-input var-sinc" step="0.01" min="0" placeholder="0.00"></td>
+                <td><button type="button" class="okw-btn okw-btn-outline var-del" style="height:34px;padding:0 10px;color:#dc2626;">&times;</button></td>`;
+            tbody.appendChild(tr);
+            tr.querySelector('.var-del').addEventListener('click', () => tr.remove());
+            const recalcRow = () => {
+                const mult = 1 + getTaxRate() / 100;
+                const exc = parseFloat(tr.querySelector('.var-exc').value) || 0;
+                const mgn = parseFloat(tr.querySelector('.var-mgn').value);
+                tr.querySelector('.var-inc').value = exc > 0 ? (exc * mult).toFixed(2) : '';
+                if (!Number.isNaN(mgn) && exc > 0) {
+                    const sExc = exc * (1 + mgn / 100);
+                    tr.querySelector('.var-sexc').value = sExc.toFixed(2);
+                    tr.querySelector('.var-sinc').value = (sExc * mult).toFixed(2);
+                }
+            };
+            tr.querySelector('.var-exc').addEventListener('input', recalcRow);
+            tr.querySelector('.var-mgn').addEventListener('input', recalcRow);
+        }
+
+        document.getElementById('btnAddVarRow').addEventListener('click', () => addVariationRow());
+        document.getElementById('btnApplyVarTemplate').addEventListener('click', () => {
+            const tplId = document.getElementById('apVarTemplate').value;
+            const tpl = variationTemplates.find((v) => String(v.id) === String(tplId));
+            if (!tpl) return;
+            const baseSku = document.getElementById('apBarcode').value.trim();
+            const vals = String(tpl.values_text || '').split(',').map((s) => s.trim()).filter(Boolean);
+            vals.forEach((v, i) => addVariationRow(tpl.name, v, baseSku ? `${baseSku}-${i + 1}` : ''));
         });
 
-        document.getElementById('apImageFile').addEventListener('change', (e) => {
-            const file = e.target.files && e.target.files[0];
-            const prev = document.getElementById('apImagePreview');
-            const hidden = document.getElementById('apImageData');
-            if (!file) { hidden.value = ''; prev.style.display = 'none'; return; }
-            if (file.size > 2 * 1024 * 1024) {
-                OkwUI.toast('Image must be under 2 MB', 'warning');
-                e.target.value = '';
+        function collectVariationItems() {
+            return [...document.querySelectorAll('#apVarRowsBody tr')].map((tr) => ({
+                variation_name: tr.querySelector('.var-name').value.trim(),
+                variation_value: tr.querySelector('.var-val').value.trim(),
+                sub_sku: tr.querySelector('.var-sku').value.trim(),
+                purchase_price_exc_tax: parseFloat(tr.querySelector('.var-exc').value) || 0,
+                purchase_price_inc_tax: parseFloat(tr.querySelector('.var-inc').value) || 0,
+                margin_pct: parseFloat(tr.querySelector('.var-mgn').value) || 0,
+                selling_price_exc_tax: parseFloat(tr.querySelector('.var-sexc').value) || 0,
+                selling_price_inc_tax: parseFloat(tr.querySelector('.var-sinc').value) || 0
+            })).filter((v) => v.variation_value || v.sub_sku);
+        }
+
+        // Combo rows
+        function renderComboRows() {
+            const tbody = document.getElementById('apComboRowsBody');
+            tbody.innerHTML = comboItems.map((c, idx) => `
+                <tr>
+                    <td style="font-weight:600;">${esc(c.item_name)} <span style="color:var(--muted,#64748b);font-size:12px;">(${esc(c.item_barcode)})</span></td>
+                    <td><input type="number" class="ap-input combo-qty" data-idx="${idx}" step="any" min="0.001" value="${c.quantity}"></td>
+                    <td>${esc(money(c.unit_purchase_price))}</td>
+                    <td style="font-weight:600;">${esc(money(c.total_purchase_price))}</td>
+                    <td><button type="button" class="okw-btn okw-btn-outline combo-del" data-idx="${idx}" style="height:34px;padding:0 10px;color:#dc2626;">&times;</button></td>
+                </tr>`).join('');
+            tbody.querySelectorAll('.combo-qty').forEach((inp) => {
+                inp.addEventListener('input', () => {
+                    const i = Number(inp.getAttribute('data-idx'));
+                    const q = Math.max(0, parseFloat(inp.value) || 0);
+                    comboItems[i].quantity = q;
+                    comboItems[i].total_purchase_price = Number((q * comboItems[i].unit_purchase_price).toFixed(2));
+                    renderComboRows();
+                });
+            });
+            tbody.querySelectorAll('.combo-del').forEach((btn) => {
+                btn.addEventListener('click', () => {
+                    comboItems.splice(Number(btn.getAttribute('data-idx')), 1);
+                    renderComboRows();
+                });
+            });
+        }
+
+        document.getElementById('btnAddComboRow').addEventListener('click', () => {
+            const pid = document.getElementById('apComboProductSelect').value;
+            const prod = catalogProducts.find((p) => String(p.id) === String(pid));
+            if (!prod) return;
+            const unitCost = Number(prod.cost_price || prod.price || 0);
+            comboItems.push({
+                item_product_id: prod.id,
+                item_barcode: prod.barcode || '',
+                item_name: prod.name || '',
+                quantity: 1,
+                unit_purchase_price: unitCost,
+                total_purchase_price: unitCost
+            });
+            renderComboRows();
+        });
+
+        // --- File Upload Handlers (Image & Brochure with 5MB check) ---
+        function handleImageFile(file) {
+            if (!file) return;
+            if (file.size > MAX_FILE_BYTES) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Product image exceeds 5MB limit', 'error');
                 return;
             }
             const reader = new FileReader();
             reader.onload = () => {
-                hidden.value = reader.result || '';
-                prev.src = hidden.value;
-                prev.style.display = 'block';
+                document.getElementById('apImageData').value = reader.result || '';
+                const img = document.getElementById('apImagePreview');
+                img.src = reader.result || '';
+                img.style.display = 'block';
+                document.getElementById('btnClearImage').style.display = 'inline-flex';
+            };
+            reader.readAsDataURL(file);
+        }
+
+        document.getElementById('apImageFile').addEventListener('change', (e) => handleImageFile(e.target.files && e.target.files[0]));
+        document.getElementById('apPriceImageFile').addEventListener('change', (e) => handleImageFile(e.target.files && e.target.files[0]));
+        document.getElementById('btnClearImage').addEventListener('click', () => {
+            document.getElementById('apImageData').value = '';
+            document.getElementById('apImageFile').value = '';
+            document.getElementById('apPriceImageFile').value = '';
+            document.getElementById('apImagePreview').style.display = 'none';
+            document.getElementById('btnClearImage').style.display = 'none';
+        });
+
+        document.getElementById('apBrochureFile').addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            if (!file) return;
+            const ext = (file.name.split('.').pop() || '').toLowerCase();
+            if (!BROCHURE_EXTS.has(ext)) {
+                e.target.value = '';
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Allowed brochure files: .pdf, .csv, .zip, .doc, .docx, .jpeg, .jpg, .png', 'error');
+                return;
+            }
+            if (file.size > MAX_FILE_BYTES) {
+                e.target.value = '';
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Product brochure exceeds 5MB limit', 'error');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                document.getElementById('apBrochureData').value = reader.result || '';
+                document.getElementById('apBrochureName').value = file.name;
+                document.getElementById('apBrochureLabel').textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                document.getElementById('apBrochureChip').style.display = 'flex';
             };
             reader.readAsDataURL(file);
         });
 
+        document.getElementById('btnClearBrochure').addEventListener('click', () => {
+            document.getElementById('apBrochureFile').value = '';
+            document.getElementById('apBrochureData').value = '';
+            document.getElementById('apBrochureName').value = '';
+            document.getElementById('apBrochureChip').style.display = 'none';
+        });
+
+        // --- Submit ---
         async function submitProduct(addAnother) {
             if (submitting) return;
             const name = document.getElementById('apName').value.trim();
-            const price = parseFloat(document.getElementById('apSellPrice').value);
-            const category = document.getElementById('apCategory').value || 'General';
-            if (!name) return OkwUI.toast('Product Name is required', 'warning');
-            if (!Number.isFinite(price) || price < 0) return OkwUI.toast('Enter a valid selling price', 'warning');
+            const unit = document.getElementById('apUnit').value.trim();
+            const category = document.getElementById('apCategory').value.trim();
+            const productType = document.getElementById('apProductType').value;
+
+            if (!name) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Product Name is required', 'warning');
+                document.getElementById('apName').focus();
+                return;
+            }
+            if (!unit) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Please select a Unit', 'warning');
+                document.getElementById('apUnit').focus();
+                return;
+            }
+            if (!category) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Please select a Category', 'warning');
+                document.getElementById('apCategory').focus();
+                return;
+            }
+
+            const varItems = productType === 'Variable' ? collectVariationItems() : [];
+            const activeComboItems = productType === 'Combo' ? comboItems : [];
+
+            let sellPrice = parseFloat(document.getElementById('apSellPrice').value);
+            let sellExc = parseFloat(document.getElementById('apSellExc').value) || 0;
+            let costExc = parseFloat(document.getElementById('apCostExc').value) || 0;
+            let costInc = parseFloat(document.getElementById('apCostInc').value) || 0;
+
+            if (productType === 'Variable' && varItems.length > 0) {
+                sellPrice = varItems[0].selling_price_inc_tax || varItems[0].selling_price_exc_tax || 0;
+                sellExc = varItems[0].selling_price_exc_tax || sellPrice;
+                costExc = varItems[0].purchase_price_exc_tax || 0;
+                costInc = varItems[0].purchase_price_inc_tax || 0;
+            } else if (productType === 'Combo' && activeComboItems.length > 0) {
+                costExc = activeComboItems.reduce((s, c) => s + Number(c.total_purchase_price || 0), 0);
+                costInc = Number((costExc * (1 + getTaxRate() / 100)).toFixed(2));
+                if (Number.isNaN(sellPrice) || sellPrice <= 0) sellPrice = costInc;
+            }
+
+            if (productType === 'Single' && (Number.isNaN(sellPrice) || sellPrice < 0)) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Enter a valid Default Selling Price', 'warning');
+                document.getElementById('apSellPrice').focus();
+                return;
+            }
 
             submitting = true;
             const saveBtn = document.getElementById('btnSaveProduct');
@@ -425,6 +1038,7 @@
             saveBtn.disabled = true;
             anotherBtn.disabled = true;
 
+            const rawReorder = document.getElementById('apReorder').value;
             const payload = {
                 name,
                 barcode: document.getElementById('apBarcode').value.trim(),
@@ -432,26 +1046,38 @@
                 category,
                 sub_category: document.getElementById('apSubCategory').value.trim(),
                 brand: document.getElementById('apBrand').value,
-                selling_unit: document.getElementById('apUnit').value,
+                selling_unit: unit,
                 business_locations: document.getElementById('apLocations').value,
-                product_type: document.getElementById('apProductType').value,
+                device_model: document.getElementById('apDeviceModel').value,
+                product_type: productType,
                 manage_stock: document.getElementById('apManageStock').checked,
                 stock: parseFloat(document.getElementById('apStock').value) || 0,
-                reorder_level: Math.max(0, Math.round(Number(document.getElementById('apReorder').value === '' ? 10 : document.getElementById('apReorder').value) || 0)),
+                reorder_level: Math.max(0, Math.round(Number(rawReorder === '' ? 10 : rawReorder) || 0)),
                 packaging_unit: document.getElementById('apPackUnit').value.trim() || 'Box',
                 conversion_rate: parseFloat(document.getElementById('apConvRate').value) || 1,
                 batch_number: document.getElementById('apBatch').value.trim(),
                 expiry_date: document.getElementById('apExpiry').value || null,
                 track_batch: Boolean(document.getElementById('apBatch').value.trim()),
                 track_expiry: Boolean(document.getElementById('apExpiry').value),
-                applicable_tax: parseFloat(document.getElementById('apTaxRate').value) || 0,
+                weight: document.getElementById('apWeight').value.trim(),
+                preparation_time_minutes: Math.max(0, Math.round(Number(document.getElementById('apPrepTime').value) || 0)),
+                enable_sr_no: document.getElementById('apEnableSrNo').checked,
+                not_for_selling: document.getElementById('apNotForSelling').checked,
+                disable_woocommerce_sync: document.getElementById('apDisableWoo').checked,
+                applicable_tax: getTaxRate(),
+                applicable_tax_name: getTaxName(),
                 tax_type: document.getElementById('apTaxType').value,
-                cost_price: parseFloat(document.getElementById('apCostExc').value) || 0,
-                cost_inc_tax: parseFloat(document.getElementById('apCostInc').value) || 0,
+                cost_price: costExc,
+                cost_inc_tax: costInc,
+                selling_price_exc_tax: sellExc || sellPrice || 0,
                 margin_pct: parseFloat(document.getElementById('apMargin').value) || 0,
-                price,
-                description: document.getElementById('apDesc').value.trim(),
-                image_url: document.getElementById('apImageData').value || ''
+                price: sellPrice || 0,
+                description: sanitizeHtml(rteEditor.innerHTML),
+                image_url: document.getElementById('apImageData').value || '',
+                brochure_url: document.getElementById('apBrochureData').value || '',
+                brochure_name: document.getElementById('apBrochureName').value || '',
+                variation_items: varItems,
+                combo_items: activeComboItems
             };
 
             try {
@@ -463,18 +1089,30 @@
                 });
                 const d = await res.json().catch(() => ({}));
                 if (!res.ok) throw new Error(d.message || 'Failed to save product');
-                OkwUI.toast('Product saved successfully', 'success');
+
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast(`Product "${name}" saved`, 'success');
                 if (addAnother) {
                     document.getElementById('addProductForm').reset();
+                    rteEditor.innerHTML = '';
+                    updateRteStats();
                     document.getElementById('apImageData').value = '';
                     document.getElementById('apImagePreview').style.display = 'none';
+                    document.getElementById('btnClearImage').style.display = 'none';
+                    document.getElementById('apBrochureData').value = '';
+                    document.getElementById('apBrochureName').value = '';
+                    document.getElementById('apBrochureChip').style.display = 'none';
                     document.getElementById('apPriceHint').textContent = '';
+                    document.getElementById('apVarRowsBody').innerHTML = '';
+                    comboItems = [];
+                    renderComboRows();
+                    syncManageStock();
+                    syncProductType();
                     document.getElementById('apName').focus();
                 } else {
                     window.location.href = '/inventory?tab=stock';
                 }
             } catch (err) {
-                OkwUI.toast(err.message || 'Could not save product', 'danger');
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast(err.message || 'Could not save product', 'error');
             } finally {
                 submitting = false;
                 saveBtn.disabled = false;
@@ -487,7 +1125,8 @@
             submitProduct(false);
         });
         document.getElementById('btnSaveAddAnother').addEventListener('click', () => submitProduct(true));
-        document.addEventListener('DOMContentLoaded', loadLookups);
+
+        loadLookups();
     })();
     </script>
 </body>

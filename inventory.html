@@ -2818,10 +2818,17 @@
                     ['Unit', p.selling_unit || 'Unit'],
                     ['Current Stock', String(branchStock)],
                     ['Alert Quantity', String(Math.round(Number(p.reorder_level ?? 10)))],
+                    ...(p.device_model ? [['Device Model', p.device_model]] : []),
+                    ...(p.weight ? [['Weight', p.weight]] : []),
+                    ...(Number(p.preparation_time_minutes || 0) > 0 ? [['Preparation Time', `${Number(p.preparation_time_minutes)} min`]] : []),
                     ['Cost (Exc. Tax)', formatCurrency(p.cost_price || 0)],
                     ['Selling Price', formatCurrency(p.price || 0)],
-                    ['Applicable Tax', `${Number(p.applicable_tax || 0)}% (${p.tax_type || 'Exclusive'})`],
-                    ['Product Type', p.product_type || 'Single']
+                    ['Applicable Tax', `${p.applicable_tax_name && p.applicable_tax_name !== 'None' ? p.applicable_tax_name + ' ' : ''}${Number(p.applicable_tax || 0)}% (${p.tax_type || 'Exclusive'})`],
+                    ['Product Type', p.product_type || 'Single'],
+                    ...(p.not_for_selling ? [['Not for Selling', 'Yes']] : []),
+                    ...(p.enable_sr_no ? [['IMEI / Serial No.', 'Enabled']] : []),
+                    ...(p.disable_woocommerce_sync ? [['WooCommerce Sync', 'Disabled']] : []),
+                    ...(p.brochure_name ? [['Brochure', p.brochure_name]] : [])
                 ],
                 notes: cleanDesc
             });

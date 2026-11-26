@@ -1164,6 +1164,8 @@ async function initDb() {
 
 
 
+        await ensureExtendedProductColumns();
+
         // SaaS MULTI-TENANT ARCHITECTURE LOOP
         // Natively inject tenant_id global sandboxes across all operational tables
         const saasTables = [
@@ -1182,7 +1184,8 @@ async function initDb() {
             'supplier_payments', 'roles', 'companies', 'company_users',
             'business_settings', 'notification_templates', 'expense_categories',
             'gl_accounts', 'gl_journal_entries', 'gl_journal_lines', 'bank_statement_lines',
-            'payroll_profiles', 'payroll_runs', 'payroll_items'
+            'payroll_profiles', 'payroll_runs', 'payroll_items',
+            'device_models', 'product_variation_items', 'product_combo_items'
         ];
 
         for (const table of saasTables) {
@@ -1460,7 +1463,7 @@ app.use(cors(corsOptions));
 app.options(/.*/, cors(corsOptions)); // Enable pre-flight for all routes
 
 // Body parser middleware
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Routes that run before anyone is logged in (so there is no tenant yet) work in the system context the
@@ -3447,13 +3450,98 @@ async function ensureExtendedProductColumns() {
         ALTER TABLE products ADD COLUMN IF NOT EXISTS brochure_url TEXT;
         ALTER TABLE products ADD COLUMN IF NOT EXISTS brochure_name VARCHAR(255);
         ALTER TABLE products ADD COLUMN IF NOT EXISTS applicable_tax NUMERIC(6,2) DEFAULT 0;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS applicable_tax_name VARCHAR(80) DEFAULT 'None';
         ALTER TABLE products ADD COLUMN IF NOT EXISTS tax_type VARCHAR(30) DEFAULT 'Exclusive';
         ALTER TABLE products ADD COLUMN IF NOT EXISTS product_type VARCHAR(30) DEFAULT 'Single';
         ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_inc_tax NUMERIC(12,2) DEFAULT 0;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS selling_price_exc_tax NUMERIC(12,2) DEFAULT 0;
         ALTER TABLE products ADD COLUMN IF NOT EXISTS margin_pct NUMERIC(8,2) DEFAULT 0;
         ALTER TABLE products ADD COLUMN IF NOT EXISTS varying_prices JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS device_model VARCHAR(160);
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS enable_sr_no BOOLEAN DEFAULT FALSE;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS not_for_selling BOOLEAN DEFAULT FALSE;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS weight VARCHAR(60);
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS preparation_time_minutes INTEGER DEFAULT 0;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS disable_woocommerce_sync BOOLEAN DEFAULT FALSE;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS variation_items JSONB DEFAULT '[]'::jsonb;
+        ALTER TABLE products ADD COLUMN IF NOT EXISTS combo_items JSONB DEFAULT '[]'::jsonb;
+
+        CREATE TABLE IF NOT EXISTS device_models (
+            id SERIAL PRIMARY KEY,
+            name VARCHAR(160) NOT NULL,
+            brand VARCHAR(120),
+            tenant_id INT DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS product_variation_items (
+            id SERIAL PRIMARY KEY,
+            product_id INT REFERENCES products(id) ON DELETE CASCADE,
+            variation_name VARCHAR(120),
+            variation_value VARCHAR(120),
+            sub_sku VARCHAR(120),
+            purchase_price_exc_tax NUMERIC(12,2) DEFAULT 0,
+            purchase_price_inc_tax NUMERIC(12,2) DEFAULT 0,
+            margin_pct NUMERIC(8,2) DEFAULT 0,
+            selling_price_exc_tax NUMERIC(12,2) DEFAULT 0,
+            selling_price_inc_tax NUMERIC(12,2) DEFAULT 0,
+            image_url TEXT,
+            tenant_id INT DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS product_combo_items (
+            id SERIAL PRIMARY KEY,
+            product_id INT REFERENCES products(id) ON DELETE CASCADE,
+            item_product_id INT,
+            item_barcode VARCHAR(120),
+            item_name VARCHAR(255),
+            quantity NUMERIC(12,3) DEFAULT 1,
+            unit_purchase_price NUMERIC(12,2) DEFAULT 0,
+            total_purchase_price NUMERIC(12,2) DEFAULT 0,
+            tenant_id INT DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
     `).catch(() => {});
 }
+
+app.get('/api/device-models', authenticateToken, async (req, res) => {
+    try {
+        await ensureExtendedProductColumns();
+        const tenantId = req.user.tenant_id || 1;
+        const r = await pool.query(
+            'SELECT id, name, brand FROM device_models WHERE COALESCE(tenant_id, 1) = $1 ORDER BY name ASC',
+            [tenantId]
+        );
+        res.json({ device_models: r.rows });
+    } catch (err) {
+        console.error('GET /api/device-models error:', err);
+        res.status(500).json({ message: 'Failed to load device models' });
+    }
+});
+
+app.post('/api/device-models', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    const { name, brand = '' } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ message: 'Device model name is required' });
+    try {
+        await ensureExtendedProductColumns();
+        const tenantId = req.user.tenant_id || 1;
+        const cleanName = String(name).trim();
+        const existing = await pool.query(
+            'SELECT id, name, brand FROM device_models WHERE LOWER(name) = LOWER($1) AND COALESCE(tenant_id, 1) = $2 LIMIT 1',
+            [cleanName, tenantId]
+        );
+        if (existing.rows.length) return res.json({ device_model: existing.rows[0] });
+        const r = await pool.query(
+            'INSERT INTO device_models (name, brand, tenant_id) VALUES ($1, $2, $3) RETURNING id, name, brand',
+            [cleanName, String(brand || '').trim(), tenantId]
+        );
+        res.status(201).json({ device_model: r.rows[0] });
+    } catch (err) {
+        console.error('POST /api/device-models error:', err);
+        res.status(500).json({ message: 'Failed to save device model' });
+    }
+});
 
 app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const {
@@ -3461,12 +3549,20 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
         conversion_rate, reorder_level, track_batch, track_expiry, batch_number, expiry_date,
         barcode_type = 'C128', brand = '', sub_category = '', business_locations = 'All Locations',
         manage_stock = true, description = '', image_url = '', brochure_url = '', brochure_name = '',
-        applicable_tax = 0, tax_type = 'Exclusive', product_type = 'Single', cost_inc_tax = 0, margin_pct = 0
+        applicable_tax = 0, applicable_tax_name = 'None', tax_type = 'Exclusive', product_type = 'Single',
+        cost_inc_tax = 0, selling_price_exc_tax = 0, margin_pct = 0,
+        device_model = '', enable_sr_no = false, not_for_selling = false, weight = '',
+        preparation_time_minutes = 0, disable_woocommerce_sync = false,
+        variation_items = [], combo_items = []
     } = req.body;
     try {
         await ensureExtendedProductColumns();
         const tenantId = req.user.tenant_id || 1;
         const finalBarcode = (barcode && barcode.trim()) ? barcode.trim() : ('FP-' + Date.now());
+        const varList = Array.isArray(variation_items) ? variation_items : [];
+        const comboList = Array.isArray(combo_items) ? combo_items : [];
+        const cleanReorder = Math.max(0, Math.round(Number(reorder_level ?? 10) || 0));
+        const cleanPrepMins = Math.max(0, Math.round(Number(preparation_time_minutes || 0) || 0));
 
         // Refresh store info from DB to ensure accuracy
         const userRes = await pool.query('SELECT store_id, store_location FROM users WHERE id = $1', [req.user.id]);
@@ -3475,8 +3571,37 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
         const userBranch = dbUser?.store_location || req.user.store_location || DEFAULT_BRANCH_NAME;
         const branchId = dbUser?.store_id || req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
 
-        const stockValue = toQty(stock);
+        const stockValue = manage_stock === false ? 0 : toQty(stock);
         const stockLevels = JSON.stringify({ [userBranch]: stockValue });
+
+        const syncChildItems = async (prodId) => {
+            if (!prodId) return;
+            await pool.query('DELETE FROM product_variation_items WHERE product_id = $1 AND COALESCE(tenant_id, 1) = $2', [prodId, tenantId]).catch(() => {});
+            for (const v of varList) {
+                await pool.query(
+                    `INSERT INTO product_variation_items (
+                        product_id, variation_name, variation_value, sub_sku,
+                        purchase_price_exc_tax, purchase_price_inc_tax, margin_pct,
+                        selling_price_exc_tax, selling_price_inc_tax, image_url, tenant_id
+                     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+                    [prodId, String(v.variation_name || ''), String(v.variation_value || ''), String(v.sub_sku || ''),
+                     Number(v.purchase_price_exc_tax || 0), Number(v.purchase_price_inc_tax || 0), Number(v.margin_pct || 0),
+                     Number(v.selling_price_exc_tax || 0), Number(v.selling_price_inc_tax || 0), String(v.image_url || ''), tenantId]
+                ).catch(() => {});
+            }
+            await pool.query('DELETE FROM product_combo_items WHERE product_id = $1 AND COALESCE(tenant_id, 1) = $2', [prodId, tenantId]).catch(() => {});
+            for (const c of comboList) {
+                await pool.query(
+                    `INSERT INTO product_combo_items (
+                        product_id, item_product_id, item_barcode, item_name,
+                        quantity, unit_purchase_price, total_purchase_price, tenant_id
+                     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+                    [prodId, c.item_product_id ? Number(c.item_product_id) : null, String(c.item_barcode || ''),
+                     String(c.item_name || ''), Number(c.quantity || 1), Number(c.unit_purchase_price || 0),
+                     Number(c.total_purchase_price || 0), tenantId]
+                ).catch(() => {});
+            }
+        };
 
         // Check if a soft-deleted product with the same barcode+name already exists
         const deletedRes = await pool.query(
@@ -3494,35 +3619,53 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
                     track_batch = $11, track_expiry = $12,
                     barcode_type = $13, brand = $14, sub_category = $15, business_locations = $16,
                     manage_stock = $17, description = $18, image_url = $19, brochure_url = $20, brochure_name = $21,
-                    applicable_tax = $22, tax_type = $23, product_type = $24, cost_inc_tax = $25, margin_pct = $26,
+                    applicable_tax = $22, applicable_tax_name = $23, tax_type = $24, product_type = $25,
+                    cost_inc_tax = $26, selling_price_exc_tax = $27, margin_pct = $28,
+                    device_model = $29, enable_sr_no = $30, not_for_selling = $31, weight = $32,
+                    preparation_time_minutes = $33, disable_woocommerce_sync = $34,
+                    variation_items = $35::jsonb, combo_items = $36::jsonb,
                     deleted_at = NULL
-                 WHERE id = $27 AND tenant_id = $28`,
+                 WHERE id = $37 AND tenant_id = $38`,
                 [name, category, price, stockValue, stockLevels,
                     cost_price || 0, selling_unit || 'Unit', packaging_unit || 'Box',
-                    conversion_rate || 1, reorder_level || 10,
+                    conversion_rate || 1, cleanReorder,
                     track_batch ?? true, track_expiry ?? false,
                     barcode_type, brand, sub_category, business_locations,
                     manage_stock !== false, description, image_url, brochure_url, brochure_name,
-                    Number(applicable_tax || 0), tax_type, product_type, Number(cost_inc_tax || 0), Number(margin_pct || 0),
+                    Number(applicable_tax || 0), applicable_tax_name, tax_type, product_type,
+                    Number(cost_inc_tax || 0), Number(selling_price_exc_tax || 0), Number(margin_pct || 0),
+                    device_model, !!enable_sr_no, !!not_for_selling, String(weight || ''),
+                    cleanPrepMins, !!disable_woocommerce_sync,
+                    JSON.stringify(varList), JSON.stringify(comboList),
                     existingId, tenantId]
             );
-            await logActivity(req, 'RESTORE_PRODUCT', { barcode: finalBarcode, name, stock });
-            return res.json({ success: true, restored: true });
+            await syncChildItems(existingId);
+            await logActivity(req, 'RESTORE_PRODUCT', { barcode: finalBarcode, name, stock: stockValue });
+            return res.json({ success: true, restored: true, id: existingId });
         }
 
         // Fresh INSERT — no deleted record found for this barcode
-        await pool.query(
+        const insRes = await pool.query(
             `INSERT INTO products (
                 barcode, name, category, price, stock, stock_levels, cost_price, selling_unit, packaging_unit,
                 conversion_rate, reorder_level, track_batch, track_expiry, branch_id, tenant_id,
                 barcode_type, brand, sub_category, business_locations, manage_stock, description,
-                image_url, brochure_url, brochure_name, applicable_tax, tax_type, product_type, cost_inc_tax, margin_pct
-             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29)`,
+                image_url, brochure_url, brochure_name, applicable_tax, applicable_tax_name, tax_type,
+                product_type, cost_inc_tax, selling_price_exc_tax, margin_pct,
+                device_model, enable_sr_no, not_for_selling, weight, preparation_time_minutes,
+                disable_woocommerce_sync, variation_items, combo_items
+             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38::jsonb,$39::jsonb)
+             RETURNING id`,
             [finalBarcode, name, category, price, stockValue, stockLevels, cost_price || 0, selling_unit || 'Unit', packaging_unit || 'Box',
-                conversion_rate || 1, reorder_level || 10, track_batch ?? true, track_expiry ?? false, branchId, tenantId,
+                conversion_rate || 1, cleanReorder, track_batch ?? true, track_expiry ?? false, branchId, tenantId,
                 barcode_type, brand, sub_category, business_locations, manage_stock !== false, description,
-                image_url, brochure_url, brochure_name, Number(applicable_tax || 0), tax_type, product_type, Number(cost_inc_tax || 0), Number(margin_pct || 0)]
+                image_url, brochure_url, brochure_name, Number(applicable_tax || 0), applicable_tax_name, tax_type,
+                product_type, Number(cost_inc_tax || 0), Number(selling_price_exc_tax || 0), Number(margin_pct || 0),
+                device_model, !!enable_sr_no, !!not_for_selling, String(weight || ''), cleanPrepMins,
+                !!disable_woocommerce_sync, JSON.stringify(varList), JSON.stringify(comboList)]
         );
+        const newProductId = insRes.rows[0]?.id;
+        await syncChildItems(newProductId);
 
         // Insert Batch if provided and stock > 0
         if (stockValue > 0 && (batch_number || expiry_date)) {
@@ -3540,8 +3683,8 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
             );
         }
 
-        await logActivity(req, 'CREATE_PRODUCT', { barcode: finalBarcode, name, stock });
-        res.json({ success: true });
+        await logActivity(req, 'CREATE_PRODUCT', { barcode: finalBarcode, name, stock: stockValue });
+        res.json({ success: true, id: newProductId });
     } catch (err) {
         if (err.code === '23505' && err.constraint === 'products_barcode_active_idx') {
             return res.status(409).json({ message: `A product named "${name}" with barcode "${barcode}" already exists. Use a different barcode/name combination or edit the existing product.` });
@@ -3918,7 +4061,10 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
         barcode: newBarcode, name, category, price, stock, cost_price, selling_unit, packaging_unit,
         conversion_rate, reorder_level, track_batch, track_expiry, stock_levels: incomingStockLevels,
         barcode_type, brand, sub_category, business_locations, manage_stock, description,
-        image_url, brochure_url, brochure_name, applicable_tax, tax_type, product_type, cost_inc_tax, margin_pct
+        image_url, brochure_url, brochure_name, applicable_tax, applicable_tax_name, tax_type, product_type,
+        cost_inc_tax, selling_price_exc_tax, margin_pct,
+        device_model, enable_sr_no, not_for_selling, weight, preparation_time_minutes,
+        disable_woocommerce_sync, variation_items, combo_items
     } = req.body;
     const { id } = req.params;
     const tenantId = req.user.tenant_id || 1;
@@ -3981,21 +4127,42 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
                 brochure_url = CASE WHEN $21 <> '' THEN $21 ELSE brochure_url END,
                 brochure_name = CASE WHEN $22 <> '' THEN $22 ELSE brochure_name END,
                 applicable_tax = COALESCE($23, applicable_tax),
-                tax_type = COALESCE($24, tax_type),
-                product_type = COALESCE($25, product_type),
-                cost_inc_tax = COALESCE($26, cost_inc_tax),
-                margin_pct = COALESCE($27, margin_pct)
-             WHERE id = $28 AND COALESCE(tenant_id, 1) = $29 RETURNING *`,
+                applicable_tax_name = COALESCE($24, applicable_tax_name),
+                tax_type = COALESCE($25, tax_type),
+                product_type = COALESCE($26, product_type),
+                cost_inc_tax = COALESCE($27, cost_inc_tax),
+                selling_price_exc_tax = COALESCE($28, selling_price_exc_tax),
+                margin_pct = COALESCE($29, margin_pct),
+                device_model = COALESCE($30, device_model),
+                enable_sr_no = COALESCE($31, enable_sr_no),
+                not_for_selling = COALESCE($32, not_for_selling),
+                weight = COALESCE($33, weight),
+                preparation_time_minutes = COALESCE($34, preparation_time_minutes),
+                disable_woocommerce_sync = COALESCE($35, disable_woocommerce_sync),
+                variation_items = COALESCE($36::jsonb, variation_items),
+                combo_items = COALESCE($37::jsonb, combo_items)
+             WHERE id = $38 AND COALESCE(tenant_id, 1) = $39 RETURNING *`,
             [finalBarcode, name, category, price, totalStock, cost_price, selling_unit, packaging_unit,
-                conversion_rate, reorder_level, track_batch ?? current.track_batch, track_expiry ?? current.track_expiry,
+                conversion_rate, reorder_level !== undefined ? Math.max(0, Math.round(Number(reorder_level) || 0)) : current.reorder_level,
+                track_batch ?? current.track_batch, track_expiry ?? current.track_expiry,
                 JSON.stringify(stockLevels),
                 barcode_type ?? null, brand ?? null, sub_category ?? null, business_locations ?? null,
                 manage_stock !== undefined ? !!manage_stock : null, description ?? null,
                 image_url || '', brochure_url || '', brochure_name || '',
                 applicable_tax !== undefined ? Number(applicable_tax) : null,
+                applicable_tax_name ?? null,
                 tax_type ?? null, product_type ?? null,
                 cost_inc_tax !== undefined ? Number(cost_inc_tax) : null,
+                selling_price_exc_tax !== undefined ? Number(selling_price_exc_tax) : null,
                 margin_pct !== undefined ? Number(margin_pct) : null,
+                device_model ?? null,
+                enable_sr_no !== undefined ? !!enable_sr_no : null,
+                not_for_selling !== undefined ? !!not_for_selling : null,
+                weight ?? null,
+                preparation_time_minutes !== undefined ? Math.max(0, Math.round(Number(preparation_time_minutes) || 0)) : null,
+                disable_woocommerce_sync !== undefined ? !!disable_woocommerce_sync : null,
+                Array.isArray(variation_items) ? JSON.stringify(variation_items) : null,
+                Array.isArray(combo_items) ? JSON.stringify(combo_items) : null,
                 id, tenantId]
         );
 
