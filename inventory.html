@@ -2538,7 +2538,7 @@
             let userBranch =
                 resolvedBranchKey ||
                 (currentUser && currentUser.store_location) ||
-                (currentUser && currentUser.role === 'admin' ? 'Accra Central' : 'Accra Branch');
+                '';
             window.branchStockKey = resolvedBranchKey || window.branchStockKey || userBranch;
             window.currentUserBranch = userBranch;
             
@@ -2574,7 +2574,10 @@
 
             let rowsHtml = '';
             pageData.forEach(p => {
-                if (!p.stock_levels) p.stock_levels = { 'Main Warehouse': parseInt(p.stock) || 0 };
+                if (!p.stock_levels) {
+                    const fallbackKey = window.branchStockKey || window.currentUserBranch || 'Default';
+                    p.stock_levels = { [fallbackKey]: parseFloat(p.stock) || 0 };
+                }
 
                 const branchStock = inventoryDisplayStock(p);
 
@@ -3228,9 +3231,9 @@
             const existingProduct = id ? products.find(p => p.id === parseInt(id)) : null;
             
             // Determine branch and stock
-            const userBranch = window.currentUserBranch || 'Main Warehouse';
+            const userBranch = window.currentUserBranch || (currentUser && currentUser.store_location) || '';
             const branchKey = window.branchStockKey || userBranch;
-            const inputStock = parseInt(document.getElementById('pStock').value) || 0;
+            const inputStock = parseFloat(document.getElementById('pStock').value) || 0;
             
             // Prepare stock levels
             let stockLevels = {};
@@ -3240,21 +3243,8 @@
                     : { ...existingProduct.stock_levels };
             }
 
-            // Only consolidate aliases for the CURRENT branch to avoid deleting stock from OTHER branches
-            const aliasMap = {
-                'Main Warehouse': ['Headquarters'],
-                'Accra Branch': ['Accra Central'],
-                'Kumasi Branch': ['Kumasi']
-            };
-            
-            if (aliasMap[branchKey]) {
-                aliasMap[branchKey].forEach(alias => {
-                    if (stockLevels[alias] !== undefined) delete stockLevels[alias];
-                });
-            }
-
             // Update specific branch stock
-            stockLevels[branchKey] = inputStock;
+            if (branchKey) stockLevels[branchKey] = inputStock;
 
             const newProduct = {
                 barcode: barcode,
@@ -4285,7 +4275,7 @@
             updateTransferList();
 
             // Show current user info
-            const userBranch = currentUser && currentUser.store_location ? currentUser.store_location : 'Main Warehouse';
+            const userBranch = (currentUser && currentUser.store_location) || window.currentUserBranch || '';
 
             // Set From Location (Fixed to User Branch)
             document.getElementById('trFrom').value = userBranch;

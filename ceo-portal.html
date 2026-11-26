@@ -2637,10 +2637,12 @@
                         </div>
                     </div>
                     <div class="form-group">
-                        <label class="form-label">Initial Password</label>
-                        <input type="text" id="mgrPassword" class="form-input" value="Password123">
-                        <small style="color: #64748b; font-size: 11px; margin-top: 4px; display: block;">Default
-                            password. User can change it upon logging in.</small>
+                        <div style="display:flex;justify-content:space-between;align-items:center;">
+                            <label class="form-label">Initial Password *</label>
+                            <button type="button" data-onclick="generateMgrPassword()" style="border:0;background:none;color:#273990;font-size:12px;font-weight:700;cursor:pointer;">Generate</button>
+                        </div>
+                        <input type="text" id="mgrPassword" class="form-input" placeholder="Enter password (min 8 chars)" minlength="8" required>
+                        <small style="color: #64748b; font-size: 11px; margin-top: 4px; display: block;">User can change this password from Profile after signing in.</small>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -5199,15 +5201,24 @@
             // Placeholder for future customer insights logic
         }
 
+        function generateMgrPassword() {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+            const arr = new Uint32Array(12);
+            (window.crypto || window.msCrypto).getRandomValues(arr);
+            let out = '';
+            for (let i = 0; i < arr.length; i++) out += chars[arr[i] % chars.length];
+            const el = document.getElementById('mgrPassword');
+            if (el) el.value = out;
+        }
+
         // User Creation Modal Logic
         function openManagerModal() {
             document.getElementById('managerModal').classList.add('active');
-            document.getElementById('mgrPassword').value = 'Password123';
+            document.getElementById('mgrPassword').value = '';
 
             // Populate branches
             const select = document.getElementById('mgrBranch');
             select.innerHTML = '<option value="">Select Branch</option>';
-            select.innerHTML += '<option value="Headquarters">Headquarters (All Branches)</option>';
             allBranches.forEach(b => {
                 select.innerHTML += `<option value="${OkwUI.escapeHtml(b.location || b.name)}" data-id="${b.id}">${OkwUI.escapeHtml(b.name)} (${OkwUI.escapeHtml(b.location)})</option>`;
             });
@@ -5216,7 +5227,6 @@
                 loadBranches().then(() => {
                     const select = document.getElementById('mgrBranch');
                     select.innerHTML = '<option value="">Select Branch</option>';
-                    select.innerHTML += '<option value="Headquarters">Headquarters (All Branches)</option>';
                     allBranches.forEach(b => {
                         select.innerHTML += `<option value="${OkwUI.escapeHtml(b.location || b.name)}" data-id="${b.id}">${OkwUI.escapeHtml(b.name)} (${OkwUI.escapeHtml(b.location)})</option>`;
                     });
@@ -5228,17 +5238,17 @@
         async function createManager() {
             const name = document.getElementById('mgrName').value.trim();
             const email = document.getElementById('mgrEmail').value.trim();
-            const phone = document.getElementById('mgrPhone')?.value.trim() || '0000000000';
+            const phone = document.getElementById('mgrPhone')?.value.trim() || '';
             const role = document.getElementById('mgrRole')?.value || 'manager';
             const branchSelect = document.getElementById('mgrBranch');
             const branchLocation = branchSelect.value;
             const branchId = branchSelect.options[branchSelect.selectedIndex]?.dataset.id;
-            const password = document.getElementById('mgrPassword').value.trim() || 'Password123';
+            const password = document.getElementById('mgrPassword').value.trim();
             const customUsername = document.getElementById('mgrUsername')?.value.trim();
             const customEmployeeId = document.getElementById('mgrEmployeeId')?.value.trim();
 
-            if (!name || !email || !branchLocation) {
-                alert("Please fill all required fields: Full Name, Email, and Assigned Branch.");
+            if (!name || !email || !branchLocation || password.length < 8) {
+                alert("Please fill Full Name, Email, Assigned Branch, and a Password (at least 8 characters).");
                 return;
             }
 
@@ -5280,7 +5290,7 @@
                     if (document.getElementById('mgrUsername')) document.getElementById('mgrUsername').value = '';
                     if (document.getElementById('mgrEmployeeId')) document.getElementById('mgrEmployeeId').value = '';
                     document.getElementById('mgrBranch').value = '';
-                    document.getElementById('mgrPassword').value = 'Password123';
+                    document.getElementById('mgrPassword').value = '';
 
                     // 1. Immediately refresh the users table without needing page reload
                     await loadUsers(false);

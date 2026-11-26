@@ -341,8 +341,11 @@
                                     <input type="text" id="employeeId" placeholder="Auto-generated" readonly style="opacity:0.75;">
                                 </div>
                                 <div class="form-group">
-                                    <label for="password">Initial Password (min 8 chars) *</label>
-                                    <input type="text" id="password" value="Password123" minlength="8" required>
+                                    <div style="display:flex;justify-content:space-between;align-items:center;">
+                                        <label for="password">Initial Password (min 8 chars) *</label>
+                                        <button type="button" data-onclick="generateRandomPassword('password')" style="border:0;background:none;color:#273990;font-size:12px;font-weight:700;cursor:pointer;">Generate</button>
+                                    </div>
+                                    <input type="text" id="password" placeholder="Enter initial password (min 8 chars)" minlength="8" required>
                                 </div>
                             </div>
                             <button type="submit" id="btnRegisterStaff" class="btn-submit" style="margin-top:12px;">
@@ -880,6 +883,16 @@
             } catch (_) {
                 showNotification('Connection error', 'error');
             }
+        }
+
+        function generateRandomPassword(inputId) {
+            const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#$%';
+            let out = '';
+            const arr = new Uint32Array(12);
+            (window.crypto || window.msCrypto).getRandomValues(arr);
+            for (let i = 0; i < arr.length; i++) out += chars[arr[i] % chars.length];
+            const el = document.getElementById(inputId);
+            if (el) el.value = out;
         }
 
         function generateNextEmployeeId() {
