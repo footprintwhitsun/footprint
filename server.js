@@ -10625,7 +10625,7 @@ app.use(express.static(path.join(__dirname), {
         } else if (filePath.endsWith('.html')) {
             res.setHeader('Cache-Control', 'no-cache');
         } else if (filePath.endsWith('.js') || filePath.endsWith('.css')) {
-            res.setHeader('Cache-Control', 'public, max-age=300, must-revalidate');
+            res.setHeader('Cache-Control', 'no-cache, must-revalidate');
         } else if (filePath.endsWith('.png') || filePath.endsWith('.ico') || filePath.endsWith('.svg') || filePath.endsWith('.woff2')) {
             res.setHeader('Cache-Control', 'public, max-age=86400, immutable');
         }
