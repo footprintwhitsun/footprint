@@ -769,7 +769,7 @@ router.get('/api/products/stock-report', authenticateToken, requireRole(MANAGER_
     }
 });
 
-router.get('/api/products/:id/stock-history', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+router.get('/api/products/stock-report/:id/history', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const tenantId = req.user.tenant_id || 1;
     const productId = parseInt(req.params.id, 10);
     const locationFilter = String(req.query.location || '').trim();

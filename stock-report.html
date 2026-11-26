@@ -415,7 +415,7 @@
                 const tbody = backdrop.querySelector('#shTableBody');
                 tbody.innerHTML = `<tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:90px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:54px;"></span></td><td class="num"><span class="okw-sk-bar" style="width:54px;"></span></td><td><span class="okw-sk-bar" style="width:110px;"></span></td><td><span class="okw-sk-bar" style="width:88px;"></span></td><td><span class="okw-sk-bar" style="width:140px;"></span></td></tr>`;
                 try {
-                    const res = await fetch(`/api/products/${encodeURIComponent(pid)}/stock-history${qs}`, { headers, credentials: 'include' });
+                    const res = await fetch(`/api/products/stock-report/${encodeURIComponent(pid)}/history${qs}`, { headers, credentials: 'include' });
                     if (!res.ok) throw new Error('HTTP ' + res.status);
                     const d = await res.json();
                     lastData = d;
