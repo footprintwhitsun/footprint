@@ -37,8 +37,12 @@
 
     <main class="main-content">
         <div class="page-wrap">
-            <h1 style="margin:0 0 6px;font-size:24px;">Brands, Units, Bulk Prices & Customer Groups</h1>
-            <p style="margin:0 0 18px;color:var(--color-text-muted);font-size:14px;">Manage building-material brands, unit conversions, bulk price updates with history, customer groups, and project sites.</p>
+            <div class="okw-page-header">
+                <div class="okw-page-header-text">
+                    <h1 class="okw-page-title" id="cat-page-title">Brands, Units, Bulk Prices &amp; Customer Groups</h1>
+                    <p class="okw-page-subtitle" id="cat-page-subtitle">Manage building-material brands, unit conversions, bulk price updates with history, customer groups, and project sites.</p>
+                </div>
+            </div>
 
             <div class="tabs-row" id="cat-tabs">
                 <button type="button" class="okw-btn okw-btn-primary" data-ctab="brands">Brands</button>
@@ -261,8 +265,32 @@
         drawView(selectedView);
     }
 
+    const TAB_META = {
+        brands: {
+            title: 'Brands',
+            subtitle: 'Manage product brands, linked stock counts, and inventory value.'
+        },
+        units: {
+            title: 'Units & Conversions',
+            subtitle: 'Configure base units and pack-to-base selling conversions.'
+        },
+        prices: {
+            title: 'Bulk Price Updates',
+            subtitle: 'Preview and apply percentage or fixed price updates with full change history.'
+        },
+        groups: {
+            title: 'Customer Groups',
+            subtitle: 'Manage customer pricing tiers, default discounts, and project sites.'
+        }
+    };
+
     function switchTab(tab) {
         activeTab = tab;
+        const meta = TAB_META[tab] || TAB_META.brands;
+        const titleEl = document.getElementById('cat-page-title');
+        const subEl = document.getElementById('cat-page-subtitle');
+        if (titleEl) titleEl.textContent = meta.title;
+        if (subEl) subEl.textContent = meta.subtitle;
         document.getElementById('cat-tabs').querySelectorAll('[data-ctab]').forEach(b => {
             b.className = b.dataset.ctab === tab ? 'okw-btn okw-btn-primary' : 'okw-btn okw-btn-outline';
         });

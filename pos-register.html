@@ -191,14 +191,16 @@
     <div class="main-content">
         <!-- 1. USERS DIRECTORY TAB -->
         <div id="tab-users" class="tab-content">
-            <div class="um-head">
-                <div>
-                    <h1>Users</h1>
-                    <p>Manage staff accounts, roles, branches, and active or suspended access.</p>
+            <div class="okw-page-header">
+                <div class="okw-page-header-text">
+                    <h1 class="okw-page-title">Users</h1>
+                    <p class="okw-page-subtitle">Manage staff accounts, roles, branches, and active or suspended access.</p>
                 </div>
-                <button type="button" class="um-btn um-btn-primary" data-onclick="switchTab('register')">
-                    <i class="fas fa-user-plus"></i> Add User
-                </button>
+                <div class="okw-page-header-actions">
+                    <button type="button" class="um-btn um-btn-primary" data-onclick="switchTab('register')">
+                        <i class="fas fa-user-plus"></i> Add User
+                    </button>
+                </div>
             </div>
 
             <div class="um-kpis">
@@ -283,14 +285,16 @@
 
         <!-- 2. REGISTER NEW STAFF TAB -->
         <div id="tab-register" class="tab-content">
-            <div class="um-head">
-                <div>
-                    <h1>Onboard New Staff</h1>
-                    <p>Create a new staff account and assign their role and branch.</p>
+            <div class="okw-page-header">
+                <div class="okw-page-header-text">
+                    <h1 class="okw-page-title">Onboard New Staff</h1>
+                    <p class="okw-page-subtitle">Create a new staff account and assign their role and branch.</p>
                 </div>
-                <button type="button" class="um-btn" data-onclick="switchTab('users')">
-                    <i class="fas fa-users"></i> View Users
-                </button>
+                <div class="okw-page-header-actions">
+                    <button type="button" class="um-btn" data-onclick="switchTab('users')">
+                        <i class="fas fa-users"></i> View Users
+                    </button>
+                </div>
             </div>
 
             <div class="um-form-card">

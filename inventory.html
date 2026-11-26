@@ -810,12 +810,17 @@
 
         <!-- 2. SUPPLIERS TAB -->
         <div id="tab-suppliers" class="tab-content">
-            <div class="page-header">
-                <h3>Supplier Management</h3>
-                <button class="btn-add" data-onclick="openSupplierModal()"><i class="fas fa-user-plus"></i> Add Supplier</button>
+            <div class="okw-page-header">
+                <div class="okw-page-header-text">
+                    <h1 class="okw-page-title">Suppliers</h1>
+                    <p class="okw-page-subtitle">Manage supplier directory, contact details, and purchasing partners.</p>
+                </div>
+                <div class="okw-page-header-actions">
+                    <button type="button" class="btn-add" data-onclick="openSupplierModal()"><i class="fas fa-user-plus"></i> Add Supplier</button>
+                </div>
             </div>
-            <div style="margin-bottom: 20px;">
-                <input type="text" id="supplierSearch" placeholder="Search by name or contact..." data-onkeyup="filterSuppliers()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+            <div style="margin-bottom: 16px;">
+                <input type="text" id="supplierSearch" placeholder="Search by name or contact..." data-onkeyup="filterSuppliers()" style="width: 100%; height: 42px; padding: 0 14px; border: 1px solid var(--edge-strong, #ddd); border-radius: 8px; background: var(--sheet, #fff); font-family: var(--font-ui); font-size: 14px; display: block;">
             </div>
             <div class="inventory-card">
                 <table class="supplier-table">
