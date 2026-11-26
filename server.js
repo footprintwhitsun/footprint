@@ -3505,6 +3505,28 @@ async function ensureExtendedProductColumns() {
                 tenant_id INT DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+
+            DO $$
+            DECLARE r RECORD;
+            BEGIN
+                FOR r IN
+                    SELECT con.conname, con.conrelid::regclass AS tbl, att.attname AS col
+                    FROM pg_constraint con
+                    JOIN pg_attribute att ON att.attrelid = con.conrelid AND att.attnum = con.conkey[1]
+                    WHERE con.contype = 'f'
+                      AND con.confrelid = 'products'::regclass
+                      AND con.confupdtype <> 'c'
+                      AND array_length(con.conkey, 1) = 1
+                      AND (SELECT a2.attname FROM pg_attribute a2 WHERE a2.attrelid = con.confrelid AND a2.attnum = con.confkey[1]) = 'barcode'
+                LOOP
+                    BEGIN
+                        EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', r.tbl, r.conname);
+                        EXECUTE format('ALTER TABLE %s ADD CONSTRAINT %I FOREIGN KEY (%I) REFERENCES products(barcode) ON UPDATE CASCADE ON DELETE CASCADE', r.tbl, r.conname, r.col);
+                    EXCEPTION WHEN OTHERS THEN
+                        NULL;
+                    END;
+                END LOOP;
+            END $$;
         `);
         _extProdColsReady = true;
     } catch (e) {
@@ -4180,9 +4202,16 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
                 id, tenantId]
         );
 
-        // Cascade barcode change to batches if barcode actually changed
+        // Cascade barcode change to related tables if barcode actually changed
         if (newBarcode && newBarcode !== currentBarcode) {
-            await pool.query('UPDATE product_batches SET product_barcode = $1 WHERE product_barcode = $2 AND COALESCE(tenant_id, 1) = $3', [newBarcode, currentBarcode, tenantId]).catch(() => {});
+            const cascadeTables = [
+                'product_batches', 'purchase_order_items', 'stock_adjustments',
+                'stock_transfer_items', 'shelf_inventory', 'shelf_movements',
+                'reorder_alerts', 'inventory_audit_log', 'price_history'
+            ];
+            for (const tbl of cascadeTables) {
+                await pool.query(`UPDATE ${tbl} SET product_barcode = $1 WHERE product_barcode = $2`, [newBarcode, currentBarcode]).catch(() => {});
+            }
         }
 
         const updatedProd = result.rows[0];
@@ -4212,8 +4241,11 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
 
         res.json({ message: 'Product updated successfully', product: updatedProd });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error updating product' });
+        console.error('PUT /api/products/:id error:', err);
+        if (err && err.code === '23505') {
+            return res.status(409).json({ message: 'A product with this barcode already exists.' });
+        }
+        res.status(500).json({ message: 'Error updating product: ' + (err.message || 'Unknown error') });
     }
 });
 
