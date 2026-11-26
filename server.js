@@ -4362,8 +4362,7 @@ app.get('/api/suppliers', authenticateToken, async (req, res) => {
         const statsBySupplier = new Map();
         try {
             const poRes = await pool.query(
-                `SELECT id, supplier_id, COALESCE(total_amount, 0) AS total_amount,
-                        COALESCE(paid_amount, 0) AS paid_amount, COALESCE(status, 'Pending') AS status
+                `SELECT *
                  FROM purchase_orders
                  WHERE COALESCE(tenant_id, 1) = $1
                    AND LOWER(COALESCE(status, '')) NOT IN ('cancelled', 'void')`,
@@ -4471,55 +4470,60 @@ app.get('/api/suppliers/:id/profile-statement', authenticateToken, requireRole(M
             momo_name: biz.momo_name || ''
         };
 
-        // Fetch all purchase orders for this supplier
+        // Fetch all purchase orders for this supplier (avoid referencing optional migration columns in SQL)
         const poRes = await pool.query(
             `SELECT po.*, b.name AS branch_name
              FROM purchase_orders po
              LEFT JOIN branches b ON po.branch_id = b.id
              WHERE po.supplier_id = $1 AND COALESCE(po.tenant_id, 1) = $2
                AND LOWER(COALESCE(po.status, '')) NOT IN ('cancelled', 'void')
-             ORDER BY COALESCE(po.purchase_date::timestamptz, po.created_at) ASC, po.id ASC`,
+             ORDER BY po.created_at ASC, po.id ASC`,
             [supplierId, tenantId]
         );
 
         const poIds = poRes.rows.map((p) => p.id);
+        const poRefById = new Map();
+        for (const p of poRes.rows) {
+            poRefById.set(p.id, p.reference_no || `PO-${String(p.id).padStart(4, '0')}`);
+        }
         const itemsByPo = new Map();
         const suppliedBarcodes = new Set();
         if (poIds.length > 0) {
-            const itemsRes = await pool.query(
-                `SELECT poi.po_id, poi.product_barcode, poi.quantity, poi.unit_cost,
-                        COALESCE(p.name, poi.product_barcode) AS product_name
-                 FROM purchase_order_items poi
-                 LEFT JOIN products p ON p.barcode = poi.product_barcode AND COALESCE(p.tenant_id, 1) = $2
-                 WHERE poi.po_id = ANY($1::int[])
-                 ORDER BY poi.id ASC`,
-                [poIds, tenantId]
-            );
-            for (const it of itemsRes.rows) {
-                if (it.product_barcode) suppliedBarcodes.add(it.product_barcode);
-                const list = itemsByPo.get(it.po_id) || [];
-                const qty = Number(it.quantity || 0);
-                const price = Number(it.unit_cost || 0);
-                list.push({
-                    barcode: it.product_barcode || '',
-                    name: String(it.product_name || 'Item'),
-                    qty,
-                    price,
-                    total: Number((qty * price).toFixed(2))
-                });
-                itemsByPo.set(it.po_id, list);
-            }
+            try {
+                const itemsRes = await pool.query(
+                    `SELECT poi.po_id, poi.product_barcode, poi.quantity, poi.unit_cost,
+                            COALESCE(p.name, poi.product_barcode) AS product_name
+                     FROM purchase_order_items poi
+                     LEFT JOIN products p ON p.barcode = poi.product_barcode AND COALESCE(p.tenant_id, 1) = $2
+                     WHERE poi.po_id = ANY($1::int[])
+                     ORDER BY poi.id ASC`,
+                    [poIds, tenantId]
+                );
+                for (const it of itemsRes.rows) {
+                    if (it.product_barcode) suppliedBarcodes.add(it.product_barcode);
+                    const list = itemsByPo.get(it.po_id) || [];
+                    const qty = Number(it.quantity || 0);
+                    const price = Number(it.unit_cost || 0);
+                    list.push({
+                        barcode: it.product_barcode || '',
+                        name: String(it.product_name || 'Item'),
+                        qty,
+                        price,
+                        total: Number((qty * price).toFixed(2))
+                    });
+                    itemsByPo.set(it.po_id, list);
+                }
+            } catch (_) { /* ignore if purchase_order_items schema differs */ }
         }
 
         // Fetch supplier payments
         let paymentRows = [];
         try {
             const payRes = await pool.query(
-                `SELECT sp.*, po.reference_no AS po_ref
-                 FROM supplier_payments sp
-                 LEFT JOIN purchase_orders po ON po.id = sp.purchase_order_id
-                 WHERE sp.supplier_id = $1 AND COALESCE(sp.tenant_id, 1) = $2
-                 ORDER BY sp.created_at ASC, sp.id ASC`,
+                `SELECT *
+                 FROM supplier_payments
+                 WHERE supplier_id = $1 AND COALESCE(tenant_id, 1) = $2
+                 ORDER BY created_at ASC, id ASC`,
                 [supplierId, tenantId]
             );
             paymentRows = payRes.rows;
@@ -4607,7 +4611,7 @@ app.get('/api/suppliers/:id/profile-statement', authenticateToken, requireRole(M
             const amt = Math.abs(Number(pay.amount || 0));
             if (!pay.purchase_order_id) totalPaidAll += amt;
             const ref = pay.reference || `SPAY-${String(pay.id).padStart(4, '0')}`;
-            const poTag = pay.purchase_order_id ? ` (${pay.po_ref || `PO-${String(pay.purchase_order_id).padStart(4, '0')}`})` : '';
+            const poTag = pay.purchase_order_id ? ` (${poRefById.get(pay.purchase_order_id) || `PO-${String(pay.purchase_order_id).padStart(4, '0')}`})` : '';
             events.push({
                 date: pay.created_at,
                 ref,
@@ -4762,6 +4766,10 @@ app.post('/api/suppliers/:id/payment', authenticateToken, requireRole(MANAGER_RO
 
         let resolvedPoId = null;
         if (purchase_order_id) {
+            await client.query(`
+                ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS paid_amount NUMERIC(12,2) DEFAULT 0;
+                ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(30) DEFAULT 'Unpaid';
+            `);
             const poRes = await client.query(
                 'SELECT id, total_amount, COALESCE(paid_amount, 0) AS paid_amount FROM purchase_orders WHERE id = $1 AND supplier_id = $2 AND COALESCE(tenant_id, 1) = $3 FOR UPDATE',
                 [purchase_order_id, supplierId, tenantId]
