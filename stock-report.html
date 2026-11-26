@@ -207,7 +207,12 @@
         const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
         const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const money = (n) => (typeof formatCurrency === 'function' ? formatCurrency(Number(n) || 0) : 'GH₵ ' + (Number(n) || 0).toFixed(2));
-        const qtyFmt = (n, unit = 'Pc(s)') => `${Number(n || 0).toFixed(2)} ${unit}`;
+        const fmtQty = (n) => {
+            const v = Number(n || 0);
+            if (!Number.isFinite(v)) return '0';
+            return Number.isInteger(v) ? String(v) : String(Number(v.toFixed(3)));
+        };
+        const qtyFmt = (n, unit = 'Pc(s)') => `${fmtQty(n)} ${unit}`;
         const fmtDateTime = (d) => {
             if (!d) return '—';
             const dt = new Date(d);
@@ -292,14 +297,14 @@
             tfoot.innerHTML = `
                 <tr>
                     <td colspan="7" style="text-align:right;">Total:</td>
-                    <td class="num">${totStock.toFixed(2)}</td>
+                    <td class="num">${fmtQty(totStock)}</td>
                     <td class="num">${esc(money(totPurchase))}</td>
                     <td class="num">${esc(money(totSale))}</td>
                     <td class="num">${esc(money(totProfit))}</td>
-                    <td class="num">${totSold.toFixed(2)}</td>
-                    <td class="num">${totTrf.toFixed(2)}</td>
-                    <td class="num">${totAdj.toFixed(2)}</td>
-                    <td class="num">${totMfg.toFixed(2)}</td>
+                    <td class="num">${fmtQty(totSold)}</td>
+                    <td class="num">${fmtQty(totTrf)}</td>
+                    <td class="num">${fmtQty(totAdj)}</td>
+                    <td class="num">${fmtQty(totMfg)}</td>
                 </tr>`;
 
             const margin = totSale > 0 ? ((totProfit / totSale) * 100).toFixed(2) : '0.00';
@@ -363,22 +368,22 @@
                         <div class="sh-3col">
                             <div class="sh-box">
                                 <div class="sh-box-title">Quantities In</div>
-                                <div class="sh-kv"><span>Total Purchase</span><strong id="shInPurchase">0.00</strong></div>
-                                <div class="sh-kv"><span>Opening Stock</span><strong id="shInOpening">0.00</strong></div>
-                                <div class="sh-kv"><span>Total Sell Return</span><strong id="shInSellRet">0.00</strong></div>
-                                <div class="sh-kv"><span>Stock Transfers (In)</span><strong id="shInTrf">0.00</strong></div>
+                                <div class="sh-kv"><span>Total Purchase</span><strong id="shInPurchase">0</strong></div>
+                                <div class="sh-kv"><span>Opening Stock</span><strong id="shInOpening">0</strong></div>
+                                <div class="sh-kv"><span>Total Sell Return</span><strong id="shInSellRet">0</strong></div>
+                                <div class="sh-kv"><span>Stock Transfers (In)</span><strong id="shInTrf">0</strong></div>
                             </div>
                             <div class="sh-box">
                                 <div class="sh-box-title">Quantities Out</div>
-                                <div class="sh-kv"><span>Total Sold</span><strong id="shOutSold">0.00</strong></div>
-                                <div class="sh-kv"><span>Total Stock Adjustment</span><strong id="shOutAdj">0.00</strong></div>
-                                <div class="sh-kv"><span>Total Purchase Return</span><strong id="shOutPurchRet">0.00</strong></div>
-                                <div class="sh-kv"><span>Stock Transfers (Out)</span><strong id="shOutTrf">0.00</strong></div>
+                                <div class="sh-kv"><span>Total Sold</span><strong id="shOutSold">0</strong></div>
+                                <div class="sh-kv"><span>Total Stock Adjustment</span><strong id="shOutAdj">0</strong></div>
+                                <div class="sh-kv"><span>Total Purchase Return</span><strong id="shOutPurchRet">0</strong></div>
+                                <div class="sh-kv"><span>Stock Transfers (Out)</span><strong id="shOutTrf">0</strong></div>
                             </div>
                             <div class="sh-box">
                                 <div class="sh-box-title">Totals</div>
                                 <div style="font-size:13px;color:var(--muted,#64748b);">Current stock</div>
-                                <div class="sh-total-val" id="shCurrentStock">0.00</div>
+                                <div class="sh-total-val" id="shCurrentStock">0</div>
                             </div>
                         </div>
 
@@ -424,25 +429,25 @@
                     const qo = d.quantities_out || {};
                     backdrop.querySelector('#shTitle').textContent = `Product stock history — ${p.name || ''}`;
                     backdrop.querySelector('#shSub').textContent = `SKU: ${p.sku || '—'} · Location: ${d.location || 'All Locations'}`;
-                    backdrop.querySelector('#shInPurchase').textContent = Number(qi.total_purchase || 0).toFixed(2);
-                    backdrop.querySelector('#shInOpening').textContent = Number(qi.opening_stock || 0).toFixed(2);
-                    backdrop.querySelector('#shInSellRet').textContent = Number(qi.total_sell_return || 0).toFixed(2);
-                    backdrop.querySelector('#shInTrf').textContent = Number(qi.transfers_in || 0).toFixed(2);
-                    backdrop.querySelector('#shOutSold').textContent = Number(qo.total_sold || 0).toFixed(2);
-                    backdrop.querySelector('#shOutAdj').textContent = Number(qo.total_stock_adjustment || 0).toFixed(2);
-                    backdrop.querySelector('#shOutPurchRet').textContent = Number(qo.total_purchase_return || 0).toFixed(2);
-                    backdrop.querySelector('#shOutTrf').textContent = Number(qo.transfers_out || 0).toFixed(2);
-                    backdrop.querySelector('#shCurrentStock').textContent = `${Number(d.current_stock || 0).toFixed(2)} ${p.unit || ''}`;
+                    backdrop.querySelector('#shInPurchase').textContent = fmtQty(qi.total_purchase);
+                    backdrop.querySelector('#shInOpening').textContent = fmtQty(qi.opening_stock);
+                    backdrop.querySelector('#shInSellRet').textContent = fmtQty(qi.total_sell_return);
+                    backdrop.querySelector('#shInTrf').textContent = fmtQty(qi.transfers_in);
+                    backdrop.querySelector('#shOutSold').textContent = fmtQty(qo.total_sold);
+                    backdrop.querySelector('#shOutAdj').textContent = fmtQty(qo.total_stock_adjustment);
+                    backdrop.querySelector('#shOutPurchRet').textContent = fmtQty(qo.total_purchase_return);
+                    backdrop.querySelector('#shOutTrf').textContent = fmtQty(qo.transfers_out);
+                    backdrop.querySelector('#shCurrentStock').textContent = `${fmtQty(d.current_stock)} ${p.unit || ''}`.trim();
 
                     const list = d.history || [];
                     tbody.innerHTML = list.length ? list.map((h) => {
                         const q = Number(h.quantity_change || 0);
-                        const sign = q > 0 ? `+${q.toFixed(2)}` : q.toFixed(2);
+                        const sign = q > 0 ? `+${fmtQty(q)}` : fmtQty(q);
                         return `
                             <tr>
                                 <td style="font-weight:600;">${esc(h.type)}</td>
                                 <td class="num ${q >= 0 ? 'sh-qty-pos' : 'sh-qty-neg'}">${esc(sign)}</td>
-                                <td class="num" style="font-weight:600;">${Number(h.new_quantity || 0).toFixed(2)}</td>
+                                <td class="num" style="font-weight:600;">${esc(fmtQty(h.new_quantity))}</td>
                                 <td style="white-space:nowrap;">${esc(fmtDateTime(h.date))}</td>
                                 <td style="font-family:ui-monospace,monospace;font-size:12px;">${esc(h.reference_no || '—')}</td>
                                 <td>${esc(h.party_info || '—')}</td>
