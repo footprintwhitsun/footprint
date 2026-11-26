@@ -134,15 +134,31 @@
         .message.error { background: #fff4f4; color: #c42b1c; border: 1px solid #ffd2cf; padding: 12px 16px; border-radius: 8px; margin-bottom: 14px; font-size: 13px; }
 
         .dash-skeleton {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            min-height: 360px; gap: 12px; color: var(--muted, #64748b); font-size: 13.5px; font-weight: 500;
+            display: flex; flex-direction: column; gap: 16px;
         }
-        .dash-spinner {
-            width: 34px; height: 34px; border-radius: 50%;
-            border: 3px solid rgba(39, 57, 144, 0.14); border-top-color: #273990;
-            animation: dashSpin 0.75s linear infinite;
+        .sk-row-kpi {
+            display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0;
+            background: var(--sheet, #fff); border: 1px solid var(--edge, #e2e8f0); border-radius: 12px; overflow: hidden;
         }
-        @keyframes dashSpin { to { transform: rotate(360deg); } }
+        .sk-kpi-cell { padding: 18px 20px; border-left: 1px solid var(--edge, #e2e8f0); display: flex; flex-direction: column; gap: 10px; }
+        .sk-kpi-cell:first-child { border-left: 0; }
+        .sk-row-charts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+        .sk-row-tables { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .sk-card {
+            background: var(--sheet, #fff); border: 1px solid var(--edge, #e2e8f0); border-radius: 12px;
+            padding: 18px; display: flex; flex-direction: column; gap: 12px;
+        }
+        .sk-bar {
+            border-radius: 6px;
+            background: linear-gradient(90deg, rgba(148,163,184,0.14) 25%, rgba(148,163,184,0.26) 50%, rgba(148,163,184,0.14) 75%);
+            background-size: 200% 100%;
+            animation: skShimmer 1.3s ease-in-out infinite;
+        }
+        @keyframes skShimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        @media (max-width: 900px) {
+            .sk-row-kpi { grid-template-columns: 1fr 1fr; }
+            .sk-row-charts, .sk-row-tables { grid-template-columns: 1fr; }
+        }
 
         @media (max-width: 1120px) {
             .charts-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -197,9 +213,30 @@
 
         <div id="errorMessage" class="message error" style="display:none;"></div>
 
-        <div id="dashSkeleton" class="dash-skeleton">
-            <div class="dash-spinner"></div>
-            <div>Loading live data...</div>
+        <div id="dashSkeleton" class="dash-skeleton" aria-hidden="true">
+            <div class="sk-row-kpi">
+                <div class="sk-kpi-cell"><div class="sk-bar" style="height:12px;width:55%;"></div><div class="sk-bar" style="height:28px;width:82%;"></div><div class="sk-bar" style="height:10px;width:45%;"></div></div>
+                <div class="sk-kpi-cell"><div class="sk-bar" style="height:12px;width:50%;"></div><div class="sk-bar" style="height:24px;width:72%;"></div><div class="sk-bar" style="height:10px;width:40%;"></div></div>
+                <div class="sk-kpi-cell"><div class="sk-bar" style="height:12px;width:55%;"></div><div class="sk-bar" style="height:24px;width:70%;"></div><div class="sk-bar" style="height:10px;width:48%;"></div></div>
+                <div class="sk-kpi-cell"><div class="sk-bar" style="height:12px;width:60%;"></div><div class="sk-bar" style="height:24px;width:58%;"></div><div class="sk-bar" style="height:10px;width:42%;"></div></div>
+                <div class="sk-kpi-cell"><div class="sk-bar" style="height:12px;width:58%;"></div><div class="sk-bar" style="height:24px;width:46%;"></div><div class="sk-bar" style="height:10px;width:50%;"></div></div>
+            </div>
+            <div class="sk-row-kpi">
+                <div class="sk-kpi-cell"><div class="sk-bar" style="height:11px;width:52%;"></div><div class="sk-bar" style="height:22px;width:68%;"></div></div>
+                <div class="sk-kpi-cell"><div class="sk-bar" style="height:11px;width:64%;"></div><div class="sk-bar" style="height:22px;width:65%;"></div></div>
+                <div class="sk-kpi-cell"><div class="sk-bar" style="height:11px;width:54%;"></div><div class="sk-bar" style="height:22px;width:60%;"></div></div>
+                <div class="sk-kpi-cell"><div class="sk-bar" style="height:11px;width:48%;"></div><div class="sk-bar" style="height:22px;width:62%;"></div></div>
+                <div class="sk-kpi-cell"><div class="sk-bar" style="height:11px;width:52%;"></div><div class="sk-bar" style="height:22px;width:56%;"></div></div>
+            </div>
+            <div class="sk-row-charts">
+                <div class="sk-card"><div class="sk-bar" style="height:14px;width:42%;"></div><div class="sk-bar" style="height:200px;width:100%;"></div></div>
+                <div class="sk-card"><div class="sk-bar" style="height:14px;width:46%;"></div><div class="sk-bar" style="height:200px;width:100%;"></div></div>
+                <div class="sk-card"><div class="sk-bar" style="height:14px;width:44%;"></div><div class="sk-bar" style="height:200px;width:100%;"></div></div>
+            </div>
+            <div class="sk-row-tables">
+                <div class="sk-card"><div class="sk-bar" style="height:14px;width:38%;"></div><div class="sk-bar" style="height:140px;width:100%;"></div></div>
+                <div class="sk-card"><div class="sk-bar" style="height:14px;width:40%;"></div><div class="sk-bar" style="height:140px;width:100%;"></div></div>
+            </div>
         </div>
 
         <div id="dashContent" style="display:none;">
