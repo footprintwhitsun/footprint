@@ -507,7 +507,7 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                             <button type="button" class="okw-btn okw-btn-primary" id="stmtPrintBtn"><i class="fas fa-print"></i> Print Statement</button>
                         </div>
                         <div class="stmt-table-wrap">
-                            <table class="stmt-table">
+                            <table class="stmt-table" data-no-table-tools="1">
                                 <thead>
                                     <tr>
                                         <th>Date</th>
@@ -642,7 +642,9 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
             fetchStatement();
         }
 
-        document.getElementById('custBody').addEventListener('click', (e) => {
+        const custBodyEl = document.getElementById('custBody');
+        if (custBodyEl) custBodyEl.dataset.okwExpandBound = '1';
+        custBodyEl.addEventListener('click', (e) => {
             const btn = e.target.closest('[data-open-stmt]');
             if (btn) {
                 e.stopPropagation();
