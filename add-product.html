@@ -194,7 +194,7 @@
                     </div>
                     <div class="ap-field">
                         <label for="apReorder">Alert / Reorder Quantity</label>
-                        <input type="number" id="apReorder" class="ap-input" step="any" min="0" value="10" placeholder="10">
+                        <input type="number" id="apReorder" class="ap-input" step="1" min="0" value="10" placeholder="10">
                     </div>
 
                     <div class="ap-field">
@@ -437,7 +437,7 @@
                 product_type: document.getElementById('apProductType').value,
                 manage_stock: document.getElementById('apManageStock').checked,
                 stock: parseFloat(document.getElementById('apStock').value) || 0,
-                reorder_level: parseFloat(document.getElementById('apReorder').value) || 10,
+                reorder_level: Math.max(0, Math.round(Number(document.getElementById('apReorder').value === '' ? 10 : document.getElementById('apReorder').value) || 0)),
                 packaging_unit: document.getElementById('apPackUnit').value.trim() || 'Box',
                 conversion_rate: parseFloat(document.getElementById('apConvRate').value) || 1,
                 batch_number: document.getElementById('apBatch').value.trim(),

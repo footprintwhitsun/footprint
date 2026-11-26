@@ -1530,7 +1530,7 @@
                         </div>
                         <div class="form-group" style="margin:0;">
                             <label>Alert Quantity (Reorder Level)</label>
-                            <input type="number" id="pReorder" value="10" min="0">
+                            <input type="number" id="pReorder" value="10" min="0" step="1">
                         </div>
                         <div class="form-group" style="margin:0;">
                             <label>Batch / Lot Number</label>
@@ -2817,7 +2817,7 @@
                     ...(p.sub_category ? [['Sub Category', p.sub_category]] : []),
                     ['Unit', p.selling_unit || 'Unit'],
                     ['Current Stock', String(branchStock)],
-                    ['Alert Quantity', String(p.reorder_level ?? 10)],
+                    ['Alert Quantity', String(Math.round(Number(p.reorder_level ?? 10)))],
                     ['Cost (Exc. Tax)', formatCurrency(p.cost_price || 0)],
                     ['Selling Price', formatCurrency(p.price || 0)],
                     ['Applicable Tax', `${Number(p.applicable_tax || 0)}% (${p.tax_type || 'Exclusive'})`],
@@ -3223,7 +3223,7 @@
 
             document.getElementById('pPackagingUnit').value = product.packaging_unit || 'Box';
             document.getElementById('pConversion').value = product.conversion_rate || 1;
-            document.getElementById('pReorder').value = product.reorder_level || 10;
+            document.getElementById('pReorder').value = Math.round(Number(product.reorder_level ?? 10));
             
             // Populate batch fields from local product data (already mapped in loadInventory)
             document.getElementById('pBatchNumber').value = product.batch_number || ''; 
@@ -3506,7 +3506,7 @@
                 item.barcode,
                 item.category || 'General',
                 inventoryDisplayStock(item),
-                item.reorder_level || 10
+                Math.round(Number(item.reorder_level ?? 10))
             ]);
 
             doc.autoTable({
@@ -4129,7 +4129,7 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
                                 parts.push(`<div style="margin-bottom:8px;"><strong>Pending Deliveries (${pending.length}):</strong> ${pending.map((p) => `${supEsc(supShortRef(p.ref))} (${supEsc(supMoney(p.total_amount))})`).join(' · ')}</div>`);
                             }
                             if (lowItems.length > 0) {
-                                parts.push(`<div><strong>Low Stock Items From This Supplier (${lowItems.length}):</strong><ul style="margin:4px 0 0;padding-left:18px;">${lowItems.map((it) => `<li><strong>${supEsc(it.name)}</strong> — In stock: ${supEsc(it.stock)} (Reorder level: ${supEsc(it.reorder_level)}, Suggested order: ${supEsc(it.suggested_qty)})</li>`).join('')}</ul></div>`);
+                                parts.push(`<div><strong>Low Stock Items From This Supplier (${lowItems.length}):</strong><ul style="margin:4px 0 0;padding-left:18px;">${lowItems.map((it) => `<li><strong>${supEsc(it.name)}</strong> — In stock: ${supEsc(it.stock)} (Reorder level: ${supEsc(Math.round(Number(it.reorder_level ?? 10)))}, Suggested order: ${supEsc(it.suggested_qty)})</li>`).join('')}</ul></div>`);
                             }
                             needsBody.innerHTML = parts.join('');
                         } else {

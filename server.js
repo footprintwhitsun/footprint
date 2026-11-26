@@ -3389,6 +3389,9 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
             // The number the stock table shows and the Low/Out filters use: the branch's stock for branch staff,
             // the all-branch total for admin/CEO (matches what the POS shows for the same product).
             p.stock_display = Number(p.stock ?? 0);
+            if (p.reorder_level !== undefined && p.reorder_level !== null) {
+                p.reorder_level = Math.round(Number(p.reorder_level));
+            }
             return p;
         };
 

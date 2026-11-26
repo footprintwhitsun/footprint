@@ -626,7 +626,7 @@ router.get('/api/notifications/feed', authenticateToken, async (req, res) => {
                 category: stk <= 0 ? 'Out / Negative Stock' : 'Low Stock',
                 tone: 'danger',
                 title: `${s.name}: ${stk} left`,
-                detail: `Reorder level: ${s.reorder_level || 10}`,
+                detail: `Reorder level: ${Math.round(Number(s.reorder_level ?? 10))}`,
                 link: stk < 0 ? '/negative-stock' : '/inventory?tab=stock&lowStock=true',
                 time: 'Stock Alert',
                 ts: Date.now() - 30000
