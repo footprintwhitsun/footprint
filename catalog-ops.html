@@ -429,7 +429,12 @@
         b.onclick = () => switchTab(b.dataset.ctab);
     });
     const initTab = new URLSearchParams(window.location.search).get('tab');
-    switchTab(['brands', 'units', 'prices', 'variations', 'price_groups', 'warranties', 'groups'].includes(initTab) ? initTab : 'brands');
+    const validTabs = ['brands', 'units', 'prices', 'variations', 'price_groups', 'warranties', 'groups'];
+    if (initTab && validTabs.includes(initTab)) {
+        const tabsRow = document.getElementById('cat-tabs');
+        if (tabsRow) tabsRow.style.display = 'none';
+    }
+    switchTab(validTabs.includes(initTab) ? initTab : 'brands');
 })();
 </script>
 </body>

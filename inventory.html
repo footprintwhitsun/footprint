@@ -749,17 +749,18 @@
             </div>
         </div>
 
-        <!-- 1. STOCK ITEMS TAB (Existing Functionality) -->
+        <!-- 1. PRODUCTS TAB -->
         <div id="tab-stock" class="tab-content">
-            <div class="page-header">
-                <h2 id="pageTitle">Stock Items</h2>
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <p id="branchInfo" style="font-size: 12px; color: #888; margin-top: 5px;"></p>
+            <div class="okw-page-header">
+                <div class="okw-page-header-text">
+                    <h1 class="okw-page-title" id="pageTitle">Products</h1>
+                    <p class="okw-page-subtitle">Manage your product catalog, pricing, stock levels, and branch inventory.</p>
+                    <p id="branchInfo" style="display:none;"></p>
                 </div>
-            </div>
-            <div style="display: flex; justify-content: flex-end; margin-bottom: 15px; gap: 10px;">
-                <button class="btn-add" data-onclick="deleteSelectedStock()" style="background-color: #c62828;"><i class="fas fa-trash"></i> Delete Selected</button>
-                <button class="btn-add" data-onclick="prepareAddProduct()"><i class="fas fa-plus"></i> Add Product</button>
+                <div class="okw-page-header-actions">
+                    <button type="button" class="btn-add" data-onclick="deleteSelectedStock()" style="background-color: #c62828;"><i class="fas fa-trash"></i> Delete Selected</button>
+                    <button type="button" class="btn-add" data-onclick="prepareAddProduct()"><i class="fas fa-plus"></i> Add Product</button>
+                </div>
             </div>
 
             <div class="stock-filter-bar" style="display: grid; grid-template-columns: 3fr 1fr auto; gap: 15px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); align-items: center;">
@@ -2269,7 +2270,7 @@
             // Update Page Title
             const titles = {
                 'overview': 'Inventory Management',
-                'stock': 'Stock Items',
+                'stock': 'Products',
                 'suppliers': 'Supplier Management',
                 'orders': 'Purchase Orders',
                 'receiving': 'Goods Receiving',
