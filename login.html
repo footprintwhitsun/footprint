@@ -2,1043 +2,288 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>OKWESIWA CO LTD | Sign In</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
-
-    <!-- Google Fonts: Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
-
-    <!-- Guard Scripts -->
-    <script src="auth-guard.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/auth-pages.css">
     <script src="telemetry-guard.js"></script>
-    <script src="instant-nav.js"></script>
-
-    <style>
-        :root {
-            --p-color-primary: #273990; --p-color-accent: #f9a51a;
-            --p-color-primary-hover: #1e2c73;
-            --p-color-primary-subdued: rgba(39, 57, 144, 0.12);
-            --p-color-bg: #f6f6f7;
-            --p-color-surface: #ffffff;
-            --p-color-border: #e1e3e5;
-            --p-color-border-input: #c9cccf;
-            --p-color-border-hover: #8c9196;
-            --p-color-text: #202223;
-            --p-color-text-secondary: #6d7175;
-            --p-color-text-subdued: #8c9196;
-            --p-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05), 0 10px 25px -5px rgba(0, 0, 0, 0.04);
-            --p-font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: var(--p-font-family);
-            -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
-        }
-
-        body {
-            min-height: 100vh;
-            background-color: var(--p-color-bg);
-            color: var(--p-color-text);
-            display: flex;
-            margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-        }
-
-        .auth-split-layout {
-            display: flex;
-            width: 100%;
-            min-height: 100vh;
-        }
-
-        /* ==========================================================
-           LEFT HALF: PROFESSIONAL ENTERPRISE SHOWCASE PANEL
-           ========================================================== */
-        .auth-showcase-panel {
-            flex: 1.15;
-            background-color: #0c101d;
-            background-image: 
-                radial-gradient(circle at 10% 15%, rgba(39, 57, 144, 0.45) 0%, transparent 45%),
-                radial-gradient(circle at 90% 85%, rgba(249, 165, 26, 0.15) 0%, transparent 40%);
-            border-right: 1px solid #1a2238;
-            color: #ffffff;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            padding: 56px 52px;
-            position: relative;
-            box-sizing: border-box;
-        }
-
-        .showcase-brand {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-        }
-
-        .showcase-brand img {
-            width: auto;
-            max-width: 150px;
-            height: 42px;
-            border-radius: 6px;
-            object-fit: contain;
-            background: #ffffff;
-            padding: 4px 12px;
-            border: 1.5px solid rgba(249, 165, 26, 0.7);
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4), 0 0 10px rgba(39, 57, 144, 0.3);
-        }
-
-        .showcase-badge {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 4px 12px;
-            background: rgba(249, 165, 26, 0.15);
-            border: 1px solid rgba(249, 165, 26, 0.40);
-            border-radius: 20px;
-            font-size: 11px;
-            font-weight: 600;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            color: #f9a51a;
-        }
-
-        .showcase-body {
-            margin: 36px 0;
-            max-width: 540px;
-        }
-
-        .showcase-headline {
-            font-size: 32px;
-            font-weight: 700;
-            line-height: 1.25;
-            letter-spacing: -0.025em;
-            color: #ffffff;
-            margin-bottom: 14px;
-        }
-
-        .showcase-headline span { color: #f9a51a; }
-
-        .showcase-lead {
-            font-size: 14.5px;
-            line-height: 1.6;
-            color: #a0a0a0;
-            margin-bottom: 30px;
-        }
-
-        .showcase-pillars { display: none !important; }
-
-        .pillar-card {
-            display: flex;
-            align-items: flex-start;
-            gap: 14px;
-            padding: 15px 16px;
-            background: rgba(255, 255, 255, 0.035);
-            border: 1px solid rgba(255, 255, 255, 0.07);
-            border-radius: 10px;
-            transition: all 0.2s ease;
-        }
-
-        .pillar-card:hover {
-            background: rgba(255, 255, 255, 0.06);
-            border-color: rgba(249, 165, 26, 0.35);
-            transform: translateX(4px);
-        }
-
-        .pillar-icon {
-            width: 38px;
-            height: 38px;
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-
-        .pillar-icon.red {
-            background: rgba(249, 165, 26, 0.18);
-            color: #d72c0d;
-        }
-
-        .pillar-icon.green {
-            background: rgba(16, 128, 67, 0.15);
-            color: #108043;
-        }
-
-        .pillar-icon.blue {
-            background: rgba(37, 99, 235, 0.15);
-            color: #3b82f6;
-        }
-
-        .pillar-text h3 {
-            font-size: 13.5px;
-            font-weight: 600;
-            color: #ffffff;
-            margin-bottom: 4px;
-        }
-
-        .pillar-text p {
-            font-size: 12px;
-            line-height: 1.45;
-            color: #949494;
-            margin: 0;
-        }
-
-        .showcase-footer {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            font-size: 12px;
-            color: #888888;
-            padding-top: 22px;
-            border-top: 1px solid #262626;
-        }
-
-        .showcase-footer-links {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-
-        .showcase-footer-links a {
-            color: #b0b0b0;
-            text-decoration: none;
-            transition: color 0.15s ease;
-        }
-
-        .showcase-footer-links a:hover {
-            color: var(--p-color-primary);
-            text-decoration: underline;
-        }
-
-        .showcase-footer-links span {
-            color: #555555;
-        }
-
-        .showcase-copyright {
-            color: #777777;
-            font-size: 11.5px;
-        }
-
-        /* ==========================================================
-           RIGHT HALF: SHOPIFY POLARIS LOGIN FORM PANEL
-           ========================================================== */
-        .auth-form-panel {
-            flex: 1;
-            background-color: var(--p-color-bg);
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            padding: 48px 32px;
-            box-sizing: border-box;
-        }
-
-        .auth-form-container {
-            width: 100%;
-            max-width: 420px;
-            display: flex;
-            flex-direction: column;
-        }
-
-        .mobile-brand-header {
-            display: none;
-            margin-bottom: 24px;
-            text-align: center;
-        }
-
-        .mobile-brand-header img {
-            width: auto;
-            max-width: 140px;
-            height: 38px;
-            border-radius: 6px;
-            object-fit: contain;
-            background: #ffffff;
-            padding: 4px 10px;
-            border: 1.5px solid rgba(249, 165, 26, 0.7);
-            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
-            margin: 0 auto;
-            display: block;
-        }
-
-        /* Shopify Polaris Card */
-        .auth-card {
-            width: 100%;
-            background: var(--p-color-surface);
-            border: 1px solid var(--p-color-border);
-            border-radius: 12px;
-            box-shadow: var(--p-shadow-card);
-            padding: 36px 32px;
-            box-sizing: border-box;
-        }
-
-        .auth-title {
-            font-size: 22px;
-            font-weight: 700;
-            color: var(--p-color-text);
-            letter-spacing: -0.02em;
-            margin-bottom: 6px;
-        }
-
-        .auth-subtitle {
-            font-size: 13.5px;
-            color: var(--p-color-text-secondary);
-            margin-bottom: 24px;
-            line-height: 1.4;
-        }
-
-        /* Form Controls */
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        .form-label-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 6px;
-        }
-
-        .form-label {
-            font-size: 13px;
-            font-weight: 500;
-            color: var(--p-color-text);
-        }
-
-        .forgot-link {
-            font-size: 12.5px;
-            font-weight: 500;
-            color: var(--p-color-primary);
-            text-decoration: none;
-            transition: color 0.15s ease;
-        }
-
-        .forgot-link:hover {
-            color: var(--p-color-primary-hover);
-            text-decoration: underline;
-        }
-
-        .input-wrapper {
-            position: relative;
-            display: flex;
-            align-items: center;
-        }
-
-        .input-icon {
-            position: absolute;
-            left: 12px;
-            color: var(--p-color-text-subdued);
-            display: flex;
-            align-items: center;
-            pointer-events: none;
-        }
-
-        .form-input {
-            width: 100%;
-            height: 42px;
-            padding: 0 14px 0 38px;
-            font-size: 14px;
-            font-weight: 400;
-            color: var(--p-color-text);
-            background-color: var(--p-color-surface);
-            border: 1px solid var(--p-color-border-input);
-            border-radius: 8px;
-            outline: none;
-            transition: border-color 0.15s ease, box-shadow 0.15s ease;
-            box-sizing: border-box;
-        }
-
-        .form-input::placeholder {
-            color: var(--p-color-text-subdued);
-        }
-
-        .form-input:hover {
-            border-color: var(--p-color-border-hover);
-        }
-
-        .form-input:focus {
-            border-color: var(--p-color-primary);
-            box-shadow: 0 0 0 2px var(--p-color-primary-subdued);
-        }
-
-        .password-input {
-            padding-right: 42px;
-        }
-
-        .toggle-password-btn {
-            position: absolute;
-            right: 8px;
-            background: transparent;
-            border: none;
-            cursor: pointer;
-            padding: 6px;
-            color: var(--p-color-text-subdued);
-            border-radius: 4px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: color 0.15s ease;
-        }
-
-        .toggle-password-btn:hover {
-            color: var(--p-color-text);
-        }
-
-        .showcase-pillars {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-
-        /* Polaris Primary Button */
-        .submit-btn {
-            width: 100%;
-            height: 44px;
-            background: #1F3A60;
-            color: #ffffff;
-            font-size: 14px;
-            font-weight: 700;
-            border: 1px solid #273990;
-            border-radius: 8px;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            transition: all 0.15s ease;
-            box-shadow: 0 4px 14px rgba(39, 57, 144, 0.35);
-            margin-top: 8px;
-        }
-
-        .submit-btn:hover {
-            background: #1F3A60;
-            box-shadow: 0 6px 20px rgba(39, 57, 144, 0.45);
-        }
-
-        .submit-btn:active {
-            transform: translateY(1px);
-        }
-
-        .submit-btn:disabled {
-            opacity: 0.65;
-            cursor: not-allowed;
-            transform: none;
-        }
-
-        .btn-spinner {
-            display: none;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(0, 0, 0, 0.25);
-            border-top-color: #000000;
-            border-radius: 50%;
-            animation: spin 0.7s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-
-        /* Polaris Banner / Alert Box */
-        .alert-box {
-            display: none;
-            margin-top: 20px;
-            padding: 12px 14px;
-            border-radius: 8px;
-            font-size: 13px;
-            line-height: 1.4;
-            align-items: flex-start;
-            gap: 10px;
-        }
-
-        .alert-box.error {
-            display: flex;
-            background-color: #fff4f4;
-            border: 1px solid #ffd2cf;
-            color: #c42b1c;
-        }
-
-        .alert-box.success {
-            display: flex;
-            background-color: #f1f8f5;
-            border: 1px solid #b7e3cd;
-            color: #108043;
-        }
-
-        .alert-icon {
-            flex-shrink: 0;
-            margin-top: 1px;
-            display: flex;
-        }
-
-        /* Bottom Footer */
-        .auth-footer {
-            margin-top: 28px;
-            text-align: center;
-            font-size: 12px;
-            color: var(--p-color-text-secondary);
-        }
-
-        .auth-footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 16px;
-            margin-bottom: 12px;
-        }
-
-        .auth-footer-links a {
-            color: var(--p-color-text-secondary);
-            text-decoration: none;
-            transition: color 0.15s ease;
-        }
-
-        .auth-footer-links a:hover {
-            color: var(--p-color-primary);
-            text-decoration: underline;
-        }
-
-        .copyright-text {
-            color: var(--p-color-text-subdued);
-            font-size: 11.5px;
-        }
-
-        @media (max-width: 960px) {
-            body {
-                background-color: #0c101d;
-                overflow-x: hidden;
-            }
-            .auth-split-layout {
-                flex-direction: column;
-                min-height: 100vh;
-                width: 100%;
-                background-color: #0c101d;
-                background-image: 
-                    radial-gradient(circle at 50% 0%, rgba(39, 57, 144, 0.45) 0%, transparent 60%),
-                    radial-gradient(circle at 50% 100%, rgba(249, 165, 26, 0.15) 0%, transparent 50%);
-            }
-            .auth-showcase-panel {
-                flex: none;
-                width: 100%;
-                padding: 36px 20px 10px;
-                border-right: none;
-                border-bottom: none;
-                background: transparent;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                text-align: center;
-            }
-            .showcase-brand {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                gap: 12px;
-                flex-wrap: wrap;
-                margin-bottom: 8px;
-            }
-            .showcase-body {
-                margin: 12px auto 0;
-                max-width: 520px;
-                width: 100%;
-            }
-            .showcase-headline {
-                font-size: 22px;
-                line-height: 1.3;
-                text-align: center;
-                margin-bottom: 10px;
-            }
-            .showcase-lead {
-                font-size: 13.5px;
-                line-height: 1.5;
-                text-align: center;
-                color: #94a3b8;
-                margin-bottom: 12px;
-            }
-            .showcase-pillars {
-                display: none !important;
-            }
-            .desktop-only-footer {
-                display: none !important;
-            }
-            .mobile-brand-header {
-                display: none !important;
-            }
-            .auth-form-panel {
-                flex: 1;
-                width: 100%;
-                padding: 10px 16px 36px;
-                background: transparent;
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                box-sizing: border-box;
-            }
-            .auth-form-container {
-                width: 100%;
-                max-width: 440px;
-                margin: 0 auto;
-            }
-            .auth-card {
-                background: #ffffff;
-                border-radius: 16px;
-                padding: 32px 24px;
-                box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
-                border: 1px solid rgba(255, 255, 255, 0.15);
-            }
-            .auth-footer {
-                display: block !important;
-                margin-top: 36px;
-                padding: 16px 12px 24px;
-                text-align: center;
-                width: 100%;
-            }
-            .auth-footer-links {
-                display: flex;
-                justify-content: center;
-                gap: 16px;
-                margin-bottom: 8px;
-            }
-            .auth-footer-links a {
-                color: #94a3b8;
-                font-size: 12.5px;
-            }
-            .auth-footer-links span {
-                color: #475569;
-            }
-            .copyright-text {
-                color: #64748b;
-                font-size: 11.5px;
-            }
-        }
-
-        @media (min-width: 961px) {
-            .auth-footer {
-                display: none;
-            }
-            .showcase-pillars {
-                display: flex !important;
-                flex-direction: column;
-                gap: 16px;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .auth-showcase-panel {
-                padding: 28px 14px 8px;
-            }
-            .showcase-headline {
-                font-size: 20px;
-            }
-            .showcase-lead {
-                font-size: 13px;
-                margin-bottom: 8px;
-            }
-            .auth-form-panel {
-                padding: 8px 12px 28px;
-            }
-            .auth-card {
-                padding: 24px 18px;
-                border-radius: 14px;
-            }
-            .form-input {
-                height: 46px;
-                font-size: 16px;
-            }
-            .submit-btn {
-                height: 48px;
-                font-size: 15px;
-            }
-        }
-    </style>
-    <link rel="stylesheet" href="/tokens.css">
-    <style id="auth-face">
-        .auth-showcase-panel { background: #273990 !important; background-image: none !important; }
-        .auth-showcase-panel::before, .auth-showcase-panel::after { display: none !important; }
-        .showcase-badge { display: none !important; }
-        .showcase-headline { font-family: var(--font-display, "Archivo", sans-serif) !important; font-size: 48px !important; line-height: 1.05 !important; font-weight: 700 !important; letter-spacing: -0.02em !important; color: #fff !important; }
-        .showcase-headline span { color: inherit !important; }
-        .showcase-lead { color: rgba(255, 255, 255, 0.85) !important; font-size: 18px !important; max-width: 460px; }
-        .showcase-roles { list-style: none; margin: 40px 0 0; padding: 0; display: grid; gap: 22px; max-width: 460px; }
-        .showcase-roles li { display: grid; gap: 4px; padding-left: 16px; border-left: 3px solid #F9A51A; }
-        .showcase-roles b { color: #fff; font-size: 17px; font-weight: 600; }
-        .showcase-roles span { color: rgba(255, 255, 255, 0.8); font-size: 15px; line-height: 1.45; }
-        .showcase-footer, .showcase-footer a, .showcase-footer * { color: rgba(255, 255, 255, 0.75) !important; }
-        .submit-btn { background: #273990 !important; box-shadow: none !important; }
-        .submit-btn:hover { background: #1C2B70 !important; }
-        .idle-note { margin: 0 0 14px; padding: 10px 12px; border-radius: 8px; background: #FEF3C7; color: #7A4B00; font-size: 14px; }
-    </style>
-    <script src="/okw-events.js"></script>
 </head>
-
 <body>
-
-<div class="auth-split-layout">
-    <!-- LEFT HALF: Professional Enterprise Retail Showcase -->
-    <div class="auth-showcase-panel">
-        <div class="showcase-brand">
-            <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD">
-        </div>
-
-        <div class="showcase-body">
-            <h1 class="showcase-headline">Every sale counted.<br>Every branch in view.</h1>
-            <p class="showcase-lead">Sign in to run the till, check stock, or see how the branches are doing.</p>
-
-            <ul class="showcase-roles">
-                <li><b>Cashiers</b><span>Open your shift, sell, and close the till.</span></li>
-                <li><b>Managers</b><span>Stock, purchases, expenses and reports for your branch.</span></li>
-                <li><b>The CEO</b><span>Every branch, cash and approvals in one place.</span></li>
-            </ul>
-        </div>
-
-        <div class="showcase-footer desktop-only-footer">
-            <div class="showcase-footer-links">
-                <a href="help">Help</a>
-                <span>&bull;</span>
-                <a href="privacy">Privacy</a>
-                <span>&bull;</span>
-                <a href="terms">Terms</a>
-            </div>
-            <div class="showcase-copyright">
-                &copy; 2026 OKWESIWA CO LTD. All rights reserved.
-            </div>
-        </div>
-    </div>
-
-    <!-- RIGHT HALF: Shopify Polaris Login Form Panel -->
-    <div class="auth-form-panel">
-        <div class="auth-form-container">
-            <!-- Mobile Brand Header -->
-            <div class="mobile-brand-header">
-                <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD">
-            </div>
-
-            <!-- Main Auth Card -->
-            <div class="auth-card">
-                <h1 class="auth-title">Log in</h1>
-                <p class="auth-subtitle">Continue to OKWESIWA CO LTD workspace</p>
-
-                <!-- Login Form -->
-                <form id="loginForm" method="post" data-onsubmit="return false;">
-                    <!-- Email Field -->
-                    <div class="form-group">
-                        <div class="form-label-row">
-                            <label for="email" class="form-label">Email</label>
-                        </div>
-                        <div class="input-wrapper">
-                            <span class="input-icon">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="2" y="4" width="20" height="16" rx="2"></rect>
-                                    <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"></path>
-                                </svg>
-                            </span>
-                            <input 
-                                id="email" 
-                                type="email" 
-                                class="form-input" 
-                                placeholder="name@okwesiwa.com" 
-                                autocomplete="username email" 
-                                required 
-                                autofocus
-                            >
-                        </div>
-                    </div>
-
-                    <!-- Password Field -->
-                    <div class="form-group">
-                        <div class="form-label-row">
-                            <label for="password" class="form-label">Password</label>
-                            <a href="forgot-password" class="forgot-link">Forgot password?</a>
-                        </div>
-                        <div class="input-wrapper">
-                            <span class="input-icon">
-                                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
-                                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
-                                </svg>
-                            </span>
-                            <input 
-                                id="password" 
-                                type="password" 
-                                class="form-input password-input" 
-                                placeholder="••••••••••••" 
-                                autocomplete="current-password" 
-                                required
-                            >
-                            <button 
-                                type="button" 
-                                id="togglePasswordBtn" 
-                                class="toggle-password-btn" 
-                                data-onclick="toggleVisibility('password')" 
-                                aria-label="Toggle password visibility"
-                            >
-                                <!-- Eye icon -->
-                                <svg id="eyeIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                    <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
-                                    <circle cx="12" cy="12" r="3"></circle>
-                                </svg>
-                                <!-- Eye-off icon (hidden by default) -->
-                                <svg id="eyeOffIcon" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display: none;">
-                                    <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
-                                    <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
-                                    <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
-                                    <line x1="2" y1="2" x2="22" y2="22"></line>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Submit Button -->
-                    <button type="submit" id="loginBtn" class="submit-btn">
-                        <span class="btn-spinner" id="btnSpinner"></span>
-                        <span id="btnText">Log in</span>
-                    </button>
-                </form>
-
-                <!-- Status Alert Box -->
-                <div id="msg" class="alert-box" role="alert">
-                    <span class="alert-icon" id="alertIcon"></span>
-                    <span id="alertText"></span>
+    <div class="auth-shell">
+        <!-- Desktop Brand Panel -->
+        <aside class="auth-brand-panel" aria-label="OKWESIWA CO LTD Platform">
+            <div class="auth-brand-top">
+                <div class="auth-logo-mark">
+                    <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD">
+                </div>
+                <div>
+                    <div class="auth-brand-name">OKWESIWA CO LTD</div>
+                    <div class="auth-brand-sub">Retail, Inventory &amp; ERP Platform</div>
                 </div>
             </div>
-        </div>
-        <!-- Bottom Footer for Mobile -->
-        <div class="auth-footer">
-            <div class="auth-footer-links">
-                <a href="help">Help</a>
-                <span>&bull;</span>
-                <a href="privacy">Privacy</a>
-                <span>&bull;</span>
-                <a href="terms">Terms</a>
+
+            <div class="auth-brand-copy">
+                <span class="auth-brand-eyebrow">Enterprise Retail Suite</span>
+                <h2>Run every branch, till, and ledger from one workspace.</h2>
+                <p>Real-time POS sales, stock control, supplier purchasing, B2B invoicing, and executive reporting built for speed on any device.</p>
+
+                <div class="auth-highlights">
+                    <div class="auth-highlight">
+                        <span class="auth-highlight-dot" aria-hidden="true">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </span>
+                        <span>Role-based access across CEO, Manager, Cashier &amp; Company accounts</span>
+                    </div>
+                    <div class="auth-highlight">
+                        <span class="auth-highlight-dot" aria-hidden="true">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </span>
+                        <span>Multi-branch stock sync, purchase orders &amp; live shift close</span>
+                    </div>
+                    <div class="auth-highlight">
+                        <span class="auth-highlight-dot" aria-hidden="true">
+                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </span>
+                        <span>Encrypted sessions with full activity audit trail</span>
+                    </div>
+                </div>
             </div>
-            <div class="copyright-text">
-                &copy; 2026 OKWESIWA CO LTD. All rights reserved.
+
+            <div class="auth-brand-foot">
+                <span>&copy; 2026 OKWESIWA CO LTD</span>
+                <span>Designed by Footprint</span>
             </div>
-        </div>
-</div>
-</div>
+        </aside>
 
-<script>
-document.addEventListener('DOMContentLoaded', () => {
-    // Clear any stale violation messages on login view
-    sessionStorage.removeItem('rbac_violation');
+        <!-- Right Form Panel -->
+        <main class="auth-form-panel">
+            <div class="auth-card-center">
+                <div class="auth-mobile-brand">
+                    <div class="auth-logo-mark">
+                        <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD">
+                    </div>
+                    <div>
+                        <div class="auth-brand-name">OKWESIWA CO LTD</div>
+                        <div class="auth-brand-sub">Retail &amp; Inventory Platform</div>
+                    </div>
+                </div>
 
-    const loginBtn = document.getElementById('loginBtn');
-    const loginForm = document.getElementById('loginForm');
+                <div class="auth-card">
+                    <div class="auth-card-head">
+                        <h1>Sign in</h1>
+                        <p>Enter your account email or username and password to continue.</p>
+                    </div>
 
-    if (loginBtn) {
-        loginBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            login();
-        });
-    }
+                    <div id="statusNotice" class="auth-alert info" role="status"></div>
 
-    if (loginForm) {
-        loginForm.addEventListener('submit', (e) => {
-            e.preventDefault();
-            login();
-        });
-    }
+                    <form id="loginForm" novalidate>
+                        <div class="auth-field">
+                            <div class="auth-label-row">
+                                <label class="auth-label" for="email">Email or Username</label>
+                            </div>
+                            <div class="auth-input-wrap">
+                                <span class="auth-input-icon" aria-hidden="true">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                                        <polyline points="22,6 12,13 2,6"></polyline>
+                                    </svg>
+                                </span>
+                                <input id="email" name="email" type="text" inputmode="email" class="auth-input" placeholder="name@okwesiwa.com" autocomplete="username" required autofocus>
+                            </div>
+                        </div>
 
-    // Allow pressing Enter anywhere inside inputs
-    document.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : '';
-            if (activeTag === 'input') {
-                e.preventDefault();
-                login();
+                        <div class="auth-field">
+                            <div class="auth-label-row">
+                                <label class="auth-label" for="password">Password</label>
+                                <a href="/forgot-password" class="auth-link">Forgot password?</a>
+                            </div>
+                            <div class="auth-input-wrap">
+                                <span class="auth-input-icon" aria-hidden="true">
+                                    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                        <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                                    </svg>
+                                </span>
+                                <input id="password" name="password" type="password" class="auth-input has-toggle" placeholder="Enter your password" autocomplete="current-password" required>
+                                <button type="button" id="togglePasswordBtn" class="auth-toggle-btn" aria-label="Show password">
+                                    <svg id="eyeIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                    </svg>
+                                    <svg id="eyeOffIcon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none;">
+                                        <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path>
+                                        <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path>
+                                        <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path>
+                                        <line x1="2" y1="2" x2="22" y2="22"></line>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+
+                        <button type="submit" id="loginBtn" class="auth-submit">
+                            <span class="auth-spinner" id="btnSpinner"></span>
+                            <span id="btnText">Sign In</span>
+                        </button>
+                    </form>
+
+                    <div id="msg" class="auth-alert" role="alert">
+                        <span id="alertText"></span>
+                    </div>
+                </div>
+            </div>
+
+            <footer class="auth-footer">
+                <div class="auth-footer-links">
+                    <a href="/help">Help</a>
+                    <span>&bull;</span>
+                    <a href="/privacy">Privacy</a>
+                    <span>&bull;</span>
+                    <a href="/terms">Terms</a>
+                </div>
+                <div>&copy; 2026 OKWESIWA CO LTD. All rights reserved.</div>
+            </footer>
+        </main>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            sessionStorage.removeItem('rbac_violation');
+
+            const params = new URLSearchParams(window.location.search);
+            const notice = document.getElementById('statusNotice');
+            if (notice) {
+                if (params.get('idle') === '1') {
+                    notice.textContent = 'You were signed out due to inactivity. Sign in to continue.';
+                    notice.className = 'auth-alert info show';
+                    notice.style.marginBottom = '16px';
+                    notice.style.marginTop = '0';
+                } else if (params.get('logout') === 'true') {
+                    notice.textContent = 'You have been signed out safely.';
+                    notice.className = 'auth-alert success show';
+                    notice.style.marginBottom = '16px';
+                    notice.style.marginTop = '0';
+                } else if (params.get('unauthorized') === 'true') {
+                    notice.textContent = 'Please sign in with an authorized account to access that page.';
+                    notice.className = 'auth-alert error show';
+                    notice.style.marginBottom = '16px';
+                    notice.style.marginTop = '0';
+                }
             }
-        }
-    });
-});
 
-function toggleVisibility(fieldId) {
-    const field = document.getElementById(fieldId);
-    if (!field) return;
+            const toggleBtn = document.getElementById('togglePasswordBtn');
+            if (toggleBtn) {
+                toggleBtn.addEventListener('click', () => {
+                    const field = document.getElementById('password');
+                    const eye = document.getElementById('eyeIcon');
+                    const eyeOff = document.getElementById('eyeOffIcon');
+                    if (!field) return;
+                    const show = field.type === 'password';
+                    field.type = show ? 'text' : 'password';
+                    if (eye) eye.style.display = show ? 'none' : 'block';
+                    if (eyeOff) eyeOff.style.display = show ? 'block' : 'none';
+                    toggleBtn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+                });
+            }
 
-    const eyeIcon = document.getElementById('eyeIcon');
-    const eyeOffIcon = document.getElementById('eyeOffIcon');
-    const isPassword = field.getAttribute('type') === 'password';
-
-    field.setAttribute('type', isPassword ? 'text' : 'password');
-
-    if (eyeIcon && eyeOffIcon) {
-        eyeIcon.style.display = isPassword ? 'none' : 'block';
-        eyeOffIcon.style.display = isPassword ? 'block' : 'none';
-    }
-}
-
-function showAlert(text, type) {
-    const msg = document.getElementById("msg");
-    const alertText = document.getElementById("alertText");
-    const alertIcon = document.getElementById("alertIcon");
-
-    if (!msg || !alertText || !alertIcon) return;
-
-    alertText.textContent = text;
-    msg.className = `alert-box ${type}`;
-    msg.style.display = "flex";
-
-    if (type === 'error') {
-        alertIcon.innerHTML = `
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <circle cx="12" cy="12" r="10"></circle>
-                <line x1="12" y1="8" x2="12" y2="12"></line>
-                <line x1="12" y1="16" x2="12.01" y2="16"></line>
-            </svg>
-        `;
-    } else if (type === 'success') {
-        alertIcon.innerHTML = `
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                <polyline points="22 4 12 14.01 9 11.01"></polyline>
-            </svg>
-        `;
-    }
-}
-
-function hideAlert() {
-    const msg = document.getElementById("msg");
-    if (msg) {
-        msg.style.display = "none";
-        msg.className = "alert-box";
-    }
-}
-
-async function login() {
-    const emailInput = document.getElementById("email");
-    const passwordInput = document.getElementById("password");
-    const email = emailInput ? emailInput.value.trim() : '';
-    const password = passwordInput ? passwordInput.value.trim() : '';
-    const btn = document.getElementById("loginBtn");
-    const btnText = document.getElementById("btnText");
-    const btnSpinner = document.getElementById("btnSpinner");
-
-    hideAlert();
-
-    if (!email || !password) {
-        showAlert("Please enter your email and password.", "error");
-        if (!email && emailInput) emailInput.focus();
-        else if (passwordInput) passwordInput.focus();
-        return;
-    }
-
-    if (btn) btn.disabled = true;
-    if (btnSpinner) btnSpinner.style.display = "inline-block";
-    if (btnText) btnText.textContent = "Signing in...";
-
-    try {
-        const response = await fetch('/login', {
-            method: "POST",
-            headers: { 
-                "Content-Type": "application/json",
-                "Accept": "application/json"
-            },
-            body: JSON.stringify({ email, password }),
-            credentials: 'include'
+            const form = document.getElementById('loginForm');
+            if (form) {
+                form.addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    login();
+                });
+            }
         });
 
-        const data = await response.json();
-
-        if (response.ok && data.success) {
-            handleSuccessfulLogin(data, data.user?.role === 'company' ? 'company' : 'staff');
-            return;
+        function showAlert(text, type) {
+            const msg = document.getElementById('msg');
+            const alertText = document.getElementById('alertText');
+            if (!msg || !alertText) return;
+            alertText.textContent = text;
+            msg.className = `auth-alert ${type} show`;
         }
 
-        throw new Error(data.message || "Invalid credentials");
-
-    } catch (err) {
-        console.error('Login error:', err);
-        showAlert(err.message || "Cannot connect to authentication server.", "error");
-    }
-
-    if (btn) btn.disabled = false;
-    if (btnSpinner) btnSpinner.style.display = "none";
-    if (btnText) btnText.textContent = "Log in";
-}
-
-function handleSuccessfulLogin(data, userType) {
-    showAlert("Authentication successful. Redirecting to workspace…", "success");
-
-    // Clean up any stale violation prompts so they do not bleed into the authenticated session
-    sessionStorage.removeItem('rbac_violation');
-
-    // Store user info and token in localStorage
-    if (data.user) {
-        const isCompany = userType === 'company' || data.user.role === 'company' || data.user.role === 'business_client' || data.user.type === 'company' || !!data.user.company_id;
-        localStorage.setItem(isCompany ? 'companyUser' : 'currentUser', JSON.stringify(data.user));
-        if (data.token) {
-            localStorage.setItem('authToken', data.token);
-            if (isCompany) localStorage.setItem('companyToken', data.token);
+        function hideAlert() {
+            const msg = document.getElementById('msg');
+            if (msg) msg.className = 'auth-alert';
         }
-    }
 
-    // Redirect based on user type and server response
-    setTimeout(() => {
-        if (data.redirectTo) {
-            const redirectUrl = data.redirectTo.startsWith('/') 
-                ? data.redirectTo 
-                : '/' + data.redirectTo;
-            window.location.href = redirectUrl;
-        } else if (userType === 'company' || data.user?.role === 'company' || data.user?.type === 'company' || !!data.user?.company_id) {
-            window.location.href = '/company-portal';
-        } else {
-            const role = data.user ? data.user.role : 'cashier';
-            window.location.href = role === 'admin' ? '/dashboard' : '/open-shift';
+        async function login() {
+            const emailInput = document.getElementById('email');
+            const passwordInput = document.getElementById('password');
+            const email = emailInput ? emailInput.value.trim() : '';
+            const password = passwordInput ? passwordInput.value.trim() : '';
+            const btn = document.getElementById('loginBtn');
+            const btnText = document.getElementById('btnText');
+            const btnSpinner = document.getElementById('btnSpinner');
+
+            if (btn && btn.disabled) return;
+            hideAlert();
+
+            if (!email || !password) {
+                showAlert('Please enter your email/username and password.', 'error');
+                if (!email && emailInput) emailInput.focus();
+                else if (passwordInput) passwordInput.focus();
+                return;
+            }
+
+            if (btn) btn.disabled = true;
+            if (btnSpinner) btnSpinner.style.display = 'inline-block';
+            if (btnText) btnText.textContent = 'Signing in...';
+
+            try {
+                const response = await fetch('/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    body: JSON.stringify({ email, password }),
+                    credentials: 'include'
+                });
+                const data = await response.json().catch(() => ({}));
+                if (response.ok && data.success) {
+                    handleSuccessfulLogin(data, data.user?.role === 'company' ? 'company' : 'staff');
+                    return;
+                }
+                throw new Error(data.message || 'Invalid credentials');
+            } catch (err) {
+                showAlert(err.message || 'Cannot connect to authentication server.', 'error');
+            }
+
+            if (btn) btn.disabled = false;
+            if (btnSpinner) btnSpinner.style.display = 'none';
+            if (btnText) btnText.textContent = 'Sign In';
         }
-    }, 280);
-}
-</script>
 
-<!-- Custom Toast Notifications Container -->
-<style>
-#custom-toast-container { 
-    position: fixed; 
-    top: 20px; 
-    right: 20px; 
-    z-index: 999999; 
-    display: flex; 
-    flex-direction: column; 
-    gap: 10px; 
-    pointer-events: none; 
-}
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
-.custom-toast.show { opacity: 1; transform: translateY(0); }
-.custom-toast.error { background: #c42b1c; border-left: 4px solid #f59e0b; }
-.custom-toast.success { background: #108043; border-left: 4px solid #149a4f; }
-</style>
-<script>
-(function() {
-    const container = document.createElement('div');
-    container.id = 'custom-toast-container';
-    document.body.appendChild(container);
+        function handleSuccessfulLogin(data, userType) {
+            showAlert('Signed in successfully. Opening workspace…', 'success');
+            sessionStorage.removeItem('rbac_violation');
 
-    window.alert = function(message) {
-        const toast = document.createElement('div');
-        toast.className = 'custom-toast';
-        if (typeof message === 'string') {
-            const msg = message.toLowerCase();
-            if (msg.includes('error') || msg.includes('fail')) toast.classList.add('error');
-            else if (msg.includes('success') || msg.includes('saved')) toast.classList.add('success');
+            if (data.user) {
+                const isCompany = userType === 'company' || data.user.role === 'company' || data.user.role === 'business_client' || data.user.type === 'company' || !!data.user.company_id;
+                localStorage.setItem(isCompany ? 'companyUser' : 'currentUser', JSON.stringify(data.user));
+                if (data.token) {
+                    localStorage.setItem('authToken', data.token);
+                    if (isCompany) localStorage.setItem('companyToken', data.token);
+                }
+            }
+
+            setTimeout(() => {
+                const role = String(data.user?.role || '').toLowerCase();
+                if (data.redirectTo) {
+                    const url = data.redirectTo.startsWith('/') ? data.redirectTo : '/' + data.redirectTo;
+                    if (url === '/ceo-portal' || url === '/company-portal') {
+                        window.location.href = '/dashboard';
+                    } else {
+                        window.location.href = url;
+                    }
+                } else if (['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'company', 'business_client'].includes(role)) {
+                    window.location.href = '/dashboard';
+                } else {
+                    window.location.href = '/open-shift';
+                }
+            }, 250);
         }
-        toast.textContent = message;
-        container.appendChild(toast);
-        toast.offsetHeight;
-        toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 250);
-        }, 3500);
-    };
-})();
-</script>
-<script>(function () { try { if (new URLSearchParams(location.search).get('idle') === '1') { var f = document.querySelector('form'); if (f) { var n = document.createElement('p'); n.className = 'idle-note'; n.setAttribute('role', 'status'); n.textContent = 'You were signed out because the page was left idle. Log in to continue.'; f.parentNode.insertBefore(n, f); } } } catch (e) { } })();</script>
+    </script>
 </body>
 </html>
