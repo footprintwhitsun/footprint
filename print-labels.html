@@ -195,13 +195,14 @@
                 </div>
 
                 <div class="pl-promo-row">
+                    <button type="button" class="okw-btn okw-btn-primary" id="btnLoadAllProducts" style="height:36px;"><i class="fas fa-boxes"></i> Load All Products</button>
                     <label class="pl-inline-lbl" for="plPromoSelect">Or load all products of a promotion:</label>
-                    <select id="plPromoSelect" class="pl-select" style="min-width:240px;">
+                    <select id="plPromoSelect" class="pl-select" style="min-width:220px;">
                         <option value="">-- Select Promotion --</option>
                     </select>
                     <label class="pl-chk">
                         <input type="checkbox" id="plPromoInStockOnly" checked>
-                        Only products in stock at the promotion's location
+                        Only products in stock
                     </label>
                     <button type="button" class="okw-btn okw-btn-outline" id="btnLoadPromo" style="height:36px;">Load Promotion Products</button>
                 </div>
@@ -308,8 +309,13 @@
                         <label for="optBarcodeSetting">Barcode setting:</label>
                         <select id="optBarcodeSetting" class="pl-select">
                             <option value="a4_20">20 Labels per Sheet (A4 — 4 × 5)</option>
-                            <option value="a4_30" selected>30 Labels per Sheet (A4 — 3 × 10)</option>
-                            <option value="a4_40">40 Labels per Sheet (A4 — 4 × 10)</option>
+                            <option value="a4_30">30 Labels per Sheet (A4 — 3 × 10)</option>
+                            <option value="a4_40" selected>40 Labels per Sheet (A4 — 4 × 10)</option>
+                            <option value="a4_48">48 Labels per Sheet (A4 — 4 × 12)</option>
+                            <option value="a4_50">50 Labels per Sheet (A4 — 5 × 10)</option>
+                            <option value="a4_60">60 Labels per Sheet (A4 — 5 × 12)</option>
+                            <option value="a4_65">65 Labels per Sheet (A4 — 5 × 13 · 38×21mm)</option>
+                            <option value="a4_80">80 Labels per Sheet (A4 — 5 × 16 · Compact)</option>
                             <option value="roll_50x25">50mm × 25mm Thermal Roll (Continuous)</option>
                             <option value="roll_50x30">50mm × 30mm Thermal Roll (Continuous)</option>
                             <option value="roll_60x40">60mm × 40mm Thermal Roll (Continuous)</option>
@@ -354,6 +360,11 @@
             a4_20:      { cols: 4, labelW: '48mm', labelH: '52mm', pageSize: 'A4', pageMargin: '8mm',  bcH: 34, bcW: 1.3 },
             a4_30:      { cols: 3, labelW: '64mm', labelH: '27mm', pageSize: 'A4', pageMargin: '8mm',  bcH: 26, bcW: 1.2 },
             a4_40:      { cols: 4, labelW: '48mm', labelH: '27mm', pageSize: 'A4', pageMargin: '6mm',  bcH: 24, bcW: 1.1 },
+            a4_48:      { cols: 4, labelW: '48mm', labelH: '22mm', pageSize: 'A4', pageMargin: '5mm',  bcH: 20, bcW: 1.05 },
+            a4_50:      { cols: 5, labelW: '38mm', labelH: '27mm', pageSize: 'A4', pageMargin: '5mm',  bcH: 22, bcW: 1.0 },
+            a4_60:      { cols: 5, labelW: '38mm', labelH: '22mm', pageSize: 'A4', pageMargin: '5mm',  bcH: 18, bcW: 0.95 },
+            a4_65:      { cols: 5, labelW: '38mm', labelH: '20.5mm', pageSize: 'A4', pageMargin: '4mm', bcH: 17, bcW: 0.9 },
+            a4_80:      { cols: 5, labelW: '38mm', labelH: '16.5mm', pageSize: 'A4', pageMargin: '4mm', bcH: 14, bcW: 0.85 },
             roll_50x25: { cols: 1, labelW: '50mm', labelH: '25mm', pageSize: '50mm 25mm', pageMargin: '1mm', bcH: 22, bcW: 1.1 },
             roll_50x30: { cols: 1, labelW: '50mm', labelH: '30mm', pageSize: '50mm 30mm', pageMargin: '1mm', bcH: 26, bcW: 1.2 },
             roll_60x40: { cols: 1, labelW: '60mm', labelH: '40mm', pageSize: '60mm 40mm', pageMargin: '2mm', bcH: 32, bcW: 1.3 },
@@ -405,13 +416,13 @@
             ).join('');
         }
 
-        function addProductToQueue(prod, promoPct = null, promoCode = '') {
+        function addProductToQueue(prod, promoPct = null, promoCode = '', skipRender = false) {
             if (!prod) return;
             const existing = queue.find((r) => String(r.barcode) === String(prod.barcode) && String(r.name) === String(prod.name));
             if (existing) {
                 existing.qty = (Number(existing.qty) || 1) + 1;
                 if (promoPct != null) { existing.promoDiscountPct = Number(promoPct); existing.promoCode = promoCode; }
-                renderQueue();
+                if (!skipRender) renderQueue();
                 return;
             }
             const today = new Date().toISOString().slice(0, 10);
@@ -430,7 +441,7 @@
                 priceGroupId: '',
                 nowPrice: ''
             });
-            renderQueue();
+            if (!skipRender) renderQueue();
         }
 
         function renderQueue() {
@@ -676,6 +687,30 @@
             if (!e.target.closest('.pl-search-wrap')) dropdown.classList.remove('open');
         });
 
+        // Wire Load All Products button
+        document.getElementById('btnLoadAllProducts').addEventListener('click', () => {
+            if (!allProducts.length) {
+                OkwUI.toast('No products found in catalog', 'warning');
+                return;
+            }
+            const inStockOnly = document.getElementById('plPromoInStockOnly').checked;
+            const loc = document.getElementById('optPromoLocation').value;
+            const matching = allProducts.filter((p) => {
+                if (!inStockOnly) return true;
+                if (loc && p.stock_levels && typeof p.stock_levels === 'object') {
+                    return Number(p.stock_levels[loc] ?? 0) > 0;
+                }
+                return Number(p.stock || 0) > 0;
+            });
+            if (!matching.length) {
+                OkwUI.toast('No products match the current stock filter', 'warning');
+                return;
+            }
+            matching.forEach((p) => addProductToQueue(p, null, '', true));
+            renderQueue();
+            OkwUI.toast(`Loaded ${matching.length} product(s) into label queue`, 'success');
+        });
+
         // Wire Load Promotion button
         document.getElementById('btnLoadPromo').addEventListener('click', () => {
             const idx = document.getElementById('plPromoSelect').value;
@@ -704,7 +739,8 @@
                 return;
             }
             const pct = Number(promo.discount_percentage || 0);
-            matching.forEach((p) => addProductToQueue(p, pct, promo.code));
+            matching.forEach((p) => addProductToQueue(p, pct, promo.code, true));
+            renderQueue();
             document.getElementById('optWasNow').checked = true;
             if (!document.getElementById('optPromoBanner').value.trim()) {
                 document.getElementById('optPromoBanner').value = promo.code || 'PROMO';
