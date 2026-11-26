@@ -3438,71 +3438,78 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
     }
 });
 
+let _extProdColsReady = false;
 async function ensureExtendedProductColumns() {
-    await pool.query(`
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode_type VARCHAR(30) DEFAULT 'C128';
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(120);
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS sub_category VARCHAR(120);
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS business_locations VARCHAR(255) DEFAULT 'All Locations';
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS manage_stock BOOLEAN DEFAULT TRUE;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS brochure_url TEXT;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS brochure_name VARCHAR(255);
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS applicable_tax NUMERIC(6,2) DEFAULT 0;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS applicable_tax_name VARCHAR(80) DEFAULT 'None';
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS tax_type VARCHAR(30) DEFAULT 'Exclusive';
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS product_type VARCHAR(30) DEFAULT 'Single';
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_inc_tax NUMERIC(12,2) DEFAULT 0;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS selling_price_exc_tax NUMERIC(12,2) DEFAULT 0;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS margin_pct NUMERIC(8,2) DEFAULT 0;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS varying_prices JSONB DEFAULT '[]'::jsonb;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS device_model VARCHAR(160);
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS enable_sr_no BOOLEAN DEFAULT FALSE;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS not_for_selling BOOLEAN DEFAULT FALSE;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS weight VARCHAR(60);
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS preparation_time_minutes INTEGER DEFAULT 0;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS disable_woocommerce_sync BOOLEAN DEFAULT FALSE;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS variation_items JSONB DEFAULT '[]'::jsonb;
-        ALTER TABLE products ADD COLUMN IF NOT EXISTS combo_items JSONB DEFAULT '[]'::jsonb;
+    if (_extProdColsReady) return;
+    try {
+        await adminPool.query(`
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode_type VARCHAR(30) DEFAULT 'C128';
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(120);
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS sub_category VARCHAR(120);
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS business_locations VARCHAR(255) DEFAULT 'All Locations';
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS manage_stock BOOLEAN DEFAULT TRUE;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS brochure_url TEXT;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS brochure_name VARCHAR(255);
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS applicable_tax NUMERIC(6,2) DEFAULT 0;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS applicable_tax_name VARCHAR(80) DEFAULT 'None';
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS tax_type VARCHAR(30) DEFAULT 'Exclusive';
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS product_type VARCHAR(30) DEFAULT 'Single';
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_inc_tax NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS selling_price_exc_tax NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS margin_pct NUMERIC(8,2) DEFAULT 0;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS varying_prices JSONB DEFAULT '[]'::jsonb;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS device_model VARCHAR(160);
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS enable_sr_no BOOLEAN DEFAULT FALSE;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS not_for_selling BOOLEAN DEFAULT FALSE;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS weight VARCHAR(60);
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS preparation_time_minutes INTEGER DEFAULT 0;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS disable_woocommerce_sync BOOLEAN DEFAULT FALSE;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS variation_items JSONB DEFAULT '[]'::jsonb;
+            ALTER TABLE products ADD COLUMN IF NOT EXISTS combo_items JSONB DEFAULT '[]'::jsonb;
 
-        CREATE TABLE IF NOT EXISTS device_models (
-            id SERIAL PRIMARY KEY,
-            name VARCHAR(160) NOT NULL,
-            brand VARCHAR(120),
-            tenant_id INT DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+            CREATE TABLE IF NOT EXISTS device_models (
+                id SERIAL PRIMARY KEY,
+                name VARCHAR(160) NOT NULL,
+                brand VARCHAR(120),
+                tenant_id INT DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
 
-        CREATE TABLE IF NOT EXISTS product_variation_items (
-            id SERIAL PRIMARY KEY,
-            product_id INT REFERENCES products(id) ON DELETE CASCADE,
-            variation_name VARCHAR(120),
-            variation_value VARCHAR(120),
-            sub_sku VARCHAR(120),
-            purchase_price_exc_tax NUMERIC(12,2) DEFAULT 0,
-            purchase_price_inc_tax NUMERIC(12,2) DEFAULT 0,
-            margin_pct NUMERIC(8,2) DEFAULT 0,
-            selling_price_exc_tax NUMERIC(12,2) DEFAULT 0,
-            selling_price_inc_tax NUMERIC(12,2) DEFAULT 0,
-            image_url TEXT,
-            tenant_id INT DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
+            CREATE TABLE IF NOT EXISTS product_variation_items (
+                id SERIAL PRIMARY KEY,
+                product_id INT REFERENCES products(id) ON DELETE CASCADE,
+                variation_name VARCHAR(120),
+                variation_value VARCHAR(120),
+                sub_sku VARCHAR(120),
+                purchase_price_exc_tax NUMERIC(12,2) DEFAULT 0,
+                purchase_price_inc_tax NUMERIC(12,2) DEFAULT 0,
+                margin_pct NUMERIC(8,2) DEFAULT 0,
+                selling_price_exc_tax NUMERIC(12,2) DEFAULT 0,
+                selling_price_inc_tax NUMERIC(12,2) DEFAULT 0,
+                image_url TEXT,
+                tenant_id INT DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
 
-        CREATE TABLE IF NOT EXISTS product_combo_items (
-            id SERIAL PRIMARY KEY,
-            product_id INT REFERENCES products(id) ON DELETE CASCADE,
-            item_product_id INT,
-            item_barcode VARCHAR(120),
-            item_name VARCHAR(255),
-            quantity NUMERIC(12,3) DEFAULT 1,
-            unit_purchase_price NUMERIC(12,2) DEFAULT 0,
-            total_purchase_price NUMERIC(12,2) DEFAULT 0,
-            tenant_id INT DEFAULT 1,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-        );
-    `).catch(() => {});
+            CREATE TABLE IF NOT EXISTS product_combo_items (
+                id SERIAL PRIMARY KEY,
+                product_id INT REFERENCES products(id) ON DELETE CASCADE,
+                item_product_id INT,
+                item_barcode VARCHAR(120),
+                item_name VARCHAR(255),
+                quantity NUMERIC(12,3) DEFAULT 1,
+                unit_purchase_price NUMERIC(12,2) DEFAULT 0,
+                total_purchase_price NUMERIC(12,2) DEFAULT 0,
+                tenant_id INT DEFAULT 1,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        _extProdColsReady = true;
+    } catch (e) {
+        console.error('ensureExtendedProductColumns warning:', e.message);
+    }
 }
 
 app.get('/api/device-models', authenticateToken, async (req, res) => {
@@ -4109,7 +4116,9 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
         }
 
         // Recalculate total stock from all branches
-        const totalStock = Object.values(stockLevels).reduce((sum, val) => sum + (parseInt(val) || 0), 0);
+        const totalStock = Object.values(stockLevels).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+        const numOrNull = (v) => (v === undefined || v === null || v === '') ? null : (Number.isFinite(Number(v)) ? Number(v) : null);
+        const intOrNull = (v) => (v === undefined || v === null || v === '') ? null : (Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v))) : null);
 
         const result = await pool.query(
             `UPDATE products SET 
@@ -4142,25 +4151,30 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
                 variation_items = COALESCE($36::jsonb, variation_items),
                 combo_items = COALESCE($37::jsonb, combo_items)
              WHERE id = $38 AND COALESCE(tenant_id, 1) = $39 RETURNING *`,
-            [finalBarcode, name, category, price, totalStock, cost_price, selling_unit, packaging_unit,
-                conversion_rate, reorder_level !== undefined ? Math.max(0, Math.round(Number(reorder_level) || 0)) : current.reorder_level,
+            [finalBarcode, name ?? current.name, category ?? current.category,
+                numOrNull(price) ?? current.price, totalStock,
+                numOrNull(cost_price) ?? current.cost_price,
+                selling_unit ?? current.selling_unit,
+                packaging_unit ?? current.packaging_unit,
+                numOrNull(conversion_rate) ?? current.conversion_rate,
+                intOrNull(reorder_level) ?? current.reorder_level,
                 track_batch ?? current.track_batch, track_expiry ?? current.track_expiry,
                 JSON.stringify(stockLevels),
                 barcode_type ?? null, brand ?? null, sub_category ?? null, business_locations ?? null,
-                manage_stock !== undefined ? !!manage_stock : null, description ?? null,
+                manage_stock !== undefined && manage_stock !== null ? !!manage_stock : null, description ?? null,
                 image_url || '', brochure_url || '', brochure_name || '',
-                applicable_tax !== undefined ? Number(applicable_tax) : null,
+                numOrNull(applicable_tax),
                 applicable_tax_name ?? null,
                 tax_type ?? null, product_type ?? null,
-                cost_inc_tax !== undefined ? Number(cost_inc_tax) : null,
-                selling_price_exc_tax !== undefined ? Number(selling_price_exc_tax) : null,
-                margin_pct !== undefined ? Number(margin_pct) : null,
+                numOrNull(cost_inc_tax),
+                numOrNull(selling_price_exc_tax),
+                numOrNull(margin_pct),
                 device_model ?? null,
-                enable_sr_no !== undefined ? !!enable_sr_no : null,
-                not_for_selling !== undefined ? !!not_for_selling : null,
+                enable_sr_no !== undefined && enable_sr_no !== null ? !!enable_sr_no : null,
+                not_for_selling !== undefined && not_for_selling !== null ? !!not_for_selling : null,
                 weight ?? null,
-                preparation_time_minutes !== undefined ? Math.max(0, Math.round(Number(preparation_time_minutes) || 0)) : null,
-                disable_woocommerce_sync !== undefined ? !!disable_woocommerce_sync : null,
+                intOrNull(preparation_time_minutes),
+                disable_woocommerce_sync !== undefined && disable_woocommerce_sync !== null ? !!disable_woocommerce_sync : null,
                 Array.isArray(variation_items) ? JSON.stringify(variation_items) : null,
                 Array.isArray(combo_items) ? JSON.stringify(combo_items) : null,
                 id, tenantId]
@@ -4168,7 +4182,7 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
 
         // Cascade barcode change to batches if barcode actually changed
         if (newBarcode && newBarcode !== currentBarcode) {
-            await pool.query('UPDATE product_batches SET product_barcode = $1 WHERE product_barcode = $2', [newBarcode, currentBarcode]);
+            await pool.query('UPDATE product_batches SET product_barcode = $1 WHERE product_barcode = $2 AND COALESCE(tenant_id, 1) = $3', [newBarcode, currentBarcode, tenantId]).catch(() => {});
         }
 
         const updatedProd = result.rows[0];
