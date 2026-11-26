@@ -655,8 +655,10 @@
             }
         }
 
+        let currentDashRole = '';
         function initDashboard(user) {
             const role = (user && user.role ? user.role : '').toLowerCase();
+            currentDashRole = role;
             if (role === 'cashier' || role === 'teller') {
                 checkShiftAndRedirect();
                 return;
@@ -727,17 +729,24 @@
             const qsDash = new URLSearchParams({ from, to }).toString();
             const qsCeo = new URLSearchParams({ branch: selectedBranch, ...(from && to ? { startDate: from, endDate: to } : {}) }).toString();
 
+            const role = currentDashRole || (() => {
+                try { return String(JSON.parse(localStorage.getItem('currentUser') || '{}').role || '').toLowerCase(); } catch (_) { return ''; }
+            })();
+            const isExec = ['super_admin', 'ceo', 'admin'].includes(role);
+            const isCompany = ['company', 'business_client'].includes(role);
+            const noop = Promise.resolve(null);
+
             const [dashData, repData, ceoFin, ceoBranches, ceoLive, ceoTrend, peakHours, highValue, approvals, compData] = await Promise.all([
-                fetchJsonSafe(`/api/dashboard?${qsDash}`, token),
-                fetchJsonSafe(`/api/reports/all?${qsDash}`, token),
-                fetchJsonSafe(`/api/ceo/financials?${qsCeo}`, token),
-                fetchJsonSafe(`/api/ceo/branches?${qsCeo}`, token),
-                fetchJsonSafe('/api/ceo-live/overview', token),
-                fetchJsonSafe(`/api/ceo/analytics/trend?${qsCeo}`, token),
-                fetchJsonSafe('/api/ceo/analytics/peak-hours', token),
-                fetchJsonSafe('/api/ceo/transactions/high-value', token),
-                fetchJsonSafe('/api/ceo/approvals/credit-customers', token),
-                fetchJsonSafe('/api/company/dashboard', token)
+                !isCompany ? fetchJsonSafe(`/api/dashboard?${qsDash}`, token) : noop,
+                !isCompany ? fetchJsonSafe(`/api/reports/all?${qsDash}`, token) : noop,
+                isExec ? fetchJsonSafe(`/api/ceo/financials?${qsCeo}`, token) : noop,
+                isExec ? fetchJsonSafe(`/api/ceo/branches?${qsCeo}`, token) : noop,
+                isExec ? fetchJsonSafe('/api/ceo-live/overview', token) : noop,
+                isExec ? fetchJsonSafe(`/api/ceo/analytics/trend?${qsCeo}`, token) : noop,
+                isExec ? fetchJsonSafe('/api/ceo/analytics/peak-hours', token) : noop,
+                isExec ? fetchJsonSafe('/api/ceo/transactions/high-value', token) : noop,
+                isExec ? fetchJsonSafe('/api/ceo/approvals/credit-customers', token) : noop,
+                isCompany ? fetchJsonSafe('/api/company/dashboard', token) : noop
             ]);
 
             if (!dashData && !ceoFin && !compData) {
