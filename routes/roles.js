@@ -4,6 +4,8 @@ const { pool } = require('../db/pool');
 const { authenticateToken, requirePermission, MANAGER_ROLES } = require('../middleware/auth');
 const { logActivity } = require('../services/audit');
 
+const isCeoOrAdmin = (req) => ['super_admin', 'ceo', 'admin'].includes(String(req.user?.role || '').toLowerCase());
+
 const PERMISSION_MODULES = [
     { key: 'home', label: '1. Home & Dashboard', actions: ['view'] },
     { key: 'users', label: '2.1 Users', actions: ['view', 'create', 'edit', 'delete'] },
@@ -533,14 +535,15 @@ router.delete('/api/roles/:id', authenticateToken, async (req, res) => {
         return res.status(403).json({ message: 'Only the CEO or Admin can delete roles' });
     }
     try {
-        const { id } = req.params;
+        const id = parseInt(req.params.id, 10);
+        if (!Number.isFinite(id)) return res.status(400).json({ message: 'Invalid role id' });
         const tenantId = req.user.tenant_id || 1;
-        const existing = await pool.query('SELECT * FROM roles WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+        const existing = await pool.query('SELECT * FROM roles WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [id, tenantId]);
         if (existing.rows.length === 0) return res.status(404).json({ message: 'Role not found' });
         if (existing.rows[0].is_system) {
             return res.status(400).json({ message: 'System roles cannot be deleted' });
         }
-        await pool.query('DELETE FROM roles WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+        await pool.query('DELETE FROM roles WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [id, tenantId]);
         await logActivity(req, 'ROLE_DELETED', { role_id: id, name: existing.rows[0].name });
         res.json({ success: true });
     } catch (err) {
