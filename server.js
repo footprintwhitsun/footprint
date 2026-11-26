@@ -3439,36 +3439,58 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
 });
 
 let _extProdColsReady = false;
+let _productColsCache = null;
+
+async function getProductColumns() {
+    if (_productColsCache) return _productColsCache;
+    try {
+        const r = await pool.query(`SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = 'products'`);
+        if (r.rows.length > 0) {
+            _productColsCache = new Set(r.rows.map((row) => row.column_name));
+            return _productColsCache;
+        }
+    } catch (_) {}
+    return new Set(['id', 'barcode', 'name', 'category', 'price', 'stock', 'stock_levels', 'cost_price', 'selling_unit', 'packaging_unit', 'conversion_rate', 'reorder_level', 'track_batch', 'track_expiry', 'branch_id', 'tenant_id']);
+}
+
 async function ensureExtendedProductColumns() {
     if (_extProdColsReady) return;
+    const alterStmts = [
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode_type VARCHAR(30) DEFAULT 'C128'`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(120)`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS sub_category VARCHAR(120)`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS business_locations VARCHAR(255) DEFAULT 'All Locations'`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS manage_stock BOOLEAN DEFAULT TRUE`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS brochure_url TEXT`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS brochure_name VARCHAR(255)`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS applicable_tax NUMERIC(6,2) DEFAULT 0`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS applicable_tax_name VARCHAR(80) DEFAULT 'None'`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS tax_type VARCHAR(30) DEFAULT 'Exclusive'`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS product_type VARCHAR(30) DEFAULT 'Single'`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_inc_tax NUMERIC(12,2) DEFAULT 0`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS selling_price_exc_tax NUMERIC(12,2) DEFAULT 0`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS margin_pct NUMERIC(8,2) DEFAULT 0`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS varying_prices JSONB DEFAULT '[]'::jsonb`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS device_model VARCHAR(160)`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS enable_sr_no BOOLEAN DEFAULT FALSE`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS not_for_selling BOOLEAN DEFAULT FALSE`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS weight VARCHAR(60)`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS preparation_time_minutes INTEGER DEFAULT 0`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS disable_woocommerce_sync BOOLEAN DEFAULT FALSE`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS variation_items JSONB DEFAULT '[]'::jsonb`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS combo_items JSONB DEFAULT '[]'::jsonb`
+    ];
+    let anySucceeded = false;
+    for (const sql of alterStmts) {
+        try {
+            await adminPool.query(sql);
+            anySucceeded = true;
+        } catch (_) { /* ignore if non-owner role */ }
+    }
     try {
         await adminPool.query(`
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS barcode_type VARCHAR(30) DEFAULT 'C128';
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS brand VARCHAR(120);
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS sub_category VARCHAR(120);
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS business_locations VARCHAR(255) DEFAULT 'All Locations';
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS manage_stock BOOLEAN DEFAULT TRUE;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS description TEXT;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url TEXT;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS brochure_url TEXT;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS brochure_name VARCHAR(255);
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS applicable_tax NUMERIC(6,2) DEFAULT 0;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS applicable_tax_name VARCHAR(80) DEFAULT 'None';
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS tax_type VARCHAR(30) DEFAULT 'Exclusive';
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS product_type VARCHAR(30) DEFAULT 'Single';
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS cost_inc_tax NUMERIC(12,2) DEFAULT 0;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS selling_price_exc_tax NUMERIC(12,2) DEFAULT 0;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS margin_pct NUMERIC(8,2) DEFAULT 0;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS varying_prices JSONB DEFAULT '[]'::jsonb;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS device_model VARCHAR(160);
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS enable_sr_no BOOLEAN DEFAULT FALSE;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS not_for_selling BOOLEAN DEFAULT FALSE;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS weight VARCHAR(60);
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS preparation_time_minutes INTEGER DEFAULT 0;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS disable_woocommerce_sync BOOLEAN DEFAULT FALSE;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS variation_items JSONB DEFAULT '[]'::jsonb;
-            ALTER TABLE products ADD COLUMN IF NOT EXISTS combo_items JSONB DEFAULT '[]'::jsonb;
-
             CREATE TABLE IF NOT EXISTS device_models (
                 id SERIAL PRIMARY KEY,
                 name VARCHAR(160) NOT NULL,
@@ -3476,7 +3498,6 @@ async function ensureExtendedProductColumns() {
                 tenant_id INT DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
-
             CREATE TABLE IF NOT EXISTS product_variation_items (
                 id SERIAL PRIMARY KEY,
                 product_id INT REFERENCES products(id) ON DELETE CASCADE,
@@ -3492,7 +3513,6 @@ async function ensureExtendedProductColumns() {
                 tenant_id INT DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
-
             CREATE TABLE IF NOT EXISTS product_combo_items (
                 id SERIAL PRIMARY KEY,
                 product_id INT REFERENCES products(id) ON DELETE CASCADE,
@@ -3505,7 +3525,6 @@ async function ensureExtendedProductColumns() {
                 tenant_id INT DEFAULT 1,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
-
             DO $$
             DECLARE r RECORD;
             BEGIN
@@ -3528,10 +3547,9 @@ async function ensureExtendedProductColumns() {
                 END LOOP;
             END $$;
         `);
-        _extProdColsReady = true;
-    } catch (e) {
-        console.error('ensureExtendedProductColumns warning:', e.message);
-    }
+    } catch (_) {}
+    if (anySucceeded) _productColsCache = null;
+    _extProdColsReady = true;
 }
 
 app.get('/api/device-models', authenticateToken, async (req, res) => {
@@ -3632,6 +3650,34 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
             }
         };
 
+        const prodCols = await getProductColumns();
+        const optEntries = [
+            ['barcode_type', barcode_type],
+            ['brand', brand],
+            ['sub_category', sub_category],
+            ['business_locations', business_locations],
+            ['manage_stock', manage_stock !== false],
+            ['description', description],
+            ['image_url', image_url],
+            ['brochure_url', brochure_url],
+            ['brochure_name', brochure_name],
+            ['applicable_tax', Number(applicable_tax || 0)],
+            ['applicable_tax_name', applicable_tax_name],
+            ['tax_type', tax_type],
+            ['product_type', product_type],
+            ['cost_inc_tax', Number(cost_inc_tax || 0)],
+            ['selling_price_exc_tax', Number(selling_price_exc_tax || 0)],
+            ['margin_pct', Number(margin_pct || 0)],
+            ['device_model', device_model],
+            ['enable_sr_no', !!enable_sr_no],
+            ['not_for_selling', !!not_for_selling],
+            ['weight', String(weight || '')],
+            ['preparation_time_minutes', cleanPrepMins],
+            ['disable_woocommerce_sync', !!disable_woocommerce_sync],
+            ['variation_items', JSON.stringify(varList), '::jsonb'],
+            ['combo_items', JSON.stringify(comboList), '::jsonb']
+        ].filter(([col]) => prodCols.has(col));
+
         // Check if a soft-deleted product with the same barcode+name already exists
         const deletedRes = await pool.query(
             `SELECT id FROM products WHERE barcode = $1 AND name = $2 AND tenant_id = $3 AND deleted_at IS NOT NULL LIMIT 1`,
@@ -3640,33 +3686,21 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
 
         if (deletedRes.rows.length > 0) {
             const existingId = deletedRes.rows[0].id;
+            const updCols = [
+                ['name', name], ['category', category], ['price', price], ['stock', stockValue],
+                ['stock_levels', stockLevels], ['cost_price', cost_price || 0],
+                ['selling_unit', selling_unit || 'Unit'], ['packaging_unit', packaging_unit || 'Box'],
+                ['conversion_rate', conversion_rate || 1], ['reorder_level', cleanReorder],
+                ['track_batch', track_batch ?? true], ['track_expiry', track_expiry ?? false],
+                ...optEntries
+            ];
+            const updParams = updCols.map(([, v]) => v);
+            const updSets = updCols.map(([c, , cast], i) => `${c} = $${i + 1}${cast || ''}`);
+            updSets.push('deleted_at = NULL');
+            updParams.push(existingId, tenantId);
             await pool.query(
-                `UPDATE products SET
-                    name = $1, category = $2, price = $3, stock = $4, stock_levels = $5,
-                    cost_price = $6, selling_unit = $7, packaging_unit = $8,
-                    conversion_rate = $9, reorder_level = $10,
-                    track_batch = $11, track_expiry = $12,
-                    barcode_type = $13, brand = $14, sub_category = $15, business_locations = $16,
-                    manage_stock = $17, description = $18, image_url = $19, brochure_url = $20, brochure_name = $21,
-                    applicable_tax = $22, applicable_tax_name = $23, tax_type = $24, product_type = $25,
-                    cost_inc_tax = $26, selling_price_exc_tax = $27, margin_pct = $28,
-                    device_model = $29, enable_sr_no = $30, not_for_selling = $31, weight = $32,
-                    preparation_time_minutes = $33, disable_woocommerce_sync = $34,
-                    variation_items = $35::jsonb, combo_items = $36::jsonb,
-                    deleted_at = NULL
-                 WHERE id = $37 AND tenant_id = $38`,
-                [name, category, price, stockValue, stockLevels,
-                    cost_price || 0, selling_unit || 'Unit', packaging_unit || 'Box',
-                    conversion_rate || 1, cleanReorder,
-                    track_batch ?? true, track_expiry ?? false,
-                    barcode_type, brand, sub_category, business_locations,
-                    manage_stock !== false, description, image_url, brochure_url, brochure_name,
-                    Number(applicable_tax || 0), applicable_tax_name, tax_type, product_type,
-                    Number(cost_inc_tax || 0), Number(selling_price_exc_tax || 0), Number(margin_pct || 0),
-                    device_model, !!enable_sr_no, !!not_for_selling, String(weight || ''),
-                    cleanPrepMins, !!disable_woocommerce_sync,
-                    JSON.stringify(varList), JSON.stringify(comboList),
-                    existingId, tenantId]
+                `UPDATE products SET ${updSets.join(', ')} WHERE id = $${updParams.length - 1} AND tenant_id = $${updParams.length}`,
+                updParams
             );
             await syncChildItems(existingId);
             await logActivity(req, 'RESTORE_PRODUCT', { barcode: finalBarcode, name, stock: stockValue });
@@ -3674,24 +3708,21 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
         }
 
         // Fresh INSERT — no deleted record found for this barcode
+        const insCols = [
+            ['barcode', finalBarcode], ['name', name], ['category', category], ['price', price],
+            ['stock', stockValue], ['stock_levels', stockLevels], ['cost_price', cost_price || 0],
+            ['selling_unit', selling_unit || 'Unit'], ['packaging_unit', packaging_unit || 'Box'],
+            ['conversion_rate', conversion_rate || 1], ['reorder_level', cleanReorder],
+            ['track_batch', track_batch ?? true], ['track_expiry', track_expiry ?? false],
+            ['branch_id', branchId], ['tenant_id', tenantId],
+            ...optEntries
+        ];
+        const insNames = insCols.map(([c]) => c);
+        const insPlaceholders = insCols.map(([, , cast], i) => `$${i + 1}${cast || ''}`);
+        const insParams = insCols.map(([, v]) => v);
         const insRes = await pool.query(
-            `INSERT INTO products (
-                barcode, name, category, price, stock, stock_levels, cost_price, selling_unit, packaging_unit,
-                conversion_rate, reorder_level, track_batch, track_expiry, branch_id, tenant_id,
-                barcode_type, brand, sub_category, business_locations, manage_stock, description,
-                image_url, brochure_url, brochure_name, applicable_tax, applicable_tax_name, tax_type,
-                product_type, cost_inc_tax, selling_price_exc_tax, margin_pct,
-                device_model, enable_sr_no, not_for_selling, weight, preparation_time_minutes,
-                disable_woocommerce_sync, variation_items, combo_items
-             ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38::jsonb,$39::jsonb)
-             RETURNING id`,
-            [finalBarcode, name, category, price, stockValue, stockLevels, cost_price || 0, selling_unit || 'Unit', packaging_unit || 'Box',
-                conversion_rate || 1, cleanReorder, track_batch ?? true, track_expiry ?? false, branchId, tenantId,
-                barcode_type, brand, sub_category, business_locations, manage_stock !== false, description,
-                image_url, brochure_url, brochure_name, Number(applicable_tax || 0), applicable_tax_name, tax_type,
-                product_type, Number(cost_inc_tax || 0), Number(selling_price_exc_tax || 0), Number(margin_pct || 0),
-                device_model, !!enable_sr_no, !!not_for_selling, String(weight || ''), cleanPrepMins,
-                !!disable_woocommerce_sync, JSON.stringify(varList), JSON.stringify(comboList)]
+            `INSERT INTO products (${insNames.join(', ')}) VALUES (${insPlaceholders.join(', ')}) RETURNING id`,
+            insParams
         );
         const newProductId = insRes.rows[0]?.id;
         await syncChildItems(newProductId);
@@ -4142,64 +4173,66 @@ app.put('/api/products/:id', authenticateToken, requireRole(MANAGER_ROLES), asyn
         const numOrNull = (v) => (v === undefined || v === null || v === '') ? null : (Number.isFinite(Number(v)) ? Number(v) : null);
         const intOrNull = (v) => (v === undefined || v === null || v === '') ? null : (Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v))) : null);
 
+        const setClauses = [
+            'barcode = $1', 'name = $2', 'category = $3', 'price = $4', 'stock = $5',
+            'cost_price = $6', 'selling_unit = $7', 'packaging_unit = $8',
+            'conversion_rate = $9', 'reorder_level = $10', 'track_batch = $11',
+            'track_expiry = $12', 'stock_levels = $13'
+        ];
+        const params = [
+            finalBarcode, name ?? current.name, category ?? current.category,
+            numOrNull(price) ?? current.price, totalStock,
+            numOrNull(cost_price) ?? current.cost_price,
+            selling_unit ?? current.selling_unit,
+            packaging_unit ?? current.packaging_unit,
+            numOrNull(conversion_rate) ?? current.conversion_rate,
+            intOrNull(reorder_level) ?? current.reorder_level,
+            track_batch ?? current.track_batch, track_expiry ?? current.track_expiry,
+            JSON.stringify(stockLevels)
+        ];
+
+        const hasCol = (c) => Object.prototype.hasOwnProperty.call(current, c);
+        const addOptCol = (col, val, mode = 'coalesce') => {
+            if (!hasCol(col)) return;
+            params.push(val);
+            const idx = params.length;
+            if (mode === 'nonempty') setClauses.push(`${col} = CASE WHEN $${idx} <> '' THEN $${idx} ELSE ${col} END`);
+            else if (mode === 'jsonb') setClauses.push(`${col} = COALESCE($${idx}::jsonb, ${col})`);
+            else setClauses.push(`${col} = COALESCE($${idx}, ${col})`);
+        };
+
+        addOptCol('barcode_type', barcode_type ?? null);
+        addOptCol('brand', brand ?? null);
+        addOptCol('sub_category', sub_category ?? null);
+        addOptCol('business_locations', business_locations ?? null);
+        addOptCol('manage_stock', manage_stock !== undefined && manage_stock !== null ? !!manage_stock : null);
+        addOptCol('description', description ?? null);
+        addOptCol('image_url', image_url || '', 'nonempty');
+        addOptCol('brochure_url', brochure_url || '', 'nonempty');
+        addOptCol('brochure_name', brochure_name || '', 'nonempty');
+        addOptCol('applicable_tax', numOrNull(applicable_tax));
+        addOptCol('applicable_tax_name', applicable_tax_name ?? null);
+        addOptCol('tax_type', tax_type ?? null);
+        addOptCol('product_type', product_type ?? null);
+        addOptCol('cost_inc_tax', numOrNull(cost_inc_tax));
+        addOptCol('selling_price_exc_tax', numOrNull(selling_price_exc_tax));
+        addOptCol('margin_pct', numOrNull(margin_pct));
+        addOptCol('device_model', device_model ?? null);
+        addOptCol('enable_sr_no', enable_sr_no !== undefined && enable_sr_no !== null ? !!enable_sr_no : null);
+        addOptCol('not_for_selling', not_for_selling !== undefined && not_for_selling !== null ? !!not_for_selling : null);
+        addOptCol('weight', weight ?? null);
+        addOptCol('preparation_time_minutes', intOrNull(preparation_time_minutes));
+        addOptCol('disable_woocommerce_sync', disable_woocommerce_sync !== undefined && disable_woocommerce_sync !== null ? !!disable_woocommerce_sync : null);
+        addOptCol('variation_items', Array.isArray(variation_items) ? JSON.stringify(variation_items) : null, 'jsonb');
+        addOptCol('combo_items', Array.isArray(combo_items) ? JSON.stringify(combo_items) : null, 'jsonb');
+
+        params.push(id, tenantId);
+        const idIdx = params.length - 1;
+        const tenantIdx = params.length;
+
         const result = await pool.query(
-            `UPDATE products SET 
-                barcode = $1, name = $2, category = $3, price = $4, stock = $5, 
-                cost_price = $6, selling_unit = $7, packaging_unit = $8, 
-                conversion_rate = $9, reorder_level = $10, track_batch = $11, 
-                track_expiry = $12, stock_levels = $13,
-                barcode_type = COALESCE($14, barcode_type),
-                brand = COALESCE($15, brand),
-                sub_category = COALESCE($16, sub_category),
-                business_locations = COALESCE($17, business_locations),
-                manage_stock = COALESCE($18, manage_stock),
-                description = COALESCE($19, description),
-                image_url = CASE WHEN $20 <> '' THEN $20 ELSE image_url END,
-                brochure_url = CASE WHEN $21 <> '' THEN $21 ELSE brochure_url END,
-                brochure_name = CASE WHEN $22 <> '' THEN $22 ELSE brochure_name END,
-                applicable_tax = COALESCE($23, applicable_tax),
-                applicable_tax_name = COALESCE($24, applicable_tax_name),
-                tax_type = COALESCE($25, tax_type),
-                product_type = COALESCE($26, product_type),
-                cost_inc_tax = COALESCE($27, cost_inc_tax),
-                selling_price_exc_tax = COALESCE($28, selling_price_exc_tax),
-                margin_pct = COALESCE($29, margin_pct),
-                device_model = COALESCE($30, device_model),
-                enable_sr_no = COALESCE($31, enable_sr_no),
-                not_for_selling = COALESCE($32, not_for_selling),
-                weight = COALESCE($33, weight),
-                preparation_time_minutes = COALESCE($34, preparation_time_minutes),
-                disable_woocommerce_sync = COALESCE($35, disable_woocommerce_sync),
-                variation_items = COALESCE($36::jsonb, variation_items),
-                combo_items = COALESCE($37::jsonb, combo_items)
-             WHERE id = $38 AND COALESCE(tenant_id, 1) = $39 RETURNING *`,
-            [finalBarcode, name ?? current.name, category ?? current.category,
-                numOrNull(price) ?? current.price, totalStock,
-                numOrNull(cost_price) ?? current.cost_price,
-                selling_unit ?? current.selling_unit,
-                packaging_unit ?? current.packaging_unit,
-                numOrNull(conversion_rate) ?? current.conversion_rate,
-                intOrNull(reorder_level) ?? current.reorder_level,
-                track_batch ?? current.track_batch, track_expiry ?? current.track_expiry,
-                JSON.stringify(stockLevels),
-                barcode_type ?? null, brand ?? null, sub_category ?? null, business_locations ?? null,
-                manage_stock !== undefined && manage_stock !== null ? !!manage_stock : null, description ?? null,
-                image_url || '', brochure_url || '', brochure_name || '',
-                numOrNull(applicable_tax),
-                applicable_tax_name ?? null,
-                tax_type ?? null, product_type ?? null,
-                numOrNull(cost_inc_tax),
-                numOrNull(selling_price_exc_tax),
-                numOrNull(margin_pct),
-                device_model ?? null,
-                enable_sr_no !== undefined && enable_sr_no !== null ? !!enable_sr_no : null,
-                not_for_selling !== undefined && not_for_selling !== null ? !!not_for_selling : null,
-                weight ?? null,
-                intOrNull(preparation_time_minutes),
-                disable_woocommerce_sync !== undefined && disable_woocommerce_sync !== null ? !!disable_woocommerce_sync : null,
-                Array.isArray(variation_items) ? JSON.stringify(variation_items) : null,
-                Array.isArray(combo_items) ? JSON.stringify(combo_items) : null,
-                id, tenantId]
+            `UPDATE products SET ${setClauses.join(', ')} WHERE id = $${idIdx} AND COALESCE(tenant_id, 1) = $${tenantIdx} RETURNING *`,
+            params
         );
 
         // Cascade barcode change to related tables if barcode actually changed
