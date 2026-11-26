@@ -475,17 +475,43 @@ router.get('/api/variations', authenticateToken, async (req, res) => {
 router.post('/api/variations', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     await ensurePhase4Schema();
     const tenantId = req.user.tenant_id || 1;
-    const { name, values_text = '' } = req.body || {};
+    const { name, values_text = '', values } = req.body || {};
     if (!name || !String(name).trim()) return res.status(400).json({ message: 'Variation name is required' });
+    const normalizedValues = Array.isArray(values)
+        ? values.map((v) => String(v || '').trim()).filter(Boolean).join(', ')
+        : String(values_text || '').split(',').map((v) => v.trim()).filter(Boolean).join(', ');
+    if (!normalizedValues) return res.status(400).json({ message: 'At least one variation value is required' });
     try {
         const r = await pool.query(
             'INSERT INTO product_variations (tenant_id, name, values_text) VALUES ($1, $2, $3) RETURNING *',
-            [tenantId, String(name).trim(), String(values_text || '').trim()]
+            [tenantId, String(name).trim(), normalizedValues]
         );
-        await logActivity(req, 'CREATE_VARIATION', { name: String(name).trim() });
+        await logActivity(req, 'CREATE_VARIATION', { name: String(name).trim(), values: normalizedValues });
         res.status(201).json({ variation: r.rows[0] });
     } catch (e) {
         res.status(500).json({ message: 'Failed to save variation' });
+    }
+});
+
+router.put('/api/variations/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    const { name, values_text = '', values } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ message: 'Variation name is required' });
+    const normalizedValues = Array.isArray(values)
+        ? values.map((v) => String(v || '').trim()).filter(Boolean).join(', ')
+        : String(values_text || '').split(',').map((v) => v.trim()).filter(Boolean).join(', ');
+    if (!normalizedValues) return res.status(400).json({ message: 'At least one variation value is required' });
+    try {
+        const r = await pool.query(
+            'UPDATE product_variations SET name = $1, values_text = $2 WHERE id = $3 AND COALESCE(tenant_id, 1) = $4 RETURNING *',
+            [String(name).trim(), normalizedValues, req.params.id, tenantId]
+        );
+        if (!r.rows.length) return res.status(404).json({ message: 'Variation not found' });
+        await logActivity(req, 'UPDATE_VARIATION', { id: req.params.id, name: String(name).trim(), values: normalizedValues });
+        res.json({ variation: r.rows[0] });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to update variation' });
     }
 });
 

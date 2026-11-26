@@ -971,39 +971,163 @@
     }
 
     async function renderVariations() {
-        const res = await fetch('/api/variations', { headers });
+        const res = await fetch('/api/variations', { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
+        const rows = d.variations || [];
+        const esc = (v) => OkwUI.escapeHtml(v == null ? '' : String(v));
+
         const actionsHost = document.getElementById('cat-page-actions');
         if (actionsHost) actionsHost.innerHTML = `<button type="button" class="okw-btn okw-btn-primary" id="v-open-add">+ Add Variation</button>`;
+
         const panel = document.getElementById('cat-panel');
         panel.innerHTML = `<div id="vars-tbl"></div>`;
+
         OkwUI.dataTable('#vars-tbl', {
             columns: [
-                { key: 'name', label: 'Variation Name' },
-                { key: 'values_text', label: 'Values' },
-                { key: 'id', label: 'Actions', render: (v) => `<button type="button" class="okw-btn okw-btn-outline" data-del-var="${v}" style="height:28px;padding:0 10px;font-size:12px;">Delete</button>` }
+                { key: 'name', label: 'Variations', render: (v) => `<strong>${esc(v)}</strong>` },
+                {
+                    key: 'values_text',
+                    label: 'Values',
+                    render: (v) => {
+                        const vals = String(v || '').split(',').map((s) => s.trim()).filter(Boolean);
+                        if (!vals.length) return '<span style="color:var(--muted,#64748b);">—</span>';
+                        return `<div style="display:flex;flex-wrap:wrap;gap:6px;">${vals.map((val) =>
+                            `<span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:600;background:#eef2ff;color:#273990;border:1px solid #c7d2fe;">${esc(val)}</span>`
+                        ).join('')}</div>`;
+                    }
+                },
+                {
+                    key: 'id',
+                    label: 'Action',
+                    render: (v) => `
+                        <div style="display:inline-flex;gap:6px;">
+                            <button type="button" class="okw-btn okw-btn-outline" data-edit-var="${v}" style="height:28px;padding:0 10px;font-size:12px;">Edit</button>
+                            <button type="button" class="okw-btn okw-btn-outline" data-del-var="${v}" style="height:28px;padding:0 10px;font-size:12px;color:#dc2626;border-color:#fecaca;">Delete</button>
+                        </div>`
+                }
             ],
-            rows: d.variations || []
+            rows,
+            searchPlaceholder: 'Search variations or values...',
+            exportFilename: 'okwesiwa-variations.xlsx',
+            printTitle: 'Product Variations',
+            emptyText: 'No variations added yet. Click "+ Add Variation" to create one.'
         });
-        const addBtn = document.getElementById('v-open-add');
-        if (addBtn) addBtn.onclick = () => openSimpleModal({
-            title: 'Add Variation',
-            fields: [
-                { id: 'name', label: 'Variation Name', placeholder: 'e.g. Size, Color, Grade', required: true },
-                { id: 'values_text', label: 'Values (comma-separated)', placeholder: 'e.g. 1-inch, 2-inch, 3-inch' }
-            ],
-            onSave: async (v) => {
-                const r = await fetch('/api/variations', { method: 'POST', headers, body: JSON.stringify(v) });
-                if (r.ok) { OkwUI.toast('Variation saved', 'success'); renderVariations(); return true; }
-                OkwUI.toast('Failed to save variation', 'danger');
-                return false;
+
+        function openVariationModal(existing) {
+            const isEdit = Boolean(existing && existing.id);
+            const initVals = isEdit
+                ? String(existing.values_text || '').split(',').map((s) => s.trim()).filter(Boolean)
+                : [''];
+            if (!initVals.length) initVals.push('');
+
+            const backdrop = document.createElement('div');
+            backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.52);z-index:2000;display:flex;align-items:center;justify-content:center;padding:18px;';
+            backdrop.innerHTML = `
+                <div role="dialog" aria-modal="true" style="background:var(--sheet,#fff);border-radius:14px;width:100%;max-width:480px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 50px rgba(15,23,42,0.22);overflow:hidden;">
+                    <div style="padding:16px 20px;border-bottom:1px solid var(--edge,#e2e8f0);display:flex;justify-content:space-between;align-items:center;">
+                        <h3 style="margin:0;font-size:16px;font-weight:700;color:var(--ink,#0f172a);">${isEdit ? 'Edit Variation' : 'Add Variation'}</h3>
+                        <button type="button" id="vm-close" style="border:0;background:transparent;font-size:22px;line-height:1;color:var(--muted,#64748b);cursor:pointer;">&times;</button>
+                    </div>
+                    <form id="vm-form" style="padding:18px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;">
+                        <div>
+                            <label for="vm-name" style="display:block;font-size:12.5px;font-weight:600;color:var(--ink-2,#334155);margin-bottom:5px;">Variation Name: *</label>
+                            <input type="text" id="vm-name" class="okw-input" value="${esc(isEdit ? existing.name : '')}" placeholder="e.g. Size, Color, Grade" required style="width:100%;height:38px;box-sizing:border-box;">
+                        </div>
+                        <div>
+                            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                                <label style="font-size:12.5px;font-weight:600;color:var(--ink-2,#334155);">Add variation values: *</label>
+                                <button type="button" id="vm-add-val" class="okw-btn okw-btn-outline" style="height:28px;padding:0 10px;font-size:12px;">+ Add Value</button>
+                            </div>
+                            <div id="vm-vals-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+                        </div>
+                        <div style="display:flex;justify-content:flex-end;gap:8px;padding-top:10px;border-top:1px solid var(--edge,#e2e8f0);">
+                            <button type="button" id="vm-cancel" class="okw-btn okw-btn-outline">Cancel</button>
+                            <button type="submit" id="vm-save" class="okw-btn okw-btn-primary">${isEdit ? 'Update Variation' : 'Save Variation'}</button>
+                        </div>
+                    </form>
+                </div>`;
+            document.body.appendChild(backdrop);
+
+            const valsHost = backdrop.querySelector('#vm-vals-list');
+            function appendValueRow(val = '', focus = false) {
+                const rowDiv = document.createElement('div');
+                rowDiv.style.cssText = 'display:flex;gap:8px;align-items:center;';
+                rowDiv.innerHTML = `
+                    <input type="text" class="okw-input vm-val-in" value="${esc(val)}" placeholder="e.g. Small, 1-inch, Red" style="flex:1;height:36px;box-sizing:border-box;">
+                    <button type="button" class="okw-btn okw-btn-outline vm-val-rm" title="Remove value" style="height:36px;width:36px;padding:0;color:#dc2626;border-color:#fecaca;">&minus;</button>`;
+                valsHost.appendChild(rowDiv);
+                const inp = rowDiv.querySelector('.vm-val-in');
+                rowDiv.querySelector('.vm-val-rm').addEventListener('click', () => {
+                    if (valsHost.children.length > 1) rowDiv.remove();
+                    else inp.value = '';
+                });
+                inp.addEventListener('keydown', (ev) => {
+                    if (ev.key === 'Enter') {
+                        ev.preventDefault();
+                        appendValueRow('', true);
+                    }
+                });
+                if (focus) inp.focus();
             }
-        });
-        panel.querySelectorAll('[data-del-var]').forEach(btn => {
-            btn.onclick = async () => {
-                const r = await fetch(`/api/variations/${btn.dataset.delVar}`, { method: 'DELETE', headers });
+
+            initVals.forEach((v) => appendValueRow(v, false));
+            backdrop.querySelector('#vm-add-val').addEventListener('click', () => appendValueRow('', true));
+
+            const close = () => backdrop.remove();
+            backdrop.querySelector('#vm-close').addEventListener('click', close);
+            backdrop.querySelector('#vm-cancel').addEventListener('click', close);
+            backdrop.addEventListener('click', (ev) => { if (ev.target === backdrop) close(); });
+
+            backdrop.querySelector('#vm-form').addEventListener('submit', async (ev) => {
+                ev.preventDefault();
+                const name = backdrop.querySelector('#vm-name').value.trim();
+                const values = [...valsHost.querySelectorAll('.vm-val-in')].map((i) => i.value.trim()).filter(Boolean);
+                if (!name) return OkwUI.toast('Variation Name is required', 'warning');
+                if (!values.length) return OkwUI.toast('Add at least one variation value', 'warning');
+                const saveBtn = backdrop.querySelector('#vm-save');
+                saveBtn.disabled = true;
+                try {
+                    const url = isEdit ? `/api/variations/${encodeURIComponent(existing.id)}` : '/api/variations';
+                    const r = await fetch(url, {
+                        method: isEdit ? 'PUT' : 'POST',
+                        headers,
+                        credentials: 'include',
+                        body: JSON.stringify({ name, values, values_text: values.join(', ') })
+                    });
+                    const out = await r.json().catch(() => ({}));
+                    if (!r.ok) throw new Error(out.message || 'Failed to save variation');
+                    OkwUI.toast(isEdit ? 'Variation updated' : 'Variation saved', 'success');
+                    close();
+                    renderVariations();
+                } catch (err) {
+                    OkwUI.toast(err.message || 'Failed to save variation', 'danger');
+                    saveBtn.disabled = false;
+                }
+            });
+            backdrop.querySelector('#vm-name').focus();
+        }
+
+        const addBtn = document.getElementById('v-open-add');
+        if (addBtn) addBtn.onclick = () => openVariationModal(null);
+
+        const varsTbl = panel.querySelector('#vars-tbl');
+        if (varsTbl) varsTbl.addEventListener('click', async (ev) => {
+            const editBtn = ev.target.closest('[data-edit-var]');
+            if (editBtn) {
+                const found = rows.find((r) => String(r.id) === String(editBtn.getAttribute('data-edit-var')));
+                if (found) openVariationModal(found);
+                return;
+            }
+            const delBtn = ev.target.closest('[data-del-var]');
+            if (delBtn) {
+                const ok = await OkwUI.confirm('Delete Variation', 'Remove this variation template?', { confirmText: 'Delete' });
+                if (!ok) return;
+                const r = await fetch(`/api/variations/${encodeURIComponent(delBtn.getAttribute('data-del-var'))}`, {
+                    method: 'DELETE', headers, credentials: 'include'
+                });
                 if (r.ok) { OkwUI.toast('Variation deleted', 'success'); renderVariations(); }
-            };
+                else OkwUI.toast('Failed to delete variation', 'danger');
+            }
         });
     }
 
