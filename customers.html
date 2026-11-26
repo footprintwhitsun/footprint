@@ -259,16 +259,12 @@
             const items = Array.isArray(ev.items) ? ev.items : [];
             if (items.length === 0) return '—';
             if (showItems) {
-                const lineCls = isPrint ? 'p-item-line' : 'stmt-item-line';
-                const nameCls = isPrint ? 'p-item-name' : 'stmt-item-name';
-                const qtyCls = isPrint ? 'p-item-qty' : 'stmt-item-qty';
-                const wrapCls = isPrint ? 'p-item-lines' : 'stmt-item-lines';
                 const multi = items.length > 1;
-                return `<div class="${wrapCls}">${items.map((it) => {
+                return `<div style="display:flex;flex-direction:column;gap:4px;">${items.map((it) => {
                     const meta = multi
-                        ? `${esc(it.qty)} &times; ${esc(money(it.price))} &middot; ${esc(money(it.total))}`
+                        ? `${esc(it.qty)} &times; ${esc(money(it.price))} = ${esc(money(it.total))}`
                         : `${esc(it.qty)} &times; ${esc(money(it.price))}`;
-                    return `<div class="${lineCls}"><span class="${nameCls}">${esc(it.name)}</span><span class="${qtyCls}">${meta}</span></div>`;
+                    return `<div style="line-height:1.35;"><span style="font-weight:600;color:${isPrint ? '#0f172a' : 'var(--ink,#0f172a)'};">${esc(it.name)}</span> <span style="font-size:${isPrint ? '10px' : '11.5px'};color:#64748b;white-space:nowrap;">(${meta})</span></div>`;
                 }).join('')}</div>`;
             }
             const count = items.reduce((sum, it) => sum + (Number(it.qty) || 0), 0) || items.length;
@@ -297,8 +293,8 @@
                 <tr>
                     <td class="nowrap">${esc(fmtDate(ev.date))}</td>
                     <td class="nowrap mono" title="${esc(ev.ref)}">${esc(shortRef(ev.ref))}</td>
-                    <td class="nowrap loc-col">${esc(ev.branch || '—')}</td>
-                    <td class="nowrap bold">${renderDescriptionLabel(ev)}</td>
+                    <td class="loc-col">${esc(ev.branch || '—')}</td>
+                    <td class="bold">${renderDescriptionLabel(ev)}</td>
                     <td>${renderItemsCell(ev, showItems, true)}</td>
                     <td class="nowrap">${esc(ev.payment_method)}</td>
                     <td class="num">${ev.debit > 0 ? esc(money(ev.debit)) : '—'}</td>
@@ -510,12 +506,12 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                             <table class="stmt-table" data-no-table-tools="1">
                                 <thead>
                                     <tr>
-                                        <th>Date</th>
-                                        <th>Ref #</th>
-                                        <th>Location</th>
-                                        <th>Description</th>
-                                        <th>Items</th>
-                                        <th>Method</th>
+                                        <th style="white-space:nowrap;">Date</th>
+                                        <th style="white-space:nowrap;">Ref #</th>
+                                        <th style="white-space:nowrap;">Location</th>
+                                        <th style="min-width:130px;">Description</th>
+                                        <th style="min-width:200px;">Items</th>
+                                        <th style="white-space:nowrap;">Method</th>
                                         <th class="num">Debit</th>
                                         <th class="num">Credit</th>
                                         <th class="num">Balance</th>
@@ -557,7 +553,7 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                             <td style="white-space:nowrap;">${esc(fmtDate(ev.date))}</td>
                             <td style="white-space:nowrap;font-family:ui-monospace,monospace;font-size:11.5px;" title="${esc(ev.ref)}">${esc(shortRef(ev.ref))}</td>
                             <td style="white-space:nowrap;color:var(--ink-2,#334155);font-size:12px;">${esc(ev.branch || '—')}</td>
-                            <td style="white-space:nowrap;font-weight:600;">${renderDescriptionLabel(ev)}</td>
+                            <td style="font-weight:600;">${renderDescriptionLabel(ev)}</td>
                             <td>${renderItemsCell(ev, showItems, false)}</td>
                             <td style="white-space:nowrap;">${esc(ev.payment_method)}</td>
                             <td class="num">${ev.debit > 0 ? esc(money(ev.debit)) : '—'}</td>
