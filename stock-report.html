@@ -173,20 +173,20 @@
                     <thead>
                         <tr>
                             <th>Action</th>
-                            <th>SKU</th>
-                            <th>Product</th>
-                            <th>Variation</th>
-                            <th>Category</th>
-                            <th>Location</th>
-                            <th class="num">Unit Selling Price</th>
-                            <th class="num">Current stock</th>
-                            <th class="num">Current Stock Value<br>(By purchase price)</th>
-                            <th class="num">Current Stock Value<br>(By sale price)</th>
-                            <th class="num">Potential profit</th>
-                            <th class="num">Total unit sold</th>
-                            <th class="num">Total Unit Transfered</th>
-                            <th class="num">Total Unit Adjusted</th>
-                            <th class="num">Current Stock (Manufacturing)</th>
+                            <th data-sr-sort="sku" style="cursor:pointer;user-select:none;" title="Click to sort">SKU</th>
+                            <th data-sr-sort="product" style="cursor:pointer;user-select:none;" title="Click to sort">Product</th>
+                            <th data-sr-sort="variation" style="cursor:pointer;user-select:none;" title="Click to sort">Variation</th>
+                            <th data-sr-sort="category" style="cursor:pointer;user-select:none;" title="Click to sort">Category</th>
+                            <th data-sr-sort="location" style="cursor:pointer;user-select:none;" title="Click to sort">Location</th>
+                            <th class="num" data-sr-sort="unit_selling_price" style="cursor:pointer;user-select:none;" title="Click to sort">Unit Selling Price</th>
+                            <th class="num" data-sr-sort="current_stock" style="cursor:pointer;user-select:none;" title="Click to sort">Current stock</th>
+                            <th class="num" data-sr-sort="stock_value_purchase" style="cursor:pointer;user-select:none;" title="Click to sort">Current Stock Value<br>(By purchase price)</th>
+                            <th class="num" data-sr-sort="stock_value_sale" style="cursor:pointer;user-select:none;" title="Click to sort">Current Stock Value<br>(By sale price)</th>
+                            <th class="num" data-sr-sort="potential_profit" style="cursor:pointer;user-select:none;" title="Click to sort">Potential profit</th>
+                            <th class="num" data-sr-sort="total_unit_sold" style="cursor:pointer;user-select:none;" title="Click to sort">Total unit sold</th>
+                            <th class="num" data-sr-sort="total_unit_transferred" style="cursor:pointer;user-select:none;" title="Click to sort">Total Unit Transfered</th>
+                            <th class="num" data-sr-sort="total_unit_adjusted" style="cursor:pointer;user-select:none;" title="Click to sort">Total Unit Adjusted</th>
+                            <th class="num" data-sr-sort="manufacturing_stock" style="cursor:pointer;user-select:none;" title="Click to sort">Current Stock (Manufacturing)</th>
                         </tr>
                     </thead>
                     <tbody id="srBody">
@@ -226,6 +226,9 @@
         let branchesLoaded = false;
         let srPage = 1;
         let srPageSize = 25;
+        let srSortKey = 'product';
+        let srSortDir = 1;
+        const SR_NUM_KEYS = new Set(['unit_selling_price', 'current_stock', 'stock_value_purchase', 'stock_value_sale', 'potential_profit', 'total_unit_sold', 'total_unit_transferred', 'total_unit_adjusted', 'manufacturing_stock']);
 
         function populateFilterDropdowns() {
             if (!branchesLoaded) {
@@ -255,6 +258,24 @@
                 if (brand && r.brand !== brand) return false;
                 if (q && ![r.sku, r.product, r.variation, r.category, r.location].some((v) => String(v || '').toLowerCase().includes(q))) return false;
                 return true;
+            });
+            if (srSortKey) {
+                const isNum = SR_NUM_KEYS.has(srSortKey);
+                filteredRows.sort((a, b) => {
+                    if (isNum) return ((Number(a[srSortKey]) || 0) - (Number(b[srSortKey]) || 0)) * srSortDir;
+                    return String(a[srSortKey] || '').localeCompare(String(b[srSortKey] || ''), undefined, { numeric: true, sensitivity: 'base' }) * srSortDir;
+                });
+            }
+            document.querySelectorAll('#srTable thead th[data-sr-sort]').forEach((th) => {
+                const k = th.getAttribute('data-sr-sort');
+                let ind = th.querySelector('.sr-sort-ind');
+                if (!ind) {
+                    ind = document.createElement('span');
+                    ind.className = 'sr-sort-ind';
+                    ind.style.cssText = 'margin-left:4px;font-size:10px;opacity:0.7;';
+                    th.appendChild(ind);
+                }
+                ind.textContent = srSortKey === k ? (srSortDir === 1 ? '▲' : '▼') : '';
             });
 
             const tbody = document.getElementById('srBody');
@@ -515,6 +536,15 @@
         document.getElementById('srBody').addEventListener('click', (e) => {
             const btn = e.target.closest('[data-hist-id]');
             if (btn) openStockHistoryModal(btn.getAttribute('data-hist-id'));
+        });
+        document.querySelectorAll('#srTable thead th[data-sr-sort]').forEach((th) => {
+            th.addEventListener('click', () => {
+                const k = th.getAttribute('data-sr-sort');
+                if (srSortKey === k) srSortDir *= -1;
+                else { srSortKey = k; srSortDir = 1; }
+                srPage = 1;
+                renderTable();
+            });
         });
         document.getElementById('srSearch').addEventListener('input', renderTable);
         document.getElementById('srCategory').addEventListener('change', renderTable);

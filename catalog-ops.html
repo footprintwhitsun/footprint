@@ -208,17 +208,31 @@
         let changedOnly = false;
         let bpPage = 1;
         let bpPageSize = 25;
+        let bpSortKey = 'name';
+        let bpSortDir = 1;
+        const bpHiddenCols = new Set();
         const selectedBarcodes = new Set();
+        const BP_COLS = [
+            { key: 'barcode', label: 'SKU', align: 'left' },
+            { key: 'name', label: 'Product', align: 'left' },
+            { key: 'category', label: 'Category', align: 'left' },
+            { key: 'cost_price', label: 'Cost', align: 'right', numeric: true },
+            { key: 'margin', label: 'Margin', align: 'right', numeric: true },
+            { key: 'old_price', label: 'Current', align: 'right', numeric: true },
+            { key: 'new_price', label: 'New Price', align: 'right', numeric: true, width: '155px' },
+            { key: 'change', label: 'Change', align: 'right', numeric: true }
+        ];
 
         const actionsHost = document.getElementById('cat-page-actions');
         if (actionsHost) {
             actionsHost.innerHTML = `
                 <div class="bp-dd" style="position:relative;display:inline-block;">
                     <button type="button" class="okw-btn okw-btn-outline" id="bp-actions-dd-btn">Export / Print ▾</button>
-                    <div id="bp-actions-dd-menu" class="bp-dd-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:210px;background:var(--sheet,#fff);border:1px solid var(--edge,#e2e8f0);border-radius:10px;box-shadow:0 10px 28px rgba(15,23,42,0.12);padding:6px;z-index:60;">
-                        <button type="button" id="bp-export-xlsx" style="width:100%;text-align:left;border:0;background:transparent;padding:9px 12px;border-radius:7px;font-size:13px;font-weight:500;color:var(--ink,#0f172a);cursor:pointer;display:flex;align-items:center;gap:8px;">Export (.xlsx)</button>
+                    <div id="bp-actions-dd-menu" class="bp-dd-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:220px;background:var(--sheet,#fff);border:1px solid var(--edge,#e2e8f0);border-radius:10px;box-shadow:0 10px 28px rgba(15,23,42,0.12);padding:6px;z-index:60;">
+                        <button type="button" id="bp-export-xlsx" style="width:100%;text-align:left;border:0;background:transparent;padding:9px 12px;border-radius:7px;font-size:13px;font-weight:500;color:var(--ink,#0f172a);cursor:pointer;display:flex;align-items:center;gap:8px;">Export Excel (.xlsx)</button>
                         <button type="button" id="bp-import-btn" style="width:100%;text-align:left;border:0;background:transparent;padding:9px 12px;border-radius:7px;font-size:13px;font-weight:500;color:var(--ink,#0f172a);cursor:pointer;display:flex;align-items:center;gap:8px;">Import (.xlsx / .csv)</button>
-                        <button type="button" id="bp-print" style="width:100%;text-align:left;border:0;background:transparent;padding:9px 12px;border-radius:7px;font-size:13px;font-weight:500;color:var(--ink,#0f172a);cursor:pointer;display:flex;align-items:center;gap:8px;">Print Price Sheet</button>
+                        <button type="button" id="bp-print" style="width:100%;text-align:left;border:0;background:transparent;padding:9px 12px;border-radius:7px;font-size:13px;font-weight:500;color:var(--ink,#0f172a);cursor:pointer;display:flex;align-items:center;gap:8px;">Print / PDF (Portrait)</button>
+                        <button type="button" id="bp-print-land" style="width:100%;text-align:left;border:0;background:transparent;padding:9px 12px;border-radius:7px;font-size:13px;font-weight:500;color:var(--ink,#0f172a);cursor:pointer;display:flex;align-items:center;gap:8px;">Print / PDF (Landscape)</button>
                         <div style="height:1px;background:var(--edge,#e2e8f0);margin:5px 4px;"></div>
                         <a href="/reports?tab=detailed&report=price_history" style="width:100%;box-sizing:border-box;text-align:left;text-decoration:none;padding:9px 12px;border-radius:7px;font-size:13px;font-weight:500;color:var(--brand,#273990);display:flex;align-items:center;gap:8px;">Price History Report</a>
                     </div>
@@ -322,24 +336,29 @@
                     </div>
                 </div>
 
+                <div class="bp-dd" style="position:relative;">
+                    <button type="button" id="bp-cols-dd-btn" class="okw-btn okw-btn-outline" style="height:40px;white-space:nowrap;">Columns ▾</button>
+                    <div id="bp-cols-dd-menu" class="bp-dd-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:190px;background:var(--sheet,#fff);border:1px solid var(--edge,#e2e8f0);border-radius:12px;box-shadow:0 12px 30px rgba(15,23,42,0.14);padding:10px 12px;z-index:60;box-sizing:border-box;">
+                        ${BP_COLS.map((c) => `
+                            <label style="display:flex;align-items:center;gap:8px;padding:5px 2px;font-size:13px;color:var(--ink,#0f172a);cursor:pointer;">
+                                <input type="checkbox" class="bp-col-toggle" data-col-key="${c.key}" checked style="width:15px;height:15px;accent-color:var(--brand,#273990);">
+                                <span>${esc(c.label)}</span>
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+
                 <button type="button" class="okw-btn okw-btn-outline" id="bp-clear-sel" style="height:40px;display:none;white-space:nowrap;">Clear Selection</button>
             </div>
 
             <div style="background:var(--sheet,#fff);border:1px solid var(--edge,#e2e8f0);border-radius:12px;overflow-x:auto;">
                 <table data-no-table-tools="1" style="width:100%;border-collapse:collapse;font-size:13px;">
-                    <thead>
+                    <thead id="bp-prod-head">
                         <tr style="background:var(--frame,#f8fafc);border-bottom:1px solid var(--edge,#e2e8f0);">
                             <th style="width:42px;text-align:center;padding:11px 10px;">
                                 <input type="checkbox" id="bp-select-all" title="Select all visible products" aria-label="Select all visible products" style="width:16px;height:16px;accent-color:var(--brand,#273990);cursor:pointer;">
                             </th>
-                            <th style="text-align:left;padding:11px 14px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#64748b);">SKU</th>
-                            <th style="text-align:left;padding:11px 14px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#64748b);">Product</th>
-                            <th style="text-align:left;padding:11px 14px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#64748b);">Category</th>
-                            <th style="text-align:right;padding:11px 14px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#64748b);">Cost</th>
-                            <th style="text-align:right;padding:11px 14px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#64748b);">Margin</th>
-                            <th style="text-align:right;padding:11px 14px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#64748b);">Current</th>
-                            <th style="text-align:right;padding:11px 14px;width:155px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#64748b);">New Price</th>
-                            <th style="text-align:right;padding:11px 14px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#64748b);">Change</th>
+                            ${BP_COLS.map((c) => `<th data-bp-sort="${c.key}" data-bp-col="${c.key}" title="Click to sort" style="text-align:${c.align};padding:11px 14px;${c.width ? 'width:' + c.width + ';' : ''}font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#64748b);cursor:pointer;user-select:none;white-space:nowrap;">${esc(c.label)} <span class="bp-sort-ind" style="font-size:10px;opacity:0.7;"></span></th>`).join('')}
                         </tr>
                     </thead>
                     <tbody id="bp-prod-body"></tbody>
@@ -348,17 +367,33 @@
             </div>
         `;
 
+        function getSortMetric(p, key) {
+            if (key === 'margin') return p.cost_price > 0 ? ((p.new_price - p.cost_price) / p.cost_price) * 100 : -Infinity;
+            if (key === 'change') return Number((p.new_price - p.old_price).toFixed(2));
+            return p[key];
+        }
+
         function getFiltered() {
             const q = document.getElementById('bp-search').value.trim().toLowerCase();
             const cat = document.getElementById('bp-cat').value;
             const brand = document.getElementById('bp-brand').value;
-            return products.filter((p) => {
+            const list = products.filter((p) => {
                 if (changedOnly && Math.abs(Number(p.new_price) - Number(p.old_price)) <= 0.004) return false;
                 if (cat && p.category !== cat) return false;
                 if (brand && p.brand !== brand) return false;
                 if (q && !p.name.toLowerCase().includes(q) && !p.barcode.toLowerCase().includes(q)) return false;
                 return true;
             });
+            if (bpSortKey) {
+                const colMeta = BP_COLS.find((c) => c.key === bpSortKey);
+                list.sort((a, b) => {
+                    const va = getSortMetric(a, bpSortKey);
+                    const vb = getSortMetric(b, bpSortKey);
+                    if (colMeta && colMeta.numeric) return ((Number(va) || 0) - (Number(vb) || 0)) * bpSortDir;
+                    return String(va || '').localeCompare(String(vb || ''), undefined, { numeric: true, sensitivity: 'base' }) * bpSortDir;
+                });
+            }
+            return list;
         }
 
         function getChangedItems() {
@@ -426,8 +461,15 @@
             const list = getFiltered();
             const tbody = document.getElementById('bp-prod-body');
             const pager = document.getElementById('bp-pager');
+            document.querySelectorAll('#bp-prod-head th[data-bp-col]').forEach((th) => {
+                const k = th.getAttribute('data-bp-col');
+                th.style.display = bpHiddenCols.has(k) ? 'none' : '';
+                const ind = th.querySelector('.bp-sort-ind');
+                if (ind) ind.textContent = bpSortKey === k ? (bpSortDir === 1 ? '▲' : '▼') : '';
+            });
+            const visColSpan = 1 + BP_COLS.filter((c) => !bpHiddenCols.has(c.key)).length;
             if (!list.length) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--muted,#64748b);">${changedOnly ? 'No pending price changes yet.' : 'No products match your filter.'}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${visColSpan}" style="text-align:center;padding:28px;color:var(--muted,#64748b);">${changedOnly ? 'No pending price changes yet.' : 'No products match your filter.'}</td></tr>`;
                 if (pager) pager.innerHTML = '<span>Showing 0 of 0</span>';
                 syncStats(list);
                 return;
@@ -449,24 +491,25 @@
                     ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:700;background:${diff > 0 ? '#dcfce7' : '#fee2e2'};color:${diff > 0 ? '#15803d' : '#dc2626'};">${diff > 0 ? '+' : ''}${esc(fmt(diff))} (${diff > 0 ? '+' : ''}${pctChange}%)</span>`
                     : `<span style="color:var(--muted,#64748b);">—</span>`;
                 const rowBg = isChanged ? '#fffbeb' : (isSelected ? '#eff6ff' : '');
+                const hide = (k) => (bpHiddenCols.has(k) ? 'display:none;' : '');
                 return `
                     <tr data-bp-bc="${esc(p.barcode)}" style="border-bottom:1px solid var(--edge,#f1f5f9);${rowBg ? 'background:' + rowBg + ';' : ''}">
                         <td style="text-align:center;padding:10px;">
                             <input type="checkbox" class="bp-row-chk" data-bp-bc="${esc(p.barcode)}" ${isSelected ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--brand,#273990);cursor:pointer;">
                         </td>
-                        <td style="padding:10px 14px;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted,#64748b);">${esc(p.barcode)}</td>
-                        <td style="padding:10px 14px;">
+                        <td style="${hide('barcode')}padding:10px 14px;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted,#64748b);">${esc(p.barcode)}</td>
+                        <td style="${hide('name')}padding:10px 14px;">
                             <div style="font-weight:600;color:var(--ink,#0f172a);">${esc(p.name)}</div>
                             ${p.brand ? `<div style="font-size:11.5px;color:var(--muted,#64748b);">${esc(p.brand)}</div>` : ''}
                         </td>
-                        <td style="padding:10px 14px;color:var(--ink-2,#334155);">${esc(p.category || '—')}</td>
-                        <td style="padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted,#64748b);">${esc(fmt(p.cost_price))}</td>
-                        <td style="padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:${marginColor};">${marginPct !== null ? marginPct + '%' : '—'}</td>
-                        <td style="padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums;">${esc(fmt(p.old_price))}</td>
-                        <td style="padding:10px 14px;text-align:right;">
+                        <td style="${hide('category')}padding:10px 14px;color:var(--ink-2,#334155);">${esc(p.category || '—')}</td>
+                        <td style="${hide('cost_price')}padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted,#64748b);">${esc(fmt(p.cost_price))}</td>
+                        <td style="${hide('margin')}padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums;font-weight:600;color:${marginColor};">${marginPct !== null ? marginPct + '%' : '—'}</td>
+                        <td style="${hide('old_price')}padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums;">${esc(fmt(p.old_price))}</td>
+                        <td style="${hide('new_price')}padding:10px 14px;text-align:right;">
                             <input type="number" step="0.01" min="0" class="okw-input bp-row-price" data-bp-bc="${esc(p.barcode)}" value="${p.new_price.toFixed(2)}" style="width:128px;height:34px;text-align:right;font-weight:700;box-sizing:border-box;">
                         </td>
-                        <td style="padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;">${diffHtml}</td>
+                        <td style="${hide('change')}padding:10px 14px;text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;">${diffHtml}</td>
                     </tr>`;
             }).join('');
 
@@ -521,6 +564,24 @@
         wireDropdown('bp-actions-dd-btn', 'bp-actions-dd-menu');
         wireDropdown('bp-filter-dd-btn', 'bp-filter-dd-menu');
         wireDropdown('bp-bulk-dd-btn', 'bp-bulk-dd-menu');
+        wireDropdown('bp-cols-dd-btn', 'bp-cols-dd-menu');
+        document.querySelectorAll('.bp-col-toggle').forEach((cb) => {
+            cb.addEventListener('change', () => {
+                const k = cb.getAttribute('data-col-key');
+                if (cb.checked) bpHiddenCols.delete(k);
+                else bpHiddenCols.add(k);
+                drawProducts();
+            });
+        });
+        document.querySelectorAll('#bp-prod-head th[data-bp-sort]').forEach((th) => {
+            th.addEventListener('click', () => {
+                const k = th.getAttribute('data-bp-sort');
+                if (bpSortKey === k) bpSortDir *= -1;
+                else { bpSortKey = k; bpSortDir = 1; }
+                bpPage = 1;
+                drawProducts();
+            });
+        });
         const actMenu = document.getElementById('bp-actions-dd-menu');
         if (actMenu) actMenu.addEventListener('click', (e) => {
             if (e.target.closest('button, a')) closeAllDropdowns();
@@ -611,58 +672,40 @@
             drawProducts();
         };
 
-        document.getElementById('bp-print').onclick = async () => {
-            const rows = getTargetItems();
-            if (!rows.length) return OkwUI.toast('No products to print', 'warning');
-            const company = (window.OkwUI && OkwUI.getCompanyProfileAsync)
-                ? await OkwUI.getCompanyProfileAsync()
-                : { name: 'OKWESIWA CO LTD', address: '', phone: '', email: '' };
-            const w = window.open('', '_blank', 'width=980,height=720');
-            if (!w) return OkwUI.toast('Allow popups to print price sheet', 'warning');
-            const rowsHtml = rows.map((p) => {
+        function printUpdatePriceSheet(orientation) {
+            const items = getTargetItems();
+            if (!items.length) return OkwUI.toast('No products to print', 'warning');
+            const visCols = BP_COLS.filter((c) => !bpHiddenCols.has(c.key)).map((c) => ({
+                key: c.key,
+                label: c.label,
+                numeric: Boolean(c.numeric)
+            }));
+            const rows = items.map((p) => {
                 const diff = Number((p.new_price - p.old_price).toFixed(2));
-                const diffTxt = Math.abs(diff) > 0.004 ? `${diff > 0 ? '+' : ''}${fmt(diff)}` : '—';
-                return `<tr>
-                    <td>${esc(p.barcode)}</td>
-                    <td><strong>${esc(p.name)}</strong>${p.brand ? `<br><span style="color:#64748b;font-size:11px;">${esc(p.brand)}</span>` : ''}</td>
-                    <td>${esc(p.category || '—')}</td>
-                    <td style="text-align:right;">${esc(fmt(p.cost_price))}</td>
-                    <td style="text-align:right;">${esc(fmt(p.old_price))}</td>
-                    <td style="text-align:right;font-weight:700;">${esc(fmt(p.new_price))}</td>
-                    <td style="text-align:right;">${esc(diffTxt)}</td>
-                </tr>`;
-            }).join('');
-            w.document.write(`<!DOCTYPE html><html><head><title>Product Price List - ${esc(company.name || 'OKWESIWA CO LTD')}</title>
-                <style>
-                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; margin: 24px; }
-                    .hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #273990; padding-bottom: 12px; margin-bottom: 16px; }
-                    .hdr h1 { margin: 0; font-size: 18px; color: #273990; }
-                    .hdr p { margin: 3px 0 0; font-size: 12px; color: #475569; }
-                    table { width: 100%; border-collapse: collapse; font-size: 12px; }
-                    th { background: #f8fafc; border-bottom: 1.5px solid #cbd5e1; text-align: left; padding: 8px; text-transform: uppercase; font-size: 11px; color: #475569; }
-                    td { border-bottom: 1px solid #e2e8f0; padding: 7px 8px; vertical-align: top; }
-                    @media print { body { margin: 12px; } }
-                </style></head><body>
-                <div class="hdr">
-                    <div>
-                        <h1>${esc(company.name || 'OKWESIWA CO LTD')}</h1>
-                        ${company.address ? `<p>${esc(company.address)}</p>` : ''}
-                        ${(company.phone || company.email) ? `<p>${esc([company.phone, company.email].filter(Boolean).join(' · '))}</p>` : ''}
-                    </div>
-                    <div style="text-align:right;">
-                        <strong style="font-size:14px;">Product Price Sheet</strong>
-                        <p>Printed: ${esc(new Date().toLocaleString())}</p>
-                        <p>Items: ${rows.length}${selectedBarcodes.size > 0 ? ' (Selected)' : ''}</p>
-                    </div>
-                </div>
-                <table>
-                    <thead><tr><th>SKU</th><th>Product</th><th>Category</th><th style="text-align:right;">Cost</th><th style="text-align:right;">Current</th><th style="text-align:right;">New Price</th><th style="text-align:right;">Change</th></tr></thead>
-                    <tbody>${rowsHtml}</tbody>
-                </table>
-                <script>window.onload = function(){ window.print(); };<\/script>
-            </body></html>`);
-            w.document.close();
-        };
+                const marginPct = p.cost_price > 0 ? (((p.new_price - p.cost_price) / p.cost_price) * 100).toFixed(1) + '%' : '—';
+                return {
+                    barcode: p.barcode,
+                    name: p.brand ? `${p.name} (${p.brand})` : p.name,
+                    category: p.category || '—',
+                    cost_price: fmt(p.cost_price),
+                    margin: marginPct,
+                    old_price: fmt(p.old_price),
+                    new_price: fmt(p.new_price),
+                    change: Math.abs(diff) > 0.004 ? `${diff > 0 ? '+' : ''}${fmt(diff)}` : '—'
+                };
+            });
+            const title = selectedBarcodes.size > 0
+                ? `Product Price Sheet (${items.length} Selected)`
+                : 'Product Price Sheet';
+            if (window.OkwUI && typeof OkwUI.printRowsList === 'function') {
+                OkwUI.printRowsList(visCols, rows, title, orientation || 'portrait');
+            } else {
+                window.print();
+            }
+        }
+        document.getElementById('bp-print').onclick = () => printUpdatePriceSheet('portrait');
+        const bpPrintLand = document.getElementById('bp-print-land');
+        if (bpPrintLand) bpPrintLand.onclick = () => printUpdatePriceSheet('landscape');
 
         document.getElementById('bp-export-xlsx').onclick = () => {
             const rows = getTargetItems().map((p) => ({
