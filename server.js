@@ -3139,8 +3139,19 @@ app.get('/products', authenticateToken, async (req, res) => {
 // API-prefixed routes for front-end compatibility
 app.get('/api/products', authenticateToken, async (req, res) => {
     try {
-        const userBranch = req.user.store_location;
+        const uRes = await pool.query('SELECT store_id, store_location FROM users WHERE id = $1', [req.user.id]).catch(() => ({ rows: [] }));
+        const dbUser = uRes.rows[0] || {};
+        const userStoreId = dbUser.store_id || req.user.store_id || null;
+        const userBranch = dbUser.store_location || req.user.store_location || '';
         const isRestricted = !['super_admin', 'admin', 'ceo'].includes((req.user.role || '').toLowerCase());
+        const bRes = isRestricted
+            ? await pool.query(
+                'SELECT id, name, location FROM branches WHERE ($1::int IS NOT NULL AND id = $1::int) OR LOWER(name) = LOWER($2) OR LOWER(location) = LOWER($2) LIMIT 1',
+                [userStoreId, userBranch]
+            ).catch(() => ({ rows: [] }))
+            : { rows: [] };
+        const branchRow = bRes.rows[0] || {};
+        const branchCandidates = [branchRow.name, userBranch, branchRow.location].filter(Boolean);
 
         // Ensure all products have stock_levels initialized
         const _mainName = await mainBranchName(pool, req.user.tenant_id || 1);
@@ -3192,15 +3203,9 @@ app.get('/api/products', authenticateToken, async (req, res) => {
         const totalPages = limit ? Math.ceil(totalItems / limit) : 1;
 
         const rows = result.rows.map(p => {
-            if (isRestricted && userBranch) {
-                const levels = p.stock_levels || {};
-                const levelsObj = typeof levels === 'string' ? JSON.parse(levels) : levels;
-                let bStock = 0;
-                for (const key of Object.keys(levelsObj)) {
-                    if (key.toLowerCase() === (userBranch || '').toLowerCase()) {
-                        bStock += toQty(levelsObj[key]);
-                    }
-                }
+            if (isRestricted && branchCandidates.length) {
+                const bStock = resolveBranchStockFromLevels(p.stock_levels, branchCandidates);
+                p.stock_for_branch = bStock;
                 p.stock = bStock;
             } else {
                 if (p.stock_levels && typeof p.stock_levels === 'object') {
@@ -3307,10 +3312,11 @@ app.get('/api/products/full', authenticateToken, async (req, res) => {
             whereClause += ` AND (name ILIKE $2 OR barcode ILIKE $2 OR category ILIKE $2)`;
         }
 
-        // Branch lookup runs in parallel with the first product query
+        // Branch lookup runs in parallel with the first product query (prefer store_id, fallback to name/location)
+        const userStoreId = dbUser.store_id || req.user.store_id || null;
         const branchPromise = pool.query(
-            'SELECT id, name, location FROM branches WHERE name = $1 OR location = $1',
-            [userBranch]
+            'SELECT id, name, location FROM branches WHERE ($1::int IS NOT NULL AND id = $1::int) OR LOWER(name) = LOWER($2) OR LOWER(location) = LOWER($2) LIMIT 1',
+            [userStoreId, userBranch]
         );
 
         // Full-row query for a set of products; batch stats are aggregated once instead of two subselects per row.

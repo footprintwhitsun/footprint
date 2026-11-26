@@ -234,7 +234,42 @@ router.get('/api/pos/search', authenticateToken, async (req, res) => {
              LIMIT $${params.length}`,
             params
         );
-        res.json({ products: result.rows });
+
+        const isRestricted = !['super_admin', 'admin', 'ceo'].includes((req.user.role || '').toLowerCase());
+        let branchCandidates = [];
+        if (isRestricted) {
+            const uRes = await pool.query('SELECT store_id, store_location FROM users WHERE id = $1', [req.user.id]).catch(() => ({ rows: [] }));
+            const uRow = uRes.rows[0] || {};
+            const sId = uRow.store_id || req.user.store_id || null;
+            const sLoc = uRow.store_location || req.user.store_location || '';
+            const bRes = await pool.query(
+                'SELECT id, name, location FROM branches WHERE ($1::int IS NOT NULL AND id = $1::int) OR LOWER(name) = LOWER($2) OR LOWER(location) = LOWER($2) LIMIT 1',
+                [sId, sLoc]
+            ).catch(() => ({ rows: [] }));
+            const bRow = bRes.rows[0] || {};
+            branchCandidates = [bRow.name, sLoc, bRow.location].filter(Boolean).map((s) => String(s).trim().toLowerCase());
+        }
+
+        const productsOut = result.rows.map((p) => {
+            if (isRestricted && branchCandidates.length) {
+                let levels = p.stock_levels || {};
+                if (typeof levels === 'string') {
+                    try { levels = JSON.parse(levels); } catch (_) { levels = {}; }
+                }
+                let branchStock = 0;
+                for (const [k, v] of Object.entries(levels)) {
+                    if (branchCandidates.includes(String(k).trim().toLowerCase())) {
+                        branchStock = Number(v || 0);
+                        break;
+                    }
+                }
+                p.stock_for_branch = branchStock;
+                p.stock = branchStock;
+            }
+            return p;
+        });
+
+        res.json({ products: productsOut });
     } catch (err) {
         console.error('GET /api/pos/search error:', err);
         res.status(500).json({ message: 'Failed to search products' });
