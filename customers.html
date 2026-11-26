@@ -325,11 +325,12 @@
     </div>
     <div class="masthead">
         <div class="brand-col">
-            <img src="${window.location.origin}/okwesiwa-logo.svg" alt="${esc(b.name)}">
+            <img src="${b.logo_url && /^https?:\/\//i.test(b.logo_url) ? esc(b.logo_url) : (window.location.origin + (b.logo_url || '/okwesiwa-logo.svg'))}" alt="${esc(b.name || 'OKWESIWA CO LTD')}">
             <div class="brand-name">${esc(b.name || 'OKWESIWA CO LTD')}</div>
-            ${b.address ? `<div class="brand-sub">${esc(b.address)}</div>` : ''}
-            ${(b.phone || b.email) ? `<div class="brand-sub">${esc([b.phone, b.email].filter(Boolean).join('  |  '))}</div>` : ''}
-            ${b.tin ? `<div class="brand-sub">TIN: ${esc(b.tin)}</div>` : ''}
+            ${b.address ? `<div class="brand-sub"><strong>Location:</strong> ${esc(b.address)}</div>` : ''}
+            ${b.phone ? `<div class="brand-sub"><strong>Tel:</strong> ${esc(b.phone)}</div>` : ''}
+            ${b.email ? `<div class="brand-sub"><strong>Email:</strong> ${esc(b.email)}</div>` : ''}
+            ${b.tin ? `<div class="brand-sub"><strong>TIN:</strong> ${esc(b.tin)}</div>` : ''}
         </div>
         <div class="stmt-title-col">
             <div class="stmt-badge">Customer Account Statement</div>
@@ -393,6 +394,17 @@
             </tr>
         </tbody>
     </table>
+
+    ${(b.bank_name || b.bank_account_number || b.momo_number) ? `
+    <div style="margin-top:16px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:6px;background:#f8fafc;font-size:11px;color:#334155;">
+        <strong style="color:#273990;text-transform:uppercase;font-size:10px;letter-spacing:0.06em;">Payment Details</strong>
+        <div style="margin-top:4px;display:flex;flex-wrap:wrap;gap:14px;">
+            ${b.bank_name ? `<span><strong>Bank:</strong> ${esc(b.bank_name)}${b.bank_branch ? ` (${esc(b.bank_branch)})` : ''}</span>` : ''}
+            ${b.bank_account_name ? `<span><strong>Account Name:</strong> ${esc(b.bank_account_name)}</span>` : ''}
+            ${b.bank_account_number ? `<span><strong>Account No:</strong> ${esc(b.bank_account_number)}</span>` : ''}
+            ${b.momo_number ? `<span><strong>Mobile Money:</strong> ${esc(b.momo_number)}${b.momo_name ? ` (${esc(b.momo_name)})` : ''}</span>` : ''}
+        </div>
+    </div>` : ''}
 
     <div class="stmt-footer">
         <span>Please verify all entries and report any discrepancy within 14 days.</span>

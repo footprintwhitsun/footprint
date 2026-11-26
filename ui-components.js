@@ -178,6 +178,7 @@
 
     let _companyProfileCache = null;
     let _companyFetchStarted = false;
+    let _companyFetchPromise = null;
 
     function getCompanyProfile() {
         if (!_companyProfileCache) {
@@ -185,7 +186,7 @@
                 const raw = JSON.parse(localStorage.getItem('posSettings') || '{}');
                 _companyProfileCache = {
                     name: raw.store_name || 'OKWESIWA CO LTD',
-                    address: raw.address || '',
+                    address: raw.address || raw.location || '',
                     phone: raw.phone || '',
                     email: raw.email || '',
                     taxId: raw.tax_id || '',
@@ -199,13 +200,13 @@
             _companyFetchStarted = true;
             const token = localStorage.getItem('authToken') || localStorage.getItem('companyToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
             if (token) {
-                fetch('/api/settings', { headers: { Authorization: `Bearer ${token}` }, credentials: 'include' })
+                _companyFetchPromise = fetch('/api/settings', { headers: { Authorization: `Bearer ${token}` }, credentials: 'include' })
                     .then(r => r.ok ? r.json() : null)
                     .then(s => {
-                        if (!s || typeof s !== 'object') return;
+                        if (!s || typeof s !== 'object') return _companyProfileCache;
                         _companyProfileCache = {
                             name: s.store_name || _companyProfileCache.name || 'OKWESIWA CO LTD',
-                            address: s.address || _companyProfileCache.address || '',
+                            address: s.address || s.location || _companyProfileCache.address || '',
                             phone: s.phone || _companyProfileCache.phone || '',
                             email: s.email || _companyProfileCache.email || '',
                             taxId: s.tax_id || _companyProfileCache.taxId || '',
@@ -215,9 +216,18 @@
                             const prev = JSON.parse(localStorage.getItem('posSettings') || '{}');
                             localStorage.setItem('posSettings', JSON.stringify({ ...prev, ...s }));
                         } catch (_) {}
+                        return _companyProfileCache;
                     })
-                    .catch(() => {});
+                    .catch(() => _companyProfileCache);
             }
+        }
+        return _companyProfileCache;
+    }
+
+    async function getCompanyProfileAsync() {
+        getCompanyProfile();
+        if (_companyFetchPromise) {
+            try { await _companyFetchPromise; } catch (_) {}
         }
         return _companyProfileCache;
     }
@@ -437,7 +447,7 @@
     async function openPrintableRecord(opts = {}) {
         const prev = document.getElementById('okw-printable-record-modal');
         if (prev) prev.remove();
-        const profile = await getCompanyProfile();
+        const profile = await getCompanyProfileAsync();
         const fmtC = (n) => (typeof window.formatCurrency === 'function'
             ? window.formatCurrency(n)
             : 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }));

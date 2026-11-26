@@ -7523,6 +7523,67 @@ app.post('/api/pos/sale/:barcode', authenticateToken, requireRole(PAGE_ROLES.STA
 
 // ============ SYSTEM SETTINGS ENDPOINTS ============
 
+async function resolveTenantBusinessProfile(tenantId, preferredBranchId = null) {
+    const pick = (...vals) => {
+        for (const v of vals) {
+            if (v !== null && v !== undefined && String(v).trim() !== '') return String(v).trim();
+        }
+        return '';
+    };
+    const rows = [];
+    try {
+        const res = await pool.query(
+            `SELECT * FROM system_settings
+             WHERE COALESCE(tenant_id, 1) = $1
+             ORDER BY CASE WHEN ($2::int IS NOT NULL AND branch_id = $2::int) THEN 0 ELSE 1 END,
+                      branch_id ASC NULLS LAST, id ASC`,
+            [tenantId, preferredBranchId]
+        );
+        rows.push(...res.rows);
+    } catch (_) { /* ignore */ }
+
+    let branchRow = null;
+    try {
+        const bRes = await pool.query(
+            `SELECT * FROM branches
+             WHERE COALESCE(tenant_id, 1) = $1
+             ORDER BY CASE WHEN ($2::int IS NOT NULL AND id = $2::int) THEN 0 ELSE 1 END,
+                      id ASC
+             LIMIT 1`,
+            [tenantId, preferredBranchId]
+        );
+        branchRow = bRes.rows[0] || null;
+    } catch (_) { /* ignore */ }
+
+    let bizCfg = {};
+    try {
+        const cfgRes = await pool.query('SELECT config FROM business_settings WHERE tenant_id = $1 LIMIT 1', [tenantId]);
+        bizCfg = (cfgRes.rows[0] && cfgRes.rows[0].config) || {};
+    } catch (_) { /* ignore */ }
+
+    const firstField = (key) => pick(...rows.map(r => r[key]));
+    const primary = rows[0] || {};
+
+    return {
+        ...primary,
+        store_name: pick(firstField('store_name'), bizCfg.business_name, 'OKWESIWA CO LTD'),
+        name: pick(firstField('store_name'), bizCfg.business_name, 'OKWESIWA CO LTD'),
+        address: pick(firstField('address'), branchRow && branchRow.address, branchRow && branchRow.location, bizCfg.address, bizCfg.location, branchRow && branchRow.name),
+        location: pick(branchRow && branchRow.location, firstField('address'), branchRow && branchRow.name),
+        phone: pick(firstField('phone'), branchRow && branchRow.phone, bizCfg.phone, bizCfg.mobile),
+        email: pick(firstField('email'), branchRow && branchRow.email, bizCfg.email),
+        tax_id: pick(firstField('tax_id'), bizCfg.tax_1_no),
+        tin: pick(firstField('tax_id'), bizCfg.tax_1_no),
+        logo_url: pick(firstField('logo_url'), bizCfg.logo_url, '/okwesiwa-logo.svg'),
+        bank_name: firstField('bank_name'),
+        bank_account_name: firstField('bank_account_name'),
+        bank_account_number: firstField('bank_account_number'),
+        bank_branch: firstField('bank_branch'),
+        momo_number: firstField('momo_number'),
+        momo_name: firstField('momo_name')
+    };
+}
+
 app.get('/api/settings', authenticateToken, async (req, res) => {
     try {
         const tenantId = req.user.tenant_id || 1;
@@ -7534,12 +7595,8 @@ app.get('/api/settings', authenticateToken, async (req, res) => {
             branchId = dbStoreId || req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
         }
 
-        let result = await pool.query('SELECT * FROM system_settings WHERE branch_id = $1 AND COALESCE(tenant_id, 1) = $2 LIMIT 1', [branchId, tenantId]);
-        if (result.rows.length === 0) {
-            result = await pool.query('SELECT * FROM system_settings WHERE COALESCE(tenant_id, 1) = $1 ORDER BY branch_id ASC, id ASC LIMIT 1', [tenantId]);
-        }
-
-        res.json(result.rows[0] || {});
+        const merged = await resolveTenantBusinessProfile(tenantId, branchId);
+        res.json(merged || {});
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Server error' });
@@ -8279,25 +8336,23 @@ app.get('/api/customers/:id/profile-statement', authenticateToken, requireRole(P
         const fromDate = (req.query.from && dateRe.test(String(req.query.from))) ? String(req.query.from) : null;
         const toDate = (req.query.to && dateRe.test(String(req.query.to))) ? String(req.query.to) : null;
 
-        // Fetch company details for statement masthead
-        let business = { name: 'OKWESIWA CO LTD', address: '', phone: '', email: '', tin: '' };
-        try {
-            const setRes = await pool.query(
-                `SELECT business_name, business_address, business_phone, business_email, tin_number
-                 FROM system_settings WHERE COALESCE(tenant_id, 1) = $1 ORDER BY id ASC LIMIT 1`,
-                [tenantId]
-            );
-            if (setRes.rows.length > 0) {
-                const s = setRes.rows[0];
-                business = {
-                    name: s.business_name || business.name,
-                    address: s.business_address || '',
-                    phone: s.business_phone || '',
-                    email: s.business_email || '',
-                    tin: s.tin_number || ''
-                };
-            }
-        } catch (_) { /* fallback to default business info */ }
+        // Fetch full OKWESIWA CO LTD store location, contact, email, TIN & payment details for statement masthead
+        const preferredBranchId = req.user.store_id || null;
+        const biz = await resolveTenantBusinessProfile(tenantId, preferredBranchId);
+        const business = {
+            name: biz.store_name || 'OKWESIWA CO LTD',
+            address: biz.address || biz.location || '',
+            phone: biz.phone || '',
+            email: biz.email || '',
+            tin: biz.tax_id || '',
+            logo_url: biz.logo_url || '/okwesiwa-logo.svg',
+            bank_name: biz.bank_name || '',
+            bank_account_name: biz.bank_account_name || '',
+            bank_account_number: biz.bank_account_number || '',
+            bank_branch: biz.bank_branch || '',
+            momo_number: biz.momo_number || '',
+            momo_name: biz.momo_name || ''
+        };
 
         // Fetch ALL linked POS/sales transactions for this customer (Cash, MoMo, Card, Credit, Split, Returns)
         const txRes = await pool.query(
