@@ -4340,23 +4340,467 @@ app.delete('/api/categories/:id', authenticateToken, requireRole(MANAGER_ROLES),
 app.get('/api/suppliers', authenticateToken, async (req, res) => {
     try {
         const tenantId = req.user.tenant_id || 1;
-        let query = `SELECT s.*, b.name as branch_name, b.location as branch_location 
-            FROM suppliers s
-            LEFT JOIN branches b ON s.branch_id = b.id
-            WHERE COALESCE(s.tenant_id, 1) = $1 AND s.deleted_at IS NULL`;
-        let params = [tenantId];
+        let where = `WHERE COALESCE(s.tenant_id, 1) = $1 AND s.deleted_at IS NULL`;
+        const params = [tenantId];
 
         const role = String(req.user.role || '').toLowerCase();
         if (role !== 'super_admin' && role !== 'admin' && role !== 'ceo' && req.user.store_id) {
-            query += ' AND (s.branch_id = $2 OR s.branch_id IS NULL)';
+            where += ' AND (s.branch_id = $2 OR s.branch_id IS NULL)';
             params.push(req.user.store_id);
         }
-        query += ' ORDER BY s.name';
 
-        const result = await pool.query(query, params);
+        const supRes = await pool.query(
+            `SELECT s.*, b.name AS branch_name, b.location AS branch_location
+             FROM suppliers s
+             LEFT JOIN branches b ON s.branch_id = b.id
+             ${where}
+             ORDER BY s.name`,
+            params
+        );
+
+        // Attach live purchase totals, paid amounts, balance owed, and pending order counts
+        const statsBySupplier = new Map();
+        try {
+            const poRes = await pool.query(
+                `SELECT id, supplier_id, COALESCE(total_amount, 0) AS total_amount,
+                        COALESCE(paid_amount, 0) AS paid_amount, COALESCE(status, 'Pending') AS status
+                 FROM purchase_orders
+                 WHERE COALESCE(tenant_id, 1) = $1
+                   AND LOWER(COALESCE(status, '')) NOT IN ('cancelled', 'void')`,
+                [tenantId]
+            );
+            const spByPo = new Map();
+            const spUnlinked = new Map();
+            try {
+                const spRes = await pool.query(
+                    `SELECT supplier_id, purchase_order_id, COALESCE(amount, 0) AS amount
+                     FROM supplier_payments
+                     WHERE COALESCE(tenant_id, 1) = $1`,
+                    [tenantId]
+                );
+                for (const p of spRes.rows) {
+                    const amt = Number(p.amount || 0);
+                    if (p.purchase_order_id) {
+                        spByPo.set(p.purchase_order_id, (spByPo.get(p.purchase_order_id) || 0) + amt);
+                    } else if (p.supplier_id) {
+                        spUnlinked.set(p.supplier_id, (spUnlinked.get(p.supplier_id) || 0) + amt);
+                    }
+                }
+            } catch (_) { /* supplier_payments table may not exist yet */ }
+
+            for (const po of poRes.rows) {
+                if (!po.supplier_id) continue;
+                const st = statsBySupplier.get(po.supplier_id) || { purchase_count: 0, total_purchased: 0, total_paid: 0, pending_orders: 0 };
+                const total = Number(po.total_amount || 0);
+                const paid = Math.max(Number(po.paid_amount || 0), spByPo.get(po.id) || 0);
+                st.purchase_count += 1;
+                st.total_purchased += total;
+                st.total_paid += paid;
+                if (['pending', 'ordered'].includes(String(po.status || '').toLowerCase())) {
+                    st.pending_orders += 1;
+                }
+                statsBySupplier.set(po.supplier_id, st);
+            }
+            for (const [sid, extraPaid] of spUnlinked.entries()) {
+                const st = statsBySupplier.get(sid) || { purchase_count: 0, total_purchased: 0, total_paid: 0, pending_orders: 0 };
+                st.total_paid += extraPaid;
+                statsBySupplier.set(sid, st);
+            }
+        } catch (_) { /* ignore aggregation fallback */ }
+
+        const enriched = supRes.rows.map((s) => {
+            const st = statsBySupplier.get(s.id) || { purchase_count: 0, total_purchased: 0, total_paid: 0, pending_orders: 0 };
+            const totalPurchased = Number(st.total_purchased.toFixed(2));
+            const totalPaid = Number(st.total_paid.toFixed(2));
+            const balanceOwed = Math.max(0, Number((totalPurchased - totalPaid).toFixed(2)));
+            return {
+                ...s,
+                purchase_count: st.purchase_count,
+                total_purchased: totalPurchased,
+                total_paid: totalPaid,
+                balance_owed: balanceOwed,
+                pending_orders: st.pending_orders
+            };
+        });
+
         await logActivity(req, 'VIEW_SUPPLIER_LIST');
-        res.json(result.rows);
-    } catch (err) { res.status(500).json({ message: 'Server error' }); }
+        res.json(enriched);
+    } catch (err) {
+        console.error('GET /api/suppliers error:', err);
+        res.status(500).json({ message: 'Server error' });
+    }
+});
+
+// Detailed Supplier Profile, Purchase History, Payables, Reorder Needs & Printable Statement
+app.get('/api/suppliers/:id/profile-statement', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    try {
+        const supplierId = parseInt(req.params.id, 10);
+        if (!Number.isFinite(supplierId) || supplierId <= 0) {
+            return res.status(400).json({ message: 'Invalid supplier ID' });
+        }
+        const tenantId = req.user.tenant_id || 1;
+        const supRes = await pool.query(
+            `SELECT s.*, b.name AS branch_name, b.location AS branch_location
+             FROM suppliers s
+             LEFT JOIN branches b ON s.branch_id = b.id
+             WHERE s.id = $1 AND COALESCE(s.tenant_id, 1) = $2 AND s.deleted_at IS NULL`,
+            [supplierId, tenantId]
+        );
+        if (supRes.rows.length === 0) {
+            return res.status(404).json({ message: 'Supplier not found' });
+        }
+        const supplier = supRes.rows[0];
+
+        const dateRe = /^\d{4}-\d{2}-\d{2}$/;
+        const fromDate = (req.query.from && dateRe.test(String(req.query.from))) ? String(req.query.from) : null;
+        const toDate = (req.query.to && dateRe.test(String(req.query.to))) ? String(req.query.to) : null;
+
+        const biz = await resolveTenantBusinessProfile(tenantId, req.user.store_id || null);
+        const business = {
+            name: biz.store_name || 'OKWESIWA CO LTD',
+            address: biz.address || biz.location || '',
+            phone: biz.phone || '',
+            email: biz.email || '',
+            tin: biz.tax_id || '',
+            logo_url: biz.logo_url || '/okwesiwa-logo.svg',
+            bank_name: biz.bank_name || '',
+            bank_account_name: biz.bank_account_name || '',
+            bank_account_number: biz.bank_account_number || '',
+            bank_branch: biz.bank_branch || '',
+            momo_number: biz.momo_number || '',
+            momo_name: biz.momo_name || ''
+        };
+
+        // Fetch all purchase orders for this supplier
+        const poRes = await pool.query(
+            `SELECT po.*, b.name AS branch_name
+             FROM purchase_orders po
+             LEFT JOIN branches b ON po.branch_id = b.id
+             WHERE po.supplier_id = $1 AND COALESCE(po.tenant_id, 1) = $2
+               AND LOWER(COALESCE(po.status, '')) NOT IN ('cancelled', 'void')
+             ORDER BY COALESCE(po.purchase_date::timestamptz, po.created_at) ASC, po.id ASC`,
+            [supplierId, tenantId]
+        );
+
+        const poIds = poRes.rows.map((p) => p.id);
+        const itemsByPo = new Map();
+        const suppliedBarcodes = new Set();
+        if (poIds.length > 0) {
+            const itemsRes = await pool.query(
+                `SELECT poi.po_id, poi.product_barcode, poi.quantity, poi.unit_cost,
+                        COALESCE(p.name, poi.product_barcode) AS product_name
+                 FROM purchase_order_items poi
+                 LEFT JOIN products p ON p.barcode = poi.product_barcode AND COALESCE(p.tenant_id, 1) = $2
+                 WHERE poi.po_id = ANY($1::int[])
+                 ORDER BY poi.id ASC`,
+                [poIds, tenantId]
+            );
+            for (const it of itemsRes.rows) {
+                if (it.product_barcode) suppliedBarcodes.add(it.product_barcode);
+                const list = itemsByPo.get(it.po_id) || [];
+                const qty = Number(it.quantity || 0);
+                const price = Number(it.unit_cost || 0);
+                list.push({
+                    barcode: it.product_barcode || '',
+                    name: String(it.product_name || 'Item'),
+                    qty,
+                    price,
+                    total: Number((qty * price).toFixed(2))
+                });
+                itemsByPo.set(it.po_id, list);
+            }
+        }
+
+        // Fetch supplier payments
+        let paymentRows = [];
+        try {
+            const payRes = await pool.query(
+                `SELECT sp.*, po.reference_no AS po_ref
+                 FROM supplier_payments sp
+                 LEFT JOIN purchase_orders po ON po.id = sp.purchase_order_id
+                 WHERE sp.supplier_id = $1 AND COALESCE(sp.tenant_id, 1) = $2
+                 ORDER BY sp.created_at ASC, sp.id ASC`,
+                [supplierId, tenantId]
+            );
+            paymentRows = payRes.rows;
+        } catch (_) { /* supplier_payments may not exist yet */ }
+
+        const spByPo = new Map();
+        for (const p of paymentRows) {
+            if (p.purchase_order_id) {
+                spByPo.set(p.purchase_order_id, (spByPo.get(p.purchase_order_id) || 0) + Number(p.amount || 0));
+            }
+        }
+
+        const fmtMethod = (m) => {
+            const s = String(m || '').toLowerCase();
+            if (!s) return 'Credit';
+            if (s === 'momo' || s === 'mobile_money') return 'Mobile Money';
+            if (s === 'bank' || s === 'bank_transfer') return 'Bank Transfer';
+            if (s === 'credit') return 'Credit';
+            return s.charAt(0).toUpperCase() + s.slice(1);
+        };
+
+        const events = [];
+        let lifetimePurchased = 0;
+        let lifetimeOrders = 0;
+        let totalPaidAll = 0;
+        const pendingOrders = [];
+        const unpaidPos = [];
+
+        for (const po of poRes.rows) {
+            const total = Number(po.total_amount || 0);
+            const poPaidField = Number(po.paid_amount || 0);
+            const loggedPayments = spByPo.get(po.id) || 0;
+            const effectivePaid = Math.max(poPaidField, loggedPayments);
+            const outstanding = Math.max(0, Number((total - effectivePaid).toFixed(2)));
+            const items = itemsByPo.get(po.id) || [];
+            const ref = po.reference_no || `PO-${String(po.id).padStart(4, '0')}`;
+            const status = po.status || 'Pending';
+            const poDate = po.purchase_date || po.created_at;
+
+            lifetimePurchased += total;
+            lifetimeOrders += 1;
+            totalPaidAll += effectivePaid;
+
+            if (['pending', 'ordered'].includes(String(status).toLowerCase())) {
+                pendingOrders.push({
+                    id: po.id,
+                    ref,
+                    date: poDate,
+                    branch: po.branch_name || '',
+                    status,
+                    total_amount: total,
+                    outstanding,
+                    items
+                });
+            }
+            if (outstanding > 0.004) {
+                unpaidPos.push({
+                    id: po.id,
+                    ref,
+                    date: poDate,
+                    total_amount: total,
+                    paid_amount: effectivePaid,
+                    outstanding
+                });
+            }
+
+            // If paid_amount was recorded directly on PO without matching supplier_payments rows, reflect the upfront payment
+            const upfrontPaid = Math.max(0, Number((poPaidField - loggedPayments).toFixed(2)));
+            events.push({
+                date: poDate,
+                ref,
+                branch: po.branch_name || '',
+                type: status === 'Received' ? 'Purchase (Received)' : `Purchase (${status})`,
+                status,
+                payment_method: fmtMethod(po.payment_method || (outstanding > 0 ? 'credit' : 'cash')),
+                description: po.notes ? po.notes : (status === 'Received' ? 'Received Purchase' : `Purchase Order (${status})`),
+                items,
+                debit: total,
+                credit: upfrontPaid,
+                balance_impact: Number((total - upfrontPaid).toFixed(2))
+            });
+        }
+
+        for (const pay of paymentRows) {
+            const amt = Math.abs(Number(pay.amount || 0));
+            if (!pay.purchase_order_id) totalPaidAll += amt;
+            const ref = pay.reference || `SPAY-${String(pay.id).padStart(4, '0')}`;
+            const poTag = pay.purchase_order_id ? ` (${pay.po_ref || `PO-${String(pay.purchase_order_id).padStart(4, '0')}`})` : '';
+            events.push({
+                date: pay.created_at,
+                ref,
+                branch: '',
+                type: 'Payment',
+                status: 'Paid',
+                payment_method: fmtMethod(pay.payment_method || 'bank'),
+                description: pay.notes ? `Supplier Payment${poTag} — ${pay.notes}` : `Supplier Payment${poTag}`,
+                items: [],
+                debit: 0,
+                credit: amt,
+                balance_impact: -amt
+            });
+        }
+
+        events.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        const fromTs = fromDate ? new Date(`${fromDate}T00:00:00.000Z`).getTime() : null;
+        const toTs = toDate ? new Date(`${toDate}T23:59:59.999Z`).getTime() : null;
+
+        let openingBalance = 0;
+        let runningBalance = 0;
+        let periodBilled = 0;
+        let periodPaid = 0;
+        let periodOrders = 0;
+        const entries = [];
+
+        for (const ev of events) {
+            const ts = new Date(ev.date).getTime();
+            if (fromTs !== null && ts < fromTs) {
+                openingBalance += ev.balance_impact;
+                runningBalance = openingBalance;
+                continue;
+            }
+            if (toTs !== null && ts > toTs) {
+                continue;
+            }
+            runningBalance += ev.balance_impact;
+            periodBilled += ev.debit;
+            periodPaid += ev.credit;
+            if (ev.type !== 'Payment') periodOrders += 1;
+            entries.push({
+                ...ev,
+                running_balance: Number(runningBalance.toFixed(2))
+            });
+        }
+
+        // Identify low-stock items previously supplied by this vendor ("what else is needed")
+        let lowStockItems = [];
+        if (suppliedBarcodes.size > 0) {
+            try {
+                const lowRes = await pool.query(
+                    `SELECT barcode, name, COALESCE(stock, 0) AS stock,
+                            COALESCE(reorder_level, 10) AS reorder_level,
+                            COALESCE(cost_price, 0) AS cost_price
+                     FROM products
+                     WHERE COALESCE(tenant_id, 1) = $1
+                       AND barcode = ANY($2::text[])
+                       AND COALESCE(stock, 0) <= COALESCE(reorder_level, 10)
+                     ORDER BY COALESCE(stock, 0) ASC, name ASC
+                     LIMIT 30`,
+                    [tenantId, Array.from(suppliedBarcodes)]
+                );
+                lowStockItems = lowRes.rows.map((p) => ({
+                    barcode: p.barcode,
+                    name: p.name,
+                    stock: Number(p.stock || 0),
+                    reorder_level: Number(p.reorder_level || 10),
+                    suggested_qty: Math.max(1, Math.ceil((Number(p.reorder_level || 10) * 2) - Number(p.stock || 0))),
+                    cost_price: Number(p.cost_price || 0)
+                }));
+            } catch (_) { /* ignore if reorder_level column differs */ }
+        }
+
+        const balanceOwed = Math.max(0, Number((lifetimePurchased - totalPaidAll).toFixed(2)));
+        const pendingValue = Number(pendingOrders.reduce((sum, p) => sum + Number(p.total_amount || 0), 0).toFixed(2));
+
+        res.json({
+            business,
+            supplier: {
+                id: supplier.id,
+                name: supplier.name,
+                contact_person: supplier.contact_person || '',
+                phone: supplier.phone || '',
+                email: supplier.email || '',
+                address: supplier.address || '',
+                status: supplier.status || 'Active',
+                branch_name: supplier.branch_name || ''
+            },
+            period: {
+                from: fromDate || (entries.length ? new Date(entries[0].date).toISOString().slice(0, 10) : null),
+                to: toDate || new Date().toISOString().slice(0, 10)
+            },
+            summary: {
+                opening_balance: Number(openingBalance.toFixed(2)),
+                period_billed: Number(periodBilled.toFixed(2)),
+                period_paid: Number(periodPaid.toFixed(2)),
+                period_orders: periodOrders,
+                closing_balance: Number(runningBalance.toFixed(2)),
+                lifetime_purchased: Number(lifetimePurchased.toFixed(2)),
+                lifetime_orders: lifetimeOrders,
+                total_paid: Number(totalPaidAll.toFixed(2)),
+                balance_owed: balanceOwed,
+                pending_count: pendingOrders.length,
+                pending_value: pendingValue
+            },
+            entries,
+            unpaid_pos: unpaidPos,
+            pending_orders: pendingOrders,
+            low_stock_items: lowStockItems
+        });
+    } catch (err) {
+        console.error('GET /api/suppliers/:id/profile-statement error:', err);
+        res.status(500).json({ message: err.message || 'Failed to load supplier statement' });
+    }
+});
+
+// Record a payment to a supplier (either against a specific PO or general supplier account)
+app.post('/api/suppliers/:id/payment', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    const supplierId = parseInt(req.params.id, 10);
+    const { purchase_order_id = null, amount, payment_method = 'bank', reference = '', notes = '' } = req.body || {};
+    const amt = Number(amount);
+    if (!Number.isFinite(supplierId) || supplierId <= 0 || !Number.isFinite(amt) || amt <= 0) {
+        return res.status(400).json({ message: 'Valid supplier and positive payment amount are required' });
+    }
+    const tenantId = req.user.tenant_id || 1;
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query(`
+            CREATE TABLE IF NOT EXISTS supplier_payments (
+                id SERIAL PRIMARY KEY,
+                tenant_id INTEGER NOT NULL DEFAULT 1,
+                supplier_id INTEGER NOT NULL,
+                purchase_order_id INTEGER NULL,
+                amount NUMERIC(12,2) NOT NULL,
+                payment_method VARCHAR(40) DEFAULT 'bank',
+                reference VARCHAR(120) DEFAULT '',
+                notes TEXT DEFAULT '',
+                paid_by INTEGER NULL,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            )
+        `);
+        const supCheck = await client.query(
+            'SELECT id, name FROM suppliers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL',
+            [supplierId, tenantId]
+        );
+        if (supCheck.rows.length === 0) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Supplier not found' });
+        }
+
+        let resolvedPoId = null;
+        if (purchase_order_id) {
+            const poRes = await client.query(
+                'SELECT id, total_amount, COALESCE(paid_amount, 0) AS paid_amount FROM purchase_orders WHERE id = $1 AND supplier_id = $2 AND COALESCE(tenant_id, 1) = $3 FOR UPDATE',
+                [purchase_order_id, supplierId, tenantId]
+            );
+            if (poRes.rows.length === 0) {
+                await client.query('ROLLBACK');
+                return res.status(404).json({ message: 'Purchase order not found for this supplier' });
+            }
+            const po = poRes.rows[0];
+            resolvedPoId = po.id;
+            const prevSpRes = await client.query(
+                'SELECT COALESCE(SUM(amount), 0) AS paid FROM supplier_payments WHERE purchase_order_id = $1 AND COALESCE(tenant_id, 1) = $2',
+                [po.id, tenantId]
+            );
+            const alreadyPaid = Math.max(Number(po.paid_amount || 0), Number(prevSpRes.rows[0].paid || 0));
+            const newPaid = Number((alreadyPaid + amt).toFixed(2));
+            const total = Number(po.total_amount || 0);
+            const newPayStatus = newPaid >= total - 0.01 ? 'Paid' : 'Partial';
+            await client.query(
+                'UPDATE purchase_orders SET paid_amount = $1, payment_status = $2 WHERE id = $3 AND COALESCE(tenant_id, 1) = $4',
+                [Math.min(newPaid, total), newPayStatus, po.id, tenantId]
+            );
+        }
+
+        const ins = await client.query(
+            `INSERT INTO supplier_payments (tenant_id, supplier_id, purchase_order_id, amount, payment_method, reference, notes, paid_by)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
+            [tenantId, supplierId, resolvedPoId, amt, payment_method, String(reference || '').trim(), String(notes || '').trim(), req.user.id || null]
+        );
+        await client.query('COMMIT');
+        await logActivity(req, 'SUPPLIER_PAYMENT_RECORDED', { supplier_id: supplierId, purchase_order_id: resolvedPoId, amount: amt });
+        res.status(201).json({ success: true, payment: ins.rows[0] });
+    } catch (err) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('POST /api/suppliers/:id/payment error:', err);
+        res.status(500).json({ message: err.message || 'Failed to record supplier payment' });
+    } finally {
+        client.release();
+    }
 });
 
 app.post('/api/suppliers', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
