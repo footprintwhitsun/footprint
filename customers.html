@@ -127,8 +127,10 @@
         .stmt-table td { padding: 10px 12px; border-bottom: 1px solid var(--edge, #f1f5f9); vertical-align: top; }
         .stmt-table tr:last-child td { border-bottom: 0; }
         .stmt-table th.num, .stmt-table td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-        .stmt-items-list { margin: 5px 0 0; padding-left: 14px; list-style: disc; color: var(--muted, #64748b); font-size: 11.5px; }
-        .stmt-items-list li { margin: 2px 0; }
+        .stmt-item-lines { display: flex; flex-direction: column; gap: 4px; }
+        .stmt-item-line { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+        .stmt-item-name { font-weight: 600; color: var(--ink, #0f172a); }
+        .stmt-item-qty { font-size: 11.5px; color: var(--muted, #64748b); white-space: nowrap; font-variant-numeric: tabular-nums; }
         .stmt-badge { display: inline-block; padding: 2px 7px; border-radius: 999px; font-size: 10.5px; font-weight: 700; }
         .stmt-badge-paid { background: #dcfce7; color: #15803d; }
         .stmt-badge-credit { background: #fef3c7; color: #b45309; }
@@ -240,6 +242,37 @@
             document.getElementById('custNext').disabled = start + PAGE >= view.length;
         }
 
+        const shortRef = (ref) => {
+            const raw = String(ref || '').trim();
+            if (!raw) return '—';
+            const m = raw.match(/^([A-Za-z]+)[-_]?(\d{9,})$/);
+            if (m) return `${m[1].toUpperCase()}-${m[2].slice(-6)}`;
+            return raw.length > 14 ? `${raw.slice(0, 4)}-${raw.slice(-6)}` : raw;
+        };
+
+        const renderDescriptionCell = (ev, showItems, isPrint) => {
+            const items = Array.isArray(ev.items) ? ev.items : [];
+            if (showItems && items.length > 0) {
+                const lineCls = isPrint ? 'p-item-line' : 'stmt-item-line';
+                const nameCls = isPrint ? 'p-item-name' : 'stmt-item-name';
+                const qtyCls = isPrint ? 'p-item-qty' : 'stmt-item-qty';
+                const wrapCls = isPrint ? 'p-item-lines' : 'stmt-item-lines';
+                const multi = items.length > 1;
+                return `<div class="${wrapCls}">${items.map((it) => {
+                    const meta = multi
+                        ? `${esc(it.qty)} &times; ${esc(money(it.price))} &middot; ${esc(money(it.total))}`
+                        : `${esc(it.qty)} &times; ${esc(money(it.price))}`;
+                    return `<div class="${lineCls}"><span class="${nameCls}">${esc(it.name)}</span><span class="${qtyCls}">${meta}</span></div>`;
+                }).join('')}</div>`;
+            }
+            if (ev.type === 'Payment') {
+                return `<div class="${isPrint ? 'p-item-name' : 'stmt-item-name'}">${esc(ev.description || 'Account Payment')}</div>`;
+            }
+            const count = items.reduce((sum, it) => sum + (Number(it.qty) || 0), 0) || items.length;
+            const label = count ? `${ev.type} (${count} item${count === 1 ? '' : 's'})` : (ev.description || ev.type);
+            return `<div class="${isPrint ? 'p-item-name' : 'stmt-item-name'}">${esc(label)}</div>`;
+        };
+
         function printBankStatement(data, showItems) {
             const c = data.customer || {};
             const b = data.business || {};
@@ -247,26 +280,28 @@
             const entries = data.entries || [];
             const periodLabel = `${fmtDate(data.period?.from)} — ${fmtDate(data.period?.to)}`;
             const generatedOn = fmtDateTime(new Date().toISOString());
+            const hasOpening = Math.abs(Number(s.opening_balance || 0)) > 0.004;
 
-            const rowsHtml = entries.length ? entries.map((ev) => {
-                const itemsHtml = (showItems && ev.items && ev.items.length)
-                    ? `<ul class="items">${ev.items.map((it) => `<li>${esc(it.qty)} &times; ${esc(it.name)} @ ${esc(money(it.price))} = <strong>${esc(money(it.total))}</strong></li>`).join('')}</ul>`
-                    : '';
-                const branchTag = ev.branch ? ` <span class="branch-tag">&middot; ${esc(ev.branch)}</span>` : '';
-                return `
-                    <tr>
-                        <td class="nowrap">${esc(fmtDate(ev.date))}</td>
-                        <td class="nowrap mono">${esc(ev.ref)}</td>
-                        <td>
-                            <div class="desc-main">${esc(ev.description)}${branchTag}</div>
-                            ${itemsHtml}
-                        </td>
-                        <td class="nowrap">${esc(ev.payment_method)}</td>
-                        <td class="num">${ev.debit > 0 ? esc(money(ev.debit)) : '—'}</td>
-                        <td class="num">${ev.credit > 0 ? esc(money(ev.credit)) : '—'}</td>
-                        <td class="num bold">${esc(money(ev.running_balance))}</td>
-                    </tr>`;
-            }).join('') : `<tr><td colspan="7" style="text-align:center;padding:24px;color:#64748b;">No transactions recorded for this statement period.</td></tr>`;
+            const openingRowHtml = hasOpening ? `
+                <tr class="bf-row">
+                    <td class="nowrap">${esc(fmtDate(data.period?.from))}</td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td colspan="4">Opening Balance Brought Forward</td>
+                    <td class="num">${esc(money(s.opening_balance))}</td>
+                </tr>` : '';
+
+            const rowsHtml = entries.length ? entries.map((ev) => `
+                <tr>
+                    <td class="nowrap">${esc(fmtDate(ev.date))}</td>
+                    <td class="nowrap mono" title="${esc(ev.ref)}">${esc(shortRef(ev.ref))}</td>
+                    <td class="nowrap loc-col">${esc(ev.branch || '—')}</td>
+                    <td>${renderDescriptionCell(ev, showItems, true)}</td>
+                    <td class="nowrap">${esc(ev.payment_method)}</td>
+                    <td class="num">${ev.debit > 0 ? esc(money(ev.debit)) : '—'}</td>
+                    <td class="num">${ev.credit > 0 ? esc(money(ev.credit)) : '—'}</td>
+                    <td class="num bold">${esc(money(ev.running_balance))}</td>
+                </tr>`).join('') : `<tr><td colspan="8" style="text-align:center;padding:24px;color:#64748b;">No transactions recorded for this statement period.</td></tr>`;
 
             const html = `<!DOCTYPE html>
 <html lang="en">
@@ -276,11 +311,11 @@
 <style>
     @page { size: A4; margin: 12mm; }
     * { box-sizing: border-box; }
-    body { font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #0f172a; margin: 0; padding: 20px; background: #fff; font-size: 11.5px; line-height: 1.45; font-variant-numeric: tabular-nums; }
+    body { font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #0f172a; margin: 0; padding: 20px; background: #fff; font-size: 11px; line-height: 1.45; font-variant-numeric: tabular-nums; }
     .no-print { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 14px; }
     .no-print button { height: 34px; padding: 0 16px; border-radius: 7px; border: 1px solid #cbd5e1; background: #273990; color: #fff; font-weight: 600; cursor: pointer; font-size: 12.5px; }
     .no-print button.sec { background: #fff; color: #0f172a; }
-    .sheet { max-width: 820px; margin: 0 auto; }
+    .sheet { max-width: 840px; margin: 0 auto; }
     .masthead { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2.5px solid #273990; padding-bottom: 14px; margin-bottom: 16px; gap: 16px; }
     .brand-col img { height: 42px; display: block; margin-bottom: 6px; }
     .brand-name { font-size: 16px; font-weight: 800; color: #273990; letter-spacing: -0.01em; }
@@ -301,16 +336,17 @@
     .sum-tbl td:last-child { text-align: right; font-weight: 600; }
     .sum-tbl tr.total td { border-top: 1.5px solid #0f172a; padding-top: 6px; margin-top: 4px; font-size: 13px; font-weight: 800; color: #273990; }
     .ledger { width: 100%; border-collapse: collapse; margin-top: 4px; }
-    .ledger th { background: #f1f5f9; color: #334155; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 8px; border-top: 1.5px solid #273990; border-bottom: 1px solid #cbd5e1; text-align: left; }
-    .ledger td { padding: 7px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
+    .ledger th { background: #f1f5f9; color: #334155; font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 8px 7px; border-top: 1.5px solid #273990; border-bottom: 1px solid #cbd5e1; text-align: left; }
+    .ledger td { padding: 8px 7px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
     .ledger th.num, .ledger td.num { text-align: right; white-space: nowrap; }
     .nowrap { white-space: nowrap; }
-    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; color: #334155; }
+    .loc-col { font-size: 10.5px; color: #334155; font-weight: 500; }
     .bold { font-weight: 700; }
-    .desc-main { font-weight: 600; color: #0f172a; }
-    .branch-tag { font-weight: 400; color: #64748b; font-size: 10.5px; }
-    .items { margin: 4px 0 0; padding-left: 14px; color: #475569; font-size: 10.5px; }
-    .items li { margin: 1.5px 0; }
+    .p-item-lines { display: flex; flex-direction: column; gap: 3px; }
+    .p-item-line { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .p-item-name { font-weight: 600; color: #0f172a; }
+    .p-item-qty { font-size: 10px; color: #64748b; white-space: nowrap; }
     .bf-row td { background: #f8fafc; font-weight: 600; color: #334155; }
     .foot-row td { background: #eef2ff; border-top: 1.5px solid #273990; border-bottom: 1.5px solid #273990; font-weight: 700; color: #0f172a; }
     .stmt-footer { margin-top: 20px; padding-top: 10px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 10.5px; color: #64748b; }
@@ -356,7 +392,7 @@
         <div class="box">
             <div class="box-title">Account Summary</div>
             <table class="sum-tbl">
-                <tr><td>Opening Balance</td><td>${esc(money(s.opening_balance))}</td></tr>
+                ${hasOpening ? `<tr><td>Opening Balance</td><td>${esc(money(s.opening_balance))}</td></tr>` : ''}
                 <tr><td>Total Purchases (${esc(s.period_orders || 0)} orders)</td><td>${esc(money(s.total_purchases))}</td></tr>
                 <tr><td>Total Charges (Debits)</td><td>${esc(money(s.total_charges))}</td></tr>
                 <tr><td>Payments &amp; Credits</td><td>&minus; ${esc(money(s.total_payments))}</td></tr>
@@ -370,8 +406,9 @@
         <thead>
             <tr>
                 <th>Date</th>
-                <th>Reference</th>
-                <th>Description &amp; Details</th>
+                <th>Ref #</th>
+                <th>Location</th>
+                <th>Description / Items</th>
                 <th>Method</th>
                 <th class="num">Debit</th>
                 <th class="num">Credit</th>
@@ -379,15 +416,10 @@
             </tr>
         </thead>
         <tbody>
-            <tr class="bf-row">
-                <td class="nowrap">${esc(fmtDate(data.period?.from))}</td>
-                <td>—</td>
-                <td colspan="4">Opening Balance Brought Forward</td>
-                <td class="num">${esc(money(s.opening_balance))}</td>
-            </tr>
+            ${openingRowHtml}
             ${rowsHtml}
             <tr class="foot-row">
-                <td colspan="4">Period Totals &amp; Closing Balance</td>
+                <td colspan="5">Period Totals &amp; Closing Balance</td>
                 <td class="num">${esc(money(s.total_charges))}</td>
                 <td class="num">${esc(money(s.total_payments))}</td>
                 <td class="num">${esc(money(s.closing_balance))}</td>
@@ -475,8 +507,9 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                                 <thead>
                                     <tr>
                                         <th>Date</th>
-                                        <th>Reference</th>
-                                        <th>Description &amp; Items</th>
+                                        <th>Ref #</th>
+                                        <th>Location</th>
+                                        <th>Description / Items</th>
                                         <th>Method</th>
                                         <th class="num">Debit</th>
                                         <th class="num">Credit</th>
@@ -484,7 +517,7 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                                     </tr>
                                 </thead>
                                 <tbody id="stmtTableBody">
-                                    <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Loading statement...</td></tr>
+                                    <tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted);">Loading statement...</td></tr>
                                 </tbody>
                             </table>
                         </div>
@@ -504,41 +537,31 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                 const s = currentData.summary || {};
                 const entries = currentData.entries || [];
 
-                const openingRow = `
+                const hasOpening = Math.abs(Number(s.opening_balance || 0)) > 0.004;
+                const openingRow = hasOpening ? `
                     <tr class="stmt-summary-row">
                         <td>${esc(fmtDate(currentData.period?.from))}</td>
                         <td>—</td>
+                        <td>—</td>
                         <td colspan="4">Opening Balance Brought Forward</td>
                         <td class="num">${esc(money(s.opening_balance))}</td>
-                    </tr>`;
+                    </tr>` : '';
 
-                const rows = entries.length ? entries.map((ev) => {
-                    const badgeCls = ev.type === 'Payment' ? 'stmt-badge-pay'
-                        : ev.type === 'Return / Refund' ? 'stmt-badge-ret'
-                        : ev.type === 'Credit Purchase' ? 'stmt-badge-credit' : 'stmt-badge-paid';
-                    const itemsHtml = (showItems && ev.items && ev.items.length)
-                        ? `<ul class="stmt-items-list">${ev.items.map((it) => `<li>${esc(it.qty)} &times; ${esc(it.name)} @ ${esc(money(it.price))} = <strong>${esc(money(it.total))}</strong></li>`).join('')}</ul>`
-                        : '';
-                    return `
+                const rows = entries.length ? entries.map((ev) => `
                         <tr>
                             <td style="white-space:nowrap;">${esc(fmtDate(ev.date))}</td>
-                            <td style="white-space:nowrap;font-family:ui-monospace,monospace;font-size:11.5px;">${esc(ev.ref)}</td>
-                            <td>
-                                <span class="stmt-badge ${badgeCls}">${esc(ev.type)}</span>
-                                <strong style="margin-left:6px;">${esc(ev.description)}</strong>
-                                ${ev.branch ? `<span style="color:var(--muted);font-size:11.5px;"> &middot; ${esc(ev.branch)}</span>` : ''}
-                                ${itemsHtml}
-                            </td>
+                            <td style="white-space:nowrap;font-family:ui-monospace,monospace;font-size:11.5px;" title="${esc(ev.ref)}">${esc(shortRef(ev.ref))}</td>
+                            <td style="white-space:nowrap;color:var(--ink-2,#334155);font-size:12px;">${esc(ev.branch || '—')}</td>
+                            <td>${renderDescriptionCell(ev, showItems, false)}</td>
                             <td style="white-space:nowrap;">${esc(ev.payment_method)}</td>
                             <td class="num">${ev.debit > 0 ? esc(money(ev.debit)) : '—'}</td>
                             <td class="num">${ev.credit > 0 ? esc(money(ev.credit)) : '—'}</td>
                             <td class="num" style="font-weight:700;">${esc(money(ev.running_balance))}</td>
-                        </tr>`;
-                }).join('') : `<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">No purchases or payments recorded in this period.</td></tr>`;
+                        </tr>`).join('') : `<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted);">No purchases or payments recorded in this period.</td></tr>`;
 
                 const closingRow = `
                     <tr class="stmt-summary-row">
-                        <td colspan="4">Period Totals (${esc(s.period_orders || 0)} orders) &amp; Closing Balance</td>
+                        <td colspan="5">Period Totals (${esc(s.period_orders || 0)} orders) &amp; Closing Balance</td>
                         <td class="num">${esc(money(s.total_charges))}</td>
                         <td class="num">${esc(money(s.total_payments))}</td>
                         <td class="num">${esc(money(s.closing_balance))}</td>
@@ -554,7 +577,7 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                 if (fromVal) qs.set('from', fromVal);
                 if (toVal) qs.set('to', toVal);
                 const tbody = backdrop.querySelector('#stmtTableBody');
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted);">Loading statement...</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:var(--muted);">Loading statement...</td></tr>';
                 try {
                     const token = localStorage.getItem('authToken') || localStorage.getItem('token');
                     const res = await fetch(`/api/customers/${encodeURIComponent(customerId)}/profile-statement?${qs.toString()}`, {
@@ -579,7 +602,7 @@ document.getElementById('btnCloseStmt').addEventListener('click', function(){ wi
                     backdrop.querySelector('#stmtKpiAvail').textContent = money(c.available_credit);
                     renderLedger();
                 } catch (err) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:#dc2626;">Could not load customer statement.</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:24px;color:#dc2626;">Could not load customer statement.</td></tr>';
                 }
             }
 
