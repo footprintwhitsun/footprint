@@ -55,7 +55,15 @@
                 <button type="button" class="okw-btn okw-btn-outline" data-ctab="groups">Customer Groups &amp; Sites</button>
             </div>
 
-            <div class="okw-card" id="cat-panel">Loading...</div>
+            <div class="okw-card" id="cat-panel">
+                <div class="okw-sk-stack" aria-hidden="true" style="padding:8px 4px;">
+                    <span class="okw-sk-bar" style="width:100%;height:38px;border-radius:8px;"></span>
+                    <span class="okw-sk-bar" style="width:100%;height:14px;"></span>
+                    <span class="okw-sk-bar" style="width:96%;height:14px;"></span>
+                    <span class="okw-sk-bar" style="width:92%;height:14px;"></span>
+                    <span class="okw-sk-bar" style="width:94%;height:14px;"></span>
+                </div>
+            </div>
         </div>
     </main>
 </div>
@@ -525,6 +533,10 @@
         if (subEl) subEl.textContent = meta.subtitle;
         const actionsHost = document.getElementById('cat-page-actions');
         if (actionsHost) actionsHost.innerHTML = '';
+        const panel = document.getElementById('cat-panel');
+        if (panel) {
+            panel.innerHTML = '<div class="okw-sk-stack" aria-hidden="true" style="padding:8px 4px;"><span class="okw-sk-bar" style="width:100%;height:38px;border-radius:8px;"></span><span class="okw-sk-bar" style="width:100%;height:14px;"></span><span class="okw-sk-bar" style="width:96%;height:14px;"></span><span class="okw-sk-bar" style="width:92%;height:14px;"></span><span class="okw-sk-bar" style="width:94%;height:14px;"></span></div>';
+        }
         document.getElementById('cat-tabs').querySelectorAll('[data-ctab]').forEach(b => {
             b.className = b.dataset.ctab === tab ? 'okw-btn okw-btn-primary' : 'okw-btn okw-btn-outline';
         });

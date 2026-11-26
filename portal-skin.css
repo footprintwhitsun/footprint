@@ -925,6 +925,46 @@ body.sidebar-collapsed .main-content {
     font-size: 13px !important;
 }
 
+/* ---- Global Shimmer Skeleton Loaders (matches Home dashboard skeleton) ---- */
+@keyframes okwSkShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+.okw-sk-bar {
+    display: inline-block;
+    height: 13px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, rgba(148, 163, 184, 0.14) 25%, rgba(148, 163, 184, 0.28) 50%, rgba(148, 163, 184, 0.14) 75%);
+    background-size: 200% 100%;
+    animation: okwSkShimmer 1.3s ease-in-out infinite;
+    vertical-align: middle;
+}
+
+.okw-sk-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 4px 0;
+}
+
+.okw-sk-card {
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    padding: 12px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.okw-sk-tr td {
+    padding: 13px 12px !important;
+}
+
+.okw-sk-tr:hover {
+    background: transparent !important;
+}
+
 /* page title row: noun + one grey sentence, actions on the right */
 .header,
 header.header {
