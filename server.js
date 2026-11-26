@@ -3732,14 +3732,14 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
             const finalBatchNum = batch_number || `BATCH-${Date.now()}`;
             await pool.query(
                 `INSERT INTO product_batches (product_barcode, batch_number, expiry_date, quantity, quantity_available, quantity_received, branch_id, status, tenant_id)
-                 VALUES ($1, $2, $3, $4, $4, $4, $5, 'Active', $6)
+                 VALUES ($1, $2, $3, $4::numeric, $5::numeric, $6::numeric, $7, 'Active', $8)
                  ON CONFLICT (tenant_id, product_barcode, batch_number, branch_id) 
                  DO UPDATE SET 
                      expiry_date = EXCLUDED.expiry_date,
                      quantity = EXCLUDED.quantity,
                      quantity_available = EXCLUDED.quantity_available,
                      quantity_received = EXCLUDED.quantity_received`,
-                [finalBarcode, finalBatchNum, expiry_date || null, stockValue, branchId, tenantId]
+                [finalBarcode, finalBatchNum, expiry_date || null, stockValue, stockValue, stockValue, branchId, tenantId]
             );
         }
 
@@ -4061,9 +4061,9 @@ app.post('/api/products/bulk', authenticateToken, requireRole(MANAGER_ROLES), up
                     const tenantId = req.user.tenant_id || 1;
                     await pool.query(
                         `INSERT INTO product_batches (product_barcode, batch_number, expiry_date, quantity, quantity_available, quantity_received, branch_id, tenant_id, status)
-                         VALUES ($1, $2, $3, $4, $4, $4, $5, $6, 'Active')
+                         VALUES ($1, $2, $3, $4::numeric, $5::numeric, $6::numeric, $7, $8, 'Active')
                          ON CONFLICT (tenant_id, product_barcode, batch_number, branch_id) DO NOTHING`,
-                        [barcode, batchNumber, expiryDate || null, stock, branchId, tenantId]
+                        [barcode, batchNumber, expiryDate || null, stock, stock, stock, branchId, tenantId]
                     );
                 }
 
