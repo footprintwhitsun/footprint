@@ -46,9 +46,12 @@
 
             <div class="tabs-row" id="cat-tabs">
                 <button type="button" class="okw-btn okw-btn-primary" data-ctab="brands">Brands</button>
-                <button type="button" class="okw-btn okw-btn-outline" data-ctab="units">Units & Conversions</button>
-                <button type="button" class="okw-btn okw-btn-outline" data-ctab="prices">Bulk Price Update & History</button>
-                <button type="button" class="okw-btn okw-btn-outline" data-ctab="groups">Customer Groups & Sites</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-ctab="units">Units &amp; Conversions</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-ctab="prices">Update Price</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-ctab="variations">Variations</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-ctab="price_groups">Selling Price Groups</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-ctab="warranties">Warranties</button>
+                <button type="button" class="okw-btn okw-btn-outline" data-ctab="groups">Customer Groups &amp; Sites</button>
             </div>
 
             <div class="okw-card" id="cat-panel">Loading...</div>
@@ -265,6 +268,113 @@
         drawView(selectedView);
     }
 
+    async function renderVariations() {
+        const res = await fetch('/api/variations', { headers });
+        const d = await res.json().catch(() => ({}));
+        const panel = document.getElementById('cat-panel');
+        panel.innerHTML = `
+            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+                <input type="text" id="v-name" class="okw-input" placeholder="Variation name (e.g. Size, Color, Grade)">
+                <input type="text" id="v-vals" class="okw-input" style="min-width:260px;" placeholder="Values comma-separated (e.g. 1-inch, 2-inch, 3-inch)">
+                <button type="button" class="okw-btn okw-btn-primary" id="v-add">+ Add Variation</button>
+            </div>
+            <div id="vars-tbl"></div>
+        `;
+        OkwUI.dataTable('#vars-tbl', {
+            columns: [
+                { key: 'name', label: 'Variation Name' },
+                { key: 'values_text', label: 'Values' },
+                { key: 'id', label: 'Actions', render: (v) => `<button type="button" class="okw-btn okw-btn-outline" data-del-var="${v}" style="height:28px;padding:0 10px;font-size:12px;">Delete</button>` }
+            ],
+            rows: d.variations || []
+        });
+        document.getElementById('v-add').onclick = async () => {
+            const name = document.getElementById('v-name').value.trim();
+            if (!name) return OkwUI.toast('Variation name is required', 'warning');
+            const r = await fetch('/api/variations', { method: 'POST', headers, body: JSON.stringify({ name, values_text: document.getElementById('v-vals').value.trim() }) });
+            if (r.ok) { OkwUI.toast('Variation saved', 'success'); renderVariations(); }
+        };
+        panel.querySelectorAll('[data-del-var]').forEach(btn => {
+            btn.onclick = async () => {
+                const r = await fetch(`/api/variations/${btn.dataset.delVar}`, { method: 'DELETE', headers });
+                if (r.ok) { OkwUI.toast('Variation deleted', 'success'); renderVariations(); }
+            };
+        });
+    }
+
+    async function renderPriceGroups() {
+        const res = await fetch('/api/selling-price-groups', { headers });
+        const d = await res.json().catch(() => ({}));
+        const panel = document.getElementById('cat-panel');
+        panel.innerHTML = `
+            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+                <input type="text" id="spg-name" class="okw-input" placeholder="Price group (e.g. Wholesale, Contractor)">
+                <input type="number" id="spg-adj" class="okw-input" placeholder="Adjustment % (e.g. -5 or 10)" step="0.1">
+                <input type="text" id="spg-desc" class="okw-input" style="min-width:220px;" placeholder="Description (optional)">
+                <button type="button" class="okw-btn okw-btn-primary" id="spg-add">+ Add Price Group</button>
+            </div>
+            <div id="spg-tbl"></div>
+        `;
+        OkwUI.dataTable('#spg-tbl', {
+            columns: [
+                { key: 'name', label: 'Selling Price Group' },
+                { key: 'adjustment_pct', label: 'Adjustment %', numeric: true, render: (v) => `${Number(v || 0)}%` },
+                { key: 'description', label: 'Description' },
+                { key: 'id', label: 'Actions', render: (v) => `<button type="button" class="okw-btn okw-btn-outline" data-del-spg="${v}" style="height:28px;padding:0 10px;font-size:12px;">Delete</button>` }
+            ],
+            rows: d.price_groups || []
+        });
+        document.getElementById('spg-add').onclick = async () => {
+            const name = document.getElementById('spg-name').value.trim();
+            if (!name) return OkwUI.toast('Price group name is required', 'warning');
+            const r = await fetch('/api/selling-price-groups', { method: 'POST', headers, body: JSON.stringify({ name, adjustment_pct: document.getElementById('spg-adj').value, description: document.getElementById('spg-desc').value.trim() }) });
+            if (r.ok) { OkwUI.toast('Price group saved', 'success'); renderPriceGroups(); }
+        };
+        panel.querySelectorAll('[data-del-spg]').forEach(btn => {
+            btn.onclick = async () => {
+                const r = await fetch(`/api/selling-price-groups/${btn.dataset.delSpg}`, { method: 'DELETE', headers });
+                if (r.ok) { OkwUI.toast('Price group deleted', 'success'); renderPriceGroups(); }
+            };
+        });
+    }
+
+    async function renderWarranties() {
+        const res = await fetch('/api/warranties', { headers });
+        const d = await res.json().catch(() => ({}));
+        const panel = document.getElementById('cat-panel');
+        panel.innerHTML = `
+            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
+                <input type="text" id="w-name" class="okw-input" placeholder="Warranty name (e.g. 1 Year Manufacturer)">
+                <input type="number" id="w-dur" class="okw-input" placeholder="Duration (e.g. 12)" min="1" value="12" style="width:110px;">
+                <select id="w-unit" class="okw-select"><option value="Days">Days</option><option value="Months" selected>Months</option><option value="Years">Years</option></select>
+                <input type="text" id="w-desc" class="okw-input" style="min-width:220px;" placeholder="Description (optional)">
+                <button type="button" class="okw-btn okw-btn-primary" id="w-add">+ Add Warranty</button>
+            </div>
+            <div id="war-tbl"></div>
+        `;
+        OkwUI.dataTable('#war-tbl', {
+            columns: [
+                { key: 'name', label: 'Warranty Name' },
+                { key: 'duration', label: 'Duration', render: (v, row) => `${v} ${OkwUI.escapeHtml(row.duration_type || 'Months')}` },
+                { key: 'description', label: 'Description' },
+                { key: 'id', label: 'Actions', render: (v) => `<button type="button" class="okw-btn okw-btn-outline" data-del-war="${v}" style="height:28px;padding:0 10px;font-size:12px;">Delete</button>` }
+            ],
+            rows: d.warranties || []
+        });
+        document.getElementById('w-add').onclick = async () => {
+            const name = document.getElementById('w-name').value.trim();
+            if (!name) return OkwUI.toast('Warranty name is required', 'warning');
+            const r = await fetch('/api/warranties', { method: 'POST', headers, body: JSON.stringify({ name, duration: document.getElementById('w-dur').value, duration_type: document.getElementById('w-unit').value, description: document.getElementById('w-desc').value.trim() }) });
+            if (r.ok) { OkwUI.toast('Warranty saved', 'success'); renderWarranties(); }
+        };
+        panel.querySelectorAll('[data-del-war]').forEach(btn => {
+            btn.onclick = async () => {
+                const r = await fetch(`/api/warranties/${btn.dataset.delWar}`, { method: 'DELETE', headers });
+                if (r.ok) { OkwUI.toast('Warranty deleted', 'success'); renderWarranties(); }
+            };
+        });
+    }
+
     const TAB_META = {
         brands: {
             title: 'Brands',
@@ -275,8 +385,20 @@
             subtitle: 'Configure base units and pack-to-base selling conversions.'
         },
         prices: {
-            title: 'Bulk Price Updates',
+            title: 'Update Price',
             subtitle: 'Preview and apply percentage or fixed price updates with full change history.'
+        },
+        variations: {
+            title: 'Variations',
+            subtitle: 'Define reusable product variation attributes such as size, color, grade, or weight.'
+        },
+        price_groups: {
+            title: 'Selling Price Groups',
+            subtitle: 'Configure custom selling price tiers for retail, wholesale, and contractor buyers.'
+        },
+        warranties: {
+            title: 'Warranties',
+            subtitle: 'Manage product warranty durations and terms for hardware and equipment.'
         },
         groups: {
             title: 'Customer Groups',
@@ -297,6 +419,9 @@
         if (tab === 'brands') renderBrands();
         else if (tab === 'units') renderUnits();
         else if (tab === 'prices') renderPrices();
+        else if (tab === 'variations') renderVariations();
+        else if (tab === 'price_groups') renderPriceGroups();
+        else if (tab === 'warranties') renderWarranties();
         else renderGroups();
     }
 
@@ -304,7 +429,7 @@
         b.onclick = () => switchTab(b.dataset.ctab);
     });
     const initTab = new URLSearchParams(window.location.search).get('tab');
-    switchTab(['brands', 'units', 'prices', 'groups'].includes(initTab) ? initTab : 'brands');
+    switchTab(['brands', 'units', 'prices', 'variations', 'price_groups', 'warranties', 'groups'].includes(initTab) ? initTab : 'brands');
 })();
 </script>
 </body>

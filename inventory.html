@@ -2342,6 +2342,9 @@
 
             // Single unified activation point for the initial tab
             switchTab(tab);
+            if (urlParams.get('action') === 'add' && typeof prepareAddProduct === 'function') {
+                setTimeout(() => prepareAddProduct(), 150);
+            }
 
             document.getElementById('confirmModalCancel').addEventListener('click', () => {
                 document.getElementById('confirmModal').classList.remove('active');

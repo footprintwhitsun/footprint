@@ -56,6 +56,23 @@
         { label: 'Customers', url: '/customers', roles: ['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Contacts', icon: 'users' },
         { label: 'Customer Groups', url: '/catalog-ops?tab=groups', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'layers' },
 
+        // Products (immediately under Contacts)
+        { label: 'List Products', url: '/inventory?tab=stock', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'package' },
+        { label: 'Add Product', url: '/inventory?tab=stock&action=add', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'shoppingBag' },
+        { label: 'Update Price', url: '/catalog-ops?tab=prices', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'trendingUp' },
+        { label: 'Print Labels', url: '/inventory?tab=barcodes', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'tag' },
+        { label: 'Variations', url: '/catalog-ops?tab=variations', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'layers' },
+        { label: 'Import Products', url: '/bulk-upload', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'upload' },
+        { label: 'Import Opening Stock', url: '/bulk-upload?mode=opening-stock', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'database' },
+        { label: 'Selling Price Group', url: '/catalog-ops?tab=price_groups', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'percent' },
+        { label: 'Units', url: '/catalog-ops?tab=units', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'clipboardCheck' },
+        { label: 'Categories', url: '/categories', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'folder' },
+        { label: 'Brands', url: '/catalog-ops?tab=brands', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'tag' },
+        { label: 'Warranties', url: '/catalog-ops?tab=warranties', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'shield' },
+        { label: 'Batch & Expiry', url: '/inventory?tab=shelf', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'clock' },
+        { label: 'Stock Taking', url: '/inventory?tab=stocktaking', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'clipboardCheck' },
+        { label: 'Negative Stock', url: '/negative-stock', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'activity' },
+
         { label: 'Pending Approvals', url: '/ceo-portal?tab=approvals-pending', roles: ['ceo', 'admin'], group: 'CEO', icon: 'clock' },
         { label: 'Approval History', url: '/ceo-portal?tab=approvals-history', roles: ['ceo', 'admin'], group: 'CEO', icon: 'fileCheck' },
         { label: 'Branches', url: '/ceo-portal?tab=branches', roles: ['ceo', 'admin'], group: 'CEO', icon: 'mapPin' },
@@ -93,15 +110,9 @@
         { label: 'Transactions', url: '/transactions', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'receipt' },
         { label: 'Reserved Orders (Part-Pay)', url: '/extras', roles: ['cashier', 'teller'], group: 'Till', icon: 'layers' },
 
-        // Inventory (Current Stock, Purchasing, Movement, Catalog)
-        { label: 'Current Stock', url: '/inventory?tab=stock', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Current Stock', icon: 'package' },
-        { label: 'Batch & Lot Tracking', url: '/inventory?tab=shelf', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Current Stock', icon: 'layers' },
-        { label: 'Stock Taking', url: '/inventory?tab=stocktaking', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Current Stock', icon: 'clipboardCheck' },
-        { label: 'Barcode Generator', url: '/inventory?tab=barcodes', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Current Stock', icon: 'tag' },
-        { label: 'Negative Stock', url: '/negative-stock', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Current Stock', icon: 'activity' },
+        // Inventory (Purchasing & Movement; Products & Catalog moved to Products group above)
         { label: 'Purchase Orders', url: '/inventory?tab=orders', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'shoppingCart' },
         { label: 'Goods Receiving', url: '/inventory?tab=receiving', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'clipboardCheck' },
-        { label: 'Suppliers', url: '/inventory?tab=suppliers', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'truck' },
         { label: 'Distribution', url: '/inventory?tab=distribution', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'truck' },
         { label: 'Stock Adjustments', url: '/stock-adjustments?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'layers' },
         { label: 'Add Stock Adjustment', url: '/stock-adjustments?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'clipboardCheck' },
@@ -110,9 +121,6 @@
         { label: 'Add Stock Transfer', url: '/stock-transfers?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'truck' },
         { label: 'Returned Sales', url: '/inventory?tab=returns', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'receipt' },
         { label: 'Deliveries & Counts', url: '/operations', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller', 'storekeeper', 'driver'], group: 'Inventory', subgroup: 'Movement', icon: 'clipboardCheck' },
-        { label: 'Categories', url: '/categories', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Catalog', icon: 'folder' },
-        { label: 'Brands, Units & Prices', url: '/catalog-ops', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Catalog', icon: 'tag' },
-        { label: 'Bulk Import', url: '/bulk-upload', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Catalog', icon: 'upload' },
 
         // Credit (moved under Sales so Contacts holds strictly Suppliers, Customers, Customer Groups)
         { label: 'Credit Clients', url: '/credit-customers?tab=clients', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Credit', icon: 'creditCard' },
@@ -1085,6 +1093,8 @@
             }
             const GROUP_ICONS = {
                 'User Management': 'users',
+                'Contacts': 'users',
+                'Products': 'package',
                 'CEO': 'shield',
                 'Company': 'layers',
                 'Sales': 'shoppingBag',

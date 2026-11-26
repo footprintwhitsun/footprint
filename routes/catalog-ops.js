@@ -67,6 +67,34 @@ async function ensurePhase4Schema() {
             ALTER TABLE delivery_notes ADD COLUMN IF NOT EXISTS receiver_name VARCHAR(120) DEFAULT '';
             ALTER TABLE delivery_notes ADD COLUMN IF NOT EXISTS signature_data TEXT DEFAULT '';
             ALTER TABLE delivery_notes ADD COLUMN IF NOT EXISTS delivered_at TIMESTAMPTZ NULL;
+
+            CREATE TABLE IF NOT EXISTS product_variations (
+                id SERIAL PRIMARY KEY,
+                tenant_id INTEGER DEFAULT 1,
+                name VARCHAR(120) NOT NULL,
+                values_text TEXT DEFAULT '',
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS selling_price_groups (
+                id SERIAL PRIMARY KEY,
+                tenant_id INTEGER DEFAULT 1,
+                name VARCHAR(120) NOT NULL,
+                description TEXT DEFAULT '',
+                adjustment_pct DECIMAL(6,2) DEFAULT 0.00,
+                is_active BOOLEAN DEFAULT TRUE,
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
+            CREATE TABLE IF NOT EXISTS product_warranties (
+                id SERIAL PRIMARY KEY,
+                tenant_id INTEGER DEFAULT 1,
+                name VARCHAR(120) NOT NULL,
+                duration INTEGER NOT NULL DEFAULT 12,
+                duration_type VARCHAR(20) NOT NULL DEFAULT 'Months',
+                description TEXT DEFAULT '',
+                created_at TIMESTAMPTZ DEFAULT NOW()
+            );
         `);
 
         // Seed default customer groups
@@ -366,6 +394,137 @@ router.post('/api/reorder/draft-po', authenticateToken, requireRole(MANAGER_ROLE
         res.status(500).json({ message: 'Failed to draft purchase order' });
     } finally {
         client.release();
+    }
+});
+
+// --- VARIATIONS ---
+router.get('/api/variations', authenticateToken, async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    try {
+        const r = await pool.query(
+            'SELECT * FROM product_variations WHERE COALESCE(tenant_id, 1) = $1 ORDER BY name ASC',
+            [tenantId]
+        );
+        res.json({ variations: r.rows });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to load variations' });
+    }
+});
+
+router.post('/api/variations', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    const { name, values_text = '' } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ message: 'Variation name is required' });
+    try {
+        const r = await pool.query(
+            'INSERT INTO product_variations (tenant_id, name, values_text) VALUES ($1, $2, $3) RETURNING *',
+            [tenantId, String(name).trim(), String(values_text || '').trim()]
+        );
+        await logActivity(req, 'CREATE_VARIATION', { name: String(name).trim() });
+        res.status(201).json({ variation: r.rows[0] });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to save variation' });
+    }
+});
+
+router.delete('/api/variations/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    try {
+        await pool.query('DELETE FROM product_variations WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [req.params.id, tenantId]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to delete variation' });
+    }
+});
+
+// --- SELLING PRICE GROUPS ---
+router.get('/api/selling-price-groups', authenticateToken, async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    try {
+        const r = await pool.query(
+            'SELECT * FROM selling_price_groups WHERE COALESCE(tenant_id, 1) = $1 ORDER BY name ASC',
+            [tenantId]
+        );
+        res.json({ price_groups: r.rows });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to load selling price groups' });
+    }
+});
+
+router.post('/api/selling-price-groups', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    const { name, description = '', adjustment_pct = 0 } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ message: 'Price group name is required' });
+    try {
+        const r = await pool.query(
+            'INSERT INTO selling_price_groups (tenant_id, name, description, adjustment_pct) VALUES ($1, $2, $3, $4) RETURNING *',
+            [tenantId, String(name).trim(), String(description || '').trim(), Number(adjustment_pct || 0)]
+        );
+        await logActivity(req, 'CREATE_SELLING_PRICE_GROUP', { name: String(name).trim() });
+        res.status(201).json({ price_group: r.rows[0] });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to save selling price group' });
+    }
+});
+
+router.delete('/api/selling-price-groups/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    try {
+        await pool.query('DELETE FROM selling_price_groups WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [req.params.id, tenantId]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to delete selling price group' });
+    }
+});
+
+// --- WARRANTIES ---
+router.get('/api/warranties', authenticateToken, async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    try {
+        const r = await pool.query(
+            'SELECT * FROM product_warranties WHERE COALESCE(tenant_id, 1) = $1 ORDER BY name ASC',
+            [tenantId]
+        );
+        res.json({ warranties: r.rows });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to load warranties' });
+    }
+});
+
+router.post('/api/warranties', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    const { name, duration = 12, duration_type = 'Months', description = '' } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ message: 'Warranty name is required' });
+    const dur = Math.max(1, parseInt(duration, 10) || 1);
+    const unit = ['Days', 'Months', 'Years'].includes(duration_type) ? duration_type : 'Months';
+    try {
+        const r = await pool.query(
+            'INSERT INTO product_warranties (tenant_id, name, duration, duration_type, description) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+            [tenantId, String(name).trim(), dur, unit, String(description || '').trim()]
+        );
+        await logActivity(req, 'CREATE_WARRANTY', { name: String(name).trim(), duration: dur, duration_type: unit });
+        res.status(201).json({ warranty: r.rows[0] });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to save warranty' });
+    }
+});
+
+router.delete('/api/warranties/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    try {
+        await pool.query('DELETE FROM product_warranties WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [req.params.id, tenantId]);
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to delete warranty' });
     }
 });
 
