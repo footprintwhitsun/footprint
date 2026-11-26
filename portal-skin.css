@@ -2483,8 +2483,10 @@ td .okw-btn-danger:hover, tbody .okw-btn-danger:hover { background: #FDE8E8 !imp
     .okw-kpi:first-child .okw-kpi-value, .okw-kpi:first-child .kpi-value { font-size: clamp(22px, 6.6vw, 28px) !important; white-space: nowrap !important; overflow-wrap: normal; }
 }
 
-/* Prevent fixed-width modals from overflowing mobile viewports */
-.modal-content, .modal-container { max-width: calc(100vw - 24px) !important; box-sizing: border-box; }
+/* Prevent fixed-width modals from overflowing small mobile viewports */
+@media (max-width: 640px) {
+    .modal-content, .modal-container { max-width: calc(100vw - 24px) !important; box-sizing: border-box; }
+}
 
 /* Prevent flash of default tab before ?tab=... activates on any multi-tab page */
 html.okw-tab-booting .tab-content { display: none !important; }
