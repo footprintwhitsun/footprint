@@ -2587,6 +2587,17 @@
 
         function renderStockTable() {
             const tbody = document.getElementById('inventoryTable');
+            if (tbody && !tbody.dataset.prodRowClickBound) {
+                tbody.dataset.prodRowClickBound = '1';
+                tbody.dataset.okwExpandBound = '1';
+                tbody.addEventListener('click', (e) => {
+                    if (e.target.closest('input, button, a, select, details, summary, .okw-menu, [data-onclick]')) return;
+                    const tr = e.target.closest('tr.prod-view-row[data-prod-id]');
+                    if (tr && typeof viewProductPrintable === 'function') {
+                        viewProductPrintable(Number(tr.getAttribute('data-prod-id')));
+                    }
+                });
+            }
             tbody.innerHTML = '';
 
             const pageData = filteredStock;
@@ -2617,7 +2628,7 @@
                 const expiryDate = p.expiry_date ? new Date(p.expiry_date).toLocaleDateString() : '-';
                 
                 rowsHtml += `
-                    <tr>
+                    <tr class="prod-view-row" data-prod-id="${p.id}" style="cursor:pointer;">
                         <td data-label="Select" style="text-align: center;"><input type="checkbox" class="stock-check" value="${OkwUI.escapeHtml(p.barcode)}"></td>
                         <td data-label="Barcode">${OkwUI.escapeHtml(p.barcode)}</td>
                         <td data-label="Product Name" style="font-weight:600;">${OkwUI.escapeHtml(p.name)}</td>

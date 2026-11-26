@@ -523,28 +523,36 @@
             resolvedDate = date || new Date().toLocaleString();
         }
 
-        // 2. Render Document Summary in clean blue-header columns & white data rows (max 5 columns per row block)
-        const summaryBlocks = [];
-        const maxColsPerRow = 5;
-        for (let i = 0; i < summaryFields.length; i += maxColsPerRow) {
-            const chunk = summaryFields.slice(i, i + maxColsPerRow);
-            summaryBlocks.push(`
-                <table class="pr-col-tbl"${i > 0 ? ' style="margin-top:8px;"' : ''}>
-                    <thead>
-                        <tr>${chunk.map(([k]) => `<th>${escapeHtml(k)}</th>`).join('')}</tr>
-                    </thead>
-                    <tbody>
-                        <tr>${chunk.map(([, v]) => `<td>${escapeHtml(v)}</td>`).join('')}</tr>
-                    </tbody>
-                </table>`);
+        // 2. Render Document Summary as ONE clean 2-pair specification table (Field | Value | Field | Value), never injecting table-tools
+        const summaryPairs = [];
+        for (let i = 0; i < summaryFields.length; i += 2) {
+            const left = summaryFields[i];
+            const right = summaryFields[i + 1];
+            if (right) {
+                summaryPairs.push(`
+                    <tr>
+                        <td class="pr-meta-lbl">${escapeHtml(left[0])}</td>
+                        <td class="pr-meta-val">${escapeHtml(left[1])}</td>
+                        <td class="pr-meta-lbl">${escapeHtml(right[0])}</td>
+                        <td class="pr-meta-val">${escapeHtml(right[1])}</td>
+                    </tr>`);
+            } else {
+                summaryPairs.push(`
+                    <tr>
+                        <td class="pr-meta-lbl">${escapeHtml(left[0])}</td>
+                        <td class="pr-meta-val" colspan="3">${escapeHtml(left[1])}</td>
+                    </tr>`);
+            }
         }
-        const metaTableHtml = summaryBlocks.length ? `
+        const metaTableHtml = summaryPairs.length ? `
             <div class="pr-section-bar">Document Summary</div>
-            ${summaryBlocks.join('')}` : '';
+            <table class="pr-meta-tbl" data-no-table-tools="1">
+                <tbody>${summaryPairs.join('')}</tbody>
+            </table>` : '';
 
         const itemsHtml = items.length ? `
             <div class="pr-section-bar" style="margin-top:16px;">Itemized Breakdown</div>
-            <table class="pr-items-tbl">
+            <table class="pr-items-tbl" data-no-table-tools="1">
                 <thead>
                     <tr>
                         <th style="width:36px;">#</th>
@@ -601,7 +609,7 @@
 
         const totalsHtml = totalRows.length ? `
             <div style="margin-top:16px;display:flex;justify-content:flex-end;">
-                <table class="pr-totals-tbl">
+                <table class="pr-totals-tbl" data-no-table-tools="1">
                     <tbody>
                     ${totalRows.map(([k, v, bold]) => `
                         <tr class="${bold ? 'pr-net-row' : ''}">
@@ -1472,7 +1480,7 @@
             });
         }
         document.querySelectorAll('table').forEach(tbl => {
-            if (tbl.dataset.noTableTools === '1') return;
+            if (tbl.dataset.noTableTools === '1' || tbl.closest('#okw-printable-record-modal')) return;
             attachTableTools(tbl);
         });
     }
