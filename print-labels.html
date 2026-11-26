@@ -1,0 +1,753 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Print Labels - OKWESIWA CO LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/currency.js"></script>
+    <script src="/telemetry-guard.js"></script>
+    <script src="/instant-nav.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <script src="/vendor/JsBarcode-3.11.5.all.min.js" defer></script>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style>
+        .pl-grid { display: flex; flex-direction: column; gap: 18px; }
+        .pl-card {
+            background: var(--sheet, #fff);
+            border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 12px;
+            padding: 20px 22px;
+        }
+        .pl-card-title {
+            margin: 0 0 14px;
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--ink, #0f172a);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+        .pl-search-wrap { position: relative; max-width: 640px; }
+        .pl-search-wrap i {
+            position: absolute; left: 13px; top: 50%; transform: translateY(-50%);
+            color: var(--muted, #64748b); font-size: 13px; pointer-events: none;
+        }
+        .pl-search-input {
+            width: 100%; height: 40px; padding: 0 14px 0 36px;
+            border: 1px solid var(--edge-strong, #cbd5e1); border-radius: 8px;
+            background: var(--sheet, #fff); color: var(--ink, #0f172a);
+            font-family: var(--font-ui); font-size: 14px; outline: none;
+        }
+        .pl-search-input:focus { border-color: var(--brand, #273990); box-shadow: 0 0 0 3px rgba(39,57,144,0.12); }
+        .pl-dropdown {
+            position: absolute; left: 0; right: 0; top: calc(100% + 4px); z-index: 40;
+            background: var(--sheet, #fff); border: 1px solid var(--edge-strong, #cbd5e1);
+            border-radius: 9px; box-shadow: 0 12px 30px rgba(15,23,42,0.14);
+            max-height: 280px; overflow-y: auto; display: none;
+        }
+        .pl-dropdown.open { display: block; }
+        .pl-drop-item {
+            padding: 9px 12px; cursor: pointer; display: flex; justify-content: space-between;
+            align-items: center; gap: 10px; border-bottom: 1px solid var(--edge, #f1f5f9);
+            font-size: 13px;
+        }
+        .pl-drop-item:last-child { border-bottom: 0; }
+        .pl-drop-item:hover { background: var(--frame, #f8fafc); }
+        .pl-drop-sub { font-size: 11.5px; color: var(--muted, #64748b); }
+
+        .pl-promo-row {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+            margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--edge, #e2e8f0);
+        }
+        .pl-promo-row label.pl-inline-lbl { font-size: 13px; font-weight: 600; color: var(--ink-2, #334155); }
+        .pl-select, .pl-input {
+            height: 36px; padding: 0 10px; border: 1px solid var(--edge-strong, #cbd5e1);
+            border-radius: 7px; background: var(--sheet, #fff); color: var(--ink, #0f172a);
+            font-family: var(--font-ui); font-size: 13px; outline: none;
+        }
+        .pl-select:focus, .pl-input:focus { border-color: var(--brand, #273990); }
+        .pl-chk {
+            display: inline-flex; align-items: center; gap: 7px;
+            font-size: 13px; color: var(--ink, #0f172a); cursor: pointer; user-select: none;
+        }
+        .pl-chk input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--brand, #273990); cursor: pointer; }
+
+        .pl-table-wrap { margin-top: 16px; border: 1px solid var(--edge, #e2e8f0); border-radius: 10px; overflow-x: auto; }
+        .pl-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .pl-table th {
+            text-align: left; padding: 10px 12px; font-size: 11.5px; font-weight: 700;
+            text-transform: uppercase; letter-spacing: 0.04em; color: var(--muted, #64748b);
+            background: var(--frame, #f8fafc); border-bottom: 1px solid var(--edge, #e2e8f0);
+        }
+        .pl-table td { padding: 10px 12px; border-bottom: 1px solid var(--edge, #f1f5f9); vertical-align: middle; }
+        .pl-table tr:last-child td { border-bottom: 0; }
+        .pl-qty-in { width: 82px; }
+        .pl-date-in { width: 145px; }
+        .pl-now-in { width: 120px; }
+        .pl-rm-btn {
+            border: 1px solid #fecaca; background: #fef2f2; color: #dc2626;
+            border-radius: 6px; width: 30px; height: 30px; cursor: pointer;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .pl-rm-btn:hover { background: #dc2626; color: #fff; }
+
+        .pl-opts-grid {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 14px;
+        }
+        .pl-opt-box {
+            border: 1px solid var(--edge, #e2e8f0); border-radius: 9px; padding: 12px 14px;
+            background: var(--frame, #f8fafc); display: flex; flex-direction: column; gap: 8px;
+        }
+        .pl-opt-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .pl-size-row { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted, #64748b); }
+        .pl-size-in { width: 72px; height: 30px; padding: 0 8px; border: 1px solid var(--edge-strong, #cbd5e1); border-radius: 6px; background: var(--sheet, #fff); font-size: 12.5px; }
+        .pl-promo-opts {
+            margin-top: 14px; padding: 14px 16px; border-radius: 10px;
+            border: 1px solid #fde68a; background: #fffbeb;
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;
+        }
+        .pl-promo-note { font-size: 11.5px; color: #78350f; margin-top: 2px; line-height: 1.4; }
+        .pl-field { display: flex; flex-direction: column; gap: 5px; }
+        .pl-field label { font-size: 12px; font-weight: 600; color: var(--ink-2, #334155); }
+
+        .pl-footer-bar {
+            display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+            gap: 14px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--edge, #e2e8f0);
+        }
+        .pl-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+
+        /* Live Label Preview Sheet */
+        .pl-preview-sheet {
+            display: grid; gap: 10px;
+            padding: 18px; background: #f1f5f9; border-radius: 10px;
+            border: 1px dashed var(--edge-strong, #cbd5e1);
+        }
+        .pl-label-card {
+            background: #ffffff; color: #0f172a; border: 1px solid #cbd5e1;
+            border-radius: 4px; padding: 8px 10px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; text-align: center; gap: 2px;
+            overflow: hidden; page-break-inside: avoid; break-inside: avoid;
+        }
+        .pl-lbl-banner {
+            width: 100%; background: #dc2626; color: #ffffff; font-weight: 800;
+            font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase;
+            padding: 2px 6px; border-radius: 3px; margin-bottom: 2px;
+        }
+        .pl-lbl-biz { font-weight: 700; color: #334155; letter-spacing: 0.02em; }
+        .pl-lbl-name { font-weight: 700; color: #0f172a; line-height: 1.2; }
+        .pl-lbl-var { color: #475569; font-weight: 500; }
+        .pl-lbl-prices { display: flex; align-items: baseline; justify-content: center; gap: 6px; flex-wrap: wrap; margin: 2px 0; }
+        .pl-lbl-was { text-decoration: line-through; color: #64748b; font-weight: 500; }
+        .pl-lbl-now { font-weight: 800; color: #dc2626; }
+        .pl-lbl-reg { font-weight: 800; color: #0f172a; }
+        .pl-lbl-save {
+            display: inline-block; background: #fef3c7; color: #92400e; border: 1px solid #f59e0b;
+            font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 999px;
+        }
+        .pl-lbl-pack { color: #475569; }
+        .pl-lbl-bc svg { max-width: 100%; height: auto; display: block; margin: 2px auto 0; }
+        .pl-lbl-sku { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #334155; letter-spacing: 0.04em; }
+    </style>
+    <script src="/okw-events.js"></script>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD"></div>
+        <div class="nav-links"></div>
+        <div class="user-profile">
+            <div class="user-profile-row">
+                <div class="user-avatar"><i class="fas fa-user"></i></div>
+                <div class="user-info">
+                    <div id="userName"></div>
+                    <div id="userRole"></div>
+                </div>
+            </div>
+            <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <div class="okw-page-header">
+            <div class="okw-page-header-text">
+                <h1 class="okw-page-title">Print Labels</h1>
+                <p class="okw-page-subtitle">Add products or load a promotion, customize label fields and font sizes, then preview and print.</p>
+            </div>
+            <div class="okw-page-header-actions">
+                <button type="button" class="okw-btn okw-btn-outline" id="btnClearQueue">Clear List</button>
+                <button type="button" class="okw-btn okw-btn-primary" id="btnTopPrint"><i class="fas fa-print"></i> Print Labels</button>
+            </div>
+        </div>
+
+        <div class="pl-grid">
+            <!-- 1. Add Products / Load Promotion -->
+            <section class="pl-card">
+                <h2 class="pl-card-title">Add products to generate Labels</h2>
+                <div class="pl-search-wrap">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="plProductSearch" class="pl-search-input" placeholder="Search product by name, SKU, or barcode to add..." autocomplete="off">
+                    <div id="plSearchDropdown" class="pl-dropdown"></div>
+                </div>
+
+                <div class="pl-promo-row">
+                    <label class="pl-inline-lbl" for="plPromoSelect">Or load all products of a promotion:</label>
+                    <select id="plPromoSelect" class="pl-select" style="min-width:240px;">
+                        <option value="">-- Select Promotion --</option>
+                    </select>
+                    <label class="pl-chk">
+                        <input type="checkbox" id="plPromoInStockOnly" checked>
+                        Only products in stock at the promotion's location
+                    </label>
+                    <button type="button" class="okw-btn okw-btn-outline" id="btnLoadPromo" style="height:36px;">Load Promotion Products</button>
+                </div>
+
+                <div class="pl-table-wrap">
+                    <table class="pl-table" data-no-table-tools="1">
+                        <thead>
+                            <tr>
+                                <th>Products</th>
+                                <th>No. of labels</th>
+                                <th>Packing Date</th>
+                                <th>Selling Price Group</th>
+                                <th>Now price (promotion, optional)</th>
+                                <th style="width:48px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="plQueueBody">
+                            <tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted,#64748b);">Search and add products above, or load a promotion to begin.</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- 2. Information to show in Labels -->
+            <section class="pl-card">
+                <h2 class="pl-card-title">Information to show in Labels</h2>
+
+                <div class="pl-opts-grid">
+                    <div class="pl-opt-box">
+                        <div class="pl-opt-top">
+                            <label class="pl-chk"><input type="checkbox" id="optShowName" checked> <strong>Product Name</strong></label>
+                        </div>
+                        <div class="pl-size-row"><span>Size</span><input type="number" id="sizeName" class="pl-size-in" value="13" min="8" max="32"><span>px</span></div>
+                    </div>
+
+                    <div class="pl-opt-box">
+                        <div class="pl-opt-top">
+                            <label class="pl-chk"><input type="checkbox" id="optShowVariation" checked> <strong>Product Variation (recommended)</strong></label>
+                        </div>
+                        <div class="pl-size-row"><span>Size</span><input type="number" id="sizeVariation" class="pl-size-in" value="11" min="8" max="26"><span>px</span></div>
+                    </div>
+
+                    <div class="pl-opt-box">
+                        <div class="pl-opt-top">
+                            <label class="pl-chk"><input type="checkbox" id="optShowPrice" checked> <strong>Product Price</strong></label>
+                        </div>
+                        <div class="pl-size-row"><span>Size</span><input type="number" id="sizePrice" class="pl-size-in" value="16" min="10" max="36"><span>px</span></div>
+                        <div class="pl-size-row">
+                            <span>Show Price:</span>
+                            <select id="optPriceTaxMode" class="pl-select" style="height:30px;font-size:12px;">
+                                <option value="inc" selected>Inc. tax</option>
+                                <option value="exc">Exc. tax</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="pl-opt-box">
+                        <div class="pl-opt-top">
+                            <label class="pl-chk"><input type="checkbox" id="optShowBiz" checked> <strong>Business name</strong></label>
+                        </div>
+                        <div class="pl-size-row"><span>Size</span><input type="number" id="sizeBiz" class="pl-size-in" value="11" min="8" max="24"><span>px</span></div>
+                    </div>
+
+                    <div class="pl-opt-box">
+                        <div class="pl-opt-top">
+                            <label class="pl-chk"><input type="checkbox" id="optShowPackDate"> <strong>Print packing date</strong></label>
+                        </div>
+                        <div class="pl-size-row"><span>Size</span><input type="number" id="sizePackDate" class="pl-size-in" value="10" min="8" max="22"><span>px</span></div>
+                    </div>
+
+                    <div class="pl-opt-box">
+                        <div class="pl-opt-top">
+                            <label class="pl-chk"><input type="checkbox" id="optShowSku" checked> <strong>SKU under the barcode</strong></label>
+                        </div>
+                        <div class="pl-size-row"><span>Size</span><input type="number" id="sizeSku" class="pl-size-in" value="10" min="8" max="22"><span>px</span></div>
+                    </div>
+                </div>
+
+                <!-- Promotion / Was-Now Price Options -->
+                <div class="pl-promo-opts">
+                    <div>
+                        <label class="pl-chk"><input type="checkbox" id="optWasNow"> <strong>Was / Now (promotion) price</strong></label>
+                        <div class="pl-promo-note">Shows the old price crossed out and the promotion price. Uses the "Now price" typed on a row, else the promotion the row was loaded from, else the product's active discount.</div>
+                    </div>
+                    <div class="pl-field">
+                        <label for="optPromoBanner">Promotion banner text:</label>
+                        <input type="text" id="optPromoBanner" class="pl-input" placeholder="e.g. SPECIAL OFFER, PROMO, SALE">
+                        <label class="pl-chk" style="margin-top:4px;">
+                            <input type="checkbox" id="optShowSaving" checked>
+                            Show the saving (e.g. Save 9.00 (47%))
+                        </label>
+                    </div>
+                    <div class="pl-field">
+                        <label for="optPromoLocation">Promotion location:</label>
+                        <select id="optPromoLocation" class="pl-select">
+                            <option value="">All Locations</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Barcode Setting & Preview / Print Actions -->
+                <div class="pl-footer-bar">
+                    <div class="pl-field" style="min-width:280px;">
+                        <label for="optBarcodeSetting">Barcode setting:</label>
+                        <select id="optBarcodeSetting" class="pl-select">
+                            <option value="a4_20">20 Labels per Sheet (A4 — 4 × 5)</option>
+                            <option value="a4_30" selected>30 Labels per Sheet (A4 — 3 × 10)</option>
+                            <option value="a4_40">40 Labels per Sheet (A4 — 4 × 10)</option>
+                            <option value="roll_50x25">50mm × 25mm Thermal Roll (Continuous)</option>
+                            <option value="roll_50x30">50mm × 30mm Thermal Roll (Continuous)</option>
+                            <option value="roll_60x40">60mm × 40mm Thermal Roll (Continuous)</option>
+                            <option value="roll_38x25">38mm × 25mm Small Thermal Roll</option>
+                        </select>
+                    </div>
+                    <div class="pl-actions">
+                        <button type="button" class="okw-btn okw-btn-outline" id="btnPreviewLabels"><i class="fas fa-eye"></i> Preview</button>
+                        <button type="button" class="okw-btn okw-btn-primary" id="btnPrintLabels"><i class="fas fa-print"></i> Print Labels</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Live Preview Section -->
+            <section class="pl-card" id="plPreviewCard" style="display:none;">
+                <div class="pl-card-title">
+                    <span>Label Preview (<span id="plPreviewCount">0</span> labels)</span>
+                    <button type="button" class="okw-btn okw-btn-primary" id="btnPrintFromPreview" style="height:34px;font-size:12.5px;"><i class="fas fa-print"></i> Print Now</button>
+                </div>
+                <div id="plPreviewSheet" class="pl-preview-sheet"></div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+    (function () {
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+        const authHeaders = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+        const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const money = (n) => (typeof formatCurrency === 'function' ? formatCurrency(Number(n) || 0) : 'GH₵ ' + (Number(n) || 0).toFixed(2));
+        const moneyPlain = (n) => Number(n || 0).toFixed(2);
+
+        let allProducts = [];
+        let promotions = [];
+        let priceGroups = [];
+        let branches = [];
+        let businessName = 'OKWESIWA CO LTD';
+        let vatRate = 0;
+        let queue = [];
+
+        const PRESETS = {
+            a4_20:      { cols: 4, labelW: '48mm', labelH: '52mm', pageSize: 'A4', pageMargin: '8mm',  bcH: 34, bcW: 1.3 },
+            a4_30:      { cols: 3, labelW: '64mm', labelH: '27mm', pageSize: 'A4', pageMargin: '8mm',  bcH: 26, bcW: 1.2 },
+            a4_40:      { cols: 4, labelW: '48mm', labelH: '27mm', pageSize: 'A4', pageMargin: '6mm',  bcH: 24, bcW: 1.1 },
+            roll_50x25: { cols: 1, labelW: '50mm', labelH: '25mm', pageSize: '50mm 25mm', pageMargin: '1mm', bcH: 22, bcW: 1.1 },
+            roll_50x30: { cols: 1, labelW: '50mm', labelH: '30mm', pageSize: '50mm 30mm', pageMargin: '1mm', bcH: 26, bcW: 1.2 },
+            roll_60x40: { cols: 1, labelW: '60mm', labelH: '40mm', pageSize: '60mm 40mm', pageMargin: '2mm', bcH: 32, bcW: 1.3 },
+            roll_38x25: { cols: 1, labelW: '38mm', labelH: '25mm', pageSize: '38mm 25mm', pageMargin: '1mm', bcH: 20, bcW: 1.0 }
+        };
+
+        async function bootstrap() {
+            try {
+                const [prodRes, promoRes, pgRes, brRes, setRes] = await Promise.all([
+                    fetch('/api/products?limit=all', { headers: authHeaders, credentials: 'include' }),
+                    fetch('/api/promotions', { headers: authHeaders, credentials: 'include' }),
+                    fetch('/api/selling-price-groups', { headers: authHeaders, credentials: 'include' }),
+                    fetch('/api/branches', { headers: authHeaders, credentials: 'include' }),
+                    fetch('/api/settings', { headers: authHeaders, credentials: 'include' })
+                ]);
+                if (prodRes.ok) {
+                    const pd = await prodRes.json();
+                    allProducts = Array.isArray(pd) ? pd : (pd.products || pd.data || []);
+                }
+                if (promoRes.ok) {
+                    const pr = await promoRes.json();
+                    promotions = Array.isArray(pr) ? pr : (pr.promotions || []);
+                }
+                if (pgRes.ok) {
+                    const pg = await pgRes.json();
+                    priceGroups = pg.price_groups || [];
+                }
+                if (brRes.ok) {
+                    const br = await brRes.json();
+                    branches = Array.isArray(br) ? br : (br.branches || []);
+                }
+                if (setRes.ok) {
+                    const s = await setRes.json();
+                    if (s && s.store_name) businessName = s.store_name;
+                    if (s && s.vat_rate != null) vatRate = Number(s.vat_rate || 0);
+                }
+            } catch (e) {
+                console.error('Print Labels bootstrap error:', e);
+            }
+
+            const promoSel = document.getElementById('plPromoSelect');
+            promoSel.innerHTML = `<option value="">-- Select Promotion --</option>` + promotions.map((p, idx) =>
+                `<option value="${idx}">${esc(p.code)} (${Number(p.discount_percentage || 0)}% off${p.branch_name && p.branch_name !== 'Global' ? ' · ' + esc(p.branch_name) : ''})</option>`
+            ).join('');
+
+            const locSel = document.getElementById('optPromoLocation');
+            locSel.innerHTML = `<option value="">All Locations</option>` + branches.map((b) =>
+                `<option value="${esc(b.name)}">${esc(b.name)}</option>`
+            ).join('');
+        }
+
+        function addProductToQueue(prod, promoPct = null, promoCode = '') {
+            if (!prod) return;
+            const existing = queue.find((r) => String(r.barcode) === String(prod.barcode) && String(r.name) === String(prod.name));
+            if (existing) {
+                existing.qty = (Number(existing.qty) || 1) + 1;
+                if (promoPct != null) { existing.promoDiscountPct = Number(promoPct); existing.promoCode = promoCode; }
+                renderQueue();
+                return;
+            }
+            const today = new Date().toISOString().slice(0, 10);
+            queue.push({
+                id: prod.id,
+                name: prod.name || 'Product',
+                barcode: prod.barcode || String(prod.id || ''),
+                variation: prod.variation || prod.selling_unit || prod.category || '',
+                basePrice: Number(prod.price || 0),
+                productDiscountPct: Number(prod.discount_percentage || prod.discount_pct || 0),
+                productDiscountPrice: prod.discount_price != null ? Number(prod.discount_price) : null,
+                promoDiscountPct: promoPct != null ? Number(promoPct) : null,
+                promoCode: promoCode || '',
+                qty: 1,
+                packingDate: today,
+                priceGroupId: '',
+                nowPrice: ''
+            });
+            renderQueue();
+        }
+
+        function renderQueue() {
+            const tbody = document.getElementById('plQueueBody');
+            if (!queue.length) {
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:var(--muted,#64748b);">Search and add products above, or load a promotion to begin.</td></tr>`;
+                return;
+            }
+            const pgOptions = (selected) => `<option value="">Default Selling Price</option>` + priceGroups.map((g) =>
+                `<option value="${esc(g.id)}"${String(selected) === String(g.id) ? ' selected' : ''}>${esc(g.name)} (${Number(g.adjustment_pct || 0) >= 0 ? '+' : ''}${Number(g.adjustment_pct || 0)}%)</option>`
+            ).join('');
+
+            tbody.innerHTML = queue.map((row, idx) => `
+                <tr data-row-idx="${idx}">
+                    <td>
+                        <div style="font-weight:600;color:var(--ink,#0f172a);">${esc(row.name)}</div>
+                        <div style="font-size:11.5px;color:var(--muted,#64748b);">
+                            SKU: ${esc(row.barcode)}${row.variation ? ' · ' + esc(row.variation) : ''} · Base: ${esc(money(row.basePrice))}
+                            ${row.promoCode ? ` · <span style="color:#b45309;font-weight:600;">Promo: ${esc(row.promoCode)} (-${row.promoDiscountPct}%)</span>` : ''}
+                        </div>
+                    </td>
+                    <td><input type="number" class="pl-input pl-qty-in" data-field="qty" min="1" max="500" value="${esc(row.qty)}"></td>
+                    <td><input type="date" class="pl-input pl-date-in" data-field="packingDate" value="${esc(row.packingDate)}"></td>
+                    <td><select class="pl-select" data-field="priceGroupId">${pgOptions(row.priceGroupId)}</select></td>
+                    <td><input type="number" step="0.01" min="0" class="pl-input pl-now-in" data-field="nowPrice" placeholder="Optional" value="${esc(row.nowPrice)}"></td>
+                    <td><button type="button" class="pl-rm-btn" data-remove-idx="${idx}" title="Remove"><i class="fas fa-times"></i></button></td>
+                </tr>
+            `).join('');
+        }
+
+        function computeRowPrices(row, opts) {
+            let wasPrice = Number(row.basePrice || 0);
+            if (row.priceGroupId) {
+                const pg = priceGroups.find((g) => String(g.id) === String(row.priceGroupId));
+                if (pg && Number.isFinite(Number(pg.adjustment_pct))) {
+                    wasPrice = wasPrice * (1 + Number(pg.adjustment_pct) / 100);
+                }
+            }
+            if (opts.taxMode === 'exc' && vatRate > 0) {
+                wasPrice = wasPrice / (1 + vatRate / 100);
+            }
+            wasPrice = Number(wasPrice.toFixed(2));
+
+            let nowPrice = null;
+            const typedNow = row.nowPrice !== '' && row.nowPrice !== null ? Number(row.nowPrice) : NaN;
+            if (Number.isFinite(typedNow) && typedNow > 0) {
+                nowPrice = Number(typedNow.toFixed(2));
+            } else if (row.promoDiscountPct != null && row.promoDiscountPct > 0) {
+                nowPrice = Number((wasPrice * (1 - row.promoDiscountPct / 100)).toFixed(2));
+            } else if (row.productDiscountPrice != null && row.productDiscountPrice > 0 && row.productDiscountPrice < wasPrice) {
+                nowPrice = Number(row.productDiscountPrice.toFixed(2));
+            } else if (row.productDiscountPct > 0) {
+                nowPrice = Number((wasPrice * (1 - row.productDiscountPct / 100)).toFixed(2));
+            }
+
+            const hasPromo = opts.wasNow && nowPrice !== null && nowPrice < wasPrice;
+            const saving = hasPromo ? Number((wasPrice - nowPrice).toFixed(2)) : 0;
+            const savingPct = (hasPromo && wasPrice > 0) ? Math.round((saving / wasPrice) * 100) : 0;
+            return { wasPrice, nowPrice, hasPromo, saving, savingPct };
+        }
+
+        function readOptions() {
+            return {
+                showName: document.getElementById('optShowName').checked,
+                sizeName: Number(document.getElementById('sizeName').value) || 13,
+                showVariation: document.getElementById('optShowVariation').checked,
+                sizeVariation: Number(document.getElementById('sizeVariation').value) || 11,
+                showPrice: document.getElementById('optShowPrice').checked,
+                sizePrice: Number(document.getElementById('sizePrice').value) || 16,
+                taxMode: document.getElementById('optPriceTaxMode').value,
+                wasNow: document.getElementById('optWasNow').checked,
+                promoBanner: document.getElementById('optPromoBanner').value.trim(),
+                showSaving: document.getElementById('optShowSaving').checked,
+                promoLocation: document.getElementById('optPromoLocation').value,
+                showBiz: document.getElementById('optShowBiz').checked,
+                sizeBiz: Number(document.getElementById('sizeBiz').value) || 11,
+                showPackDate: document.getElementById('optShowPackDate').checked,
+                sizePackDate: Number(document.getElementById('sizePackDate').value) || 10,
+                showSku: document.getElementById('optShowSku').checked,
+                sizeSku: Number(document.getElementById('sizeSku').value) || 10,
+                presetKey: document.getElementById('optBarcodeSetting').value
+            };
+        }
+
+        function buildBarcodeSvg(code, preset) {
+            if (typeof JsBarcode !== 'function' || !code) return '';
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            try {
+                JsBarcode(svg, String(code), {
+                    format: 'CODE128',
+                    width: preset.bcW,
+                    height: preset.bcH,
+                    displayValue: false,
+                    margin: 2
+                });
+                return svg.outerHTML;
+            } catch (_) {
+                return '';
+            }
+        }
+
+        function buildLabelsHtml(opts) {
+            const preset = PRESETS[opts.presetKey] || PRESETS.a4_30;
+            const cards = [];
+            for (const row of queue) {
+                const count = Math.max(1, Math.min(500, parseInt(row.qty, 10) || 1));
+                const p = computeRowPrices(row, opts);
+                const bcSvg = buildBarcodeSvg(row.barcode, preset);
+                const priceHtml = opts.showPrice
+                    ? (p.hasPromo
+                        ? `<div class="pl-lbl-prices"><span class="pl-lbl-was" style="font-size:${Math.max(9, opts.sizePrice - 3)}px;">${esc(money(p.wasPrice))}</span><span class="pl-lbl-now" style="font-size:${opts.sizePrice}px;">${esc(money(p.nowPrice))}</span></div>`
+                        : `<div class="pl-lbl-prices"><span class="pl-lbl-reg" style="font-size:${opts.sizePrice}px;">${esc(money(p.wasPrice))}</span></div>`)
+                    : '';
+                const bannerText = opts.promoBanner || (p.hasPromo ? 'PROMO' : '');
+                const bannerHtml = (p.hasPromo && bannerText) ? `<div class="pl-lbl-banner">${esc(bannerText)}</div>` : '';
+                const saveHtml = (p.hasPromo && opts.showSaving && p.saving > 0)
+                    ? `<div class="pl-lbl-save">Save ${esc(moneyPlain(p.saving))} (${p.savingPct}%)</div>` : '';
+
+                const cardHtml = `
+                    <div class="pl-label-card" style="min-height:${preset.labelH};">
+                        ${bannerHtml}
+                        ${opts.showBiz ? `<div class="pl-lbl-biz" style="font-size:${opts.sizeBiz}px;">${esc(businessName)}${opts.promoLocation ? ' · ' + esc(opts.promoLocation) : ''}</div>` : ''}
+                        ${opts.showName ? `<div class="pl-lbl-name" style="font-size:${opts.sizeName}px;">${esc(row.name)}</div>` : ''}
+                        ${(opts.showVariation && row.variation) ? `<div class="pl-lbl-var" style="font-size:${opts.sizeVariation}px;">${esc(row.variation)}</div>` : ''}
+                        ${priceHtml}
+                        ${saveHtml}
+                        ${(opts.showPackDate && row.packingDate) ? `<div class="pl-lbl-pack" style="font-size:${opts.sizePackDate}px;">Packed: ${esc(row.packingDate)}</div>` : ''}
+                        ${bcSvg ? `<div class="pl-lbl-bc">${bcSvg}</div>` : ''}
+                        ${opts.showSku ? `<div class="pl-lbl-sku" style="font-size:${opts.sizeSku}px;">${esc(row.barcode)}</div>` : ''}
+                    </div>`;
+                for (let i = 0; i < count; i++) cards.push(cardHtml);
+            }
+            return { cards, preset };
+        }
+
+        function renderPreview() {
+            if (!queue.length) {
+                OkwUI.toast('Add at least one product to preview labels', 'warning');
+                return;
+            }
+            const opts = readOptions();
+            const { cards, preset } = buildLabelsHtml(opts);
+            const card = document.getElementById('plPreviewCard');
+            const sheet = document.getElementById('plPreviewSheet');
+            document.getElementById('plPreviewCount').textContent = String(cards.length);
+            sheet.style.gridTemplateColumns = `repeat(${preset.cols}, minmax(0, 1fr))`;
+            sheet.innerHTML = cards.join('');
+            card.style.display = 'block';
+            card.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        function printLabelsNow() {
+            if (!queue.length) {
+                OkwUI.toast('Add at least one product to print labels', 'warning');
+                return;
+            }
+            const opts = readOptions();
+            const { cards, preset } = buildLabelsHtml(opts);
+            const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Print Labels — ${esc(businessName)}</title>
+<style>
+    @page { size: ${preset.pageSize}; margin: ${preset.pageMargin}; }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 10px; font-family: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #0f172a; background: #fff; }
+    .no-print { display: flex; justify-content: flex-end; gap: 8px; margin-bottom: 12px; }
+    .no-print button { height: 34px; padding: 0 16px; border-radius: 7px; border: 1px solid #cbd5e1; background: #273990; color: #fff; font-weight: 600; cursor: pointer; }
+    .no-print button.sec { background: #fff; color: #0f172a; }
+    .sheet { display: grid; grid-template-columns: repeat(${preset.cols}, 1fr); gap: ${preset.cols === 1 ? '4mm' : '3mm'}; }
+    .pl-label-card { border: 1px dashed #cbd5e1; border-radius: 3px; padding: 4px 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 1.5px; overflow: hidden; page-break-inside: avoid; break-inside: avoid; }
+    .pl-lbl-banner { width: 100%; background: #dc2626; color: #fff; font-weight: 800; font-size: 9px; letter-spacing: 0.06em; text-transform: uppercase; padding: 1.5px 4px; border-radius: 2px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .pl-lbl-biz { font-weight: 700; color: #334155; }
+    .pl-lbl-name { font-weight: 700; color: #0f172a; line-height: 1.15; }
+    .pl-lbl-var { color: #475569; }
+    .pl-lbl-prices { display: flex; align-items: baseline; justify-content: center; gap: 5px; flex-wrap: wrap; }
+    .pl-lbl-was { text-decoration: line-through; color: #64748b; }
+    .pl-lbl-now { font-weight: 800; color: #dc2626; }
+    .pl-lbl-reg { font-weight: 800; color: #0f172a; }
+    .pl-lbl-save { display: inline-block; background: #fef3c7; color: #92400e; border: 1px solid #f59e0b; font-size: 9px; font-weight: 700; padding: 0.5px 5px; border-radius: 999px; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .pl-lbl-pack { color: #475569; }
+    .pl-lbl-bc svg { max-width: 100%; height: auto; display: block; margin: 1px auto 0; }
+    .pl-lbl-sku { font-family: ui-monospace, Menlo, monospace; color: #334155; }
+    @media print { body { padding: 0; } .no-print { display: none !important; } .pl-label-card { border-color: #e2e8f0; } }
+</style>
+</head>
+<body>
+    <div class="no-print">
+        <button type="button" class="sec" id="btnCloseLbl">Close</button>
+        <button type="button" id="btnDoPrintLbl">Print / Save PDF</button>
+    </div>
+    <div class="sheet">${cards.join('')}</div>
+    <script>
+        document.getElementById('btnDoPrintLbl').addEventListener('click', function(){ window.print(); });
+        document.getElementById('btnCloseLbl').addEventListener('click', function(){ window.close(); });
+    <\/script>
+</body>
+</html>`;
+            const win = window.open('', '_blank', 'width=960,height=800');
+            if (!win) {
+                OkwUI.toast('Please allow pop-ups to print labels', 'warning');
+                return;
+            }
+            win.document.open();
+            win.document.write(html);
+            win.document.close();
+        }
+
+        // Wire search typeahead
+        const searchInput = document.getElementById('plProductSearch');
+        const dropdown = document.getElementById('plSearchDropdown');
+        searchInput.addEventListener('input', () => {
+            const q = searchInput.value.trim().toLowerCase();
+            if (!q) { dropdown.classList.remove('open'); return; }
+            const matches = allProducts.filter((p) =>
+                String(p.name || '').toLowerCase().includes(q) ||
+                String(p.barcode || '').toLowerCase().includes(q) ||
+                String(p.category || '').toLowerCase().includes(q)
+            ).slice(0, 20);
+            dropdown.innerHTML = matches.length ? matches.map((p) => `
+                <div class="pl-drop-item" data-pick-barcode="${esc(p.barcode)}" data-pick-name="${esc(p.name)}">
+                    <div>
+                        <div style="font-weight:600;">${esc(p.name)}</div>
+                        <div class="pl-drop-sub">SKU: ${esc(p.barcode)} · Stock: ${esc(p.stock ?? 0)}</div>
+                    </div>
+                    <strong>${esc(money(p.price))}</strong>
+                </div>
+            `).join('') : `<div class="pl-drop-item" style="color:var(--muted);">No matching products</div>`;
+            dropdown.classList.add('open');
+        });
+        dropdown.addEventListener('click', (e) => {
+            const item = e.target.closest('.pl-drop-item[data-pick-barcode]');
+            if (!item) return;
+            const bc = item.getAttribute('data-pick-barcode');
+            const nm = item.getAttribute('data-pick-name');
+            const prod = allProducts.find((p) => String(p.barcode) === bc && String(p.name) === nm) || allProducts.find((p) => String(p.barcode) === bc);
+            if (prod) addProductToQueue(prod);
+            searchInput.value = '';
+            dropdown.classList.remove('open');
+        });
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.pl-search-wrap')) dropdown.classList.remove('open');
+        });
+
+        // Wire Load Promotion button
+        document.getElementById('btnLoadPromo').addEventListener('click', () => {
+            const idx = document.getElementById('plPromoSelect').value;
+            if (idx === '') {
+                OkwUI.toast('Select a promotion first', 'warning');
+                return;
+            }
+            const promo = promotions[Number(idx)];
+            if (!promo) return;
+            const inStockOnly = document.getElementById('plPromoInStockOnly').checked;
+            const promoLoc = (promo.branch_name && promo.branch_name !== 'Global')
+                ? promo.branch_name
+                : document.getElementById('optPromoLocation').value;
+
+            const matching = allProducts.filter((p) => {
+                if (!inStockOnly) return true;
+                if (promoLoc && p.stock_levels && typeof p.stock_levels === 'object') {
+                    const locStock = Number(p.stock_levels[promoLoc] ?? 0);
+                    return locStock > 0;
+                }
+                return Number(p.stock || 0) > 0;
+            });
+
+            if (!matching.length) {
+                OkwUI.toast('No products found matching this promotion and stock filter', 'warning');
+                return;
+            }
+            const pct = Number(promo.discount_percentage || 0);
+            matching.forEach((p) => addProductToQueue(p, pct, promo.code));
+            document.getElementById('optWasNow').checked = true;
+            if (!document.getElementById('optPromoBanner').value.trim()) {
+                document.getElementById('optPromoBanner').value = promo.code || 'PROMO';
+            }
+            if (promoLoc) document.getElementById('optPromoLocation').value = promoLoc;
+            OkwUI.toast(`Loaded ${matching.length} product(s) from ${promo.code}`, 'success');
+        });
+
+        // Wire queue inline edits & remove
+        const qBody = document.getElementById('plQueueBody');
+        qBody.addEventListener('input', (e) => {
+            const tr = e.target.closest('tr[data-row-idx]');
+            if (!tr) return;
+            const idx = Number(tr.getAttribute('data-row-idx'));
+            const field = e.target.getAttribute('data-field');
+            if (queue[idx] && field) queue[idx][field] = e.target.value;
+        });
+        qBody.addEventListener('change', (e) => {
+            const tr = e.target.closest('tr[data-row-idx]');
+            if (!tr) return;
+            const idx = Number(tr.getAttribute('data-row-idx'));
+            const field = e.target.getAttribute('data-field');
+            if (queue[idx] && field) queue[idx][field] = e.target.value;
+        });
+        qBody.addEventListener('click', (e) => {
+            const btn = e.target.closest('[data-remove-idx]');
+            if (!btn) return;
+            queue.splice(Number(btn.getAttribute('data-remove-idx')), 1);
+            renderQueue();
+        });
+
+        document.getElementById('btnClearQueue').addEventListener('click', () => {
+            queue = [];
+            renderQueue();
+            document.getElementById('plPreviewCard').style.display = 'none';
+        });
+        document.getElementById('btnPreviewLabels').addEventListener('click', renderPreview);
+        document.getElementById('btnPrintLabels').addEventListener('click', printLabelsNow);
+        document.getElementById('btnTopPrint').addEventListener('click', printLabelsNow);
+        document.getElementById('btnPrintFromPreview').addEventListener('click', printLabelsNow);
+
+        document.addEventListener('DOMContentLoaded', bootstrap);
+    })();
+    </script>
+</body>
+</html>

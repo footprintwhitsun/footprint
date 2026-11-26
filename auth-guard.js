@@ -97,6 +97,7 @@
         '/stock-transfers': ROLES.MANAGERS,
         '/inventory': ROLES.MANAGERS,
         '/catalog-ops': ROLES.MANAGERS,
+        '/print-labels': ROLES.MANAGERS,
         '/reports': ROLES.MANAGERS,
         '/core-reports': ROLES.MANAGERS,
         '/all-reports': ROLES.MANAGERS,
