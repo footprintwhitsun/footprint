@@ -59,7 +59,7 @@
         // Products (immediately under Contacts)
         { label: 'List Products', url: '/inventory?tab=stock', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'package' },
         { label: 'Stock Report', url: '/stock-report', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'barChart' },
-        { label: 'Add Product', url: '/inventory?tab=stock&action=add', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'shoppingBag' },
+        { label: 'Add Product', url: '/add-product', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'shoppingBag' },
         { label: 'Update Price', url: '/catalog-ops?tab=prices', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'trendingUp' },
         { label: 'Print Labels', url: '/print-labels', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'tag' },
         { label: 'Barcode Generator', url: '/inventory?tab=barcodes', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'tag' },

@@ -99,6 +99,7 @@
         '/catalog-ops': ROLES.MANAGERS,
         '/print-labels': ROLES.MANAGERS,
         '/stock-report': ROLES.MANAGERS,
+        '/add-product': ROLES.MANAGERS,
         '/reports': ROLES.MANAGERS,
         '/core-reports': ROLES.MANAGERS,
         '/all-reports': ROLES.MANAGERS,

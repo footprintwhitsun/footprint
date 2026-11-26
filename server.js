@@ -1631,6 +1631,7 @@ app.get('/categories', directPage('categories.html', PAGE_ROLES.MANAGERS));
 app.get('/catalog-ops', directPage('catalog-ops.html', PAGE_ROLES.MANAGERS));
 app.get('/print-labels', directPage('print-labels.html', PAGE_ROLES.MANAGERS));
 app.get('/stock-report', directPage('stock-report.html', PAGE_ROLES.MANAGERS));
+app.get('/add-product', directPage('add-product.html', PAGE_ROLES.MANAGERS));
 app.get('/operations', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'operations.html'));
 app.get('/negative-stock', directPage('negative-stock.html', PAGE_ROLES.MANAGERS));
 app.get('/promotions', directPage('promotions.html', PAGE_ROLES.MANAGERS));

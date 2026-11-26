@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Add Product - OKWESIWA CO LTD</title>
+    <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/currency.js"></script>
+    <script src="/telemetry-guard.js"></script>
+    <script src="/instant-nav.js"></script>
+    <script src="/layout.js"></script>
+    <script src="/ui-components.js"></script>
+    <link rel="stylesheet" href="/portal-skin.css">
+    <style>
+        .ap-form { display: flex; flex-direction: column; gap: 18px; max-width: 1120px; }
+        .ap-card {
+            background: var(--sheet, #fff);
+            border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 12px;
+            padding: 20px 22px;
+        }
+        .ap-section-title {
+            margin: 0 0 14px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid var(--edge, #e2e8f0);
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--brand, #273990);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+        .ap-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 16px; }
+        .ap-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
+        .ap-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+        .ap-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-2, #334155); }
+        .ap-input, .ap-select, .ap-textarea {
+            width: 100%; height: 38px; padding: 0 12px;
+            border: 1px solid var(--edge-strong, #cbd5e1); border-radius: 8px;
+            background: var(--sheet, #fff); color: var(--ink, #0f172a);
+            font-family: var(--font-ui); font-size: 13.5px; outline: none;
+        }
+        .ap-textarea { height: auto; min-height: 92px; padding: 10px 12px; resize: vertical; }
+        .ap-input:focus, .ap-select:focus, .ap-textarea:focus {
+            border-color: var(--brand, #273990);
+            box-shadow: 0 0 0 3px rgba(39, 57, 144, 0.12);
+        }
+        .ap-input-group { display: flex; gap: 8px; }
+        .ap-input-group .ap-input { flex: 1; min-width: 0; }
+        .ap-chk {
+            display: inline-flex; align-items: center; gap: 8px;
+            font-size: 13px; font-weight: 600; color: var(--ink, #0f172a);
+            cursor: pointer; user-select: none; margin-top: 24px;
+        }
+        .ap-chk input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--brand, #273990); cursor: pointer; }
+        .ap-hint { font-size: 11.5px; color: var(--muted, #64748b); }
+        .ap-img-preview {
+            margin-top: 8px; max-width: 140px; max-height: 140px; border-radius: 8px;
+            border: 1px solid var(--edge, #e2e8f0); object-fit: cover; display: none;
+        }
+        .ap-footer {
+            display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 10px;
+            padding: 16px 22px; background: var(--sheet, #fff);
+            border: 1px solid var(--edge, #e2e8f0); border-radius: 12px;
+        }
+        @media (max-width: 900px) {
+            .ap-grid-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 600px) {
+            .ap-grid-3, .ap-grid-2 { grid-template-columns: 1fr; }
+            .ap-chk { margin-top: 4px; }
+        }
+    </style>
+    <script src="/okw-events.js"></script>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD"></div>
+        <div class="nav-links"></div>
+        <div class="user-profile">
+            <div class="user-profile-row">
+                <div class="user-avatar"><i class="fas fa-user"></i></div>
+                <div class="user-info">
+                    <div id="userName"></div>
+                    <div id="userRole"></div>
+                </div>
+            </div>
+            <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
+    </div>
+
+    <main class="main-content">
+        <div class="okw-page-header">
+            <div class="okw-page-header-text">
+                <h1 class="okw-page-title">Add Product</h1>
+                <p class="okw-page-subtitle">Create a new product with pricing, stock levels, categories, brands, and tax details.</p>
+            </div>
+            <div class="okw-page-header-actions">
+                <a href="/inventory?tab=stock" class="okw-btn okw-btn-outline" style="text-decoration:none;"><i class="fas fa-boxes"></i> List Products</a>
+            </div>
+        </div>
+
+        <form id="addProductForm" class="ap-form" novalidate>
+            <!-- 1. Product Details -->
+            <section class="ap-card">
+                <h2 class="ap-section-title">1. Product Details</h2>
+                <div class="ap-grid-3">
+                    <div class="ap-field">
+                        <label for="apName">Product Name *</label>
+                        <input type="text" id="apName" class="ap-input" placeholder="e.g. Portland Cement 50kg Bag" required>
+                    </div>
+                    <div class="ap-field">
+                        <label for="apBarcode">SKU / Barcode</label>
+                        <div class="ap-input-group">
+                            <input type="text" id="apBarcode" class="ap-input" placeholder="Leave blank to auto-generate">
+                            <button type="button" id="btnGenSku" class="okw-btn okw-btn-outline" style="height:38px;padding:0 12px;white-space:nowrap;">Generate</button>
+                        </div>
+                    </div>
+                    <div class="ap-field">
+                        <label for="apBarcodeType">Barcode Type</label>
+                        <select id="apBarcodeType" class="ap-select">
+                            <option value="C128" selected>Code 128 (C128)</option>
+                            <option value="C39">Code 39 (C39)</option>
+                            <option value="EAN13">EAN-13</option>
+                            <option value="EAN8">EAN-8</option>
+                            <option value="UPCA">UPC-A</option>
+                        </select>
+                    </div>
+
+                    <div class="ap-field">
+                        <label for="apUnit">Unit *</label>
+                        <select id="apUnit" class="ap-select">
+                            <option value="Piece">Piece</option>
+                            <option value="Bag">Bag</option>
+                            <option value="Box">Box</option>
+                            <option value="Pack">Pack</option>
+                            <option value="Roll">Roll</option>
+                            <option value="Metre">Metre</option>
+                            <option value="Kg">Kg</option>
+                            <option value="Litre">Litre</option>
+                            <option value="Bucket">Bucket</option>
+                            <option value="Set">Set</option>
+                        </select>
+                    </div>
+                    <div class="ap-field">
+                        <label for="apBrand">Brand</label>
+                        <select id="apBrand" class="ap-select">
+                            <option value="">-- Select Brand --</option>
+                        </select>
+                    </div>
+                    <div class="ap-field">
+                        <label for="apCategory">Category *</label>
+                        <select id="apCategory" class="ap-select" required>
+                            <option value="">-- Select Category --</option>
+                        </select>
+                    </div>
+
+                    <div class="ap-field">
+                        <label for="apSubCategory">Sub-category</label>
+                        <input type="text" id="apSubCategory" class="ap-input" placeholder="Optional sub-category">
+                    </div>
+                    <div class="ap-field">
+                        <label for="apLocations">Business Locations</label>
+                        <select id="apLocations" class="ap-select">
+                            <option value="All Locations">All Locations</option>
+                        </select>
+                    </div>
+                    <div class="ap-field">
+                        <label for="apProductType">Product Type</label>
+                        <select id="apProductType" class="ap-select">
+                            <option value="Single" selected>Single</option>
+                            <option value="Variable">Variable</option>
+                            <option value="Combo">Combo</option>
+                        </select>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 2. Stock & Inventory -->
+            <section class="ap-card">
+                <h2 class="ap-section-title">2. Stock &amp; Inventory</h2>
+                <div class="ap-grid-3">
+                    <div class="ap-field">
+                        <label class="ap-chk">
+                            <input type="checkbox" id="apManageStock" checked>
+                            Manage Stock? (Enable stock tracking)
+                        </label>
+                    </div>
+                    <div class="ap-field">
+                        <label for="apStock">Opening Stock Quantity</label>
+                        <input type="number" id="apStock" class="ap-input" step="any" min="0" value="0" placeholder="0">
+                    </div>
+                    <div class="ap-field">
+                        <label for="apReorder">Alert / Reorder Quantity</label>
+                        <input type="number" id="apReorder" class="ap-input" step="any" min="0" value="10" placeholder="10">
+                    </div>
+
+                    <div class="ap-field">
+                        <label for="apPackUnit">Packaging Unit</label>
+                        <input type="text" id="apPackUnit" class="ap-input" value="Box" placeholder="e.g. Box, Pallet, Bundle">
+                    </div>
+                    <div class="ap-field">
+                        <label for="apConvRate">Items per Package</label>
+                        <input type="number" id="apConvRate" class="ap-input" step="any" min="1" value="1">
+                    </div>
+                    <div class="ap-field">
+                        <label for="apBatch">Batch Number (Optional)</label>
+                        <input type="text" id="apBatch" class="ap-input" placeholder="e.g. LOT-2026-01">
+                    </div>
+
+                    <div class="ap-field">
+                        <label for="apExpiry">Expiry Date (Optional)</label>
+                        <input type="date" id="apExpiry" class="ap-input">
+                    </div>
+                </div>
+            </section>
+
+            <!-- 3. Pricing & Tax -->
+            <section class="ap-card">
+                <h2 class="ap-section-title">3. Pricing &amp; Tax</h2>
+                <div class="ap-grid-3">
+                    <div class="ap-field">
+                        <label for="apTaxRate">Applicable Tax (%)</label>
+                        <input type="number" id="apTaxRate" class="ap-input" step="0.01" min="0" value="0" placeholder="0">
+                    </div>
+                    <div class="ap-field">
+                        <label for="apTaxType">Selling Price Tax Type</label>
+                        <select id="apTaxType" class="ap-select">
+                            <option value="Exclusive" selected>Exclusive</option>
+                            <option value="Inclusive">Inclusive</option>
+                        </select>
+                    </div>
+                    <div class="ap-field">
+                        <label for="apCostExc">Purchase Price (Exc. Tax)</label>
+                        <input type="number" id="apCostExc" class="ap-input" step="0.01" min="0" placeholder="0.00">
+                    </div>
+
+                    <div class="ap-field">
+                        <label for="apCostInc">Purchase Price (Inc. Tax)</label>
+                        <input type="number" id="apCostInc" class="ap-input" step="0.01" min="0" placeholder="0.00">
+                    </div>
+                    <div class="ap-field">
+                        <label for="apMargin">Margin (%)</label>
+                        <input type="number" id="apMargin" class="ap-input" step="0.01" placeholder="e.g. 25">
+                    </div>
+                    <div class="ap-field">
+                        <label for="apSellPrice">Default Selling Price *</label>
+                        <input type="number" id="apSellPrice" class="ap-input" step="0.01" min="0" placeholder="0.00" required>
+                        <span id="apPriceHint" class="ap-hint"></span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 4. Description & Image -->
+            <section class="ap-card">
+                <h2 class="ap-section-title">4. Description &amp; Media</h2>
+                <div class="ap-grid-2">
+                    <div class="ap-field">
+                        <label for="apDesc">Product Description</label>
+                        <textarea id="apDesc" class="ap-textarea" placeholder="Enter product specifications, usage notes, or dimensions..."></textarea>
+                    </div>
+                    <div class="ap-field">
+                        <label for="apImageFile">Product Image (Optional)</label>
+                        <input type="file" id="apImageFile" class="ap-input" accept="image/*" style="padding-top:6px;">
+                        <input type="hidden" id="apImageData">
+                        <img id="apImagePreview" class="ap-img-preview" alt="Product preview">
+                    </div>
+                </div>
+            </section>
+
+            <div class="ap-footer">
+                <a href="/inventory?tab=stock" class="okw-btn okw-btn-outline" style="text-decoration:none;">Cancel</a>
+                <button type="button" id="btnSaveAddAnother" class="okw-btn okw-btn-outline">Save &amp; Add Another</button>
+                <button type="submit" id="btnSaveProduct" class="okw-btn okw-btn-primary"><i class="fas fa-check"></i> Save Product</button>
+            </div>
+        </form>
+    </main>
+
+    <script>
+    (function () {
+        const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+        const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+        const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const money = (n) => (typeof formatCurrency === 'function' ? formatCurrency(Number(n) || 0) : 'GH₵ ' + (Number(n) || 0).toFixed(2));
+        let submitting = false;
+
+        async function loadLookups() {
+            try {
+                const [catRes, brandRes, unitRes, brRes] = await Promise.all([
+                    fetch('/api/categories', { headers, credentials: 'include' }),
+                    fetch('/api/brands', { headers, credentials: 'include' }),
+                    fetch('/api/units', { headers, credentials: 'include' }),
+                    fetch('/api/branches', { headers, credentials: 'include' })
+                ]);
+                if (catRes.ok) {
+                    const cats = await catRes.json();
+                    const list = Array.isArray(cats) ? cats : (cats.categories || []);
+                    const sel = document.getElementById('apCategory');
+                    sel.innerHTML = `<option value="">-- Select Category --</option>` +
+                        list.map((c) => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('') +
+                        `<option value="General">General</option>`;
+                }
+                if (brandRes.ok) {
+                    const bd = await brandRes.json();
+                    const list = Array.isArray(bd) ? bd : (bd.brands || []);
+                    const sel = document.getElementById('apBrand');
+                    sel.innerHTML = `<option value="">-- Select Brand --</option>` +
+                        list.map((b) => `<option value="${esc(b.name)}">${esc(b.name)}</option>`).join('');
+                }
+                if (unitRes.ok) {
+                    const ud = await unitRes.json();
+                    const list = Array.isArray(ud) ? ud : (ud.units || []);
+                    const baseUnits = [...new Set(list.map((u) => u.base_unit).filter(Boolean))];
+                    const sel = document.getElementById('apUnit');
+                    const existing = new Set(Array.from(sel.options).map((o) => o.value.toLowerCase()));
+                    baseUnits.forEach((u) => {
+                        if (!existing.has(u.toLowerCase())) {
+                            const opt = document.createElement('option');
+                            opt.value = u;
+                            opt.textContent = u;
+                            sel.appendChild(opt);
+                        }
+                    });
+                }
+                if (brRes.ok) {
+                    const brd = await brRes.json();
+                    const list = Array.isArray(brd) ? brd : (brd.branches || []);
+                    const sel = document.getElementById('apLocations');
+                    sel.innerHTML = `<option value="All Locations">All Locations</option>` +
+                        list.map((b) => `<option value="${esc(b.name)}">${esc(b.name)}</option>`).join('');
+                }
+            } catch (e) {
+                console.error('Add Product lookup error:', e);
+            }
+        }
+
+        function recalcPricing(source) {
+            const taxRate = Math.max(0, parseFloat(document.getElementById('apTaxRate').value) || 0);
+            const factor = 1 + (taxRate / 100);
+            const costExcEl = document.getElementById('apCostExc');
+            const costIncEl = document.getElementById('apCostInc');
+            const marginEl = document.getElementById('apMargin');
+            const sellEl = document.getElementById('apSellPrice');
+            const hintEl = document.getElementById('apPriceHint');
+
+            let costExc = parseFloat(costExcEl.value);
+            let costInc = parseFloat(costIncEl.value);
+            let margin = parseFloat(marginEl.value);
+            let sell = parseFloat(sellEl.value);
+
+            if (source === 'costExc' || source === 'tax') {
+                if (Number.isFinite(costExc) && costExc >= 0) {
+                    costIncEl.value = (costExc * factor).toFixed(2);
+                    if (Number.isFinite(margin)) {
+                        sellEl.value = (costExc * (1 + margin / 100)).toFixed(2);
+                    }
+                }
+            } else if (source === 'costInc') {
+                if (Number.isFinite(costInc) && costInc >= 0) {
+                    costExc = costInc / factor;
+                    costExcEl.value = costExc.toFixed(2);
+                    if (Number.isFinite(margin)) {
+                        sellEl.value = (costExc * (1 + margin / 100)).toFixed(2);
+                    }
+                }
+            } else if (source === 'margin') {
+                if (Number.isFinite(costExc) && costExc > 0 && Number.isFinite(margin)) {
+                    sellEl.value = (costExc * (1 + margin / 100)).toFixed(2);
+                }
+            } else if (source === 'sell') {
+                if (Number.isFinite(costExc) && costExc > 0 && Number.isFinite(sell)) {
+                    marginEl.value = (((sell - costExc) / costExc) * 100).toFixed(2);
+                }
+            }
+
+            const finalSell = parseFloat(sellEl.value);
+            hintEl.textContent = (Number.isFinite(finalSell) && taxRate > 0)
+                ? `Inc. tax (${taxRate}%): ${money(finalSell * factor)}`
+                : '';
+        }
+
+        document.getElementById('apCostExc').addEventListener('input', () => recalcPricing('costExc'));
+        document.getElementById('apCostInc').addEventListener('input', () => recalcPricing('costInc'));
+        document.getElementById('apMargin').addEventListener('input', () => recalcPricing('margin'));
+        document.getElementById('apSellPrice').addEventListener('input', () => recalcPricing('sell'));
+        document.getElementById('apTaxRate').addEventListener('input', () => recalcPricing('tax'));
+
+        document.getElementById('btnGenSku').addEventListener('click', () => {
+            const rand = Math.floor(100000 + Math.random() * 900000);
+            document.getElementById('apBarcode').value = `OKW-${rand}`;
+        });
+
+        document.getElementById('apImageFile').addEventListener('change', (e) => {
+            const file = e.target.files && e.target.files[0];
+            const prev = document.getElementById('apImagePreview');
+            const hidden = document.getElementById('apImageData');
+            if (!file) { hidden.value = ''; prev.style.display = 'none'; return; }
+            if (file.size > 2 * 1024 * 1024) {
+                OkwUI.toast('Image must be under 2 MB', 'warning');
+                e.target.value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                hidden.value = reader.result || '';
+                prev.src = hidden.value;
+                prev.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        });
+
+        async function submitProduct(addAnother) {
+            if (submitting) return;
+            const name = document.getElementById('apName').value.trim();
+            const price = parseFloat(document.getElementById('apSellPrice').value);
+            const category = document.getElementById('apCategory').value || 'General';
+            if (!name) return OkwUI.toast('Product Name is required', 'warning');
+            if (!Number.isFinite(price) || price < 0) return OkwUI.toast('Enter a valid selling price', 'warning');
+
+            submitting = true;
+            const saveBtn = document.getElementById('btnSaveProduct');
+            const anotherBtn = document.getElementById('btnSaveAddAnother');
+            saveBtn.disabled = true;
+            anotherBtn.disabled = true;
+
+            const payload = {
+                name,
+                barcode: document.getElementById('apBarcode').value.trim(),
+                barcode_type: document.getElementById('apBarcodeType').value,
+                category,
+                sub_category: document.getElementById('apSubCategory').value.trim(),
+                brand: document.getElementById('apBrand').value,
+                selling_unit: document.getElementById('apUnit').value,
+                business_locations: document.getElementById('apLocations').value,
+                product_type: document.getElementById('apProductType').value,
+                manage_stock: document.getElementById('apManageStock').checked,
+                stock: parseFloat(document.getElementById('apStock').value) || 0,
+                reorder_level: parseFloat(document.getElementById('apReorder').value) || 10,
+                packaging_unit: document.getElementById('apPackUnit').value.trim() || 'Box',
+                conversion_rate: parseFloat(document.getElementById('apConvRate').value) || 1,
+                batch_number: document.getElementById('apBatch').value.trim(),
+                expiry_date: document.getElementById('apExpiry').value || null,
+                track_batch: Boolean(document.getElementById('apBatch').value.trim()),
+                track_expiry: Boolean(document.getElementById('apExpiry').value),
+                applicable_tax: parseFloat(document.getElementById('apTaxRate').value) || 0,
+                tax_type: document.getElementById('apTaxType').value,
+                cost_price: parseFloat(document.getElementById('apCostExc').value) || 0,
+                cost_inc_tax: parseFloat(document.getElementById('apCostInc').value) || 0,
+                margin_pct: parseFloat(document.getElementById('apMargin').value) || 0,
+                price,
+                description: document.getElementById('apDesc').value.trim(),
+                image_url: document.getElementById('apImageData').value || ''
+            };
+
+            try {
+                const res = await fetch('/api/products', {
+                    method: 'POST',
+                    headers,
+                    credentials: 'include',
+                    body: JSON.stringify(payload)
+                });
+                const d = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(d.message || 'Failed to save product');
+                OkwUI.toast('Product saved successfully', 'success');
+                if (addAnother) {
+                    document.getElementById('addProductForm').reset();
+                    document.getElementById('apImageData').value = '';
+                    document.getElementById('apImagePreview').style.display = 'none';
+                    document.getElementById('apPriceHint').textContent = '';
+                    document.getElementById('apName').focus();
+                } else {
+                    window.location.href = '/inventory?tab=stock';
+                }
+            } catch (err) {
+                OkwUI.toast(err.message || 'Could not save product', 'danger');
+            } finally {
+                submitting = false;
+                saveBtn.disabled = false;
+                anotherBtn.disabled = false;
+            }
+        }
+
+        document.getElementById('addProductForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            submitProduct(false);
+        });
+        document.getElementById('btnSaveAddAnother').addEventListener('click', () => submitProduct(true));
+        document.addEventListener('DOMContentLoaded', loadLookups);
+    })();
+    </script>
+</body>
+</html>
