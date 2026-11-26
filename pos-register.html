@@ -899,6 +899,30 @@
             if (empInput) empInput.value = `${prefix}-${String(maxId + 1).padStart(3, '0')}`;
         }
 
+        async function loadRoles() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const res = await fetch('/api/roles', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) return;
+                const data = await res.json().catch(() => ({}));
+                const apiRoles = Array.isArray(data.roles) ? data.roles : [];
+                ['role', 'editRole', 'roleFilter'].forEach(selId => {
+                    const sel = document.getElementById(selId);
+                    if (!sel) return;
+                    const existingVals = new Set(Array.from(sel.options).map(o => String(o.value || '').toLowerCase()));
+                    apiRoles.forEach(r => {
+                        const slug = String(r.slug || '').toLowerCase().trim();
+                        if (!slug || slug === 'teller' || existingVals.has(slug)) return;
+                        existingVals.add(slug);
+                        const opt = document.createElement('option');
+                        opt.value = slug;
+                        opt.textContent = r.name || slug.replace(/_/g, ' ');
+                        sel.appendChild(opt);
+                    });
+                });
+            } catch (_) {}
+        }
+
         function applyRoleRestrictions() {
             const me = getSessionUser();
             const myRole = String(me.role || '').toLowerCase();
@@ -907,12 +931,6 @@
                     const sel = document.getElementById(id);
                     if (!sel) return;
                     ['admin', 'ceo', 'super_admin'].forEach(r => sel.querySelector(`option[value="${r}"]`)?.remove());
-                });
-            } else if (myRole === 'admin') {
-                ['role', 'editRole'].forEach(id => {
-                    const sel = document.getElementById(id);
-                    if (!sel) return;
-                    ['ceo', 'super_admin'].forEach(r => sel.querySelector(`option[value="${r}"]`)?.remove());
                 });
             }
         }
@@ -936,8 +954,8 @@
             if (nameEl) nameEl.textContent = me.name || me.username || '';
             if (roleEl) roleEl.textContent = (me.role || '').replace(/_/g, ' ') + (me.store_location ? ` · ${me.store_location}` : '');
 
+            await Promise.all([loadBranches(), loadRoles()]);
             applyRoleRestrictions();
-            await loadBranches();
 
             const rawTab = new URLSearchParams(window.location.search).get('tab');
             switchTab(rawTab === 'register' ? 'register' : 'users');

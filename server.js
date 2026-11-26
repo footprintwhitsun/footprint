@@ -2213,7 +2213,15 @@ app.post('/api/users', authenticateToken, async (req, res) => {
 
         const targetRole = String(role || '').toLowerCase().trim().replace(/[\s-]+/g, '_');
         const ALLOWED_CREATE_ROLES = ['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller', 'storekeeper', 'driver', 'company', 'business_client'];
-        if (!ALLOWED_CREATE_ROLES.includes(targetRole)) {
+        let isValidRole = ALLOWED_CREATE_ROLES.includes(targetRole);
+        if (!isValidRole && targetRole) {
+            const customRoleCheck = await pool.query(
+                'SELECT slug FROM roles WHERE LOWER(slug) = $1 AND COALESCE(tenant_id, 1) = $2 LIMIT 1',
+                [targetRole, req.user.tenant_id || 1]
+            ).catch(() => ({ rows: [] }));
+            if (customRoleCheck.rows.length > 0) isValidRole = true;
+        }
+        if (!isValidRole) {
             return res.status(400).json({ message: 'Invalid role specified' });
         }
         // Strict role hierarchy: only super_admin can create super_admin; only super_admin/ceo can create ceo/admin
