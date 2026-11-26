@@ -3962,7 +3962,7 @@ app.post('/api/products/bulk', authenticateToken, requireRole(MANAGER_ROLES), up
                     price = cost * (1 + (markup / 100));
                 }
 
-                stock = toQty(findColumn(['currentstock', 'stock', 'quantity']));
+                stock = toQty(findColumn(['newstock', 'currentstock', 'stock', 'quantity']));
                 sellingUnit = findColumn(['sellingunit', 'unit']) || 'Unit';
                 packagingUnit = findColumn(['packagingunit', 'box', 'pack']) || 'Box';
                 conversionRate = cleanNum(findColumn(['itemsperpackage', 'conversion', 'perpackage']) || 1);
