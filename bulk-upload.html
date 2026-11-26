@@ -76,11 +76,21 @@
                     <input type="file" id="fileInput" accept=".xlsx, .xls, .csv">
                 </div>
 
+                <div class="form-group" id="openingModeWrap" style="display:none;">
+                    <label for="openingModeSelect">Import Mode</label>
+                    <select id="openingModeSelect" style="width:100%;height:40px;padding:0 12px;border:1px solid var(--edge-strong,#cbd5e1);border-radius:8px;background:var(--sheet,#fff);font-size:13.5px;">
+                        <option value="replace" selected>Set / Replace Opening Stock (Recommended — safe to re-upload without double-counting)</option>
+                        <option value="add">Add to Existing Stock (Adds spreadsheet quantity onto current stock)</option>
+                    </select>
+                </div>
+
                 <div class="actions-row">
                     <button type="button" class="btn-sample" data-onclick="downloadSampleTemplate()">Download Sample Template (.xlsx)</button>
+                    <button type="button" class="btn-sample" id="previewBtn" data-onclick="previewOpeningStock()" style="display:none;">Preview &amp; Validate</button>
                     <button type="button" class="btn-upload" id="uploadBtn" data-onclick="uploadFile()">Upload Products</button>
                 </div>
 
+                <div id="openingPreviewHost" style="display:none;margin-top:18px;"></div>
                 <div id="status"></div>
             </div>
         </div>
@@ -101,7 +111,11 @@
                 if (t) t.textContent = 'Import Opening Stock';
                 if (s) s.textContent = 'Set starting stock quantities for existing products by SKU and location, logged directly to Product Stock History.';
                 if (d) d.innerHTML = 'Download the Opening Stock Excel template first, then upload your completed <code>.xlsx</code>, <code>.xls</code>, or <code>.csv</code> file.<br><strong>Required columns:</strong> SKU, Quantity <small>(Optional: Location, Unit Cost (Before Tax), Lot Number, Expiry Date)</small>.';
-                if (btn) btn.textContent = 'Upload Opening Stock';
+                if (btn) btn.textContent = 'Apply Opening Stock';
+                const modeWrap = document.getElementById('openingModeWrap');
+                if (modeWrap) modeWrap.style.display = 'block';
+                const prevBtn = document.getElementById('previewBtn');
+                if (prevBtn) prevBtn.style.display = 'inline-block';
             }
         })();
         function downloadSampleTemplate() {
@@ -187,6 +201,81 @@
             a.click();
         }
 
+        async function previewOpeningStock() {
+            const fileInput = document.getElementById('fileInput');
+            const host = document.getElementById('openingPreviewHost');
+            const statusDiv = document.getElementById('status');
+            if (!fileInput.files[0]) {
+                alert('Please select a file first');
+                return;
+            }
+            const mode = document.getElementById('openingModeSelect')?.value || 'replace';
+            const formData = new FormData();
+            formData.append('file', fileInput.files[0]);
+            const prevBtn = document.getElementById('previewBtn');
+            if (prevBtn) { prevBtn.disabled = true; prevBtn.innerText = 'Validating...'; }
+            statusDiv.style.display = 'none';
+            try {
+                const token = localStorage.getItem('authToken');
+                const res = await fetch(`/api/products/opening-stock/bulk?dryRun=1&mode=${encodeURIComponent(mode)}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` },
+                    body: formData
+                });
+                const data = await res.json();
+                if (!data.success) throw new Error(data.message || 'Validation failed');
+                const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+                const rows = data.preview || [];
+                host.style.display = 'block';
+                host.innerHTML = `
+                    <div style="border:1px solid var(--edge,#e2e8f0);border-radius:10px;overflow:hidden;">
+                        <div style="padding:10px 14px;background:var(--frame,#f8fafc);border-bottom:1px solid var(--edge,#e2e8f0);display:flex;justify-content:space-between;align-items:center;font-size:13px;">
+                            <strong>Dry-Run Preview (${rows.length} rows)</strong>
+                            <span><strong style="color:#15803d;">${data.results.success} ready</strong> · <strong style="color:${data.results.failed ? '#dc2626' : '#64748b'};">${data.results.failed} error(s)</strong></span>
+                        </div>
+                        <div style="overflow-x:auto;">
+                            <table data-no-table-tools="1" style="width:100%;border-collapse:collapse;font-size:12.5px;">
+                                <thead>
+                                    <tr style="background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                                        <th style="padding:8px 10px;text-align:left;">Row</th>
+                                        <th style="padding:8px 10px;text-align:left;">SKU</th>
+                                        <th style="padding:8px 10px;text-align:left;">Product</th>
+                                        <th style="padding:8px 10px;text-align:left;">Location</th>
+                                        <th style="padding:8px 10px;text-align:right;">Current</th>
+                                        <th style="padding:8px 10px;text-align:right;">Opening Qty</th>
+                                        <th style="padding:8px 10px;text-align:right;">New Stock</th>
+                                        <th style="padding:8px 10px;text-align:left;">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${rows.map((r) => {
+                                        const bg = r.status === 'error' ? '#fef2f2' : (r.status === 'replace' ? '#fffbeb' : '');
+                                        const pillBg = r.status === 'error' ? '#fee2e2' : (r.status === 'replace' ? '#fef3c7' : '#dcfce7');
+                                        const pillColor = r.status === 'error' ? '#dc2626' : (r.status === 'replace' ? '#92400e' : '#15803d');
+                                        return `<tr style="border-bottom:1px solid #f1f5f9;${bg ? 'background:' + bg + ';' : ''}">
+                                            <td style="padding:8px 10px;">${r.row}</td>
+                                            <td style="padding:8px 10px;font-family:ui-monospace,monospace;">${esc(r.sku)}</td>
+                                            <td style="padding:8px 10px;font-weight:600;">${esc(r.product_name)}</td>
+                                            <td style="padding:8px 10px;">${esc(r.location)}</td>
+                                            <td style="padding:8px 10px;text-align:right;">${esc(r.current_stock)}</td>
+                                            <td style="padding:8px 10px;text-align:right;font-weight:600;">${esc(r.opening_qty)}</td>
+                                            <td style="padding:8px 10px;text-align:right;font-weight:700;">${esc(r.new_stock)}</td>
+                                            <td style="padding:8px 10px;"><span style="display:inline-block;padding:2px 8px;border-radius:999px;font-size:11.5px;font-weight:600;background:${pillBg};color:${pillColor};">${esc(r.note)}</span></td>
+                                        </tr>`;
+                                    }).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>`;
+            } catch (err) {
+                statusDiv.style.display = 'block';
+                statusDiv.className = 'error';
+                statusDiv.innerText = 'Preview error: ' + err.message;
+            } finally {
+                if (prevBtn) { prevBtn.disabled = false; prevBtn.innerText = 'Preview & Validate'; }
+            }
+        }
+
         async function uploadFile() {
             const fileInput = document.getElementById('fileInput');
             const statusDiv = document.getElementById('status');
@@ -206,7 +295,10 @@
 
             try {
                 const token = localStorage.getItem('authToken');
-                const endpoint = isOpeningStockMode ? '/api/products/opening-stock/bulk' : '/api/products/bulk';
+                const mode = document.getElementById('openingModeSelect')?.value || 'replace';
+                const endpoint = isOpeningStockMode
+                    ? `/api/products/opening-stock/bulk?mode=${encodeURIComponent(mode)}`
+                    : '/api/products/bulk';
                 const res = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Authorization': `Bearer ${token}` },
@@ -224,6 +316,8 @@
                         const escapeHtml = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                         statusDiv.innerHTML += '<br><br><strong>Errors:</strong><br>' + data.results.errors.map(escapeHtml).join('<br>');
                     }
+                    const host = document.getElementById('openingPreviewHost');
+                    if (host) host.style.display = 'none';
                 } else {
                     statusDiv.className = 'error';
                     statusDiv.innerText = (data.message || 'Upload failed');
@@ -234,7 +328,7 @@
                 statusDiv.innerText = 'System error: ' + err.message;
             } finally {
                 btn.disabled = false;
-                btn.innerText = isOpeningStockMode ? 'Upload Opening Stock' : 'Upload Products';
+                btn.innerText = isOpeningStockMode ? 'Apply Opening Stock' : 'Upload Products';
             }
         }
     </script>

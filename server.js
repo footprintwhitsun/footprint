@@ -4116,11 +4116,13 @@ app.post('/api/products/bulk', authenticateToken, requireRole(MANAGER_ROLES), up
     }
 });
 
-// Bulk Import Opening Stock for existing products (logs Opening Stock in stock_adjustments)
+// Bulk Import Opening Stock for existing products (supports dry-run preview & idempotent replace/add modes)
 app.post('/api/products/opening-stock/bulk', authenticateToken, requireRole(MANAGER_ROLES), upload.single('file'), async (req, res) => {
     if (!req.file) {
         return res.status(400).json({ success: false, message: 'No file uploaded' });
     }
+    const isDryRun = String(req.query.dryRun || req.body?.dryRun || '') === '1';
+    const importMode = String(req.query.mode || req.body?.mode || 'replace').toLowerCase() === 'add' ? 'add' : 'replace';
     try {
         const tenantId = req.user.tenant_id || 1;
         const workbook = xlsx.read(req.file.buffer, { type: 'buffer' });
@@ -4140,6 +4142,7 @@ app.post('/api/products/opening-stock/bulk', authenticateToken, requireRole(MANA
         const branchList = branchesRes.rows || [];
 
         const results = { success: 0, failed: 0, errors: [] };
+        const preview = [];
         const cleanNum = (val) => {
             if (typeof val === 'number') return val;
             if (!val) return 0;
@@ -4200,7 +4203,47 @@ app.post('/api/products/opening-stock/bulk', authenticateToken, requireRole(MANA
                 if (!levels || typeof levels !== 'object') levels = {};
 
                 const existingBranchQty = toQty(levels[targetBranchName] || 0);
-                levels[targetBranchName] = Number((existingBranchQty + qty).toFixed(3));
+
+                // Check for prior Opening Stock adjustment at this branch (for idempotent replace mode)
+                let prevOpeningId = null;
+                let prevOpeningQty = 0;
+                const prevOpenRes = await pool.query(
+                    `SELECT id, quantity_adjusted FROM stock_adjustments
+                     WHERE product_barcode = $1 AND COALESCE(tenant_id, 1) = $2
+                       AND LOWER(COALESCE(adjustment_type, '')) LIKE '%opening%'
+                       AND (branch_id = $3 OR branch_id IS NULL)
+                     ORDER BY id DESC LIMIT 1`,
+                    [sku, tenantId, targetBranchId]
+                ).catch(() => ({ rows: [] }));
+                if (prevOpenRes.rows.length) {
+                    prevOpeningId = prevOpenRes.rows[0].id;
+                    prevOpeningQty = toQty(prevOpenRes.rows[0].quantity_adjusted || 0);
+                }
+
+                const newBranchQty = importMode === 'replace'
+                    ? Math.max(0, Number((existingBranchQty - prevOpeningQty + qty).toFixed(3)))
+                    : Number((existingBranchQty + qty).toFixed(3));
+
+                if (isDryRun) {
+                    preview.push({
+                        row: rowNum,
+                        sku,
+                        product_name: prod.name,
+                        location: targetBranchName,
+                        current_stock: existingBranchQty,
+                        opening_qty: qty,
+                        new_stock: newBranchQty,
+                        unit_cost: unitCost > 0 ? unitCost : Number(prod.cost_price || 0),
+                        status: prevOpeningId && importMode === 'replace' ? 'replace' : 'ready',
+                        note: prevOpeningId && importMode === 'replace'
+                            ? `Replaces previous opening stock (${prevOpeningQty})`
+                            : (importMode === 'add' ? 'Adds to current stock' : 'Sets opening stock')
+                    });
+                    results.success++;
+                    continue;
+                }
+
+                levels[targetBranchName] = newBranchQty;
                 const newTotalStock = Object.values(levels).reduce((s, v) => s + toQty(v), 0);
 
                 if (unitCost > 0) {
@@ -4215,12 +4258,19 @@ app.post('/api/products/opening-stock/bulk', authenticateToken, requireRole(MANA
                     );
                 }
 
-                // Log Opening Stock movement so Product Stock History -> Quantities In -> Opening Stock reflects it
-                await pool.query(
-                    `INSERT INTO stock_adjustments (product_barcode, adjustment_type, quantity_adjusted, reason, branch_id, tenant_id)
-                     VALUES ($1, 'Opening Stock', $2::numeric, $3, $4, $5)`,
-                    [sku, qty, `Opening Stock (${targetBranchName})`, targetBranchId, tenantId]
-                ).catch(() => {});
+                // Log or update Opening Stock movement so Product Stock History -> Quantities In -> Opening Stock stays exact
+                if (importMode === 'replace' && prevOpeningId) {
+                    await pool.query(
+                        `UPDATE stock_adjustments SET quantity_adjusted = $1::numeric, reason = $2 WHERE id = $3 AND COALESCE(tenant_id, 1) = $4`,
+                        [qty, `Opening Stock (${targetBranchName})`, prevOpeningId, tenantId]
+                    ).catch(() => {});
+                } else {
+                    await pool.query(
+                        `INSERT INTO stock_adjustments (product_barcode, adjustment_type, quantity_adjusted, reason, branch_id, tenant_id)
+                         VALUES ($1, 'Opening Stock', $2::numeric, $3, $4, $5)`,
+                        [sku, qty, `Opening Stock (${targetBranchName})`, targetBranchId, tenantId]
+                    ).catch(() => {});
+                }
 
                 if (lotNumber || expiryDate) {
                     const finalLot = lotNumber || `OPEN-${Date.now()}`;
@@ -4230,9 +4280,9 @@ app.post('/api/products/opening-stock/bulk', authenticateToken, requireRole(MANA
                          ON CONFLICT (tenant_id, product_barcode, batch_number, branch_id)
                          DO UPDATE SET
                              expiry_date = COALESCE(EXCLUDED.expiry_date, product_batches.expiry_date),
-                             quantity = product_batches.quantity + EXCLUDED.quantity,
-                             quantity_available = product_batches.quantity_available + EXCLUDED.quantity_available,
-                             quantity_received = product_batches.quantity_received + EXCLUDED.quantity_received`,
+                             quantity = EXCLUDED.quantity,
+                             quantity_available = EXCLUDED.quantity_available,
+                             quantity_received = EXCLUDED.quantity_received`,
                         [sku, finalLot, expiryDate, qty, qty, qty, targetBranchId, tenantId]
                     ).catch(() => {});
                 }
@@ -4241,11 +4291,28 @@ app.post('/api/products/opening-stock/bulk', authenticateToken, requireRole(MANA
             } catch (e) {
                 results.failed++;
                 results.errors.push(`Row ${rowNum} (${sku}): ${e.message}`);
+                if (isDryRun) {
+                    preview.push({
+                        row: rowNum,
+                        sku,
+                        product_name: '—',
+                        location: '—',
+                        current_stock: 0,
+                        opening_qty: 0,
+                        new_stock: 0,
+                        unit_cost: 0,
+                        status: 'error',
+                        note: e.message
+                    });
+                }
             }
         }
 
-        await logActivity(req, 'IMPORT_OPENING_STOCK', { updated: results.success, failed: results.failed });
-        res.json({ success: true, results });
+        if (isDryRun) {
+            return res.json({ success: true, dryRun: true, mode: importMode, results, preview });
+        }
+        await logActivity(req, 'IMPORT_OPENING_STOCK', { mode: importMode, updated: results.success, failed: results.failed });
+        res.json({ success: true, mode: importMode, results });
     } catch (err) {
         console.error('POST /api/products/opening-stock/bulk error:', err);
         res.status(500).json({ success: false, message: 'Error importing opening stock' });
