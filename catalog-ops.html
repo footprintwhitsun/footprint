@@ -206,11 +206,13 @@
         const brands = [...new Set(products.map((p) => p.brand).filter(Boolean))].sort();
         const esc = (v) => OkwUI.escapeHtml(v == null ? '' : String(v));
         let changedOnly = false;
+        const selectedBarcodes = new Set();
 
         const actionsHost = document.getElementById('cat-page-actions');
         if (actionsHost) {
             actionsHost.innerHTML = `
                 <a href="/reports?tab=detailed&report=price_history" class="okw-btn okw-btn-outline" style="text-decoration:none;">Price History Report</a>
+                <button type="button" class="okw-btn okw-btn-outline" id="bp-print">Print</button>
                 <button type="button" class="okw-btn okw-btn-outline" id="bp-export-xlsx">Export (.xlsx)</button>
                 <button type="button" class="okw-btn okw-btn-outline" id="bp-import-btn">Import (.xlsx / .csv)</button>
                 <input type="file" id="bp-import-file" accept=".xlsx,.xls,.csv" style="display:none;">
@@ -271,6 +273,7 @@
                             <option value="1">Round to 1.00</option>
                         </select>
                         <button type="button" class="okw-btn okw-btn-outline" id="bp-bulk-calc" style="height:36px;">Apply to Filtered</button>
+                        <button type="button" class="okw-btn okw-btn-outline" id="bp-clear-sel" style="height:36px;display:none;">Clear Selection</button>
                         <button type="button" class="okw-btn okw-btn-outline" id="bp-reset" style="height:36px;">Reset</button>
                     </div>
                     <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:220px;max-width:320px;">
@@ -283,6 +286,9 @@
                 <table data-no-table-tools="1" style="width:100%;border-collapse:collapse;font-size:13px;">
                     <thead>
                         <tr style="background:var(--frame,#f8fafc);border-bottom:1px solid var(--edge,#e2e8f0);">
+                            <th style="width:42px;text-align:center;padding:11px 10px;">
+                                <input type="checkbox" id="bp-select-all" title="Select all visible products" aria-label="Select all visible products" style="width:16px;height:16px;accent-color:var(--brand,#273990);cursor:pointer;">
+                            </th>
                             <th style="text-align:left;padding:11px 14px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#64748b);">SKU</th>
                             <th style="text-align:left;padding:11px 14px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#64748b);">Product</th>
                             <th style="text-align:left;padding:11px 14px;font-size:11.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--muted,#64748b);">Category</th>
@@ -347,27 +353,45 @@
                 impEl.textContent = `${netImpact > 0 ? '+' : ''}${fmt(netImpact)}`;
                 impEl.style.color = netImpact > 0 ? '#15803d' : (netImpact < 0 ? '#dc2626' : 'var(--ink,#0f172a)');
             }
+
+            const selCount = selectedBarcodes.size;
+            const bulkBtn = document.getElementById('bp-bulk-calc');
+            if (bulkBtn) bulkBtn.textContent = selCount > 0 ? `Apply to Selected (${selCount})` : 'Apply to Filtered';
+            const clearSelBtn = document.getElementById('bp-clear-sel');
+            if (clearSelBtn) clearSelBtn.style.display = selCount > 0 ? 'inline-flex' : 'none';
+
+            const selAll = document.getElementById('bp-select-all');
+            if (selAll) {
+                const visibleSelected = visibleList.filter((p) => selectedBarcodes.has(p.barcode)).length;
+                selAll.checked = visibleList.length > 0 && visibleSelected === visibleList.length;
+                selAll.indeterminate = visibleSelected > 0 && visibleSelected < visibleList.length;
+            }
         }
 
         function drawProducts() {
             const list = getFiltered();
             const tbody = document.getElementById('bp-prod-body');
             if (!list.length) {
-                tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;padding:28px;color:var(--muted,#64748b);">${changedOnly ? 'No pending price changes yet.' : 'No products match your filter.'}</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--muted,#64748b);">${changedOnly ? 'No pending price changes yet.' : 'No products match your filter.'}</td></tr>`;
                 syncStats(list);
                 return;
             }
             tbody.innerHTML = list.map((p) => {
                 const diff = Number((p.new_price - p.old_price).toFixed(2));
                 const isChanged = Math.abs(diff) > 0.004;
+                const isSelected = selectedBarcodes.has(p.barcode);
                 const pctChange = p.old_price > 0 ? ((diff / p.old_price) * 100).toFixed(1) : '0.0';
                 const marginPct = p.cost_price > 0 ? (((p.new_price - p.cost_price) / p.cost_price) * 100).toFixed(1) : null;
                 const marginColor = marginPct !== null ? (Number(marginPct) < 0 ? '#dc2626' : '#15803d') : 'var(--muted,#64748b)';
                 const diffHtml = isChanged
                     ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:999px;font-size:12px;font-weight:700;background:${diff > 0 ? '#dcfce7' : '#fee2e2'};color:${diff > 0 ? '#15803d' : '#dc2626'};">${diff > 0 ? '+' : ''}${esc(fmt(diff))} (${diff > 0 ? '+' : ''}${pctChange}%)</span>`
                     : `<span style="color:var(--muted,#64748b);">—</span>`;
+                const rowBg = isChanged ? '#fffbeb' : (isSelected ? '#eff6ff' : '');
                 return `
-                    <tr data-bp-bc="${esc(p.barcode)}" style="border-bottom:1px solid var(--edge,#f1f5f9);${isChanged ? 'background:#fffbeb;' : ''}">
+                    <tr data-bp-bc="${esc(p.barcode)}" style="border-bottom:1px solid var(--edge,#f1f5f9);${rowBg ? 'background:' + rowBg + ';' : ''}">
+                        <td style="text-align:center;padding:10px;">
+                            <input type="checkbox" class="bp-row-chk" data-bp-bc="${esc(p.barcode)}" ${isSelected ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--brand,#273990);cursor:pointer;">
+                        </td>
                         <td style="padding:10px 14px;font-family:ui-monospace,monospace;font-size:12px;color:var(--muted,#64748b);">${esc(p.barcode)}</td>
                         <td style="padding:10px 14px;">
                             <div style="font-weight:600;color:var(--ink,#0f172a);">${esc(p.name)}</div>
@@ -394,7 +418,29 @@
             drawProducts();
         });
 
+        document.getElementById('bp-select-all').addEventListener('change', (e) => {
+            const checked = e.target.checked;
+            getFiltered().forEach((p) => {
+                if (checked) selectedBarcodes.add(p.barcode);
+                else selectedBarcodes.delete(p.barcode);
+            });
+            drawProducts();
+        });
+
+        document.getElementById('bp-clear-sel').onclick = () => {
+            selectedBarcodes.clear();
+            drawProducts();
+        };
+
         document.getElementById('bp-prod-body').addEventListener('change', (e) => {
+            const chk = e.target.closest('.bp-row-chk');
+            if (chk) {
+                const bc = chk.getAttribute('data-bp-bc');
+                if (chk.checked) selectedBarcodes.add(bc);
+                else selectedBarcodes.delete(bc);
+                drawProducts();
+                return;
+            }
             const inp = e.target.closest('.bp-row-price');
             if (!inp) return;
             const bc = inp.getAttribute('data-bp-bc');
@@ -406,6 +452,13 @@
             }
         });
 
+        function getTargetItems() {
+            if (selectedBarcodes.size > 0) {
+                return products.filter((p) => selectedBarcodes.has(p.barcode));
+            }
+            return getFiltered();
+        }
+
         document.getElementById('bp-bulk-calc').onclick = () => {
             const val = parseFloat(document.getElementById('bp-val').value);
             if (!Number.isFinite(val) || val === 0) {
@@ -413,25 +466,79 @@
             }
             const mode = document.getElementById('bp-mode').value;
             const step = parseFloat(document.getElementById('bp-round').value) || 0.01;
-            const targets = getFiltered();
+            const targets = getTargetItems();
             targets.forEach((p) => {
                 const raw = mode === 'percent' ? p.old_price * (1 + val / 100) : p.old_price + val;
                 const rounded = step > 0.01 ? Math.round(raw / step) * step : raw;
                 p.new_price = Number(Math.max(0, rounded).toFixed(2));
             });
             drawProducts();
-            OkwUI.toast(`Previewed update for ${targets.length} product(s). Click Save Changes to apply.`, 'success');
+            OkwUI.toast(`Previewed update for ${targets.length} ${selectedBarcodes.size > 0 ? 'selected' : 'filtered'} product(s). Click Save Changes to apply.`, 'success');
         };
 
         document.getElementById('bp-reset').onclick = () => {
             products.forEach((p) => { p.new_price = p.old_price; });
+            selectedBarcodes.clear();
             document.getElementById('bp-val').value = '';
             changedOnly = false;
             drawProducts();
         };
 
+        document.getElementById('bp-print').onclick = async () => {
+            const rows = getTargetItems();
+            if (!rows.length) return OkwUI.toast('No products to print', 'warning');
+            const company = (window.OkwUI && OkwUI.getCompanyProfileAsync)
+                ? await OkwUI.getCompanyProfileAsync()
+                : { name: 'OKWESIWA CO LTD', address: '', phone: '', email: '' };
+            const w = window.open('', '_blank', 'width=980,height=720');
+            if (!w) return OkwUI.toast('Allow popups to print price sheet', 'warning');
+            const rowsHtml = rows.map((p) => {
+                const diff = Number((p.new_price - p.old_price).toFixed(2));
+                const diffTxt = Math.abs(diff) > 0.004 ? `${diff > 0 ? '+' : ''}${fmt(diff)}` : '—';
+                return `<tr>
+                    <td>${esc(p.barcode)}</td>
+                    <td><strong>${esc(p.name)}</strong>${p.brand ? `<br><span style="color:#64748b;font-size:11px;">${esc(p.brand)}</span>` : ''}</td>
+                    <td>${esc(p.category || '—')}</td>
+                    <td style="text-align:right;">${esc(fmt(p.cost_price))}</td>
+                    <td style="text-align:right;">${esc(fmt(p.old_price))}</td>
+                    <td style="text-align:right;font-weight:700;">${esc(fmt(p.new_price))}</td>
+                    <td style="text-align:right;">${esc(diffTxt)}</td>
+                </tr>`;
+            }).join('');
+            w.document.write(`<!DOCTYPE html><html><head><title>Product Price List - ${esc(company.name || 'OKWESIWA CO LTD')}</title>
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #0f172a; margin: 24px; }
+                    .hdr { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #273990; padding-bottom: 12px; margin-bottom: 16px; }
+                    .hdr h1 { margin: 0; font-size: 18px; color: #273990; }
+                    .hdr p { margin: 3px 0 0; font-size: 12px; color: #475569; }
+                    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                    th { background: #f8fafc; border-bottom: 1.5px solid #cbd5e1; text-align: left; padding: 8px; text-transform: uppercase; font-size: 11px; color: #475569; }
+                    td { border-bottom: 1px solid #e2e8f0; padding: 7px 8px; vertical-align: top; }
+                    @media print { body { margin: 12px; } }
+                </style></head><body>
+                <div class="hdr">
+                    <div>
+                        <h1>${esc(company.name || 'OKWESIWA CO LTD')}</h1>
+                        ${company.address ? `<p>${esc(company.address)}</p>` : ''}
+                        ${(company.phone || company.email) ? `<p>${esc([company.phone, company.email].filter(Boolean).join(' · '))}</p>` : ''}
+                    </div>
+                    <div style="text-align:right;">
+                        <strong style="font-size:14px;">Product Price Sheet</strong>
+                        <p>Printed: ${esc(new Date().toLocaleString())}</p>
+                        <p>Items: ${rows.length}${selectedBarcodes.size > 0 ? ' (Selected)' : ''}</p>
+                    </div>
+                </div>
+                <table>
+                    <thead><tr><th>SKU</th><th>Product</th><th>Category</th><th style="text-align:right;">Cost</th><th style="text-align:right;">Current</th><th style="text-align:right;">New Price</th><th style="text-align:right;">Change</th></tr></thead>
+                    <tbody>${rowsHtml}</tbody>
+                </table>
+                <script>window.onload = function(){ window.print(); };<\/script>
+            </body></html>`);
+            w.document.close();
+        };
+
         document.getElementById('bp-export-xlsx').onclick = () => {
-            const rows = getFiltered().map((p) => ({
+            const rows = getTargetItems().map((p) => ({
                 'SKU': p.barcode,
                 'Product Name': p.name,
                 'Category': p.category,
