@@ -491,6 +491,15 @@
         return true;
     }
 
+    function moduleMatchScore(modUrl, currentPath, currentParams) {
+        if (!matchesModuleUrl(modUrl, currentPath, currentParams)) return -1;
+        const [, mQuery] = modUrl.split('?');
+        if (!mQuery) return 0;
+        let count = 0;
+        for (const _ of new URLSearchParams(mQuery).entries()) count++;
+        return count;
+    }
+
     function getActivePageTitle() {
         const currentPath = window.location.pathname.replace(/\.html$/, '') || '/';
         const currentParams = new URLSearchParams(window.location.search || '');
@@ -1061,9 +1070,12 @@
         // including the CEO and company portals (their tabs are regular menu entries).
         const nav = sidebar.querySelector('.nav-links');
         if (nav) {
-            const allowed = role === 'super_admin'
+            const isFullRole = role === 'super_admin' || role === 'super_profile';
+            const knownBuiltinRoles = new Set(['ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller', 'company', 'business_client', 'storekeeper', 'driver']);
+            const effectiveRole = knownBuiltinRoles.has(role) ? role : 'manager';
+            const allowed = isFullRole
                 ? MODULES
-                : MODULES.filter(m => m.roles.includes('all') || m.roles.includes(role));
+                : MODULES.filter(m => m.roles.includes('all') || m.roles.includes(effectiveRole));
             const currentParams = new URLSearchParams(window.location.search || '');
             // Normalize default sub-views for /reports so the right item highlights even without explicit params
             const normParams = new URLSearchParams(currentParams.toString());
@@ -1073,11 +1085,16 @@
                 if (tab === 'drilldown' && !normParams.get('view')) normParams.set('view', 'items_today');
                 if (!tab && normParams.get('report')) normParams.set('tab', 'detailed');
             }
-            const hasExactMatch = allowed.some(m => matchesModuleUrl(m.url, currentPath, normParams));
+            let bestScore = -1;
+            for (const m of allowed) {
+                const sc = moduleMatchScore(m.url, currentPath, normParams);
+                if (sc > bestScore) bestScore = sc;
+            }
+            const hasExactMatch = bestScore >= 0;
             const currentQuery = normParams.toString();
             const defaultForPath = allowed.find(m => m.url.split('?')[0] === currentPath);
             const isItemActive = (m) => {
-                if (hasExactMatch) return matchesModuleUrl(m.url, currentPath, normParams);
+                if (hasExactMatch) return moduleMatchScore(m.url, currentPath, normParams) === bestScore;
                 const [path, query] = m.url.split('?');
                 if (path !== currentPath) return false;
                 if (currentQuery) return false;
@@ -1102,7 +1119,6 @@
                 'Sales': 'shoppingBag',
                 'Till': 'clock',
                 'Inventory': 'package',
-                'Contacts': 'users',
                 'Accounts': 'dollarSign',
                 'Reports': 'barChart',
                 'Insights': 'trendingUp',
@@ -1172,11 +1188,11 @@
                 });
             });
 
-            nav.querySelectorAll('.nav-group-items a').forEach(link => {
-                link.addEventListener('click', () => {
-                    collapseAllGroups();
-                });
-            });
+            // Keep the active submenu visible when navigating between sibling items (do not collapse on click)
+            const activeLink = nav.querySelector('.nav-group-items a.active');
+            if (activeLink && typeof activeLink.scrollIntoView === 'function') {
+                requestAnimationFrame(() => activeLink.scrollIntoView({ block: 'nearest' }));
+            }
 
             // Instant inline sidebar quick-find search
             let searchWrap = sidebar.querySelector('.sidebar-search-wrap');

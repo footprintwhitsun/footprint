@@ -315,6 +315,15 @@ body.sidebar-collapsed .sidebar .sidebar-role-badge {
 .sidebar .nav-group-items {
     padding: 2px 0 6px 12px;
     gap: 2px;
+    flex-shrink: 0;
+}
+
+.sidebar .nav-links {
+    flex: 1 1 auto !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding-bottom: 16px !important;
 }
 
 .sidebar .nav-subgroup-label {
