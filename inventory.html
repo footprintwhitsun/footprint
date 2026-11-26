@@ -1055,8 +1055,11 @@
 
         <!-- NEW BARCODE GENERATOR TAB -->
         <div id="tab-barcodes" class="tab-content">
-            <div class="page-header">
-                <h3>Barcode Generator</h3>
+            <div class="okw-page-header">
+                <div class="okw-page-header-text">
+                    <h1 class="okw-page-title">Barcode Generator</h1>
+                    <p class="okw-page-subtitle">View, generate, and print barcodes for products across your catalog.</p>
+                </div>
             </div>
             <div class="inventory-card">
                 <table>
@@ -1155,11 +1158,14 @@
 
         <!-- 9. STOCK TAKING TAB -->
         <div id="tab-stocktaking" class="tab-content">
-            <div class="page-header">
-                <h3>Stock Taking & Reconciliation</h3>
-                <div style="display:flex; gap:10px;">
-                    <button class="btn-header-secondary" data-onclick="printStockSheet()"><i class="fas fa-print"></i> Print Sheet</button>
-                    <button class="btn-add" data-onclick="saveStockTake()"><i class="fas fa-save"></i> Update Inventory</button>
+            <div class="okw-page-header">
+                <div class="okw-page-header-text">
+                    <h1 class="okw-page-title">Stock Taking</h1>
+                    <p class="okw-page-subtitle">Perform physical stock counts and reconcile system inventory with warehouse shelves.</p>
+                </div>
+                <div class="okw-page-header-actions">
+                    <button type="button" class="btn-header-secondary" data-onclick="printStockSheet()"><i class="fas fa-print"></i> Print Sheet</button>
+                    <button type="button" class="btn-add" data-onclick="saveStockTake()"><i class="fas fa-save"></i> Update Inventory</button>
                 </div>
             </div>
             <div class="inventory-card">
@@ -1199,8 +1205,11 @@
 
         <!-- 10. SHELF & BATCHES TAB -->
         <div id="tab-shelf" class="tab-content">
-            <div class="page-header">
-                <h3>Batch & Lot Tracking</h3>
+            <div class="okw-page-header">
+                <div class="okw-page-header-text">
+                    <h1 class="okw-page-title">Batch &amp; Expiry</h1>
+                    <p class="okw-page-subtitle">Track batch numbers, shelf stock, and upcoming product expiry dates.</p>
+                </div>
             </div>
             
             <div style="display: flex; gap: 15px; margin-bottom: 20px; background: white; padding: 15px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); align-items: center;">

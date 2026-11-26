@@ -75,17 +75,61 @@
     const fmt = (n) => 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     let activeTab = 'brands';
 
+    function openSimpleModal({ title, fields, onSave, saveLabel = 'Save' }) {
+        const prev = document.getElementById('okw-cat-modal');
+        if (prev) prev.remove();
+        const esc = (v) => OkwUI.escapeHtml(v == null ? '' : String(v));
+        const backdrop = document.createElement('div');
+        backdrop.id = 'okw-cat-modal';
+        backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(11,16,23,0.6);backdrop-filter:blur(2px);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
+        backdrop.innerHTML = `
+            <div role="dialog" aria-modal="true" style="background:var(--sheet,#fff);color:var(--ink,#0f172a);border:1px solid var(--edge,#e2e8f0);border-radius:12px;width:100%;max-width:460px;box-shadow:0 20px 50px rgba(0,0,0,0.25);overflow:hidden;">
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:1px solid var(--edge,#e2e8f0);background:var(--frame,#f8fafc);">
+                    <h3 style="margin:0;font-size:16px;font-weight:700;">${esc(title)}</h3>
+                    <button type="button" id="cm-close" aria-label="Close" style="border:0;background:transparent;font-size:20px;line-height:1;color:var(--muted,#64748b);cursor:pointer;">&times;</button>
+                </div>
+                <div style="padding:18px 20px;display:flex;flex-direction:column;gap:14px;">
+                    ${fields.map((f) => `
+                        <div style="display:flex;flex-direction:column;gap:5px;">
+                            <label for="cm-${esc(f.id)}" style="font-size:12.5px;font-weight:600;">${esc(f.label)}${f.required ? ':*' : ':'}</label>
+                            ${f.type === 'select'
+                                ? `<select id="cm-${esc(f.id)}" class="okw-select">${(f.options || []).map((o) => `<option value="${esc(o.value)}"${o.selected ? ' selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`
+                                : `<input type="${esc(f.type || 'text')}" id="cm-${esc(f.id)}" class="okw-input" placeholder="${esc(f.placeholder || '')}" value="${esc(f.value ?? '')}"${f.step ? ` step="${esc(f.step)}"` : ''}${f.min != null ? ` min="${esc(f.min)}"` : ''}>`
+                            }
+                        </div>
+                    `).join('')}
+                </div>
+                <div style="display:flex;justify-content:flex-end;gap:10px;padding:14px 20px;border-top:1px solid var(--edge,#e2e8f0);background:var(--frame,#f8fafc);">
+                    <button type="button" class="okw-btn okw-btn-outline" id="cm-cancel">Close</button>
+                    <button type="button" class="okw-btn okw-btn-primary" id="cm-save">${esc(saveLabel)}</button>
+                </div>
+            </div>`;
+        document.body.appendChild(backdrop);
+        const close = () => backdrop.remove();
+        backdrop.querySelector('#cm-close').onclick = close;
+        backdrop.querySelector('#cm-cancel').onclick = close;
+        backdrop.addEventListener('click', (ev) => { if (ev.target === backdrop) close(); });
+        backdrop.querySelector('#cm-save').onclick = async () => {
+            const values = {};
+            for (const f of fields) {
+                const el = backdrop.querySelector(`#cm-${f.id}`);
+                values[f.id] = el ? el.value.trim() : '';
+                if (f.required && !values[f.id]) {
+                    return OkwUI.toast(`${f.label} is required`, 'warning');
+                }
+            }
+            const ok = await onSave(values);
+            if (ok !== false) close();
+        };
+    }
+
     async function renderBrands() {
         const res = await fetch('/api/brands', { headers });
         const d = await res.json().catch(() => ({}));
+        const actionsHost = document.getElementById('cat-page-actions');
+        if (actionsHost) actionsHost.innerHTML = `<button type="button" class="okw-btn okw-btn-primary" id="b-open-add">+ Add Brand</button>`;
         const panel = document.getElementById('cat-panel');
-        panel.innerHTML = `
-            <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap;">
-                <input type="text" id="b-name" class="okw-input" placeholder="Brand name (e.g. Ghacem, Dangote, Coral)">
-                <button type="button" class="okw-btn okw-btn-primary" id="b-add">+ Add Brand</button>
-            </div>
-            <div id="brands-tbl"></div>
-        `;
+        panel.innerHTML = `<div id="brands-tbl"></div>`;
         OkwUI.dataTable('#brands-tbl', {
             columns: [
                 { key: 'name', label: 'Brand' },
@@ -96,28 +140,26 @@
             rows: d.brands || [],
             exportFilename: 'okwesiwa-brands.xlsx'
         });
-        document.getElementById('b-add').onclick = async () => {
-            const name = document.getElementById('b-name').value.trim();
-            if (!name) return;
-            const r = await fetch('/api/brands', { method: 'POST', headers, body: JSON.stringify({ name }) });
-            if (r.ok) { OkwUI.toast('Brand saved', 'success'); renderBrands(); }
-        };
+        const addBtn = document.getElementById('b-open-add');
+        if (addBtn) addBtn.onclick = () => openSimpleModal({
+            title: 'Add Brand',
+            fields: [{ id: 'name', label: 'Brand Name', placeholder: 'e.g. Ghacem, Dangote, Coral', required: true }],
+            onSave: async (v) => {
+                const r = await fetch('/api/brands', { method: 'POST', headers, body: JSON.stringify({ name: v.name }) });
+                if (r.ok) { OkwUI.toast('Brand saved', 'success'); renderBrands(); return true; }
+                OkwUI.toast('Failed to save brand', 'danger');
+                return false;
+            }
+        });
     }
 
     async function renderUnits() {
         const res = await fetch('/api/units', { headers });
         const d = await res.json().catch(() => ({}));
+        const actionsHost = document.getElementById('cat-page-actions');
+        if (actionsHost) actionsHost.innerHTML = `<button type="button" class="okw-btn okw-btn-primary" id="u-open-add">+ Add Unit</button>`;
         const panel = document.getElementById('cat-panel');
-        panel.innerHTML = `
-            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-                <input type="text" id="u-base" class="okw-input" placeholder="Base unit (e.g. Bag)">
-                <input type="text" id="u-alt" class="okw-input" placeholder="Pack unit (e.g. Pallet)">
-                <input type="number" id="u-factor" class="okw-input" placeholder="Factor (e.g. 50)" step="any">
-                <input type="text" id="u-notes" class="okw-input" placeholder="Notes">
-                <button type="button" class="okw-btn okw-btn-primary" id="u-add">+ Add Conversion</button>
-            </div>
-            <div id="units-tbl"></div>
-        `;
+        panel.innerHTML = `<div id="units-tbl"></div>`;
         OkwUI.dataTable('#units-tbl', {
             columns: [
                 { key: 'alt_unit', label: 'Pack / Sell Unit' },
@@ -128,16 +170,22 @@
             rows: d.units || [],
             exportFilename: 'okwesiwa-units.xlsx'
         });
-        document.getElementById('u-add').onclick = async () => {
-            const payload = {
-                base_unit: document.getElementById('u-base').value,
-                alt_unit: document.getElementById('u-alt').value,
-                factor: document.getElementById('u-factor').value,
-                notes: document.getElementById('u-notes').value
-            };
-            const r = await fetch('/api/units', { method: 'POST', headers, body: JSON.stringify(payload) });
-            if (r.ok) { OkwUI.toast('Unit conversion added', 'success'); renderUnits(); }
-        };
+        const addBtn = document.getElementById('u-open-add');
+        if (addBtn) addBtn.onclick = () => openSimpleModal({
+            title: 'Add Unit Conversion',
+            fields: [
+                { id: 'base_unit', label: 'Base Unit', placeholder: 'e.g. Bag', required: true },
+                { id: 'alt_unit', label: 'Pack / Sell Unit', placeholder: 'e.g. Pallet', required: true },
+                { id: 'factor', label: 'Conversion Factor', type: 'number', step: 'any', placeholder: 'e.g. 50', required: true },
+                { id: 'notes', label: 'Notes', placeholder: 'Optional description' }
+            ],
+            onSave: async (v) => {
+                const r = await fetch('/api/units', { method: 'POST', headers, body: JSON.stringify(v) });
+                if (r.ok) { OkwUI.toast('Unit conversion added', 'success'); renderUnits(); return true; }
+                OkwUI.toast('Failed to add unit', 'danger');
+                return false;
+            }
+        });
     }
 
     async function renderPrices() {
@@ -389,15 +437,10 @@
     async function renderVariations() {
         const res = await fetch('/api/variations', { headers });
         const d = await res.json().catch(() => ({}));
+        const actionsHost = document.getElementById('cat-page-actions');
+        if (actionsHost) actionsHost.innerHTML = `<button type="button" class="okw-btn okw-btn-primary" id="v-open-add">+ Add Variation</button>`;
         const panel = document.getElementById('cat-panel');
-        panel.innerHTML = `
-            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-                <input type="text" id="v-name" class="okw-input" placeholder="Variation name (e.g. Size, Color, Grade)">
-                <input type="text" id="v-vals" class="okw-input" style="min-width:260px;" placeholder="Values comma-separated (e.g. 1-inch, 2-inch, 3-inch)">
-                <button type="button" class="okw-btn okw-btn-primary" id="v-add">+ Add Variation</button>
-            </div>
-            <div id="vars-tbl"></div>
-        `;
+        panel.innerHTML = `<div id="vars-tbl"></div>`;
         OkwUI.dataTable('#vars-tbl', {
             columns: [
                 { key: 'name', label: 'Variation Name' },
@@ -406,12 +449,20 @@
             ],
             rows: d.variations || []
         });
-        document.getElementById('v-add').onclick = async () => {
-            const name = document.getElementById('v-name').value.trim();
-            if (!name) return OkwUI.toast('Variation name is required', 'warning');
-            const r = await fetch('/api/variations', { method: 'POST', headers, body: JSON.stringify({ name, values_text: document.getElementById('v-vals').value.trim() }) });
-            if (r.ok) { OkwUI.toast('Variation saved', 'success'); renderVariations(); }
-        };
+        const addBtn = document.getElementById('v-open-add');
+        if (addBtn) addBtn.onclick = () => openSimpleModal({
+            title: 'Add Variation',
+            fields: [
+                { id: 'name', label: 'Variation Name', placeholder: 'e.g. Size, Color, Grade', required: true },
+                { id: 'values_text', label: 'Values (comma-separated)', placeholder: 'e.g. 1-inch, 2-inch, 3-inch' }
+            ],
+            onSave: async (v) => {
+                const r = await fetch('/api/variations', { method: 'POST', headers, body: JSON.stringify(v) });
+                if (r.ok) { OkwUI.toast('Variation saved', 'success'); renderVariations(); return true; }
+                OkwUI.toast('Failed to save variation', 'danger');
+                return false;
+            }
+        });
         panel.querySelectorAll('[data-del-var]').forEach(btn => {
             btn.onclick = async () => {
                 const r = await fetch(`/api/variations/${btn.dataset.delVar}`, { method: 'DELETE', headers });
@@ -423,16 +474,10 @@
     async function renderPriceGroups() {
         const res = await fetch('/api/selling-price-groups', { headers });
         const d = await res.json().catch(() => ({}));
+        const actionsHost = document.getElementById('cat-page-actions');
+        if (actionsHost) actionsHost.innerHTML = `<button type="button" class="okw-btn okw-btn-primary" id="spg-open-add">+ Add Selling Price Group</button>`;
         const panel = document.getElementById('cat-panel');
-        panel.innerHTML = `
-            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-                <input type="text" id="spg-name" class="okw-input" placeholder="Price group (e.g. Wholesale, Contractor)">
-                <input type="number" id="spg-adj" class="okw-input" placeholder="Adjustment % (e.g. -5 or 10)" step="0.1">
-                <input type="text" id="spg-desc" class="okw-input" style="min-width:220px;" placeholder="Description (optional)">
-                <button type="button" class="okw-btn okw-btn-primary" id="spg-add">+ Add Price Group</button>
-            </div>
-            <div id="spg-tbl"></div>
-        `;
+        panel.innerHTML = `<div id="spg-tbl"></div>`;
         OkwUI.dataTable('#spg-tbl', {
             columns: [
                 { key: 'name', label: 'Selling Price Group' },
@@ -442,12 +487,21 @@
             ],
             rows: d.price_groups || []
         });
-        document.getElementById('spg-add').onclick = async () => {
-            const name = document.getElementById('spg-name').value.trim();
-            if (!name) return OkwUI.toast('Price group name is required', 'warning');
-            const r = await fetch('/api/selling-price-groups', { method: 'POST', headers, body: JSON.stringify({ name, adjustment_pct: document.getElementById('spg-adj').value, description: document.getElementById('spg-desc').value.trim() }) });
-            if (r.ok) { OkwUI.toast('Price group saved', 'success'); renderPriceGroups(); }
-        };
+        const addBtn = document.getElementById('spg-open-add');
+        if (addBtn) addBtn.onclick = () => openSimpleModal({
+            title: 'Add Selling Price Group',
+            fields: [
+                { id: 'name', label: 'Price Group Name', placeholder: 'e.g. Wholesale, Contractor', required: true },
+                { id: 'adjustment_pct', label: 'Adjustment (%)', type: 'number', step: '0.1', placeholder: 'e.g. -5 or 10' },
+                { id: 'description', label: 'Description', placeholder: 'Optional description' }
+            ],
+            onSave: async (v) => {
+                const r = await fetch('/api/selling-price-groups', { method: 'POST', headers, body: JSON.stringify(v) });
+                if (r.ok) { OkwUI.toast('Price group saved', 'success'); renderPriceGroups(); return true; }
+                OkwUI.toast('Failed to save price group', 'danger');
+                return false;
+            }
+        });
         panel.querySelectorAll('[data-del-spg]').forEach(btn => {
             btn.onclick = async () => {
                 const r = await fetch(`/api/selling-price-groups/${btn.dataset.delSpg}`, { method: 'DELETE', headers });
@@ -459,17 +513,10 @@
     async function renderWarranties() {
         const res = await fetch('/api/warranties', { headers });
         const d = await res.json().catch(() => ({}));
+        const actionsHost = document.getElementById('cat-page-actions');
+        if (actionsHost) actionsHost.innerHTML = `<button type="button" class="okw-btn okw-btn-primary" id="w-open-add">+ Add Warranty</button>`;
         const panel = document.getElementById('cat-panel');
-        panel.innerHTML = `
-            <div style="display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;">
-                <input type="text" id="w-name" class="okw-input" placeholder="Warranty name (e.g. 1 Year Manufacturer)">
-                <input type="number" id="w-dur" class="okw-input" placeholder="Duration (e.g. 12)" min="1" value="12" style="width:110px;">
-                <select id="w-unit" class="okw-select"><option value="Days">Days</option><option value="Months" selected>Months</option><option value="Years">Years</option></select>
-                <input type="text" id="w-desc" class="okw-input" style="min-width:220px;" placeholder="Description (optional)">
-                <button type="button" class="okw-btn okw-btn-primary" id="w-add">+ Add Warranty</button>
-            </div>
-            <div id="war-tbl"></div>
-        `;
+        panel.innerHTML = `<div id="war-tbl"></div>`;
         OkwUI.dataTable('#war-tbl', {
             columns: [
                 { key: 'name', label: 'Warranty Name' },
@@ -479,12 +526,22 @@
             ],
             rows: d.warranties || []
         });
-        document.getElementById('w-add').onclick = async () => {
-            const name = document.getElementById('w-name').value.trim();
-            if (!name) return OkwUI.toast('Warranty name is required', 'warning');
-            const r = await fetch('/api/warranties', { method: 'POST', headers, body: JSON.stringify({ name, duration: document.getElementById('w-dur').value, duration_type: document.getElementById('w-unit').value, description: document.getElementById('w-desc').value.trim() }) });
-            if (r.ok) { OkwUI.toast('Warranty saved', 'success'); renderWarranties(); }
-        };
+        const addBtn = document.getElementById('w-open-add');
+        if (addBtn) addBtn.onclick = () => openSimpleModal({
+            title: 'Add Warranty',
+            fields: [
+                { id: 'name', label: 'Warranty Name', placeholder: 'e.g. 1 Year Manufacturer', required: true },
+                { id: 'duration', label: 'Duration', type: 'number', min: 1, value: '12', required: true },
+                { id: 'duration_type', label: 'Duration Unit', type: 'select', options: [{ value: 'Days', label: 'Days' }, { value: 'Months', label: 'Months', selected: true }, { value: 'Years', label: 'Years' }] },
+                { id: 'description', label: 'Description', placeholder: 'Optional terms' }
+            ],
+            onSave: async (v) => {
+                const r = await fetch('/api/warranties', { method: 'POST', headers, body: JSON.stringify(v) });
+                if (r.ok) { OkwUI.toast('Warranty saved', 'success'); renderWarranties(); return true; }
+                OkwUI.toast('Failed to save warranty', 'danger');
+                return false;
+            }
+        });
         panel.querySelectorAll('[data-del-war]').forEach(btn => {
             btn.onclick = async () => {
                 const r = await fetch(`/api/warranties/${btn.dataset.delWar}`, { method: 'DELETE', headers });

@@ -59,8 +59,16 @@
 
     <main class="main-content">
         <div class="page-wrap">
-            <div class="container">
-                <h2>Bulk Stock Import</h2>
+            <div class="okw-page-header">
+                <div class="okw-page-header-text">
+                    <h1 class="okw-page-title" id="bulkPageTitle">Import Products</h1>
+                    <p class="okw-page-subtitle" id="bulkPageSub">Bulk import products, pricing, and opening stock from Excel or CSV spreadsheets.</p>
+                </div>
+                <div class="okw-page-header-actions">
+                    <button type="button" class="okw-btn okw-btn-outline" data-onclick="downloadSampleTemplate()">Download Sample Template (.xlsx)</button>
+                </div>
+            </div>
+            <div class="container" style="max-width:100%;margin:0;">
                 <p class="description">Download the sample Excel template first to avoid column or formatting errors, then upload your completed <code>.xlsx</code>, <code>.xls</code>, or <code>.csv</code> file.<br><strong>Required columns:</strong> Product Name, Category, Cost, Markup, Price, Current Stock, Batch Number, Selling Unit, Packaging Unit, Items per Package, Reorder Level <small>(Expiry Date is optional)</small>.</p>
 
                 <div class="form-group">
@@ -81,6 +89,17 @@
 </div>
 
     <script>
+        (function () {
+            const mode = new URLSearchParams(window.location.search).get('mode');
+            if (mode === 'opening-stock') {
+                const t = document.getElementById('bulkPageTitle');
+                const s = document.getElementById('bulkPageSub');
+                const btn = document.getElementById('uploadBtn');
+                if (t) t.textContent = 'Import Opening Stock';
+                if (s) s.textContent = 'Upload opening stock quantities, batch numbers, and branch levels from Excel or CSV.';
+                if (btn) btn.textContent = 'Upload Opening Stock';
+            }
+        })();
         function downloadSampleTemplate() {
             const sampleRows = [
                 {

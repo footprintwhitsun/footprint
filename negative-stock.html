@@ -95,14 +95,17 @@
 
     <main class="main-content">
         <div class="page-wrap">
-            <div class="header">
-        <div>
-            <h1>Negative Stock Management</h1>
-        </div>
-        <button class="refresh-btn" data-onclick="fetchAnalysis()">
-            <i class="fas fa-sync-alt"></i> Refresh Analysis
-        </button>
-    </div>
+            <div class="okw-page-header">
+                <div class="okw-page-header-text">
+                    <h1 class="okw-page-title">Negative Stock</h1>
+                    <p class="okw-page-subtitle">Monitor products sold below zero stock and track estimated inventory debt value.</p>
+                </div>
+                <div class="okw-page-header-actions">
+                    <button type="button" class="okw-btn okw-btn-primary" data-onclick="fetchAnalysis()">
+                        <i class="fas fa-sync-alt"></i> Refresh Analysis
+                    </button>
+                </div>
+            </div>
 
     <div class="summary-grid">
         <div class="stat-card">
