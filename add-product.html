@@ -15,12 +15,14 @@
     <script src="/ui-components.js"></script>
     <link rel="stylesheet" href="/portal-skin.css">
     <style>
-        .ap-form { display: flex; flex-direction: column; gap: 18px; max-width: 1180px; }
+        .ap-form, .ap-form *, .ap-form *::before, .ap-form *::after { box-sizing: border-box; }
+        .ap-form { display: flex; flex-direction: column; gap: 18px; max-width: 1180px; width: 100%; }
         .ap-card {
             background: var(--sheet, #fff);
             border: 1px solid var(--edge, #e2e8f0);
             border-radius: 12px;
             padding: 20px 22px;
+            overflow: hidden;
         }
         .ap-section-title {
             margin: 0 0 14px;
@@ -32,22 +34,30 @@
             text-transform: uppercase;
             letter-spacing: 0.04em;
         }
-        .ap-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 16px; }
-        .ap-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; }
-        .ap-field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-        .ap-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-2, #334155); }
+        .ap-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px 20px; align-items: start; }
+        .ap-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px 20px; align-items: start; }
+        .ap-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; max-width: 100%; }
+        .ap-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-2, #334155); line-height: 1.3; }
         .ap-input, .ap-select {
-            width: 100%; height: 38px; padding: 0 12px;
+            display: block;
+            width: 100%; max-width: 100%; min-width: 0;
+            height: 38px; padding: 0 12px;
             border: 1px solid var(--edge-strong, #cbd5e1); border-radius: 8px;
             background: var(--sheet, #fff); color: var(--ink, #0f172a);
             font-family: var(--font-ui); font-size: 13.5px; outline: none;
+        }
+        input[type="file"].ap-input {
+            padding: 6px 10px;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .ap-input:focus, .ap-select:focus {
             border-color: var(--brand, #273990);
             box-shadow: 0 0 0 3px rgba(39, 57, 144, 0.12);
         }
-        .ap-input-group { display: flex; gap: 8px; }
-        .ap-input-group .ap-input, .ap-input-group .ap-select { flex: 1; min-width: 0; }
+        .ap-input-group { display: flex; align-items: stretch; gap: 8px; width: 100%; min-width: 0; }
+        .ap-input-group .ap-input, .ap-input-group .ap-select { flex: 1 1 auto; min-width: 0; width: auto; }
+        .ap-input-group button { flex: 0 0 auto; }
         .ap-chk {
             display: inline-flex; align-items: center; gap: 8px;
             font-size: 13px; font-weight: 600; color: var(--ink, #0f172a);
@@ -126,7 +136,7 @@
             margin-top: 16px; border: 1px solid var(--edge, #e2e8f0);
             border-radius: 10px; overflow-x: auto;
         }
-        .ap-price-table { width: 100%; border-collapse: collapse; min-width: 720px; }
+        .ap-price-table { width: 100%; border-collapse: collapse; min-width: 820px; }
         .ap-price-table th {
             background: #273990; color: #fff; font-size: 12px; font-weight: 600;
             text-align: left; padding: 10px 12px; white-space: nowrap;
@@ -135,7 +145,8 @@
             padding: 12px; border-top: 1px solid var(--edge, #e2e8f0);
             vertical-align: top; background: var(--sheet, #fff);
         }
-        .ap-subgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .ap-subgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+        .ap-subgrid > div { min-width: 0; }
         .ap-sublabel { font-size: 11.5px; font-weight: 600; color: var(--muted, #64748b); margin-bottom: 4px; display: block; }
 
         .ap-footer {
