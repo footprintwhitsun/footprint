@@ -108,9 +108,8 @@
         // Cash Register (Till)
         { label: 'Open Shift', url: '/open-shift', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'clock' },
         { label: 'Close Shift', url: '/close-shift', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'logOut' },
-        { label: 'Daily Close', url: '/daily-close', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'fileCheck' },
+        { label: 'Daily Close', url: '/daily-close', roles: ['admin', 'manager', 'store_manager'], group: 'Till', icon: 'fileCheck' },
         { label: 'Transactions', url: '/transactions', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'receipt' },
-        { label: 'Reserved Orders (Part-Pay)', url: '/extras', roles: ['cashier', 'teller'], group: 'Till', icon: 'layers' },
 
         // Inventory (Purchasing & Movement; Products & Catalog moved to Products group above)
         { label: 'Purchase Orders', url: '/inventory?tab=orders', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'shoppingCart' },
@@ -122,7 +121,7 @@
         { label: 'Stock Transfers', url: '/stock-transfers?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'truck' },
         { label: 'Add Stock Transfer', url: '/stock-transfers?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'truck' },
         { label: 'Returned Sales', url: '/inventory?tab=returns', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'receipt' },
-        { label: 'Deliveries & Counts', url: '/operations', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller', 'storekeeper', 'driver'], group: 'Inventory', subgroup: 'Movement', icon: 'clipboardCheck' },
+        { label: 'Deliveries & Counts', url: '/operations', roles: ['admin', 'manager', 'store_manager', 'storekeeper', 'driver'], group: 'Inventory', subgroup: 'Movement', icon: 'clipboardCheck' },
 
         // Credit (moved under Sales so Contacts holds strictly Suppliers, Customers, Customer Groups)
         { label: 'Credit Clients', url: '/credit-customers?tab=clients', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Credit', icon: 'creditCard' },

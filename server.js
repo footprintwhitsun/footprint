@@ -1555,7 +1555,7 @@ app.get('/terms', (req, res) => {
 app.get('/ceo-portal', guardPageRoute(PAGE_ROLES.CEO_ONLY, 'ceo-portal.html'));
 app.get('/ceo-live', guardPageRoute(PAGE_ROLES.CEO_ONLY, 'ceo-live.html'));
 app.get('/all-reports', (req, res) => res.redirect('/reports?tab=detailed'));
-app.get('/extras', guardPageRoute(PAGE_ROLES.STAFF_ALL, 'extras.html'));
+app.get('/extras', guardPageRoute(PAGE_ROLES.MANAGERS, 'extras.html'));
 app.get('/roles', directPage('roles.html', PAGE_ROLES.MANAGERS));
 app.get('/team', (req, res, next) => {
     const tab = String(req.query.tab || 'staff');
@@ -1626,7 +1626,7 @@ app.get('/stock', (req, res) => {
 app.get('/inventory', directPage('inventory.html', PAGE_ROLES.MANAGERS));
 app.get('/reports', guardPageRoute(PAGE_ROLES.MANAGERS, 'reports.html'));
 app.get('/core-reports', (req, res) => res.redirect('/reports?tab=drilldown'));
-app.get('/daily-close', directPage('daily-close.html', PAGE_ROLES.STAFF_ALL));
+app.get('/daily-close', directPage('daily-close.html', PAGE_ROLES.MANAGERS));
 app.get('/sales-dashboard', (req, res) => res.redirect('/reports?tab=overview'));
 app.get('/profitability', (req, res) => res.redirect('/reports?tab=overview'));
 app.get('/bulk-upload', directPage('bulk-upload.html', PAGE_ROLES.MANAGERS));

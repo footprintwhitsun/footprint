@@ -125,9 +125,9 @@
 
         // POS & Staff Operations (Cashier / Manager / Admin only - Blocked for CEO & Company)
         '/pos': ROLES.STAFF_ALL,
-        '/daily-close': ROLES.STAFF_ALL,
+        '/daily-close': ROLES.MANAGERS,
         '/operations': ROLES.STAFF_ALL,
-        '/extras': ROLES.STAFF_ALL,
+        '/extras': ROLES.MANAGERS,
         '/open-shift': ROLES.STAFF_ALL,
         '/close-shift': ROLES.STAFF_ALL,
         '/payment': ROLES.STAFF_ALL,
