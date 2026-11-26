@@ -1786,10 +1786,13 @@ app.post('/login', loginLimiter, [
         const user = userResult.rows[0];
 
         // Check if user is active
-        if (String(user.status || '').toLowerCase() !== 'active') {
+        const userStatusLower = String(user.status || '').toLowerCase();
+        if (userStatusLower !== 'active') {
             return res.status(403).json({
                 success: false,
-                message: 'Account is inactive. Please contact administrator.'
+                message: userStatusLower === 'suspended'
+                    ? 'Account is suspended. Please contact administrator.'
+                    : 'Account is inactive. Please contact administrator.'
             });
         }
 
@@ -1982,10 +1985,13 @@ app.post('/api/company/login', authLimiter, [
         const user = userResult.rows[0];
 
         // Check if user is active
-        if (String(user.status || '').toLowerCase() !== 'active') {
+        const userStatusLower = String(user.status || '').toLowerCase();
+        if (userStatusLower !== 'active') {
             return res.status(403).json({
                 success: false,
-                message: 'Account is inactive. Please contact administrator.'
+                message: userStatusLower === 'suspended'
+                    ? 'Account is suspended. Please contact administrator.'
+                    : 'Account is inactive. Please contact administrator.'
             });
         }
 
@@ -2305,7 +2311,8 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
 
         let action = 'UPDATE_USER';
         if (status && currentStatus !== status) {
-            if (status === 'Inactive') action = 'DEACTIVATE_USER';
+            if (status === 'Suspended') action = 'SUSPEND_USER';
+            else if (status === 'Inactive') action = 'DEACTIVATE_USER';
             else if (status === 'Active') action = 'ACTIVATE_USER';
         }
 
@@ -2318,6 +2325,52 @@ app.put('/api/users/:id', authenticateToken, async (req, res) => {
             return res.status(400).json({ message: 'Username, Email or Employee ID already exists' });
         }
         res.status(500).json({ message: 'Error updating user: ' + err.message });
+    }
+});
+
+// Quick status change (Active / Suspended / Inactive)
+app.patch('/api/users/:id/status', authenticateToken, async (req, res) => {
+    const { id } = req.params;
+    const userRole = String(req.user.role || '').toLowerCase();
+    if (!['super_admin', 'admin', 'manager', 'store_manager', 'ceo'].includes(userRole)) {
+        return res.status(403).json({ message: 'Unauthorized' });
+    }
+    const nextStatus = String(req.body?.status || '').trim();
+    if (!['Active', 'Suspended', 'Inactive'].includes(nextStatus)) {
+        return res.status(400).json({ message: 'Status must be Active, Suspended, or Inactive' });
+    }
+    if (parseInt(id, 10) === parseInt(req.user.id, 10) && nextStatus !== 'Active') {
+        return res.status(400).json({ message: 'You cannot suspend or deactivate your own account' });
+    }
+    const tenantId = userTenantScope(req);
+    try {
+        const targetRes = await pool.query(
+            `SELECT id, username, role, status FROM users WHERE id = $1${tenantId ? ' AND tenant_id = $2' : ''}`,
+            tenantId ? [id, tenantId] : [id]
+        );
+        if (targetRes.rows.length === 0) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        const target = targetRes.rows[0];
+        const targetRole = String(target.role || '').toLowerCase();
+        if ((userRole === 'manager' || userRole === 'store_manager') && ['ceo', 'admin', 'super_admin'].includes(targetRole)) {
+            return res.status(403).json({ message: 'Managers cannot modify executive accounts' });
+        }
+        if (targetRole === 'super_admin' && userRole !== 'super_admin') {
+            return res.status(403).json({ message: 'Only a Super Profile can modify another Super Profile account' });
+        }
+
+        await pool.query(
+            `UPDATE users SET status = $1 WHERE id = $2${tenantId ? ' AND tenant_id = $3' : ''}`,
+            tenantId ? [nextStatus, id, tenantId] : [nextStatus, id]
+        );
+
+        const action = nextStatus === 'Suspended' ? 'SUSPEND_USER' : (nextStatus === 'Inactive' ? 'DEACTIVATE_USER' : 'ACTIVATE_USER');
+        await logActivity(req, action, { id, username: target.username, role: target.role, status: nextStatus, previousStatus: target.status });
+        res.json({ success: true, status: nextStatus, message: `User status updated to ${nextStatus}` });
+    } catch (err) {
+        console.error('PATCH /api/users/:id/status error:', err);
+        res.status(500).json({ message: 'Failed to update user status' });
     }
 });
 
