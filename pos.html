@@ -1850,7 +1850,10 @@
                     <div id="quickPicks" class="quick-picks" hidden aria-label="Your most-sold items"></div>
                     <div class="cart-header">
                         <span>Current Sale</span>
-                        <div style="display:flex; gap:15px; align-items:center;">
+                        <div style="display:flex; gap:10px; align-items:center;">
+                            <select id="posPriceGroupSelect" aria-label="Selling Price Group" title="Selling Price Group" style="height:28px;padding:0 8px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#1e293b;font-size:12px;font-weight:600;max-width:170px;cursor:pointer;">
+                                <option value="">Default Selling Price</option>
+                            </select>
                             <span id="parkedCount" style="display:none;">0</span>
                             <span id="cartCount" style="font-size:12.5px; font-weight:600; color:#6d7175; background:#f6f6f7; padding:3px 10px; border-radius:12px; border:1px solid #e1e3e5;">0 items</span>
                             <button data-onclick="clearCart()" title="Clear Cart"
@@ -2740,15 +2743,67 @@
             };
         }
 
+        let posPriceGroups = [];
+        let activePosPriceGroup = null;
+
+        function computePosGroupPrice(basePrice) {
+            const base = parseFloat(basePrice) || 0;
+            if (!activePosPriceGroup) return Number(base.toFixed(2));
+            const pct = Number(activePosPriceGroup.adjustment_pct || 0);
+            return Number(Math.max(0, base * (1 + pct / 100)).toFixed(2));
+        }
+
+        function applyPosPriceGroupToCart() {
+            if (!Array.isArray(cart) || !cart.length) return;
+            cart.forEach((item) => {
+                if (item.returnMode) return;
+                if (item.basePrice === undefined || item.basePrice === null) {
+                    item.basePrice = parseFloat(item.price) || 0;
+                }
+                item.price = computePosGroupPrice(item.basePrice);
+            });
+            renderCart();
+        }
+
+        async function loadPosPriceGroups() {
+            try {
+                const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+                const h = token && token !== 'null' ? { Authorization: `Bearer ${token}` } : {};
+                const res = await fetch('/api/selling-price-groups', { headers: h, credentials: 'include' });
+                if (!res.ok) return;
+                const d = await res.json().catch(() => ({}));
+                posPriceGroups = d.price_groups || [];
+                const sel = document.getElementById('posPriceGroupSelect');
+                if (!sel) return;
+                sel.innerHTML = '<option value="">Default Selling Price</option>' + posPriceGroups.map((g) => {
+                    const pct = Number(g.adjustment_pct || 0);
+                    const lbl = `${g.name} (${pct > 0 ? '+' : ''}${pct}%)`;
+                    const opt = document.createElement('option');
+                    opt.value = String(g.id);
+                    opt.textContent = lbl;
+                    return opt.outerHTML;
+                }).join('');
+                sel.addEventListener('change', () => {
+                    const id = sel.value;
+                    activePosPriceGroup = id ? (posPriceGroups.find((g) => String(g.id) === String(id)) || null) : null;
+                    applyPosPriceGroupToCart();
+                    notify(activePosPriceGroup ? `Pricing tier: ${activePosPriceGroup.name} (${Number(activePosPriceGroup.adjustment_pct || 0)}%)` : 'Switched to Default Selling Price', 'success');
+                });
+            } catch (_) {}
+        }
+        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadPosPriceGroups);
+        else loadPosPriceGroups();
+
         function addToCart(product) {
             try { bumpQuickPick(product.id); setTimeout(renderQuickPicks, 0); } catch (_) { }
             if (window.okwAdvancedCartCount && window.okwAdvancedCartCount() > 0) {
                 notify('A sale is open in the advanced panel. Finish, hold or clear it before using the till.', 'warning');
                 return;
             }
-            // Ensure price is a number before adding to cart
-            const price = parseFloat(product.price) || 0;
-            const safeProduct = { ...product, price: price };
+            // Ensure price is a number before adding to cart, and apply active Selling Price Group
+            const basePrice = parseFloat(product.price) || 0;
+            const effectivePrice = computePosGroupPrice(basePrice);
+            const safeProduct = { ...product, basePrice, price: effectivePrice };
 
             if (Number(safeProduct.stock || 0) <= 0) {
                 notify(`${safeProduct.name} is out of stock and cannot be sold.`, "error");

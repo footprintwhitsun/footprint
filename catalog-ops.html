@@ -1132,41 +1132,79 @@
     }
 
     async function renderPriceGroups() {
-        const res = await fetch('/api/selling-price-groups', { headers });
+        const res = await fetch('/api/selling-price-groups', { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
+        const rows = d.price_groups || [];
         const actionsHost = document.getElementById('cat-page-actions');
         if (actionsHost) actionsHost.innerHTML = `<button type="button" class="okw-btn okw-btn-primary" id="spg-open-add">+ Add Selling Price Group</button>`;
         const panel = document.getElementById('cat-panel');
         panel.innerHTML = `<div id="spg-tbl"></div>`;
         OkwUI.dataTable('#spg-tbl', {
             columns: [
-                { key: 'name', label: 'Selling Price Group' },
-                { key: 'adjustment_pct', label: 'Adjustment %', numeric: true, render: (v) => `${Number(v || 0)}%` },
+                { key: 'name', label: 'Selling Price Group', render: (v) => `<strong>${OkwUI.escapeHtml(v || '')}</strong>` },
+                {
+                    key: 'adjustment_pct',
+                    label: 'Adjustment %',
+                    numeric: true,
+                    render: (v) => {
+                        const n = Number(v || 0);
+                        const color = n < 0 ? '#15803d' : (n > 0 ? '#b45309' : '#64748b');
+                        return `<span style="font-weight:700;color:${color};">${n > 0 ? '+' : ''}${n}%</span>`;
+                    }
+                },
                 { key: 'description', label: 'Description' },
-                { key: 'id', label: 'Actions', render: (v) => `<button type="button" class="okw-btn okw-btn-outline" data-del-spg="${v}" style="height:28px;padding:0 10px;font-size:12px;">Delete</button>` }
+                {
+                    key: 'id',
+                    label: 'Actions',
+                    render: (v) => `
+                        <div style="display:inline-flex;gap:6px;">
+                            <button type="button" class="okw-btn okw-btn-outline" data-edit-spg="${v}" style="height:28px;padding:0 10px;font-size:12px;">Edit</button>
+                            <button type="button" class="okw-btn okw-btn-outline" data-del-spg="${v}" style="height:28px;padding:0 10px;font-size:12px;color:#dc2626;border-color:#fecaca;">Delete</button>
+                        </div>`
+                }
             ],
-            rows: d.price_groups || []
+            rows,
+            exportFilename: 'okwesiwa-selling-price-groups.xlsx',
+            printTitle: 'Selling Price Groups'
         });
+
+        function openSpgModal(existing) {
+            const isEdit = Boolean(existing && existing.id);
+            openSimpleModal({
+                title: isEdit ? 'Edit Selling Price Group' : 'Add Selling Price Group',
+                fields: [
+                    { id: 'name', label: 'Price Group Name', placeholder: 'e.g. Wholesale, Contractor', value: isEdit ? (existing.name || '') : '', required: true },
+                    { id: 'adjustment_pct', label: 'Adjustment (%)', type: 'number', step: '0.1', placeholder: 'e.g. -10 for 10% off or 5 for +5%', value: isEdit ? String(existing.adjustment_pct ?? 0) : '' },
+                    { id: 'description', label: 'Description', placeholder: 'Optional description', value: isEdit ? (existing.description || '') : '' }
+                ],
+                onSave: async (v) => {
+                    const url = isEdit ? `/api/selling-price-groups/${encodeURIComponent(existing.id)}` : '/api/selling-price-groups';
+                    const r = await fetch(url, { method: isEdit ? 'PUT' : 'POST', headers, credentials: 'include', body: JSON.stringify(v) });
+                    if (r.ok) { OkwUI.toast(isEdit ? 'Price group updated' : 'Price group saved', 'success'); renderPriceGroups(); return true; }
+                    OkwUI.toast('Failed to save price group', 'danger');
+                    return false;
+                }
+            });
+        }
+
         const addBtn = document.getElementById('spg-open-add');
-        if (addBtn) addBtn.onclick = () => openSimpleModal({
-            title: 'Add Selling Price Group',
-            fields: [
-                { id: 'name', label: 'Price Group Name', placeholder: 'e.g. Wholesale, Contractor', required: true },
-                { id: 'adjustment_pct', label: 'Adjustment (%)', type: 'number', step: '0.1', placeholder: 'e.g. -5 or 10' },
-                { id: 'description', label: 'Description', placeholder: 'Optional description' }
-            ],
-            onSave: async (v) => {
-                const r = await fetch('/api/selling-price-groups', { method: 'POST', headers, body: JSON.stringify(v) });
-                if (r.ok) { OkwUI.toast('Price group saved', 'success'); renderPriceGroups(); return true; }
-                OkwUI.toast('Failed to save price group', 'danger');
-                return false;
+        if (addBtn) addBtn.onclick = () => openSpgModal(null);
+
+        const spgTbl = panel.querySelector('#spg-tbl');
+        if (spgTbl) spgTbl.addEventListener('click', async (ev) => {
+            const editBtn = ev.target.closest('[data-edit-spg]');
+            if (editBtn) {
+                const found = rows.find((r) => String(r.id) === String(editBtn.getAttribute('data-edit-spg')));
+                if (found) openSpgModal(found);
+                return;
             }
-        });
-        panel.querySelectorAll('[data-del-spg]').forEach(btn => {
-            btn.onclick = async () => {
-                const r = await fetch(`/api/selling-price-groups/${btn.dataset.delSpg}`, { method: 'DELETE', headers });
+            const delBtn = ev.target.closest('[data-del-spg]');
+            if (delBtn) {
+                const ok = await OkwUI.confirm('Delete Selling Price Group', 'Remove this selling price group?', { confirmText: 'Delete' });
+                if (!ok) return;
+                const r = await fetch(`/api/selling-price-groups/${encodeURIComponent(delBtn.getAttribute('data-del-spg'))}`, { method: 'DELETE', headers, credentials: 'include' });
                 if (r.ok) { OkwUI.toast('Price group deleted', 'success'); renderPriceGroups(); }
-            };
+            }
         });
     }
 

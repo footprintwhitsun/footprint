@@ -558,6 +558,24 @@ router.post('/api/selling-price-groups', authenticateToken, requireRole(MANAGER_
     }
 });
 
+router.put('/api/selling-price-groups/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    const { name, description = '', adjustment_pct = 0 } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ message: 'Price group name is required' });
+    try {
+        const r = await pool.query(
+            'UPDATE selling_price_groups SET name = $1, description = $2, adjustment_pct = $3 WHERE id = $4 AND COALESCE(tenant_id, 1) = $5 RETURNING *',
+            [String(name).trim(), String(description || '').trim(), Number(adjustment_pct || 0), req.params.id, tenantId]
+        );
+        if (!r.rows.length) return res.status(404).json({ message: 'Selling price group not found' });
+        await logActivity(req, 'UPDATE_SELLING_PRICE_GROUP', { id: req.params.id, name: String(name).trim(), adjustment_pct: Number(adjustment_pct || 0) });
+        res.json({ price_group: r.rows[0] });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to update selling price group' });
+    }
+});
+
 router.delete('/api/selling-price-groups/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     await ensurePhase4Schema();
     const tenantId = req.user.tenant_id || 1;
