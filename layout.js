@@ -170,6 +170,7 @@
         { label: 'Sell Payment Report', url: '/reports?tab=detailed&report=sell_payment', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'creditCard' },
         { label: 'Payment by Age', url: '/reports?tab=detailed&report=payment_by_age', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'clock' },
         { label: 'Activity Log', url: '/reports?tab=detailed&report=activity_log', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'activity' },
+        { label: 'Price Change History', url: '/reports?tab=detailed&report=price_history', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'tag' },
         { label: 'Deleted Transactions', url: '/reports?tab=detailed&report=deleted_transactions', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'fileCheck' },
 
         // Quick Reports (Items, Brands & Customers)

@@ -311,6 +311,7 @@
         shifts: 'Register Report',
         teller: 'Sales Representative Report',
         activity_log: 'Activity Log',
+        price_history: 'Price Change History',
         deleted_transactions: 'Deleted Transactions',
         transactions: 'Transaction History',
         daily: 'Daily Summary',
@@ -393,6 +394,70 @@
                 host.innerHTML = "<div style=\"padding:20px;color:var(--color-text-muted);\">Loading report...</div>";
 
                 try {
+                    if (reportType === "price_history") {
+                        const res = await fetch("/api/prices/history", { headers, credentials: "include" });
+                        const d = res.ok ? await res.json() : {};
+                        const raw = Array.isArray(d.history) ? d.history : [];
+                        const filtered = raw.filter(r => {
+                            const dt = String(r.created_at || "").slice(0, 10);
+                            return (!dateRange.from || dt >= dateRange.from) && (!dateRange.to || dt <= dateRange.to);
+                        }).map(r => {
+                            const oldP = Number(r.old_price || 0);
+                            const newP = Number(r.new_price || 0);
+                            const diff = Number((newP - oldP).toFixed(2));
+                            return {
+                                date: r.created_at ? new Date(r.created_at).toLocaleString() : "—",
+                                product_name: r.product_name || "—",
+                                product_barcode: r.product_barcode || "—",
+                                brand: r.brand || "—",
+                                old_price: oldP,
+                                new_price: newP,
+                                diff,
+                                change_reason: r.change_reason || "Price update",
+                                changed_by_name: r.changed_by_name || "Manager"
+                            };
+                        });
+                        const incCount = filtered.filter(r => r.diff > 0).length;
+                        const decCount = filtered.filter(r => r.diff < 0).length;
+                        const netDiff = filtered.reduce((s, r) => s + r.diff, 0);
+                        if (ctx.kpis) {
+                            ctx.kpis.innerHTML = `<div class="okw-kpi-row">${[
+                                OkwUI.kpiCard({ label: "Total Price Changes", value: String(filtered.length), tone: "primary" }),
+                                OkwUI.kpiCard({ label: "Increases", value: String(incCount), tone: "success" }),
+                                OkwUI.kpiCard({ label: "Decreases", value: String(decCount), tone: "danger" }),
+                                OkwUI.kpiCard({ label: "Net Price Movement", value: (netDiff >= 0 ? "+" : "") + fmt(netDiff), tone: netDiff >= 0 ? "info" : "warning" })
+                            ].join("")}</div>`;
+                        }
+                        OkwUI.dataTable(host, {
+                            columns: [
+                                { key: "date", label: "Date" },
+                                { key: "product_barcode", label: "SKU" },
+                                { key: "product_name", label: "Product" },
+                                { key: "brand", label: "Brand" },
+                                { key: "old_price", label: "Old Price", numeric: true, render: fmt },
+                                { key: "new_price", label: "New Price", numeric: true, render: fmt },
+                                {
+                                    key: "diff",
+                                    label: "Change",
+                                    numeric: true,
+                                    render: (v) => {
+                                        const n = Number(v || 0);
+                                        const color = n > 0 ? "#15803d" : (n < 0 ? "#dc2626" : "#64748b");
+                                        return `<span style="font-weight:700;color:${color};">${n > 0 ? "+" : ""}${esc(fmt(n))}</span>`;
+                                    }
+                                },
+                                { key: "change_reason", label: "Reason" },
+                                { key: "changed_by_name", label: "Changed By" }
+                            ],
+                            rows: filtered,
+                            searchPlaceholder: "Search product, SKU, brand, or reason...",
+                            exportFilename: "okwesiwa-price-change-history.xlsx",
+                            printTitle: "OKWESIWA CO LTD — Price Change History",
+                            emptyText: "No price changes recorded in this period."
+                        });
+                        return;
+                    }
+
                     if (reportType === "transactions") {
                         if (!cacheTrx) {
                             const res = await fetch("/api/transactions", { headers });
