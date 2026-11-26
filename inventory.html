@@ -3703,20 +3703,33 @@
                 return raw.length > 14 ? `${raw.slice(0, 4)}-${raw.slice(-6)}` : raw;
             };
 
-            const renderSupItems = (ev, showItems, isPrint) => {
+            const renderSupDesc = (ev, showItems, isPrint) => {
+                const items = Array.isArray(ev.items) ? ev.items : [];
+                if (ev.type === 'Payment' || items.length === 0) {
+                    return `<div style="font-weight:600;color:${isPrint ? '#0f172a' : 'var(--ink,#0f172a)'};">${supEsc(ev.description || ev.type || 'Purchase')}</div>`;
+                }
+                const statusTag = (ev.status && String(ev.status).toLowerCase() !== 'received')
+                    ? ` <span style="display:inline-block;padding:1px 6px;border-radius:999px;font-size:10px;font-weight:700;background:#fef3c7;color:#b45309;margin-left:4px;">${supEsc(ev.status)}</span>`
+                    : '';
+                if (showItems) {
+                    return `<div style="display:flex;flex-direction:column;gap:4px;">${items.map((it, idx) => {
+                        const priceNote = ` @ ${supEsc(supMoney(it.price))}`;
+                        return `<div style="line-height:1.35;"><span style="font-weight:600;color:${isPrint ? '#0f172a' : 'var(--ink,#0f172a)'};">${supEsc(it.name)}</span><span style="font-size:${isPrint ? '10px' : '11.5px'};color:#64748b;white-space:nowrap;">${priceNote}</span>${idx === 0 ? statusTag : ''}</div>`;
+                    }).join('')}</div>`;
+                }
+                return `<div style="font-weight:600;color:${isPrint ? '#0f172a' : 'var(--ink,#0f172a)'};">${supEsc(ev.type || 'Purchase')}${statusTag}</div>`;
+            };
+
+            const renderSupQty = (ev, showItems) => {
                 const items = Array.isArray(ev.items) ? ev.items : [];
                 if (items.length === 0) return '—';
                 if (showItems) {
-                    const multi = items.length > 1;
-                    return `<div style="display:flex;flex-direction:column;gap:4px;">${items.map((it) => {
-                        const meta = multi
-                            ? `${supEsc(it.qty)} &times; ${supEsc(supMoney(it.price))} = ${supEsc(supMoney(it.total))}`
-                            : `${supEsc(it.qty)} &times; ${supEsc(supMoney(it.price))}`;
-                        return `<div style="line-height:1.35;"><span style="font-weight:600;color:${isPrint ? '#0f172a' : 'var(--ink,#0f172a)'};">${supEsc(it.name)}</span> <span style="font-size:${isPrint ? '10px' : '11.5px'};color:#64748b;white-space:nowrap;">(${meta})</span></div>`;
-                    }).join('')}</div>`;
+                    return `<div style="display:flex;flex-direction:column;gap:4px;">${items.map((it) =>
+                        `<div style="line-height:1.35;font-weight:600;">${supEsc(it.qty)}</div>`
+                    ).join('')}</div>`;
                 }
-                const count = items.reduce((sum, it) => sum + (Number(it.qty) || 0), 0) || items.length;
-                return `<span style="color:#64748b;">${supEsc(count)} item${count === 1 ? '' : 's'}</span>`;
+                const totalQty = items.reduce((sum, it) => sum + (Number(it.qty) || 0), 0);
+                return `<span style="font-weight:600;">${supEsc(totalQty || items.length)}</span>`;
             };
 
             function printSupplierStatement(data, showItems) {
@@ -3741,8 +3754,8 @@
                         <td class="nowrap">${supEsc(supDate(ev.date))}</td>
                         <td class="nowrap mono" title="${supEsc(ev.ref)}">${supEsc(supShortRef(ev.ref))}</td>
                         <td class="loc-col">${supEsc(ev.branch || '—')}</td>
-                        <td class="bold">${supEsc(ev.type === 'Payment' ? (ev.description || 'Supplier Payment') : (ev.type || 'Purchase'))}</td>
-                        <td>${renderSupItems(ev, showItems, true)}</td>
+                        <td>${renderSupDesc(ev, showItems, true)}</td>
+                        <td class="num">${renderSupQty(ev, showItems)}</td>
                         <td class="nowrap">${supEsc(ev.payment_method)}</td>
                         <td class="num">${ev.debit > 0 ? supEsc(supMoney(ev.debit)) : '—'}</td>
                         <td class="num">${ev.credit > 0 ? supEsc(supMoney(ev.credit)) : '—'}</td>
@@ -3849,7 +3862,7 @@
                 <th>Ref #</th>
                 <th>Location</th>
                 <th>Description</th>
-                <th>Items</th>
+                <th class="num">Qty</th>
                 <th>Method</th>
                 <th class="num">Billed</th>
                 <th class="num">Paid</th>
@@ -3965,8 +3978,8 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
                                             <th style="text-align:left;padding:10px 10px;font-size:11px;text-transform:uppercase;color:var(--muted,#64748b);white-space:nowrap;">Date</th>
                                             <th style="text-align:left;padding:10px 10px;font-size:11px;text-transform:uppercase;color:var(--muted,#64748b);white-space:nowrap;">Ref #</th>
                                             <th style="text-align:left;padding:10px 10px;font-size:11px;text-transform:uppercase;color:var(--muted,#64748b);white-space:nowrap;">Location</th>
-                                            <th style="text-align:left;padding:10px 10px;font-size:11px;text-transform:uppercase;color:var(--muted,#64748b);min-width:130px;">Description</th>
-                                            <th style="text-align:left;padding:10px 10px;font-size:11px;text-transform:uppercase;color:var(--muted,#64748b);min-width:200px;">Items</th>
+                                            <th style="text-align:left;padding:10px 10px;font-size:11px;text-transform:uppercase;color:var(--muted,#64748b);min-width:220px;">Description</th>
+                                            <th style="text-align:right;padding:10px 10px;font-size:11px;text-transform:uppercase;color:var(--muted,#64748b);white-space:nowrap;">Qty</th>
                                             <th style="text-align:left;padding:10px 10px;font-size:11px;text-transform:uppercase;color:var(--muted,#64748b);white-space:nowrap;">Method</th>
                                             <th style="text-align:right;padding:10px 10px;font-size:11px;text-transform:uppercase;color:var(--muted,#64748b);white-space:nowrap;">Billed</th>
                                             <th style="text-align:right;padding:10px 10px;font-size:11px;text-transform:uppercase;color:var(--muted,#64748b);white-space:nowrap;">Paid</th>
@@ -4015,8 +4028,8 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
                             <td style="padding:10px;white-space:nowrap;">${supEsc(supDate(ev.date))}</td>
                             <td style="padding:10px;white-space:nowrap;font-family:ui-monospace,monospace;font-size:11.5px;" title="${supEsc(ev.ref)}">${supEsc(supShortRef(ev.ref))}</td>
                             <td style="padding:10px;white-space:nowrap;color:var(--ink-2,#334155);font-size:12px;">${supEsc(ev.branch || '—')}</td>
-                            <td style="padding:10px;white-space:nowrap;font-weight:600;">${supEsc(ev.type === 'Payment' ? (ev.description || 'Supplier Payment') : (ev.type || 'Purchase'))}</td>
-                            <td style="padding:10px;">${renderSupItems(ev, showItems, false)}</td>
+                            <td style="padding:10px;">${renderSupDesc(ev, showItems, false)}</td>
+                            <td style="padding:10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;">${renderSupQty(ev, showItems)}</td>
                             <td style="padding:10px;white-space:nowrap;">${supEsc(ev.payment_method)}</td>
                             <td style="padding:10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;">${ev.debit > 0 ? supEsc(supMoney(ev.debit)) : '—'}</td>
                             <td style="padding:10px;text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;color:#15803d;">${ev.credit > 0 ? supEsc(supMoney(ev.credit)) : '—'}</td>
