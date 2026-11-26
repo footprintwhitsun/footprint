@@ -211,10 +211,16 @@
         const actionsHost = document.getElementById('cat-page-actions');
         if (actionsHost) {
             actionsHost.innerHTML = `
-                <a href="/reports?tab=detailed&report=price_history" class="okw-btn okw-btn-outline" style="text-decoration:none;">Price History Report</a>
-                <button type="button" class="okw-btn okw-btn-outline" id="bp-print">Print</button>
-                <button type="button" class="okw-btn okw-btn-outline" id="bp-export-xlsx">Export (.xlsx)</button>
-                <button type="button" class="okw-btn okw-btn-outline" id="bp-import-btn">Import (.xlsx / .csv)</button>
+                <div class="bp-dd" style="position:relative;display:inline-block;">
+                    <button type="button" class="okw-btn okw-btn-outline" id="bp-actions-dd-btn">Export / Print ▾</button>
+                    <div id="bp-actions-dd-menu" class="bp-dd-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);min-width:210px;background:var(--sheet,#fff);border:1px solid var(--edge,#e2e8f0);border-radius:10px;box-shadow:0 10px 28px rgba(15,23,42,0.12);padding:6px;z-index:60;">
+                        <button type="button" id="bp-export-xlsx" style="width:100%;text-align:left;border:0;background:transparent;padding:9px 12px;border-radius:7px;font-size:13px;font-weight:500;color:var(--ink,#0f172a);cursor:pointer;display:flex;align-items:center;gap:8px;">Export (.xlsx)</button>
+                        <button type="button" id="bp-import-btn" style="width:100%;text-align:left;border:0;background:transparent;padding:9px 12px;border-radius:7px;font-size:13px;font-weight:500;color:var(--ink,#0f172a);cursor:pointer;display:flex;align-items:center;gap:8px;">Import (.xlsx / .csv)</button>
+                        <button type="button" id="bp-print" style="width:100%;text-align:left;border:0;background:transparent;padding:9px 12px;border-radius:7px;font-size:13px;font-weight:500;color:var(--ink,#0f172a);cursor:pointer;display:flex;align-items:center;gap:8px;">Print Price Sheet</button>
+                        <div style="height:1px;background:var(--edge,#e2e8f0);margin:5px 4px;"></div>
+                        <a href="/reports?tab=detailed&report=price_history" style="width:100%;box-sizing:border-box;text-align:left;text-decoration:none;padding:9px 12px;border-radius:7px;font-size:13px;font-weight:500;color:var(--brand,#273990);display:flex;align-items:center;gap:8px;">Price History Report</a>
+                    </div>
+                </div>
                 <input type="file" id="bp-import-file" accept=".xlsx,.xls,.csv" style="display:none;">
                 <button type="button" class="okw-btn okw-btn-primary" id="bp-apply" disabled>Save Changes (0)</button>
             `;
@@ -245,41 +251,76 @@
                 </div>
             </div>
 
-            <div style="background:var(--sheet,#fff);border:1px solid var(--edge,#e2e8f0);border-radius:12px;padding:16px 18px;margin-bottom:14px;box-sizing:border-box;">
-                <div style="display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:center;margin-bottom:12px;">
-                    <input type="search" id="bp-search" class="okw-input" placeholder="Search by product name or SKU..." style="width:100%;height:38px;box-sizing:border-box;">
-                    <select id="bp-cat" class="okw-select" style="width:100%;height:38px;box-sizing:border-box;">
-                        <option value="">All Categories</option>
-                        ${categories.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
-                    </select>
-                    <select id="bp-brand" class="okw-select" style="width:100%;height:38px;box-sizing:border-box;">
-                        <option value="">All Brands</option>
-                        ${brands.map((b) => `<option value="${esc(b)}">${esc(b)}</option>`).join('')}
-                    </select>
-                    <button type="button" id="bp-toggle-changed" class="okw-btn okw-btn-outline" style="height:38px;white-space:nowrap;">Changed Only (0)</button>
+            <div style="display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:14px;box-sizing:border-box;">
+                <input type="search" id="bp-search" class="okw-input" placeholder="Search by product name or SKU..." style="flex:1;min-width:220px;height:40px;box-sizing:border-box;">
+
+                <div class="bp-dd" style="position:relative;">
+                    <button type="button" id="bp-filter-dd-btn" class="okw-btn okw-btn-outline" style="height:40px;white-space:nowrap;">Filters ▾</button>
+                    <div id="bp-filter-dd-menu" class="bp-dd-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);width:290px;background:var(--sheet,#fff);border:1px solid var(--edge,#e2e8f0);border-radius:12px;box-shadow:0 12px 30px rgba(15,23,42,0.14);padding:14px;z-index:60;box-sizing:border-box;">
+                        <div style="font-size:12px;font-weight:700;color:var(--brand,#273990);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Filter Products</div>
+                        <div style="display:flex;flex-direction:column;gap:10px;">
+                            <div>
+                                <label style="display:block;font-size:12px;font-weight:600;color:var(--muted,#64748b);margin-bottom:4px;">Category</label>
+                                <select id="bp-cat" class="okw-select" style="width:100%;height:36px;box-sizing:border-box;">
+                                    <option value="">All Categories</option>
+                                    ${categories.map((c) => `<option value="${esc(c)}">${esc(c)}</option>`).join('')}
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:12px;font-weight:600;color:var(--muted,#64748b);margin-bottom:4px;">Brand</label>
+                                <select id="bp-brand" class="okw-select" style="width:100%;height:36px;box-sizing:border-box;">
+                                    <option value="">All Brands</option>
+                                    ${brands.map((b) => `<option value="${esc(b)}">${esc(b)}</option>`).join('')}
+                                </select>
+                            </div>
+                            <label style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--ink,#0f172a);cursor:pointer;padding-top:4px;">
+                                <input type="checkbox" id="bp-toggle-changed" style="width:16px;height:16px;accent-color:var(--brand,#273990);">
+                                <span id="bp-toggle-changed-lbl">Changed Only (0)</span>
+                            </label>
+                            <button type="button" id="bp-clear-filters" class="okw-btn okw-btn-outline" style="height:34px;width:100%;">Clear Filters</button>
+                        </div>
+                    </div>
                 </div>
 
-                <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding-top:12px;border-top:1px solid var(--edge,#e2e8f0);">
-                    <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
-                        <span style="font-size:12px;font-weight:700;color:var(--brand,#273990);text-transform:uppercase;letter-spacing:0.04em;">Bulk Adjust</span>
-                        <select id="bp-mode" class="okw-select" style="height:36px;box-sizing:border-box;">
-                            <option value="percent">% Change</option>
-                            <option value="amount">Fixed GH₵ Change</option>
-                        </select>
-                        <input type="number" id="bp-val" class="okw-input" placeholder="e.g. 5 or -10" step="0.01" style="width:128px;height:36px;box-sizing:border-box;">
-                        <select id="bp-round" class="okw-select" style="height:36px;box-sizing:border-box;" title="Rounding rule">
-                            <option value="0.01">Exact (0.01)</option>
-                            <option value="0.5">Round to 0.50</option>
-                            <option value="1">Round to 1.00</option>
-                        </select>
-                        <button type="button" class="okw-btn okw-btn-outline" id="bp-bulk-calc" style="height:36px;">Apply to Filtered</button>
-                        <button type="button" class="okw-btn okw-btn-outline" id="bp-clear-sel" style="height:36px;display:none;">Clear Selection</button>
-                        <button type="button" class="okw-btn okw-btn-outline" id="bp-reset" style="height:36px;">Reset</button>
-                    </div>
-                    <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:220px;max-width:320px;">
-                        <input type="text" id="bp-reason" class="okw-input" placeholder="Audit reason (e.g. Supplier cost review)" style="width:100%;height:36px;box-sizing:border-box;">
+                <div class="bp-dd" style="position:relative;">
+                    <button type="button" id="bp-bulk-dd-btn" class="okw-btn okw-btn-outline" style="height:40px;white-space:nowrap;">Bulk Adjust ▾</button>
+                    <div id="bp-bulk-dd-menu" class="bp-dd-menu" style="display:none;position:absolute;right:0;top:calc(100% + 6px);width:320px;background:var(--sheet,#fff);border:1px solid var(--edge,#e2e8f0);border-radius:12px;box-shadow:0 12px 30px rgba(15,23,42,0.14);padding:14px;z-index:60;box-sizing:border-box;">
+                        <div style="font-size:12px;font-weight:700;color:var(--brand,#273990);text-transform:uppercase;letter-spacing:0.04em;margin-bottom:10px;">Bulk Price Adjustment</div>
+                        <div style="display:flex;flex-direction:column;gap:10px;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                <div>
+                                    <label style="display:block;font-size:12px;font-weight:600;color:var(--muted,#64748b);margin-bottom:4px;">Adjustment Type</label>
+                                    <select id="bp-mode" class="okw-select" style="width:100%;height:36px;box-sizing:border-box;">
+                                        <option value="percent">% Change</option>
+                                        <option value="amount">Fixed GH₵</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style="display:block;font-size:12px;font-weight:600;color:var(--muted,#64748b);margin-bottom:4px;">Value</label>
+                                    <input type="number" id="bp-val" class="okw-input" placeholder="e.g. 5 or -10" step="0.01" style="width:100%;height:36px;box-sizing:border-box;">
+                                </div>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:12px;font-weight:600;color:var(--muted,#64748b);margin-bottom:4px;">Rounding</label>
+                                <select id="bp-round" class="okw-select" style="width:100%;height:36px;box-sizing:border-box;">
+                                    <option value="0.01">Exact (0.01)</option>
+                                    <option value="0.5">Nearest 0.50</option>
+                                    <option value="1">Nearest 1.00</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label style="display:block;font-size:12px;font-weight:600;color:var(--muted,#64748b);margin-bottom:4px;">Audit Reason</label>
+                                <input type="text" id="bp-reason" class="okw-input" placeholder="e.g. Supplier cost review" style="width:100%;height:36px;box-sizing:border-box;">
+                            </div>
+                            <div style="display:flex;gap:8px;padding-top:4px;">
+                                <button type="button" class="okw-btn okw-btn-primary" id="bp-bulk-calc" style="flex:1;height:36px;">Apply to Filtered</button>
+                                <button type="button" class="okw-btn okw-btn-outline" id="bp-reset" style="height:36px;">Reset</button>
+                            </div>
+                        </div>
                     </div>
                 </div>
+
+                <button type="button" class="okw-btn okw-btn-outline" id="bp-clear-sel" style="height:40px;display:none;white-space:nowrap;">Clear Selection</button>
             </div>
 
             <div style="background:var(--sheet,#fff);border:1px solid var(--edge,#e2e8f0);border-radius:12px;overflow-x:auto;">
@@ -329,10 +370,15 @@
                 btn.textContent = `Save Changes (${changed.length})`;
             }
             const tgl = document.getElementById('bp-toggle-changed');
-            if (tgl) {
-                tgl.textContent = `Changed Only (${changed.length})`;
-                tgl.className = changedOnly ? 'okw-btn okw-btn-primary' : 'okw-btn okw-btn-outline';
-            }
+            if (tgl) tgl.checked = changedOnly;
+            const tglLbl = document.getElementById('bp-toggle-changed-lbl');
+            if (tglLbl) tglLbl.textContent = `Changed Only (${changed.length})`;
+
+            const activeFilterCount = (document.getElementById('bp-cat')?.value ? 1 : 0)
+                + (document.getElementById('bp-brand')?.value ? 1 : 0)
+                + (changedOnly ? 1 : 0);
+            const fBtn = document.getElementById('bp-filter-dd-btn');
+            if (fBtn) fBtn.textContent = activeFilterCount > 0 ? `Filters (${activeFilterCount}) ▾` : 'Filters ▾';
             const kpiChanged = document.getElementById('bp-kpi-changed');
             const kpiChgCard = document.getElementById('bp-kpi-chg-card');
             if (kpiChanged) kpiChanged.textContent = String(changed.length);
@@ -357,8 +403,13 @@
             const selCount = selectedBarcodes.size;
             const bulkBtn = document.getElementById('bp-bulk-calc');
             if (bulkBtn) bulkBtn.textContent = selCount > 0 ? `Apply to Selected (${selCount})` : 'Apply to Filtered';
+            const bulkDdBtn = document.getElementById('bp-bulk-dd-btn');
+            if (bulkDdBtn) bulkDdBtn.textContent = selCount > 0 ? `Bulk Adjust (${selCount}) ▾` : 'Bulk Adjust ▾';
             const clearSelBtn = document.getElementById('bp-clear-sel');
-            if (clearSelBtn) clearSelBtn.style.display = selCount > 0 ? 'inline-flex' : 'none';
+            if (clearSelBtn) {
+                clearSelBtn.style.display = selCount > 0 ? 'inline-flex' : 'none';
+                clearSelBtn.textContent = `Clear Selection (${selCount})`;
+            }
 
             const selAll = document.getElementById('bp-select-all');
             if (selAll) {
@@ -410,12 +461,45 @@
             syncStats(list);
         }
 
+        function closeAllDropdowns() {
+            document.querySelectorAll('.bp-dd-menu').forEach((m) => { m.style.display = 'none'; });
+        }
+        function wireDropdown(btnId, menuId) {
+            const btn = document.getElementById(btnId);
+            const menu = document.getElementById(menuId);
+            if (!btn || !menu) return;
+            btn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const open = menu.style.display === 'block';
+                closeAllDropdowns();
+                menu.style.display = open ? 'none' : 'block';
+            });
+            menu.addEventListener('click', (e) => e.stopPropagation());
+        }
+        wireDropdown('bp-actions-dd-btn', 'bp-actions-dd-menu');
+        wireDropdown('bp-filter-dd-btn', 'bp-filter-dd-menu');
+        wireDropdown('bp-bulk-dd-btn', 'bp-bulk-dd-menu');
+        const actMenu = document.getElementById('bp-actions-dd-menu');
+        if (actMenu) actMenu.addEventListener('click', (e) => {
+            if (e.target.closest('button, a')) closeAllDropdowns();
+        });
+        if (window._bpDocClick) document.removeEventListener('click', window._bpDocClick);
+        window._bpDocClick = () => closeAllDropdowns();
+        document.addEventListener('click', window._bpDocClick);
+
         document.getElementById('bp-search').addEventListener('input', drawProducts);
         document.getElementById('bp-cat').addEventListener('change', drawProducts);
         document.getElementById('bp-brand').addEventListener('change', drawProducts);
-        document.getElementById('bp-toggle-changed').addEventListener('click', () => {
-            changedOnly = !changedOnly;
+        document.getElementById('bp-toggle-changed').addEventListener('change', (e) => {
+            changedOnly = e.target.checked;
             drawProducts();
+        });
+        document.getElementById('bp-clear-filters').addEventListener('click', () => {
+            document.getElementById('bp-cat').value = '';
+            document.getElementById('bp-brand').value = '';
+            changedOnly = false;
+            drawProducts();
+            closeAllDropdowns();
         });
 
         document.getElementById('bp-select-all').addEventListener('change', (e) => {
@@ -473,6 +557,7 @@
                 p.new_price = Number(Math.max(0, rounded).toFixed(2));
             });
             drawProducts();
+            closeAllDropdowns();
             OkwUI.toast(`Previewed update for ${targets.length} ${selectedBarcodes.size > 0 ? 'selected' : 'filtered'} product(s). Click Save Changes to apply.`, 'success');
         };
 
