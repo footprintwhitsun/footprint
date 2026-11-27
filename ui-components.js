@@ -1163,6 +1163,10 @@
                         if (e.target.closest('button, a, input, select, label, details, summary, [data-onclick], [onclick]')) return;
                         const row = slice[Number(tr.dataset.rowIdx)];
                         if (!row) return;
+                        if (typeof opts.onRowClick === 'function') {
+                            opts.onRowClick(row);
+                            return;
+                        }
                         const allMetaRows = columns
                             .filter(c => !/^(action|actions|inspect)$/i.test(String(c.label || '').trim()))
                             .map(c => {
@@ -1172,13 +1176,11 @@
                                 const textVal = (rawVal && typeof rawVal === 'object')
                                     ? Object.entries(rawVal).filter(([, v]) => v !== null && v !== undefined && typeof v !== 'object').map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v}`).join(' · ')
                                     : String(rawVal);
-                                return [c.label, textVal];
+                                return [c.label, textVal || '—'];
                             });
-                        toggleExpandTableRow(tr, {
+                        openPrintableRecord({
                             title: getTitle(),
-                            fields: allMetaRows,
-                            colSpan: visCols.length,
-                            onFullDetails: typeof opts.onRowClick === 'function' ? () => opts.onRowClick(row) : null
+                            metaRows: allMetaRows
                         });
                     });
                 });
@@ -1502,16 +1504,18 @@
                 const cells = Array.from(tr.querySelectorAll('td'));
                 if (!cells.length || (cells.length === 1 && Number(cells[0].getAttribute('colspan') || 1) > 1)) return;
                 const headCells = Array.from(table.querySelectorAll('thead th'));
-                const fields = headCells.map((th, idx) => {
-                    const lbl = th.textContent.replace(/[▲▼]/g, '').trim() || `Column ${idx + 1}`;
-                    const val = cells[idx] ? cells[idx].innerText.trim().replace(/\s+/g, ' ') : '';
-                    return [lbl, val];
-                });
-                const visibleCols = Math.max(1, headCells.length - hiddenIdx.size);
-                toggleExpandTableRow(tr, {
+                const fields = headCells
+                    .map((th, idx) => {
+                        const lbl = th.textContent.replace(/[▲▼]/g, '').trim();
+                        if (!lbl || /^(action|actions|inspect)$/i.test(lbl)) return null;
+                        const val = cells[idx] ? cells[idx].innerText.trim().replace(/\s+/g, ' ') : '';
+                        return [lbl, val || '—'];
+                    })
+                    .filter(Boolean);
+                if (!fields.length) return;
+                openPrintableRecord({
                     title: resolveTableDocumentTitle(),
-                    fields,
-                    colSpan: visibleCols
+                    metaRows: fields
                 });
             });
         }
