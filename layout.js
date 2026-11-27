@@ -1,6 +1,6 @@
 /* ==========================================================================
-   OKWESIWA CO LTD — Unified Shell, Topbar, Ctrl+K Search & Theme Manager
-   ========================================================================== */
+  OKWESIWA CO LTD — Unified Shell, Topbar, Ctrl+K Search & Theme Manager
+  ========================================================================== */
 (function (global) {
     'use strict';
 
@@ -57,9 +57,8 @@
         { label: 'Customer Groups', url: '/catalog-ops?tab=groups', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'layers' },
 
         // Products (immediately under Contacts)
-        { label: 'List Products', url: '/inventory?tab=stock', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'package' },
-        { label: 'Stock Report', url: '/stock-report', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'barChart' },
         { label: 'Add Product', url: '/add-product', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'shoppingBag' },
+        { label: 'Stock Report', url: '/stock-report', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'barChart' },
         { label: 'Update Price', url: '/catalog-ops?tab=prices', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'trendingUp' },
         { label: 'Print Labels', url: '/print-labels', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'tag' },
         { label: 'Barcode Generator', url: '/inventory?tab=barcodes', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'tag' },
@@ -168,6 +167,7 @@
         { label: 'Payment by Age', url: '/reports?tab=detailed&report=payment_by_age', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'clock' },
         { label: 'Activity Log', url: '/reports?tab=detailed&report=activity_log', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'activity' },
         { label: 'Price Change History', url: '/reports?tab=detailed&report=price_history', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'tag' },
+        { label: 'Warranty Report', url: '/reports?tab=detailed&report=warranty_report', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'shield' },
         { label: 'Deleted Transactions', url: '/reports?tab=detailed&report=deleted_transactions', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'fileCheck' },
 
         // Quick Reports (Items, Brands & Customers)

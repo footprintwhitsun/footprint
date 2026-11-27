@@ -1705,8 +1705,9 @@
     }
 
     async function renderWarranties() {
-        const res = await fetch('/api/warranties', { headers });
+        const res = await fetch('/api/warranties', { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
+        const warranties = Array.isArray(d.warranties) ? d.warranties : [];
         const actionsHost = document.getElementById('cat-page-actions');
         if (actionsHost) actionsHost.innerHTML = `<button type="button" class="okw-btn okw-btn-primary" id="w-open-add">+ Add Warranty</button>`;
         const panel = document.getElementById('cat-panel');
@@ -1715,33 +1716,78 @@
             columns: [
                 { key: 'name', label: 'Warranty Name' },
                 { key: 'duration', label: 'Duration', render: (v, row) => `${v} ${OkwUI.escapeHtml(row.duration_type || 'Months')}` },
-                { key: 'description', label: 'Description' },
-                { key: 'id', label: 'Actions', render: (v) => `<button type="button" class="okw-btn okw-btn-outline" data-del-war="${v}" style="height:28px;padding:0 10px;font-size:12px;">Delete</button>` }
+                { key: 'description', label: 'Description', render: (v) => esc(v || '—') },
+                {
+                    key: 'id',
+                    label: 'Actions',
+                    render: (v) => `
+                        <div style="display:inline-flex;gap:6px;">
+                            <button type="button" class="okw-btn okw-btn-outline" data-edit-war="${Number(v)}" style="height:28px;padding:0 10px;font-size:12px;">Edit</button>
+                            <button type="button" class="okw-btn okw-btn-outline" data-del-war="${Number(v)}" style="height:28px;padding:0 10px;font-size:12px;color:#b91c1c;border-color:#fecaca;">Delete</button>
+                        </div>
+                    `
+                }
             ],
-            rows: d.warranties || []
+            rows: warranties
         });
+
+        function openWarrantyModal(existing = null) {
+            const isEdit = Boolean(existing && existing.id);
+            const curUnit = existing ? (existing.duration_type || 'Months') : 'Months';
+            openSimpleModal({
+                title: isEdit ? 'Edit Warranty' : 'Add Warranty',
+                saveLabel: isEdit ? 'Save Changes' : 'Save',
+                fields: [
+                    { id: 'name', label: 'Warranty Name', placeholder: 'e.g. 1 Year Manufacturer', value: existing ? (existing.name || '') : '', required: true },
+                    { id: 'duration', label: 'Duration', type: 'number', min: 1, value: existing ? String(existing.duration || 12) : '12', required: true },
+                    {
+                        id: 'duration_type',
+                        label: 'Duration Unit',
+                        type: 'select',
+                        options: [
+                            { value: 'Days', label: 'Days', selected: curUnit === 'Days' },
+                            { value: 'Months', label: 'Months', selected: curUnit === 'Months' },
+                            { value: 'Years', label: 'Years', selected: curUnit === 'Years' }
+                        ]
+                    },
+                    { id: 'description', label: 'Description', placeholder: 'Optional terms', value: existing ? (existing.description || '') : '' }
+                ],
+                onSave: async (v) => {
+                    const url = isEdit ? `/api/warranties/${existing.id}` : '/api/warranties';
+                    const method = isEdit ? 'PUT' : 'POST';
+                    const r = await fetch(url, { method, headers, credentials: 'include', body: JSON.stringify(v) });
+                    if (r.ok) { OkwUI.toast(isEdit ? 'Warranty updated' : 'Warranty saved', 'success'); renderWarranties(); return true; }
+                    OkwUI.toast('Failed to save warranty', 'danger');
+                    return false;
+                }
+            });
+        }
+
         const addBtn = document.getElementById('w-open-add');
-        if (addBtn) addBtn.onclick = () => openSimpleModal({
-            title: 'Add Warranty',
-            fields: [
-                { id: 'name', label: 'Warranty Name', placeholder: 'e.g. 1 Year Manufacturer', required: true },
-                { id: 'duration', label: 'Duration', type: 'number', min: 1, value: '12', required: true },
-                { id: 'duration_type', label: 'Duration Unit', type: 'select', options: [{ value: 'Days', label: 'Days' }, { value: 'Months', label: 'Months', selected: true }, { value: 'Years', label: 'Years' }] },
-                { id: 'description', label: 'Description', placeholder: 'Optional terms' }
-            ],
-            onSave: async (v) => {
-                const r = await fetch('/api/warranties', { method: 'POST', headers, body: JSON.stringify(v) });
-                if (r.ok) { OkwUI.toast('Warranty saved', 'success'); renderWarranties(); return true; }
-                OkwUI.toast('Failed to save warranty', 'danger');
-                return false;
-            }
-        });
-        panel.querySelectorAll('[data-del-war]').forEach(btn => {
-            btn.onclick = async () => {
-                const r = await fetch(`/api/warranties/${btn.dataset.delWar}`, { method: 'DELETE', headers });
-                if (r.ok) { OkwUI.toast('Warranty deleted', 'success'); renderWarranties(); }
-            };
-        });
+        if (addBtn) addBtn.addEventListener('click', () => openWarrantyModal(null));
+
+        const warTblEl = document.getElementById('war-tbl');
+        if (warTblEl) {
+            warTblEl.addEventListener('click', async (e) => {
+                const editBtn = e.target.closest('[data-edit-war]');
+                if (editBtn) {
+                    e.stopPropagation();
+                    const id = Number(editBtn.getAttribute('data-edit-war'));
+                    const target = warranties.find(w => Number(w.id) === id);
+                    if (target) openWarrantyModal(target);
+                    return;
+                }
+                const delBtn = e.target.closest('[data-del-war]');
+                if (delBtn) {
+                    e.stopPropagation();
+                    const id = Number(delBtn.getAttribute('data-del-war'));
+                    if (!confirm('Delete this warranty?')) return;
+                    const r = await fetch(`/api/warranties/${id}`, { method: 'DELETE', headers, credentials: 'include' });
+                    if (r.ok) { OkwUI.toast('Warranty deleted', 'success'); renderWarranties(); }
+                    else OkwUI.toast('Failed to delete warranty', 'danger');
+                }
+            });
+        }
     }
 
     const TAB_META = {

@@ -312,6 +312,7 @@
         teller: 'Sales Representative Report',
         activity_log: 'Activity Log',
         price_history: 'Price Change History',
+        warranty_report: 'Warranty Report',
         deleted_transactions: 'Deleted Transactions',
         transactions: 'Transaction History',
         daily: 'Daily Summary',
@@ -394,6 +395,106 @@
                 host.innerHTML = "<div style=\"padding:20px;color:var(--color-text-muted);\">Loading report...</div>";
 
                 try {
+                    if (reportType === "warranty_report") {
+                        const qs = new URLSearchParams();
+                        if (dateRange.from) qs.set("startDate", dateRange.from);
+                        if (dateRange.to) qs.set("endDate", dateRange.to);
+                        const res = await fetch(`/api/warranties/report${qs.toString() ? "?" + qs.toString() : ""}`, { headers, credentials: "include" });
+                        const d = res.ok ? await res.json() : {};
+                        const s = d.summary || {};
+                        const plans = Array.isArray(d.plans) ? d.plans : [];
+                        const issued = Array.isArray(d.issued) ? d.issued : [];
+
+                        if (ctx.kpis) {
+                            ctx.kpis.innerHTML = `<div class="okw-kpi-row">${[
+                                OkwUI.kpiCard({ label: "Warranties Created", value: String(s.total_defined || 0), sub: `${s.used_warranties || 0} Used · ${s.unused_warranties || 0} Unused`, tone: "primary" }),
+                                OkwUI.kpiCard({ label: "Products Covered", value: String(s.products_covered || 0), tone: "info" }),
+                                OkwUI.kpiCard({ label: "Active Issued", value: String(s.active_issued || 0), sub: `${s.expiring_soon || 0} expiring in 30d`, tone: "success" }),
+                                OkwUI.kpiCard({ label: "Expired Warranties", value: String(s.expired_issued || 0), sub: `${s.total_issued || 0} total issued`, tone: "danger" })
+                            ].join("")}</div>`;
+                        }
+
+                        host.innerHTML = `
+                            <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                                <div style="display:inline-flex;gap:6px;background:var(--frame,#f1f5f9);padding:4px;border-radius:10px;border:1px solid var(--edge,#e2e8f0);">
+                                    <button type="button" id="wr-tab-plans" class="okw-btn okw-btn-primary" style="height:32px;padding:0 14px;font-size:12.5px;">All Warranty Plans (${plans.length})</button>
+                                    <button type="button" id="wr-tab-issued" class="okw-btn okw-btn-outline" style="height:32px;padding:0 14px;font-size:12.5px;border:none;">Issued on Sales (${issued.length})</button>
+                                </div>
+                                <a href="/catalog-ops?tab=warranties" class="okw-btn okw-btn-outline" style="height:32px;padding:0 12px;font-size:12.5px;text-decoration:none;">Manage Warranties</a>
+                            </div>
+                            <div id="wr-table-host"></div>
+                        `;
+
+                        const tblHost = host.querySelector("#wr-table-host");
+                        const btnPlans = host.querySelector("#wr-tab-plans");
+                        const btnIssued = host.querySelector("#wr-tab-issued");
+
+                        const renderPlansView = () => {
+                            btnPlans.className = "okw-btn okw-btn-primary";
+                            btnPlans.style.border = "";
+                            btnIssued.className = "okw-btn okw-btn-outline";
+                            btnIssued.style.border = "none";
+                            OkwUI.dataTable(tblHost, {
+                                columns: [
+                                    { key: "name", label: "Warranty Name" },
+                                    { key: "duration_label", label: "Duration" },
+                                    {
+                                        key: "usage_status",
+                                        label: "Status",
+                                        render: (v) => v === "Used"
+                                            ? `<span class="okw-badge okw-badge-success">Used</span>`
+                                            : `<span class="okw-badge okw-badge-neutral">Unused</span>`
+                                    },
+                                    { key: "products_assigned", label: "Products Assigned", numeric: true },
+                                    { key: "times_issued", label: "Times Issued", numeric: true },
+                                    { key: "active_count", label: "Active", numeric: true },
+                                    { key: "expired_count", label: "Expired", numeric: true },
+                                    { key: "description", label: "Terms / Description", render: (v) => esc(v || "—") }
+                                ],
+                                rows: plans,
+                                searchPlaceholder: "Search warranty name, status, or terms...",
+                                exportFilename: "okwesiwa-warranty-plans-report.xlsx",
+                                printTitle: "OKWESIWA CO LTD — Warranty Plans Report"
+                            });
+                        };
+
+                        const renderIssuedView = () => {
+                            btnIssued.className = "okw-btn okw-btn-primary";
+                            btnIssued.style.border = "";
+                            btnPlans.className = "okw-btn okw-btn-outline";
+                            btnPlans.style.border = "none";
+                            OkwUI.dataTable(tblHost, {
+                                columns: [
+                                    { key: "sale_date", label: "Sale Date", render: (v) => v ? esc(new Date(v).toLocaleDateString()) : "—" },
+                                    { key: "receipt_number", label: "Receipt #" },
+                                    { key: "customer_name", label: "Customer" },
+                                    { key: "store_location", label: "Branch" },
+                                    { key: "product_name", label: "Product" },
+                                    { key: "warranty_name", label: "Warranty" },
+                                    { key: "serial_no", label: "Serial / IMEI", render: (v) => esc(v || "—") },
+                                    { key: "expires_at", label: "Valid Until", render: (v) => v ? esc(new Date(v).toLocaleDateString()) : "—" },
+                                    {
+                                        key: "status",
+                                        label: "Coverage",
+                                        render: (v, r) => {
+                                            if (v === "Expired") return `<span class="okw-badge okw-badge-danger">Expired</span>`;
+                                            if (v === "Expiring Soon") return `<span class="okw-badge okw-badge-warning">Expiring (${r.days_left}d)</span>`;
+                                            return `<span class="okw-badge okw-badge-success">Active${r.days_left != null ? ` (${r.days_left}d)` : ""}</span>`;
+                                        }
+                                    }
+                                ],
+                                rows: issued,
+                                searchPlaceholder: "Search receipt, customer, product, warranty, or serial...",
+                                exportFilename: "okwesiwa-issued-warranties-report.xlsx",
+                                printTitle: "OKWESIWA CO LTD — Issued Warranties Report"
+                            });
+                        };
+
+                        btnPlans.addEventListener("click", renderPlansView);
+                        btnIssued.addEventListener("click", renderIssuedView);
+                        renderPlansView();
+                        return;
+                    }
                     if (reportType === "price_history") {
                         const res = await fetch("/api/prices/history", { headers, credentials: "include" });
                         const d = res.ok ? await res.json() : {};

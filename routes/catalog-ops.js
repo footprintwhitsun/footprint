@@ -917,6 +917,189 @@ router.post('/api/warranties', authenticateToken, requireRole(MANAGER_ROLES), as
     }
 });
 
+router.put('/api/warranties/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ message: 'Invalid warranty ID' });
+    const { name, duration = 12, duration_type = 'Months', description = '' } = req.body || {};
+    if (!name || !String(name).trim()) return res.status(400).json({ message: 'Warranty name is required' });
+    const cleanName = String(name).trim();
+    const dur = Math.max(1, parseInt(duration, 10) || 1);
+    const unit = ['Days', 'Months', 'Years'].includes(duration_type) ? duration_type : 'Months';
+    const cleanDesc = String(description || '').trim();
+    try {
+        const r = await pool.query(
+            `UPDATE product_warranties
+             SET name = $1, duration = $2, duration_type = $3, description = $4
+             WHERE id = $5 AND COALESCE(tenant_id, 1) = $6 RETURNING *`,
+            [cleanName, dur, unit, cleanDesc, id, tenantId]
+        );
+        if (!r.rows.length) return res.status(404).json({ message: 'Warranty not found' });
+        // Keep product default warranty metadata in sync
+        await pool.query(
+            `UPDATE products
+             SET warranty_name = $1, warranty_duration = $2, warranty_duration_type = $3
+             WHERE warranty_id = $4 AND COALESCE(tenant_id, 1) = $5`,
+            [cleanName, dur, unit, id, tenantId]
+        ).catch(() => {});
+        await logActivity(req, 'UPDATE_WARRANTY', { id, name: cleanName, duration: dur, duration_type: unit });
+        res.json({ success: true, warranty: r.rows[0] });
+    } catch (e) {
+        res.status(500).json({ message: 'Failed to update warranty' });
+    }
+});
+
+router.get('/api/warranties/report', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    const startDate = req.query.startDate && /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.startDate)) ? String(req.query.startDate) : null;
+    const endDate = req.query.endDate && /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.endDate)) ? String(req.query.endDate) : null;
+
+    try {
+        const txParams = [tenantId];
+        let txDateCond = '';
+        if (startDate) {
+            txParams.push(startDate);
+            txDateCond += ` AND created_at >= $${txParams.length}::date`;
+        }
+        if (endDate) {
+            txParams.push(endDate);
+            txDateCond += ` AND created_at < ($${txParams.length}::date + INTERVAL '1 day')`;
+        }
+
+        const [warranties, products, transactions] = await Promise.all([
+            safeQuery('SELECT * FROM product_warranties WHERE COALESCE(tenant_id, 1) = $1 ORDER BY name ASC', [tenantId]),
+            safeQuery(`SELECT id, barcode, name, warranty_id, warranty_name FROM products WHERE COALESCE(tenant_id, 1) = $1 AND deleted_at IS NULL`, [tenantId]),
+            safeQuery(`
+                SELECT id, receipt_number, created_at, customer_name, store_location, items
+                FROM transactions
+                WHERE COALESCE(tenant_id, 1) = $1
+                  AND COALESCE(is_return, FALSE) = FALSE
+                  AND COALESCE(status, '') <> 'deleted'
+                  ${txDateCond}
+                ORDER BY created_at DESC
+                LIMIT 2000
+            `, txParams)
+        ]);
+
+        const planById = new Map();
+        const planByName = new Map();
+        const planStats = warranties.map((w) => {
+            const entry = {
+                id: w.id,
+                name: w.name,
+                duration: Number(w.duration || 0),
+                duration_type: w.duration_type || 'Months',
+                duration_label: `${Number(w.duration || 0)} ${w.duration_type || 'Months'}`,
+                description: w.description || '',
+                created_at: w.created_at,
+                products_assigned: 0,
+                times_issued: 0,
+                active_count: 0,
+                expired_count: 0,
+                usage_status: 'Unused'
+            };
+            planById.set(Number(w.id), entry);
+            planByName.set(String(w.name || '').trim().toLowerCase(), entry);
+            return entry;
+        });
+
+        let productsCovered = 0;
+        for (const p of products) {
+            const match = (p.warranty_id && planById.get(Number(p.warranty_id)))
+                || (p.warranty_name && planByName.get(String(p.warranty_name).trim().toLowerCase()));
+            if (match) {
+                match.products_assigned++;
+                productsCovered++;
+            } else if (p.warranty_name) {
+                productsCovered++;
+            }
+        }
+
+        const now = Date.now();
+        const issued = [];
+        let activeIssued = 0;
+        let expiringSoon = 0;
+        let expiredIssued = 0;
+
+        for (const tx of transactions) {
+            let arr = tx.items;
+            if (typeof arr === 'string') {
+                try { arr = JSON.parse(arr); } catch (_) { arr = []; }
+            }
+            if (!Array.isArray(arr)) continue;
+            for (const it of arr) {
+                if (!it || (!it.warranty_name && !it.warranty_id && !it.warranty_expires_at)) continue;
+                const expMs = it.warranty_expires_at ? new Date(it.warranty_expires_at).getTime() : null;
+                const daysLeft = expMs && Number.isFinite(expMs) ? Math.ceil((expMs - now) / 86400000) : null;
+                let status = 'Active';
+                if (daysLeft !== null && daysLeft < 0) {
+                    status = 'Expired';
+                    expiredIssued++;
+                } else if (daysLeft !== null && daysLeft <= 30) {
+                    status = 'Expiring Soon';
+                    activeIssued++;
+                    expiringSoon++;
+                } else {
+                    activeIssued++;
+                }
+
+                const match = (it.warranty_id && planById.get(Number(it.warranty_id)))
+                    || (it.warranty_name && planByName.get(String(it.warranty_name).trim().toLowerCase()));
+                if (match) {
+                    match.times_issued += Math.max(1, Number(it.qty || 1));
+                    if (status === 'Expired') match.expired_count++;
+                    else match.active_count++;
+                }
+
+                issued.push({
+                    sale_date: tx.created_at,
+                    receipt_number: tx.receipt_number || `RCP${String(tx.id).padStart(6, '0')}`,
+                    customer_name: tx.customer_name || 'Walk-in Customer',
+                    store_location: tx.store_location || 'Main',
+                    product_name: it.name || 'Item',
+                    product_barcode: it.barcode || '',
+                    qty: Number(it.qty || 1),
+                    warranty_name: it.warranty_name || (match ? match.name : 'Warranty'),
+                    serial_no: it.serial_no || '',
+                    expires_at: it.warranty_expires_at || null,
+                    days_left: daysLeft,
+                    status
+                });
+            }
+        }
+
+        let usedWarranties = 0;
+        for (const pl of planStats) {
+            if (pl.products_assigned > 0 || pl.times_issued > 0) {
+                pl.usage_status = 'Used';
+                usedWarranties++;
+            } else {
+                pl.usage_status = 'Unused';
+            }
+        }
+
+        res.json({
+            summary: {
+                total_defined: planStats.length,
+                used_warranties: usedWarranties,
+                unused_warranties: planStats.length - usedWarranties,
+                products_covered: productsCovered,
+                total_issued: issued.length,
+                active_issued: activeIssued,
+                expiring_soon: expiringSoon,
+                expired_issued: expiredIssued
+            },
+            plans: planStats,
+            issued
+        });
+    } catch (e) {
+        console.error('Warranty report error:', e);
+        res.status(500).json({ message: 'Failed to load warranty report' });
+    }
+});
+
 router.delete('/api/warranties/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     await ensurePhase4Schema();
     const tenantId = req.user.tenant_id || 1;
