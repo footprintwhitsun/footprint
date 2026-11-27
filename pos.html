@@ -5028,13 +5028,13 @@
         const logoutBtn = document.getElementById('posSidebarLogoutBtn');
         if (!sidebar || !toggleBtn) return;
 
-        const STORAGE_KEY = 'okwesiwa_sidebar_collapsed';
+        const posSidebarKey = 'okwesiwa_sidebar_collapsed';
         const isMobile = () => window.matchMedia('(max-width: 1024px)').matches;
 
         function setDesktopCollapsed(collapsed) {
             sidebar.classList.toggle('collapsed', collapsed);
             toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-            try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (_) {}
+            try { localStorage.setItem(posSidebarKey, collapsed ? '1' : '0'); } catch (_) {}
         }
 
         function setMobileOpen(open) {
@@ -5044,7 +5044,7 @@
         }
 
         window.syncPosSidebarDefault = function () {
-            const saved = localStorage.getItem(STORAGE_KEY);
+            const saved = localStorage.getItem(posSidebarKey);
             // Match other pages: default collapsed on POS unless user explicitly expanded it
             const collapsed = saved === '0' ? false : true;
             sidebar.classList.toggle('collapsed', collapsed);
