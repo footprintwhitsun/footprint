@@ -124,34 +124,330 @@
         };
     }
 
+    const brandFilterState = { period: 'all', startDate: '', endDate: '' };
+
+    function fmtQty(v) {
+        const n = Number(v || 0);
+        if (!Number.isFinite(n)) return '0';
+        return Number.isInteger(n)
+            ? n.toLocaleString()
+            : Number(n.toFixed(3)).toLocaleString(undefined, { maximumFractionDigits: 3 });
+    }
+
+    function computeDateRange(period) {
+        const today = new Date();
+        const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const end = iso(today);
+        if (period === 'today') return { startDate: end, endDate: end };
+        if (period === '7d') {
+            const s = new Date(today); s.setDate(s.getDate() - 6);
+            return { startDate: iso(s), endDate: end };
+        }
+        if (period === '30d') {
+            const s = new Date(today); s.setDate(s.getDate() - 29);
+            return { startDate: iso(s), endDate: end };
+        }
+        if (period === 'month') {
+            return { startDate: `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-01`, endDate: end };
+        }
+        if (period === 'year') {
+            return { startDate: `${today.getFullYear()}-01-01`, endDate: end };
+        }
+        return { startDate: '', endDate: '' };
+    }
+
+    async function openBrandPurchasesModal(brandName, startDate, endDate) {
+        const backdrop = document.createElement('div');
+        backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.58);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
+        backdrop.innerHTML = `
+            <div class="okw-card" style="width:100%;max-width:960px;max-height:88vh;display:flex;flex-direction:column;padding:0;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,0.32);">
+                <div style="padding:16px 20px;border-bottom:1px solid var(--edge,#e2e8f0);display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+                    <div>
+                        <h3 style="margin:0;font-size:18px;">${esc(brandName)} — Supplier Purchases &amp; Evaluation</h3>
+                        <div id="bp-period-lbl" style="font-size:12px;color:var(--muted,#64748b);margin-top:2px;"></div>
+                    </div>
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <input type="date" id="bp-from" class="okw-input" style="height:32px;font-size:12.5px;width:138px;" value="${esc(startDate || '')}">
+                        <span style="font-size:12px;color:var(--muted,#64748b);">to</span>
+                        <input type="date" id="bp-to" class="okw-input" style="height:32px;font-size:12.5px;width:138px;" value="${esc(endDate || '')}">
+                        <button type="button" id="bp-apply" class="okw-btn okw-btn-primary" style="height:32px;padding:0 12px;font-size:12.5px;">Apply</button>
+                        <button type="button" id="bp-close" aria-label="Close" style="background:none;border:none;font-size:22px;cursor:pointer;color:var(--muted,#64748b);line-height:1;padding:0 4px;">&times;</button>
+                    </div>
+                </div>
+                <div id="bp-body" style="padding:18px 20px;overflow-y:auto;display:flex;flex-direction:column;gap:16px;">
+                    <div style="padding:30px;text-align:center;color:var(--muted,#64748b);">Loading brand purchase history...</div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(backdrop);
+
+        const close = () => backdrop.remove();
+        backdrop.querySelector('#bp-close').addEventListener('click', close);
+        backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+
+        async function loadDetail(sd, ed) {
+            const lbl = backdrop.querySelector('#bp-period-lbl');
+            lbl.textContent = (sd || ed) ? `Period: ${sd || 'Start'} → ${ed || 'Today'}` : 'Period: All Time';
+            const qs = new URLSearchParams();
+            if (sd) qs.set('startDate', sd);
+            if (ed) qs.set('endDate', ed);
+            const url = `/api/brands/${encodeURIComponent(brandName)}/purchases${qs.toString() ? '?' + qs.toString() : ''}`;
+            const body = backdrop.querySelector('#bp-body');
+            try {
+                const res = await fetch(url, { headers, credentials: 'include' });
+                const data = await res.json().catch(() => ({}));
+                const s = data.summary || {};
+                const suppliers = Array.isArray(data.suppliers) ? data.suppliers : [];
+                const purchases = Array.isArray(data.purchases) ? data.purchases : [];
+                const products = Array.isArray(data.products) ? data.products : [];
+
+                body.innerHTML = `
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;">
+                        <div style="padding:12px 14px;border:1px solid var(--edge,#e2e8f0);border-radius:10px;background:var(--frame,#f8fafc);">
+                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted,#64748b);">Purchase Spend</div>
+                            <div style="font-size:18px;font-weight:700;margin-top:4px;color:var(--brand,#273990);">${fmt(s.purchase_spend || 0)}</div>
+                            <div style="font-size:11.5px;color:var(--muted,#64748b);margin-top:2px;">${Number(s.po_count || 0)} PO${Number(s.po_count || 0) === 1 ? '' : 's'}</div>
+                        </div>
+                        <div style="padding:12px 14px;border:1px solid var(--edge,#e2e8f0);border-radius:10px;background:var(--frame,#f8fafc);">
+                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted,#64748b);">Purchased Qty</div>
+                            <div style="font-size:18px;font-weight:700;margin-top:4px;">${esc(fmtQty(s.purchased_qty || 0))}</div>
+                            <div style="font-size:11.5px;color:var(--muted,#64748b);margin-top:2px;">${Number(s.supplier_count || 0)} Supplier${Number(s.supplier_count || 0) === 1 ? '' : 's'}</div>
+                        </div>
+                        <div style="padding:12px 14px;border:1px solid var(--edge,#e2e8f0);border-radius:10px;background:var(--frame,#f8fafc);">
+                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted,#64748b);">Current Stock</div>
+                            <div style="font-size:18px;font-weight:700;margin-top:4px;">${esc(fmtQty(s.total_stock || 0))}</div>
+                            <div style="font-size:11.5px;color:var(--muted,#64748b);margin-top:2px;">${Number(s.product_count || 0)} Product${Number(s.product_count || 0) === 1 ? '' : 's'}</div>
+                        </div>
+                        <div style="padding:12px 14px;border:1px solid var(--edge,#e2e8f0);border-radius:10px;background:var(--frame,#f8fafc);">
+                            <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted,#64748b);">Stock Value (Cost)</div>
+                            <div style="font-size:18px;font-weight:700;margin-top:4px;">${fmt(s.stock_value || 0)}</div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 style="margin:0 0 8px;font-size:14px;">Linked Suppliers (${suppliers.length})</h4>
+                        ${suppliers.length ? `
+                            <div style="overflow-x:auto;border:1px solid var(--edge,#e2e8f0);border-radius:10px;">
+                                <table class="okw-table" style="width:100%;margin:0;">
+                                    <thead><tr><th>Supplier</th><th style="text-align:right;">POs</th><th style="text-align:right;">Purchased Qty</th><th style="text-align:right;">Total Spend</th><th>Last Purchase</th></tr></thead>
+                                    <tbody>
+                                        ${suppliers.map(sup => `
+                                            <tr>
+                                                <td><strong>${esc(sup.supplier_name || 'Unknown')}</strong></td>
+                                                <td style="text-align:right;">${Number(sup.po_count || 0)}</td>
+                                                <td style="text-align:right;">${esc(fmtQty(sup.purchased_qty || 0))}</td>
+                                                <td style="text-align:right;font-weight:600;">${fmt(sup.total_spend || 0)}</td>
+                                                <td>${sup.last_purchase_date ? esc(new Date(sup.last_purchase_date).toLocaleDateString()) : '—'}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ` : `<div style="padding:14px;border:1px dashed var(--edge,#e2e8f0);border-radius:10px;color:var(--muted,#64748b);font-size:13px;">No supplier purchases recorded for this brand in the selected period.</div>`}
+                    </div>
+
+                    <div>
+                        <h4 style="margin:0 0 8px;font-size:14px;">All Supplier Purchases (${purchases.length})</h4>
+                        ${purchases.length ? `
+                            <div style="overflow-x:auto;border:1px solid var(--edge,#e2e8f0);border-radius:10px;">
+                                <table class="okw-table" style="width:100%;margin:0;">
+                                    <thead><tr><th>Date</th><th>PO #</th><th>Supplier</th><th>Product</th><th style="text-align:right;">Qty</th><th style="text-align:right;">Unit Cost</th><th style="text-align:right;">Line Total</th><th>Status</th></tr></thead>
+                                    <tbody>
+                                        ${purchases.map(p => `
+                                            <tr>
+                                                <td>${p.po_date ? esc(new Date(p.po_date).toLocaleDateString()) : '—'}</td>
+                                                <td><strong>${esc(p.po_number || '')}</strong></td>
+                                                <td>${esc(p.supplier_name || 'Unknown')}</td>
+                                                <td>${esc(p.product_name || p.product_barcode || '')}</td>
+                                                <td style="text-align:right;">${esc(fmtQty(p.quantity))}</td>
+                                                <td style="text-align:right;">${fmt(p.unit_cost || 0)}</td>
+                                                <td style="text-align:right;font-weight:600;">${fmt(p.line_total || 0)}</td>
+                                                <td><span class="okw-badge okw-badge-neutral">${esc(p.status || 'Pending')}</span></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ` : `<div style="padding:14px;border:1px dashed var(--edge,#e2e8f0);border-radius:10px;color:var(--muted,#64748b);font-size:13px;">No purchase line items found for this brand in the selected period.</div>`}
+                    </div>
+
+                    <div>
+                        <h4 style="margin:0 0 8px;font-size:14px;">Products Under ${esc(brandName)} (${products.length})</h4>
+                        ${products.length ? `
+                            <div style="overflow-x:auto;border:1px solid var(--edge,#e2e8f0);border-radius:10px;">
+                                <table class="okw-table" style="width:100%;margin:0;">
+                                    <thead><tr><th>SKU / Barcode</th><th>Product</th><th>Category</th><th style="text-align:right;">Stock Qty</th><th style="text-align:right;">Cost</th><th style="text-align:right;">Selling Price</th><th style="text-align:right;">Stock Value</th></tr></thead>
+                                    <tbody>
+                                        ${products.map(pr => `
+                                            <tr>
+                                                <td style="font-family:ui-monospace,monospace;font-size:12px;">${esc(pr.barcode || '')}</td>
+                                                <td><strong>${esc(pr.name || '')}</strong></td>
+                                                <td>${esc(pr.category || '—')}</td>
+                                                <td style="text-align:right;font-weight:600;">${esc(fmtQty(pr.stock))}</td>
+                                                <td style="text-align:right;">${fmt(pr.cost_price || 0)}</td>
+                                                <td style="text-align:right;">${fmt(pr.price || 0)}</td>
+                                                <td style="text-align:right;">${fmt(pr.stock_value || 0)}</td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                        ` : `<div style="padding:14px;border:1px dashed var(--edge,#e2e8f0);border-radius:10px;color:var(--muted,#64748b);font-size:13px;">No active products assigned to this brand yet.</div>`}
+                    </div>
+                `;
+            } catch (_) {
+                body.innerHTML = `<div style="padding:24px;text-align:center;color:#b91c1c;">Failed to load brand purchase history.</div>`;
+            }
+        }
+
+        backdrop.querySelector('#bp-apply').addEventListener('click', () => {
+            loadDetail(backdrop.querySelector('#bp-from').value, backdrop.querySelector('#bp-to').value);
+        });
+        loadDetail(startDate, endDate);
+    }
+
     async function renderBrands() {
-        const res = await fetch('/api/brands', { headers });
+        const qs = new URLSearchParams();
+        if (brandFilterState.startDate) qs.set('startDate', brandFilterState.startDate);
+        if (brandFilterState.endDate) qs.set('endDate', brandFilterState.endDate);
+        const res = await fetch(`/api/brands${qs.toString() ? '?' + qs.toString() : ''}`, { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
+        const brands = Array.isArray(d.brands) ? d.brands : [];
+
         const actionsHost = document.getElementById('cat-page-actions');
         if (actionsHost) actionsHost.innerHTML = `<button type="button" class="okw-btn okw-btn-primary" id="b-open-add">+ Add Brand</button>`;
+
+        const totalStock = brands.reduce((s, b) => s + Number(b.total_stock || 0), 0);
+        const totalStockVal = brands.reduce((s, b) => s + Number(b.stock_value || 0), 0);
+        const totalSpend = brands.reduce((s, b) => s + Number(b.purchase_spend || 0), 0);
+        const totalPOs = brands.reduce((s, b) => s + Number(b.po_count || 0), 0);
+
         const panel = document.getElementById('cat-panel');
-        panel.innerHTML = `<div id="brands-tbl"></div>`;
+        panel.innerHTML = `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:14px;">
+                <div class="okw-card" style="padding:14px 16px;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted,#64748b);">Active Brands</div>
+                    <div style="font-size:22px;font-weight:700;margin-top:4px;">${brands.length}</div>
+                </div>
+                <div class="okw-card" style="padding:14px 16px;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted,#64748b);">Total Stock Qty</div>
+                    <div style="font-size:22px;font-weight:700;margin-top:4px;">${esc(fmtQty(totalStock))}</div>
+                </div>
+                <div class="okw-card" style="padding:14px 16px;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted,#64748b);">Stock Value (Cost)</div>
+                    <div style="font-size:22px;font-weight:700;margin-top:4px;">${fmt(totalStockVal)}</div>
+                </div>
+                <div class="okw-card" style="padding:14px 16px;">
+                    <div style="font-size:11px;font-weight:700;text-transform:uppercase;color:var(--muted,#64748b);">Supplier Purchase Spend</div>
+                    <div style="font-size:22px;font-weight:700;margin-top:4px;color:var(--brand,#273990);">${fmt(totalSpend)}</div>
+                    <div style="font-size:11.5px;color:var(--muted,#64748b);margin-top:2px;">${totalPOs} Purchase Order${totalPOs === 1 ? '' : 's'}</div>
+                </div>
+            </div>
+
+            <div class="okw-card" style="padding:12px 14px;margin-bottom:14px;display:flex;flex-wrap:wrap;align-items:center;gap:10px;justify-content:space-between;">
+                <div style="display:flex;flex-wrap:wrap;align-items:center;gap:8px;">
+                    <label for="bf-period" style="font-size:12.5px;font-weight:600;color:var(--muted,#64748b);">Period:</label>
+                    <select id="bf-period" class="okw-input" style="height:34px;font-size:13px;width:148px;">
+                        <option value="all"${brandFilterState.period === 'all' ? ' selected' : ''}>All Time</option>
+                        <option value="today"${brandFilterState.period === 'today' ? ' selected' : ''}>Today</option>
+                        <option value="7d"${brandFilterState.period === '7d' ? ' selected' : ''}>Last 7 Days</option>
+                        <option value="30d"${brandFilterState.period === '30d' ? ' selected' : ''}>Last 30 Days</option>
+                        <option value="month"${brandFilterState.period === 'month' ? ' selected' : ''}>This Month</option>
+                        <option value="year"${brandFilterState.period === 'year' ? ' selected' : ''}>This Year</option>
+                        <option value="custom"${brandFilterState.period === 'custom' ? ' selected' : ''}>Custom Range</option>
+                    </select>
+                    <input type="date" id="bf-from" class="okw-input" style="height:34px;font-size:13px;width:142px;" value="${esc(brandFilterState.startDate)}">
+                    <span style="font-size:12px;color:var(--muted,#64748b);">to</span>
+                    <input type="date" id="bf-to" class="okw-input" style="height:34px;font-size:13px;width:142px;" value="${esc(brandFilterState.endDate)}">
+                    <button type="button" id="bf-apply" class="okw-btn okw-btn-primary" style="height:34px;padding:0 14px;font-size:13px;">Apply</button>
+                    <button type="button" id="bf-reset" class="okw-btn okw-btn-outline" style="height:34px;padding:0 12px;font-size:13px;">Reset</button>
+                </div>
+                <span style="font-size:12px;color:var(--muted,#64748b);">Click any brand to inspect supplier purchases &amp; products</span>
+            </div>
+
+            <div id="brands-tbl"></div>
+        `;
+
         OkwUI.dataTable('#brands-tbl', {
             columns: [
-                { key: 'name', label: 'Brand' },
+                {
+                    key: 'name',
+                    label: 'Brand',
+                    render: (v) => `<button type="button" data-brand-open="${esc(v)}" style="background:none;border:none;padding:0;color:var(--brand,#273990);font-weight:700;font-size:13.5px;cursor:pointer;text-align:left;text-decoration:underline;text-underline-offset:2px;">${esc(v)}</button>`
+                },
                 { key: 'product_count', label: 'Products', numeric: true },
-                { key: 'total_stock', label: 'Stock Qty', numeric: true },
-                { key: 'stock_value', label: 'Stock Value', numeric: true, render: v => fmt(v) }
+                { key: 'total_stock', label: 'Stock Qty', numeric: true, render: (v) => esc(fmtQty(v)) },
+                { key: 'stock_value', label: 'Stock Value', numeric: true, render: (v) => fmt(v) },
+                { key: 'suppliers', label: 'Suppliers', render: (v) => v ? esc(v) : '<span style="color:var(--muted,#64748b);">—</span>' },
+                { key: 'po_count', label: 'POs', numeric: true },
+                { key: 'purchased_qty', label: 'Purchased Qty', numeric: true, render: (v) => esc(fmtQty(v)) },
+                { key: 'purchase_spend', label: 'Purchase Spend', numeric: true, render: (v) => fmt(v) },
+                {
+                    key: 'actions',
+                    label: 'Action',
+                    render: (_v, r) => `<button type="button" class="okw-btn okw-btn-outline" style="height:28px;padding:0 10px;font-size:12px;" data-brand-open="${esc(r.name)}">Purchases</button>`
+                }
             ],
-            rows: d.brands || [],
+            rows: brands,
             exportFilename: 'okwesiwa-brands.xlsx'
         });
+
+        const periodSel = document.getElementById('bf-period');
+        const fromEl = document.getElementById('bf-from');
+        const toEl = document.getElementById('bf-to');
+        if (periodSel) {
+            periodSel.addEventListener('change', () => {
+                brandFilterState.period = periodSel.value;
+                if (periodSel.value !== 'custom') {
+                    const r = computeDateRange(periodSel.value);
+                    brandFilterState.startDate = r.startDate;
+                    brandFilterState.endDate = r.endDate;
+                    renderBrands();
+                }
+            });
+        }
+        const applyBtn = document.getElementById('bf-apply');
+        if (applyBtn) {
+            applyBtn.addEventListener('click', () => {
+                brandFilterState.startDate = fromEl.value;
+                brandFilterState.endDate = toEl.value;
+                brandFilterState.period = (brandFilterState.startDate || brandFilterState.endDate) ? 'custom' : 'all';
+                renderBrands();
+            });
+        }
+        const resetBtn = document.getElementById('bf-reset');
+        if (resetBtn) {
+            resetBtn.addEventListener('click', () => {
+                brandFilterState.period = 'all';
+                brandFilterState.startDate = '';
+                brandFilterState.endDate = '';
+                renderBrands();
+            });
+        }
+
+        const brandsTblEl = document.getElementById('brands-tbl');
+        if (brandsTblEl) {
+            brandsTblEl.addEventListener('click', (e) => {
+                const btn = e.target.closest('[data-brand-open]');
+                if (btn) {
+                    e.stopPropagation();
+                    const name = btn.getAttribute('data-brand-open');
+                    if (name) openBrandPurchasesModal(name, brandFilterState.startDate, brandFilterState.endDate);
+                }
+            });
+        }
+
         const addBtn = document.getElementById('b-open-add');
-        if (addBtn) addBtn.onclick = () => openSimpleModal({
+        if (addBtn) addBtn.addEventListener('click', () => openSimpleModal({
             title: 'Add Brand',
             fields: [{ id: 'name', label: 'Brand Name', placeholder: 'e.g. Ghacem, Dangote, Coral', required: true }],
             onSave: async (v) => {
-                const r = await fetch('/api/brands', { method: 'POST', headers, body: JSON.stringify({ name: v.name }) });
+                const r = await fetch('/api/brands', { method: 'POST', headers, credentials: 'include', body: JSON.stringify({ name: v.name }) });
                 if (r.ok) { OkwUI.toast('Brand saved', 'success'); renderBrands(); return true; }
                 OkwUI.toast('Failed to save brand', 'danger');
                 return false;
             }
-        });
+        }));
     }
 
     async function renderUnits() {
@@ -178,7 +474,7 @@
                 {
                     key: 'name',
                     label: 'Name',
-                    render: (r) => {
+                    render: (_v, r) => {
                         const nm = esc(r.name || r.alt_unit || '');
                         if (r.is_multiple && r.base_unit && Number(r.factor) > 0) {
                             return `<strong>${nm}</strong> <span style="color:var(--muted,#64748b);font-size:12px;">(${esc(fmtFactor(r.factor))} ${esc(r.base_unit)})</span>`;
@@ -186,26 +482,26 @@
                         return `<strong>${nm}</strong>`;
                     }
                 },
-                { key: 'short_name', label: 'Short Name', render: (r) => esc(r.short_name || r.name || r.alt_unit || '') },
+                { key: 'short_name', label: 'Short Name', render: (_v, r) => esc(r.short_name || r.name || r.alt_unit || '') },
                 {
                     key: 'allow_decimal',
                     label: 'Allow Decimal',
-                    render: (r) => r.allow_decimal
+                    render: (_v, r) => r.allow_decimal
                         ? `<span class="okw-badge okw-badge-success">Yes</span>`
                         : `<span class="okw-badge okw-badge-neutral">No</span>`
                 },
                 {
                     key: 'base_unit',
                     label: 'Conversion / Base Unit',
-                    render: (r) => r.is_multiple
+                    render: (_v, r) => r.is_multiple
                         ? `1 ${esc(r.name || r.alt_unit)} = <strong>${esc(fmtFactor(r.factor))}</strong> ${esc(r.base_unit)}`
                         : `<span style="color:var(--muted,#64748b);">Base Unit</span>`
                 },
-                { key: 'notes', label: 'Notes', render: (r) => esc(r.notes || '—') },
+                { key: 'notes', label: 'Notes', render: (_v, r) => esc(r.notes || '—') },
                 {
                     key: 'actions',
                     label: 'Actions',
-                    render: (r) => `
+                    render: (_v, r) => `
                         <div style="display:inline-flex;gap:6px;">
                             <button type="button" class="okw-btn okw-btn-outline" style="height:28px;padding:0 10px;font-size:12px;" data-unit-edit="${Number(r.id)}">Edit</button>
                             <button type="button" class="okw-btn okw-btn-outline" style="height:28px;padding:0 10px;font-size:12px;color:#b91c1c;border-color:#fecaca;" data-unit-del="${Number(r.id)}">Delete</button>
@@ -365,23 +661,28 @@
             }
         }));
 
-        panel.addEventListener('click', async (e) => {
-            const editBtn = e.target.closest('[data-unit-edit]');
-            if (editBtn) {
-                const id = Number(editBtn.getAttribute('data-unit-edit'));
-                const target = units.find(u => Number(u.id) === id);
-                if (target) openUnitFormModal(target);
-                return;
-            }
-            const delBtn = e.target.closest('[data-unit-del]');
-            if (delBtn) {
-                const id = Number(delBtn.getAttribute('data-unit-del'));
-                if (!confirm('Delete this unit?')) return;
-                const r = await fetch(`/api/units/${id}`, { method: 'DELETE', headers, credentials: 'include' });
-                if (r.ok) { OkwUI.toast('Unit deleted', 'success'); renderUnits(); }
-                else OkwUI.toast('Failed to delete unit', 'danger');
-            }
-        });
+        const unitsTblEl = document.getElementById('units-tbl');
+        if (unitsTblEl) {
+            unitsTblEl.addEventListener('click', async (e) => {
+                const editBtn = e.target.closest('[data-unit-edit]');
+                if (editBtn) {
+                    e.stopPropagation();
+                    const id = Number(editBtn.getAttribute('data-unit-edit'));
+                    const target = units.find(u => Number(u.id) === id);
+                    if (target) openUnitFormModal(target);
+                    return;
+                }
+                const delBtn = e.target.closest('[data-unit-del]');
+                if (delBtn) {
+                    e.stopPropagation();
+                    const id = Number(delBtn.getAttribute('data-unit-del'));
+                    if (!confirm('Delete this unit?')) return;
+                    const r = await fetch(`/api/units/${id}`, { method: 'DELETE', headers, credentials: 'include' });
+                    if (r.ok) { OkwUI.toast('Unit deleted', 'success'); renderUnits(); }
+                    else OkwUI.toast('Failed to delete unit', 'danger');
+                }
+            });
+        }
     }
 
     async function renderPrices() {

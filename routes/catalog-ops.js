@@ -154,24 +154,204 @@ async function safeQuery(sql, params = []) {
     try { const r = await pool.query(sql, params); return r.rows; } catch (e) { return []; }
 }
 
-// 1. Brands
+// 1. Brands (with Supplier Purchase Evaluation & Date Filters)
 router.get('/api/brands', authenticateToken, async (req, res) => {
     await ensurePhase4Schema();
     const tenantId = req.user.tenant_id || 1;
-    const brands = await safeQuery(`
-        SELECT b.*,
-               COUNT(p.barcode)::int AS product_count,
-               COALESCE(SUM(p.stock), 0) AS total_stock,
-               COALESCE(SUM(p.stock * p.cost_price), 0) AS stock_value
-        FROM brands b
-        LEFT JOIN products p ON LOWER(COALESCE(p.brand,'')) = LOWER(b.name) AND COALESCE(p.tenant_id, 1) = $1
-        WHERE COALESCE(b.tenant_id, 1) = $1
-        GROUP BY b.id
-        ORDER BY b.name ASC
-    `, [tenantId]);
-    // Also include distinct brands from products not yet in brands table
-    const prodBrands = await safeQuery(`SELECT DISTINCT COALESCE(brand,'') AS name FROM products WHERE COALESCE(tenant_id, 1) = $1 AND COALESCE(brand,'') <> ''`, [tenantId]);
-    res.json({ brands, product_brands: prodBrands });
+    const startDate = req.query.startDate && /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.startDate)) ? String(req.query.startDate) : null;
+    const endDate = req.query.endDate && /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.endDate)) ? String(req.query.endDate) : null;
+
+    const poParams = [tenantId];
+    let poDateCond = '';
+    if (startDate) {
+        poParams.push(startDate);
+        poDateCond += ` AND po.created_at >= $${poParams.length}::date`;
+    }
+    if (endDate) {
+        poParams.push(endDate);
+        poDateCond += ` AND po.created_at < ($${poParams.length}::date + INTERVAL '1 day')`;
+    }
+
+    const [brandRows, prodBrandStats, purchaseStats] = await Promise.all([
+        safeQuery(`SELECT id, name, logo_url, created_at FROM brands WHERE COALESCE(tenant_id, 1) = $1 ORDER BY name ASC`, [tenantId]),
+        safeQuery(`
+            SELECT LOWER(TRIM(COALESCE(p.brand, ''))) AS brand_key,
+                   MAX(TRIM(COALESCE(p.brand, ''))) AS brand_name,
+                   COUNT(p.barcode)::int AS product_count,
+                   COALESCE(SUM(COALESCE(p.stock, 0)), 0) AS total_stock,
+                   COALESCE(SUM(COALESCE(p.stock, 0) * COALESCE(p.cost_price, 0)), 0) AS stock_value
+            FROM products p
+            WHERE COALESCE(p.tenant_id, 1) = $1
+              AND COALESCE(p.is_deleted, FALSE) = FALSE
+              AND TRIM(COALESCE(p.brand, '')) <> ''
+            GROUP BY LOWER(TRIM(COALESCE(p.brand, '')))
+        `, [tenantId]),
+        safeQuery(`
+            SELECT LOWER(TRIM(COALESCE(p.brand, ''))) AS brand_key,
+                   COUNT(DISTINCT po.id)::int AS po_count,
+                   COALESCE(SUM(COALESCE(poi.quantity, 0)), 0) AS purchased_qty,
+                   COALESCE(SUM(COALESCE(poi.quantity, 0) * COALESCE(poi.unit_cost, 0)), 0) AS purchase_spend,
+                   COUNT(DISTINCT po.supplier_id)::int AS supplier_count,
+                   STRING_AGG(DISTINCT NULLIF(TRIM(COALESCE(s.name, '')), ''), ', ') AS suppliers,
+                   MAX(po.created_at) AS last_purchase_date
+            FROM purchase_order_items poi
+            JOIN purchase_orders po ON po.id = poi.po_id
+            JOIN products p ON p.barcode = poi.product_barcode AND COALESCE(p.tenant_id, 1) = $1
+            LEFT JOIN suppliers s ON s.id = po.supplier_id
+            WHERE COALESCE(po.tenant_id, 1) = $1
+              AND TRIM(COALESCE(p.brand, '')) <> ''
+              ${poDateCond}
+            GROUP BY LOWER(TRIM(COALESCE(p.brand, '')))
+        `, poParams)
+    ]);
+
+    const prodMap = new Map(prodBrandStats.map(r => [r.brand_key, r]));
+    const poMap = new Map(purchaseStats.map(r => [r.brand_key, r]));
+    const mergedMap = new Map();
+
+    for (const b of brandRows) {
+        const key = String(b.name || '').trim().toLowerCase();
+        if (!key) continue;
+        const ps = prodMap.get(key) || {};
+        const pur = poMap.get(key) || {};
+        mergedMap.set(key, {
+            id: b.id,
+            name: b.name,
+            logo_url: b.logo_url || '',
+            created_at: b.created_at,
+            product_count: Number(ps.product_count || 0),
+            total_stock: Number(ps.total_stock || 0),
+            stock_value: Number(ps.stock_value || 0),
+            po_count: Number(pur.po_count || 0),
+            purchased_qty: Number(pur.purchased_qty || 0),
+            purchase_spend: Number(pur.purchase_spend || 0),
+            supplier_count: Number(pur.supplier_count || 0),
+            suppliers: pur.suppliers || '',
+            last_purchase_date: pur.last_purchase_date || null
+        });
+    }
+
+    // Include brands found on products that haven't been added to the brands table yet
+    for (const ps of prodBrandStats) {
+        if (!ps.brand_key || mergedMap.has(ps.brand_key)) continue;
+        const pur = poMap.get(ps.brand_key) || {};
+        mergedMap.set(ps.brand_key, {
+            id: null,
+            name: ps.brand_name,
+            logo_url: '',
+            created_at: null,
+            product_count: Number(ps.product_count || 0),
+            total_stock: Number(ps.total_stock || 0),
+            stock_value: Number(ps.stock_value || 0),
+            po_count: Number(pur.po_count || 0),
+            purchased_qty: Number(pur.purchased_qty || 0),
+            purchase_spend: Number(pur.purchase_spend || 0),
+            supplier_count: Number(pur.supplier_count || 0),
+            suppliers: pur.suppliers || '',
+            last_purchase_date: pur.last_purchase_date || null
+        });
+    }
+
+    const brands = Array.from(mergedMap.values()).sort((a, b) => a.name.localeCompare(b.name));
+    const prodBrands = prodBrandStats.map(r => ({ name: r.brand_name }));
+    res.json({ brands, product_brands: prodBrands, startDate, endDate });
+});
+
+router.get('/api/brands/:brandName/purchases', authenticateToken, async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    const brandName = decodeURIComponent(String(req.params.brandName || '')).trim();
+    if (!brandName) return res.status(400).json({ message: 'Brand name is required' });
+
+    const startDate = req.query.startDate && /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.startDate)) ? String(req.query.startDate) : null;
+    const endDate = req.query.endDate && /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.endDate)) ? String(req.query.endDate) : null;
+
+    const poParams = [tenantId, brandName];
+    let poDateCond = '';
+    if (startDate) {
+        poParams.push(startDate);
+        poDateCond += ` AND po.created_at >= $${poParams.length}::date`;
+    }
+    if (endDate) {
+        poParams.push(endDate);
+        poDateCond += ` AND po.created_at < ($${poParams.length}::date + INTERVAL '1 day')`;
+    }
+
+    const [products, purchases, suppliers] = await Promise.all([
+        safeQuery(`
+            SELECT p.barcode, p.name, p.category, COALESCE(p.stock, 0) AS stock,
+                   COALESCE(p.cost_price, 0) AS cost_price, COALESCE(p.price, 0) AS price,
+                   COALESCE(p.stock, 0) * COALESCE(p.cost_price, 0) AS stock_value
+            FROM products p
+            WHERE COALESCE(p.tenant_id, 1) = $1
+              AND COALESCE(p.is_deleted, FALSE) = FALSE
+              AND LOWER(TRIM(COALESCE(p.brand, ''))) = LOWER(TRIM($2))
+            ORDER BY p.name ASC
+        `, [tenantId, brandName]),
+        safeQuery(`
+            SELECT po.id AS po_id,
+                   ('PO-' || po.id) AS po_number,
+                   po.created_at AS po_date,
+                   COALESCE(po.status, 'Pending') AS status,
+                   po.supplier_id,
+                   COALESCE(s.name, 'Unknown Supplier') AS supplier_name,
+                   poi.product_barcode,
+                   p.name AS product_name,
+                   COALESCE(poi.quantity, 0) AS quantity,
+                   COALESCE(poi.unit_cost, 0) AS unit_cost,
+                   (COALESCE(poi.quantity, 0) * COALESCE(poi.unit_cost, 0)) AS line_total
+            FROM purchase_order_items poi
+            JOIN purchase_orders po ON po.id = poi.po_id
+            JOIN products p ON p.barcode = poi.product_barcode AND COALESCE(p.tenant_id, 1) = $1
+            LEFT JOIN suppliers s ON s.id = po.supplier_id
+            WHERE COALESCE(po.tenant_id, 1) = $1
+              AND LOWER(TRIM(COALESCE(p.brand, ''))) = LOWER(TRIM($2))
+              ${poDateCond}
+            ORDER BY po.created_at DESC, po.id DESC
+            LIMIT 500
+        `, poParams),
+        safeQuery(`
+            SELECT po.supplier_id,
+                   COALESCE(s.name, 'Unknown Supplier') AS supplier_name,
+                   COUNT(DISTINCT po.id)::int AS po_count,
+                   COALESCE(SUM(COALESCE(poi.quantity, 0)), 0) AS purchased_qty,
+                   COALESCE(SUM(COALESCE(poi.quantity, 0) * COALESCE(poi.unit_cost, 0)), 0) AS total_spend,
+                   MAX(po.created_at) AS last_purchase_date
+            FROM purchase_order_items poi
+            JOIN purchase_orders po ON po.id = poi.po_id
+            JOIN products p ON p.barcode = poi.product_barcode AND COALESCE(p.tenant_id, 1) = $1
+            LEFT JOIN suppliers s ON s.id = po.supplier_id
+            WHERE COALESCE(po.tenant_id, 1) = $1
+              AND LOWER(TRIM(COALESCE(p.brand, ''))) = LOWER(TRIM($2))
+              ${poDateCond}
+            GROUP BY po.supplier_id, s.name
+            ORDER BY total_spend DESC
+        `, poParams)
+    ]);
+
+    const totalStock = products.reduce((s, p) => s + Number(p.stock || 0), 0);
+    const stockValue = products.reduce((s, p) => s + Number(p.stock_value || 0), 0);
+    const purchasedQty = purchases.reduce((s, p) => s + Number(p.quantity || 0), 0);
+    const purchaseSpend = purchases.reduce((s, p) => s + Number(p.line_total || 0), 0);
+    const poIds = new Set(purchases.map(p => p.po_id));
+
+    res.json({
+        brand: brandName,
+        startDate,
+        endDate,
+        summary: {
+            product_count: products.length,
+            total_stock: totalStock,
+            stock_value: stockValue,
+            po_count: poIds.size,
+            purchased_qty: purchasedQty,
+            purchase_spend: purchaseSpend,
+            supplier_count: suppliers.length
+        },
+        suppliers,
+        purchases,
+        products
+    });
 });
 
 router.post('/api/brands', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('products', 'edit'), async (req, res) => {

@@ -4732,8 +4732,19 @@ app.get(['/transactions/all', '/api/transactions'], authenticateToken, async (re
 });
 
 // --- CATEGORIES MANAGEMENT ---
+let categoryCodeReady = false;
+async function ensureCategoryCodeColumn() {
+    if (categoryCodeReady) return;
+    const ddl = adminPool || pool;
+    try {
+        await ddl.query(`ALTER TABLE categories ADD COLUMN IF NOT EXISTS code VARCHAR(60) DEFAULT ''`);
+    } catch (_) { }
+    categoryCodeReady = true;
+}
+
 app.get('/api/categories', authenticateToken, async (req, res) => {
     try {
+        await ensureCategoryCodeColumn();
         const tenantId = req.user.tenant_id || 1;
         let query = 'SELECT * FROM categories WHERE tenant_id = $1 AND deleted_at IS NULL';
         let params = [tenantId];
@@ -4751,7 +4762,11 @@ app.get('/api/categories', authenticateToken, async (req, res) => {
 });
 
 app.post('/api/categories', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
-    const { name, description } = req.body;
+    await ensureCategoryCodeColumn();
+    const name = String(req.body.name || '').trim();
+    const code = String(req.body.code || req.body.category_code || '').trim();
+    const description = String(req.body.description || '').trim();
+    if (!name) return res.status(400).json({ message: 'Category name is required' });
     const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
     const tenantId = req.user.tenant_id || 1;
     try {
@@ -4761,20 +4776,72 @@ app.post('/api/categories', authenticateToken, requireRole(MANAGER_ROLES), async
             [name, branchId, tenantId]
         );
         if (deletedRes.rows.length > 0) {
-            await pool.query(
-                'UPDATE categories SET description = $1, deleted_at = NULL WHERE id = $2 AND tenant_id = $3',
-                [description, deletedRes.rows[0].id, tenantId]
-            );
-            await logActivity(req, 'RESTORE_CATEGORY', { name, branchId });
+            try {
+                await pool.query(
+                    'UPDATE categories SET code = $1, description = $2, deleted_at = NULL WHERE id = $3 AND tenant_id = $4',
+                    [code, description, deletedRes.rows[0].id, tenantId]
+                );
+            } catch (_) {
+                await pool.query(
+                    'UPDATE categories SET description = $1, deleted_at = NULL WHERE id = $2 AND tenant_id = $3',
+                    [description, deletedRes.rows[0].id, tenantId]
+                );
+            }
+            await logActivity(req, 'RESTORE_CATEGORY', { name, code, branchId });
             return res.json({ success: true, restored: true });
         }
-        await pool.query('INSERT INTO categories (name, description, branch_id, tenant_id) VALUES ($1, $2, $3, $4)', [name, description, branchId, tenantId]);
-        await logActivity(req, 'CREATE_CATEGORY', { name, branchId });
+        try {
+            await pool.query(
+                'INSERT INTO categories (name, code, description, branch_id, tenant_id) VALUES ($1, $2, $3, $4, $5)',
+                [name, code, description, branchId, tenantId]
+            );
+        } catch (colErr) {
+            if (colErr.code === '23505') throw colErr;
+            await pool.query(
+                'INSERT INTO categories (name, description, branch_id, tenant_id) VALUES ($1, $2, $3, $4)',
+                [name, description, branchId, tenantId]
+            );
+        }
+        await logActivity(req, 'CREATE_CATEGORY', { name, code, branchId });
         res.json({ success: true });
     } catch (err) {
         if (err.code === '23505') return res.status(409).json({ message: `Category "${name}" already exists.` });
         console.error('Error creating category:', err); 
         res.status(500).json({ message: 'Error creating category: ' + (err.message || '') });
+    }
+});
+
+app.put('/api/categories/:id', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    await ensureCategoryCodeColumn();
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ message: 'Invalid category ID' });
+    const name = String(req.body.name || '').trim();
+    const code = String(req.body.code || req.body.category_code || '').trim();
+    const description = String(req.body.description || '').trim();
+    if (!name) return res.status(400).json({ message: 'Category name is required' });
+    const tenantId = req.user.tenant_id || 1;
+    const isAdmin = ['super_admin', 'admin', 'ceo'].includes(req.user.role);
+    try {
+        let result;
+        try {
+            let q = 'UPDATE categories SET name = $1, code = $2, description = $3 WHERE id = $4 AND tenant_id = $5 AND deleted_at IS NULL';
+            const p = [name, code, description, id, tenantId];
+            if (!isAdmin && req.user.store_id) { q += ' AND branch_id = $6'; p.push(req.user.store_id); }
+            result = await pool.query(q + ' RETURNING *', p);
+        } catch (colErr) {
+            if (colErr.code === '23505') throw colErr;
+            let q = 'UPDATE categories SET name = $1, description = $2 WHERE id = $3 AND tenant_id = $4 AND deleted_at IS NULL';
+            const p = [name, description, id, tenantId];
+            if (!isAdmin && req.user.store_id) { q += ' AND branch_id = $5'; p.push(req.user.store_id); }
+            result = await pool.query(q + ' RETURNING *', p);
+        }
+        if (result.rowCount === 0) return res.status(404).json({ message: 'Category not found or access denied' });
+        await logActivity(req, 'UPDATE_CATEGORY', { id, name, code });
+        res.json({ success: true, category: result.rows[0] });
+    } catch (err) {
+        if (err.code === '23505') return res.status(409).json({ message: `Category "${name}" already exists.` });
+        console.error('Error updating category:', err);
+        res.status(500).json({ message: 'Error updating category' });
     }
 });
 

@@ -35,8 +35,10 @@
         table { width: 100%; border-collapse: collapse; }
         th { text-align: left; padding: 11px 14px; color: var(--text-secondary); font-weight: 600; font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.04em; border-bottom: 1px solid var(--border-color); background: #fafbfb; }
         td { padding: 12px 14px; border-bottom: 1px solid #f1f2f3; color: var(--text-color); font-size: 13.5px; }
-        .action-btn { width: 32px; height: 32px; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; transition: all 0.2s; margin-right: 5px; }
+        .action-btn { height: 30px; padding: 0 10px; border-radius: 6px; border: 1px solid #d1d5db; background: #fff; color: #334155; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 5px; font-size: 12.5px; font-weight: 600; transition: all 0.15s; margin-right: 6px; }
+        .action-btn:hover { border-color: var(--primary-color); color: var(--primary-color); background: #f8fafc; }
         .btn-delete { background: #fff4f4; color: #c42b1c; border: 1px solid #ffd2cf; }
+        .btn-delete:hover { background: #fee2e2; color: #991b1b; border-color: #fca5a5; }
 
         /* Modal */
         .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
@@ -97,38 +99,43 @@
             <table>
                 <thead>
                     <tr>
-                        <th>Category Name</th>
+                        <th>Category</th>
+                        <th>Category Code</th>
                         <th>Description</th>
                         <th>Created At</th>
-                        <th>Actions</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody id="categoryTable">
-                    <tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:140px;"></span></td><td><span class="okw-sk-bar" style="width:220px;"></span></td><td><span class="okw-sk-bar" style="width:96px;"></span></td><td><span class="okw-sk-bar" style="width:84px;"></span></td></tr>
-                    <tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:160px;"></span></td><td><span class="okw-sk-bar" style="width:196px;"></span></td><td><span class="okw-sk-bar" style="width:96px;"></span></td><td><span class="okw-sk-bar" style="width:84px;"></span></td></tr>
-                    <tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:128px;"></span></td><td><span class="okw-sk-bar" style="width:230px;"></span></td><td><span class="okw-sk-bar" style="width:96px;"></span></td><td><span class="okw-sk-bar" style="width:84px;"></span></td></tr>
-                    <tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:150px;"></span></td><td><span class="okw-sk-bar" style="width:208px;"></span></td><td><span class="okw-sk-bar" style="width:96px;"></span></td><td><span class="okw-sk-bar" style="width:84px;"></span></td></tr>
+                    <tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:140px;"></span></td><td><span class="okw-sk-bar" style="width:84px;"></span></td><td><span class="okw-sk-bar" style="width:200px;"></span></td><td><span class="okw-sk-bar" style="width:96px;"></span></td><td><span class="okw-sk-bar" style="width:110px;"></span></td></tr>
+                    <tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:160px;"></span></td><td><span class="okw-sk-bar" style="width:76px;"></span></td><td><span class="okw-sk-bar" style="width:180px;"></span></td><td><span class="okw-sk-bar" style="width:96px;"></span></td><td><span class="okw-sk-bar" style="width:110px;"></span></td></tr>
+                    <tr class="okw-sk-tr" aria-hidden="true"><td><span class="okw-sk-bar" style="width:128px;"></span></td><td><span class="okw-sk-bar" style="width:90px;"></span></td><td><span class="okw-sk-bar" style="width:210px;"></span></td><td><span class="okw-sk-bar" style="width:96px;"></span></td><td><span class="okw-sk-bar" style="width:110px;"></span></td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <!-- Add Category Modal -->
+    <!-- Add / Edit Category Modal -->
     <div id="categoryModal" class="modal">
         <div class="modal-content">
-            <h3>Add Category</h3>
+            <h3 id="catModalTitle" style="margin-bottom:14px;">Add Category</h3>
             <form data-onsubmit="saveCategory(event)">
+                <input type="hidden" id="catId" value="">
                 <div class="form-group">
-                    <label>Category Name</label>
-                    <input type="text" id="catName" required placeholder="e.g. Beverages">
+                    <label for="catName">Category Name *</label>
+                    <input type="text" id="catName" required placeholder="e.g. Cement & Aggregates">
                 </div>
                 <div class="form-group">
-                    <label>Description</label>
+                    <label for="catCode">Category Code</label>
+                    <input type="text" id="catCode" placeholder="e.g. CAT-001">
+                </div>
+                <div class="form-group">
+                    <label for="catDesc">Description</label>
                     <textarea id="catDesc" rows="3" placeholder="Optional description..."></textarea>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn-cancel" data-onclick="closeModal()">Cancel</button>
-                    <button type="submit" class="btn-save">Save</button>
+                    <button type="submit" class="btn-save" id="catSaveBtn">Save</button>
                 </div>
             </form>
         </div>
@@ -137,41 +144,73 @@
     <footer>© 2026 OKWESIWA CO LTD</footer>
 
     <script>
+        let categoriesCache = [];
         document.addEventListener('DOMContentLoaded', loadCategories);
+
+        function getCatHeaders(json = false) {
+            const token = localStorage.getItem('authToken');
+            const h = {};
+            if (json) h['Content-Type'] = 'application/json';
+            if (token && token !== 'null' && token !== 'undefined') h['Authorization'] = `Bearer ${token}`;
+            return h;
+        }
 
         async function loadCategories() {
             try {
-                const token = localStorage.getItem('authToken');
                 const res = await fetch('/api/categories', {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: getCatHeaders(false),
+                    credentials: 'include'
                 });
-                const categories = await res.json();
+                const categories = await res.json().catch(() => []);
+                categoriesCache = Array.isArray(categories) ? categories : [];
                 const tbody = document.getElementById('categoryTable');
                 
-                if (categories.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">No categories found. Add one to get started.</td></tr>';
+                if (categoriesCache.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:28px; color:var(--text-secondary);">No data available in table</td></tr>';
                     return;
                 }
 
-                tbody.innerHTML = categories.map(c => `
+                tbody.innerHTML = categoriesCache.map(c => `
                     <tr>
                         <td style="font-weight:600; color:var(--primary-color);">${OkwUI.escapeHtml(c.name)}</td>
-                        <td>${OkwUI.escapeHtml(c.description || '-')}</td>
-                        <td>${new Date(c.created_at).toLocaleDateString()}</td>
-                        <td>
-                            <button class="action-btn btn-delete" data-onclick="deleteCategory(${c.id})" title="Delete"><i class="fas fa-trash"></i></button>
+                        <td><span style="font-family:ui-monospace,monospace; font-size:12.5px; color:#475569;">${OkwUI.escapeHtml(c.code || '—')}</span></td>
+                        <td>${OkwUI.escapeHtml(c.description || '—')}</td>
+                        <td>${c.created_at ? new Date(c.created_at).toLocaleDateString() : '—'}</td>
+                        <td style="white-space:nowrap;">
+                            <button type="button" class="action-btn" data-cat-edit="${Number(c.id)}" title="Edit"><i class="fas fa-edit"></i> Edit</button>
+                            <button type="button" class="action-btn btn-delete" data-cat-del="${Number(c.id)}" title="Delete"><i class="fas fa-trash"></i> Delete</button>
                         </td>
                     </tr>
                 `).join('');
             } catch (e) {
                 console.error(e);
-                document.getElementById('categoryTable').innerHTML = '<tr><td colspan="4" style="text-align:center; color:red;">Error loading categories</td></tr>';
+                document.getElementById('categoryTable').innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Error loading categories</td></tr>';
             }
         }
 
-        function openModal() {
-            document.getElementById('catName').value = '';
-            document.getElementById('catDesc').value = '';
+        document.getElementById('categoryTable').addEventListener('click', (e) => {
+            const editBtn = e.target.closest('[data-cat-edit]');
+            if (editBtn) {
+                const id = Number(editBtn.getAttribute('data-cat-edit'));
+                const cat = categoriesCache.find(c => Number(c.id) === id);
+                if (cat) openModal(cat);
+                return;
+            }
+            const delBtn = e.target.closest('[data-cat-del]');
+            if (delBtn) {
+                const id = Number(delBtn.getAttribute('data-cat-del'));
+                deleteCategory(id);
+            }
+        });
+
+        function openModal(existing = null) {
+            const isEdit = Boolean(existing && existing.id);
+            document.getElementById('catModalTitle').textContent = isEdit ? 'Edit Category' : 'Add Category';
+            document.getElementById('catSaveBtn').textContent = isEdit ? 'Save Changes' : 'Save';
+            document.getElementById('catId').value = isEdit ? String(existing.id) : '';
+            document.getElementById('catName').value = isEdit ? (existing.name || '') : '';
+            document.getElementById('catCode').value = isEdit ? (existing.code || '') : '';
+            document.getElementById('catDesc').value = isEdit ? (existing.description || '') : '';
             document.getElementById('categoryModal').classList.add('active');
         }
 
@@ -181,25 +220,28 @@
 
         async function saveCategory(e) {
             e.preventDefault();
-            const name = document.getElementById('catName').value;
-            const description = document.getElementById('catDesc').value;
+            const id = document.getElementById('catId').value.trim();
+            const name = document.getElementById('catName').value.trim();
+            const code = document.getElementById('catCode').value.trim();
+            const description = document.getElementById('catDesc').value.trim();
 
             try {
-                const token = localStorage.getItem('authToken');
-                const res = await fetch('/api/categories', {
-                    method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ name, description })
+                const url = id ? `/api/categories/${id}` : '/api/categories';
+                const method = id ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method,
+                    headers: getCatHeaders(true),
+                    credentials: 'include',
+                    body: JSON.stringify({ name, code, description })
                 });
 
                 if (res.ok) {
                     closeModal();
                     loadCategories();
+                    if (window.OkwUI && OkwUI.toast) OkwUI.toast(id ? 'Category updated' : 'Category added', 'success');
                 } else {
-                    alert("Error saving category");
+                    const err = await res.json().catch(() => ({}));
+                    alert(err.message || "Error saving category");
                 }
             } catch (e) { console.error(e); }
         }
@@ -208,13 +250,14 @@
             if (!confirm("Are you sure? This will not delete products in this category.")) return;
             
             try {
-                const token = localStorage.getItem('authToken');
                 const res = await fetch(`/api/categories/${id}`, { 
                     method: 'DELETE',
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers: getCatHeaders(false),
+                    credentials: 'include'
                 });
                 if (res.ok) {
                     loadCategories();
+                    if (window.OkwUI && OkwUI.toast) OkwUI.toast('Category deleted', 'success');
                 } else {
                     alert("Error deleting category");
                 }
