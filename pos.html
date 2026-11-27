@@ -4869,7 +4869,10 @@
         // Parked orders live in the database (pos_holds) so any till can resume them.
         // localStorage is only an offline copy; entries not yet saved carry pending:true.
         function parkedAuthHeaders() {
-            return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` };
+            const t = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+            const h = { 'Content-Type': 'application/json' };
+            if (t && t !== 'null' && t !== 'undefined') h['Authorization'] = `Bearer ${t}`;
+            return h;
         }
         function saveParkedLocal() {
             localStorage.setItem('parkedOrders', JSON.stringify(parkedOrders));

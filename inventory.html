@@ -2650,17 +2650,7 @@
 
         function renderStockTable() {
             const tbody = document.getElementById('inventoryTable');
-            if (tbody && !tbody.dataset.prodRowClickBound) {
-                tbody.dataset.prodRowClickBound = '1';
-                tbody.dataset.okwExpandBound = '1';
-                tbody.addEventListener('click', (e) => {
-                    if (e.target.closest('input, button, a, select, details, summary, .okw-menu, [data-onclick]')) return;
-                    const tr = e.target.closest('tr.prod-view-row[data-prod-id]');
-                    if (tr && typeof viewProductPrintable === 'function') {
-                        viewProductPrintable(Number(tr.getAttribute('data-prod-id')));
-                    }
-                });
-            }
+            if (tbody) tbody.dataset.okwExpandBound = '1';
             tbody.innerHTML = '';
 
             const pageData = filteredStock;
@@ -4952,9 +4942,11 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
 
         async function receiveGoods(id) {
             try {
-                const token = localStorage.getItem('authToken');
+                const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+                const headers = (token && token !== 'null' && token !== 'undefined') ? { 'Authorization': `Bearer ${token}` } : {};
                 const res = await fetch(`/api/purchase-orders/${id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers,
+                    credentials: 'include'
                 });
                 if (!res.ok) throw new Error("PO not found");
                 const po = await res.json();
@@ -4967,15 +4959,15 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
                 
                 const tbody = document.getElementById('recvItemsBody');
                 tbody.innerHTML = po.items.map(item => `
-                    <tr data-barcode="${item.product_barcode}">
+                    <tr data-barcode="${OkwUI.escapeHtml(item.product_barcode)}">
                         <td style="padding:10px; border-bottom:1px solid #eee;">
-                            ${OkwUI.escapeHtml(item.name)}<br><small style="color:#666;">${item.product_barcode}</small>
+                            ${OkwUI.escapeHtml(item.name)}<br><small style="color:#666;">${OkwUI.escapeHtml(item.product_barcode)}</small>
                         </td>
                         <td style="padding:10px; text-align:center; border-bottom:1px solid #eee;">
-                            ${item.quantity}
+                            ${OkwUI.escapeHtml(item.quantity)}
                         </td>
                         <td style="padding:10px; border-bottom:1px solid #eee;">
-                            <input type="number" class="recv-qty" value="${item.quantity}" min="0" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; text-align:center;">
+                            <input type="number" class="recv-qty" value="${OkwUI.escapeHtml(item.quantity)}" min="0" step="any" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px; text-align:center;">
                         </td>
                         <td style="padding:10px; border-bottom:1px solid #eee;">
                             <input type="text" class="recv-batch" placeholder="Auto-generate if empty" style="width:100%; padding:8px; border:1px solid #ddd; border-radius:4px;">
