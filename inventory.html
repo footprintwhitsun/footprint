@@ -2703,29 +2703,102 @@
                         <td data-label="Batch Number">${batchNumber}</td>
                         <td data-label="Expiry Date">${expiryDate}</td>
                         <td data-label="Actions" style="white-space:nowrap;">
-                            <details class="okw-menu" style="display:inline-block;">
-                                <summary class="okw-btn okw-btn-outline" style="height:30px;padding:0 10px;font-size:12px;">Actions</summary>
-                                <div class="okw-menu-list" style="min-width:210px;text-align:left;z-index:90;">
-                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();printLabel('${OkwUI.escapeHtml(p.barcode)}')">Labels</button>
-                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();viewProductPrintable(${p.id})">View</button>
-                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();editProduct(${p.id})">Edit</button>
-                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();openOpeningStockModal(${p.id})">Add or edit opening stock</button>
-                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();openProductStockHistory('${OkwUI.escapeHtml(p.barcode)}')">Product stock history</button>
-                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();openVaryingPriceModal(${p.id})">Varying Quantity Price</button>
-                                    <button type="button" class="okw-menu-item" data-onclick="closeRowMenus();duplicateProduct(${p.id})">Duplicate Product</button>
-                                    <div style="border-top:1px solid var(--edge,#e2e8f0);margin:4px 0;"></div>
-                                    <button type="button" class="okw-menu-item" style="color:#b91c1c;" data-onclick="closeRowMenus();deleteProduct(${p.id})">Delete</button>
-                                </div>
-                            </details>
+                            <button type="button" class="prod-action-trigger" data-prod-menu-id="${p.id}" data-prod-barcode="${OkwUI.escapeHtml(p.barcode)}" style="display:inline-flex;align-items:center;gap:6px;height:30px;padding:0 11px;border-radius:7px;border:1px solid #cbd5e1;background:#ffffff;color:#0f172a;font-size:12px;font-weight:600;cursor:pointer;user-select:none;">Actions ▾</button>
                         </td>
                     </tr>
                 `;
             });
             tbody.innerHTML = rowsHtml;
+            bindProductActionMenuAndRowClicks(tbody);
 
             // Feed the server-computed total directly into pagination widget
             updatePagination('stock', window.serverTotalStockItems || filteredStock.length, stockPage, stockRows);
             updateLowStockKPI();
+        }
+
+        function closeProductActionMenu() {
+            const m = document.getElementById('prodFloatingActionMenu');
+            if (m) m.remove();
+        }
+
+        function openProductActionMenu(btn, id, barcode) {
+            const existing = document.getElementById('prodFloatingActionMenu');
+            const sameBtn = existing && existing.dataset.forId === String(id);
+            closeProductActionMenu();
+            if (sameBtn) return;
+
+            const menu = document.createElement('div');
+            menu.id = 'prodFloatingActionMenu';
+            menu.dataset.forId = String(id);
+            menu.setAttribute('role', 'menu');
+            menu.style.cssText = 'position:fixed;min-width:215px;background:#ffffff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 14px 32px rgba(15,23,42,0.18);z-index:9999;padding:5px;display:flex;flex-direction:column;gap:2px;';
+
+            const itemStyle = 'width:100%;text-align:left;background:transparent;border:none;padding:8px 11px;border-radius:6px;font-size:12.5px;font-weight:500;cursor:pointer;display:block;color:#0f172a;box-sizing:border-box;';
+            menu.innerHTML = `
+                <button type="button" role="menuitem" data-prod-act="labels" style="${itemStyle}">Labels</button>
+                <button type="button" role="menuitem" data-prod-act="view" style="${itemStyle}">View</button>
+                <button type="button" role="menuitem" data-prod-act="edit" style="${itemStyle}">Edit</button>
+                <button type="button" role="menuitem" data-prod-act="opening" style="${itemStyle}">Add or edit opening stock</button>
+                <button type="button" role="menuitem" data-prod-act="history" style="${itemStyle}">Product stock history</button>
+                <button type="button" role="menuitem" data-prod-act="varying" style="${itemStyle}">Varying Quantity Price</button>
+                <button type="button" role="menuitem" data-prod-act="duplicate" style="${itemStyle}">Duplicate Product</button>
+                <div style="border-top:1px solid #e2e8f0;margin:4px 0;"></div>
+                <button type="button" role="menuitem" data-prod-act="delete" style="${itemStyle}color:#b91c1c;font-weight:600;">Delete</button>
+            `;
+            document.body.appendChild(menu);
+
+            const rect = btn.getBoundingClientRect();
+            const mRect = menu.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const top = spaceBelow < mRect.height + 12 ? Math.max(8, rect.top - mRect.height - 6) : (rect.bottom + 6);
+            const left = Math.min(Math.max(8, rect.right - mRect.width), window.innerWidth - mRect.width - 8);
+            menu.style.top = top + 'px';
+            menu.style.left = left + 'px';
+
+            menu.addEventListener('click', (ev) => {
+                const actBtn = ev.target.closest('[data-prod-act]');
+                if (!actBtn) return;
+                ev.stopPropagation();
+                const act = actBtn.getAttribute('data-prod-act');
+                closeProductActionMenu();
+                if (act === 'labels') printLabel(barcode);
+                else if (act === 'view') viewProductPrintable(id);
+                else if (act === 'edit') editProduct(id);
+                else if (act === 'opening') openOpeningStockModal(id);
+                else if (act === 'history') openProductStockHistory(barcode);
+                else if (act === 'varying') openVaryingPriceModal(id);
+                else if (act === 'duplicate') duplicateProduct(id);
+                else if (act === 'delete') deleteProduct(id);
+            });
+        }
+
+        function bindProductActionMenuAndRowClicks(tbody) {
+            if (tbody && !tbody.dataset.prodEventsBound) {
+                tbody.dataset.prodEventsBound = '1';
+                tbody.dataset.okwCustomRowClick = '1';
+                tbody.addEventListener('click', (e) => {
+                    const trigger = e.target.closest('.prod-action-trigger');
+                    if (trigger) {
+                        e.stopPropagation();
+                        openProductActionMenu(trigger, Number(trigger.dataset.prodMenuId), trigger.dataset.prodBarcode || '');
+                        return;
+                    }
+                    if (e.target.closest('button, a, input, select, label, [data-label="Actions"], [data-label="Select"]')) return;
+                    const tr = e.target.closest('tr[data-prod-id]');
+                    if (tr) {
+                        closeProductActionMenu();
+                        viewProductPrintable(Number(tr.dataset.prodId));
+                    }
+                });
+            }
+            if (!window.__okwProdMenuGlobalBound) {
+                window.__okwProdMenuGlobalBound = true;
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('#prodFloatingActionMenu, .prod-action-trigger')) closeProductActionMenu();
+                });
+                document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeProductActionMenu(); });
+                window.addEventListener('scroll', closeProductActionMenu, true);
+            }
         }
 
         function updateLowStockKPI() {
