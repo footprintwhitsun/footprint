@@ -1,320 +1,327 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
-    <script src="auth-guard.js"></script>
-
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OKWESIWA CO LTD | Open Shift</title>
+    <title>Open Shift - OKWESIWA CO LTD</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
-    <style>
-        :root {
-            --primary-color: #273990; --accent-color: #f9a51a;
-            --secondary-color: #1c2b70;
-            --gray-light: #f6f6f7;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
-        body { background: var(--gray-light); min-height: 100vh; display: flex; flex-direction: column; visibility: hidden; }
-
-        /* Header */
-        header {
-            background: var(--primary-color);
-            padding: 0 25px;
-            height: 70px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            color: var(--ink, #17202A);
-        }
-        .brand { font-size: 18px; font-weight: 700; letter-spacing: 1px; font-family: 'Montserrat', sans-serif; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
-        .user-info { font-size: 14px; opacity: 0.9; }
-
-        /* Container */
-        .container {
-            max-width: 500px;
-            margin: 60px auto;
-            width: 90%;
-            background: white;
-            border-radius: 12px;
-            padding: 40px;
-            text-align: center;
-        }
-
-        h2 { color: var(--primary-color); margin-bottom: 10px; }
-        p { color: #666; margin-bottom: 30px; font-size: 14px; }
-
-        .form-group { margin-bottom: 20px; text-align: left; }
-        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 8px; }
-        .input-field {
-            width: 100%; padding: 15px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; outline: none; transition: 0.3s;
-        }
-        .input-field:focus { border-color: var(--primary-color); }
-        textarea.input-field { resize: vertical; min-height: 80px; }
-
-        .btn-open {
-            width: 100%; padding: 15px; background: var(--primary-color); color: white; border: none; border-radius: 8px;
-            font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s; margin-top: 10px;
-        }
-        .btn-open:hover { opacity: 0.9; }
-
-        /* Footer */
-        footer {
-            background: var(--primary-color);
-            padding: 8px 25px;
-            display: flex;
-            justify-content: center;
-            font-size: 12px;
-            color: white;
-            margin-top: auto;
-        }
-
-        /* Mobile Breakpoints */
-        @media (max-width: 600px) {
-            header { padding: 10px; flex-direction: column; height: auto; justify-content: center; gap: 5px; text-align: center; }
-            .brand { font-size: 14px; white-space: normal; }
-            .brand img {
-            width: auto;
-            max-width: 140px;
-            height: 36px;
-            aspect-ratio: auto;
-            border-radius: 6px;
-            object-fit: contain;
-            background: #ffffff;
-            padding: 3px 10px;
-            border: 1.5px solid rgba(249, 165, 26, 0.7);
-        }
-            .user-info { font-size: 12px; }
-        }
-        .main-content { margin-left: var(--sidebar-width); flex: 1; min-width: 0; padding: 24px 28px; box-sizing: border-box; }
-        .container { margin: 0 auto; }
-        @media (max-width: 992px) { .main-content { margin-left: 0; padding: 16px; } }
-    </style>
-    <script src="currency.js"></script>
-    <script src="telemetry-guard.js"></script>
-    <script src="instant-nav.js"></script>
-    <link rel="stylesheet" href="sidebar.css">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/currency.js"></script>
+    <script src="/telemetry-guard.js"></script>
+    <script src="/instant-nav.js"></script>
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
     <link rel="stylesheet" href="/portal-skin.css">
-    <style id="shift-face">
-        .main-content .container { max-width: 520px !important; margin: 56px auto 0 !important; padding: 0 !important; background: transparent !important; box-shadow: none !important; border: 0 !important; }
-        .container h2 { text-align: left !important; font-family: var(--font-display); font-size: 28px; font-weight: 700; margin: 0 0 6px; }
-        .container > p { text-align: left !important; color: var(--muted); font-size: 15px; margin: 0 0 6px; }
-        .shift-who { margin: 0 0 24px; font-size: 14px; color: var(--ink-2); font-weight: 600; }
-        .form-group label { font-size: 13px; font-weight: 600; color: var(--muted); }
-        #startCash { height: 72px; font-family: var(--font-display); font-size: 34px; font-weight: 600; font-variant-numeric: tabular-nums; padding: 0 20px; border-radius: 12px; }
-        .btn-open { height: 56px; border-radius: 12px !important; font-size: 17px !important; }
-        .okw-sub-footer { display: none !important; }
+    <style>
+        .os-wrap { max-width: 820px; display: flex; flex-direction: column; gap: 18px; }
+        .os-meta-grid {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .os-meta-card {
+            background: var(--sheet, #fff);
+            border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 12px;
+            padding: 14px 16px;
+        }
+        .os-meta-lbl {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted, #64748b);
+        }
+        .os-meta-val {
+            font-size: 15px;
+            font-weight: 700;
+            color: var(--ink, #0f172a);
+            margin-top: 5px;
+        }
+        .os-card {
+            background: var(--sheet, #fff);
+            border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 14px;
+            padding: 24px;
+        }
+        .os-field { display: flex; flex-direction: column; gap: 7px; margin-bottom: 18px; }
+        .os-field label { font-size: 13px; font-weight: 600; color: var(--ink-2, #334155); }
+        .os-cash-input {
+            width: 100%;
+            max-width: 360px;
+            height: 58px;
+            padding: 0 16px;
+            border: 1.5px solid var(--edge-strong, #cbd5e1);
+            border-radius: 10px;
+            font-size: 28px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--ink, #0f172a);
+            background: var(--sheet, #fff);
+            outline: none;
+            box-sizing: border-box;
+        }
+        .os-cash-input:focus, .os-textarea:focus {
+            border-color: var(--brand, #273990);
+            box-shadow: 0 0 0 3px rgba(39, 57, 144, 0.12);
+        }
+        .os-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 4px;
+        }
+        .os-chip {
+            height: 30px;
+            padding: 0 12px;
+            border: 1px solid var(--edge-strong, #cbd5e1);
+            border-radius: 999px;
+            background: var(--frame, #f8fafc);
+            color: var(--ink-2, #334155);
+            font-size: 12.5px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        .os-chip:hover {
+            border-color: var(--brand, #273990);
+            color: var(--brand, #273990);
+            background: #eff6ff;
+        }
+        .os-textarea {
+            width: 100%;
+            min-height: 88px;
+            padding: 12px 14px;
+            border: 1px solid var(--edge-strong, #cbd5e1);
+            border-radius: 10px;
+            font-family: var(--font-ui);
+            font-size: 13.5px;
+            color: var(--ink, #0f172a);
+            background: var(--sheet, #fff);
+            resize: vertical;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .os-chk {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--ink-2, #334155);
+            cursor: pointer;
+            user-select: none;
+        }
+        .os-chk input { width: 16px; height: 16px; accent-color: var(--brand, #273990); cursor: pointer; }
+        .os-actions {
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid var(--edge, #e2e8f0);
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+        }
+        .os-active-box {
+            background: var(--sheet, #fff);
+            border: 1px solid #bfdbfe;
+            border-radius: 14px;
+            padding: 32px 24px;
+            text-align: center;
+            max-width: 560px;
+        }
+        @media (max-width: 700px) { .os-meta-grid { grid-template-columns: 1fr; } }
     </style>
     <script src="/okw-events.js"></script>
 </head>
 <body>
-
     <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
     <div class="overlay" data-onclick="toggleSidebar()"></div>
 
     <div class="sidebar">
-        <div class="brand">
-            <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD">
-        </div>
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD"></div>
         <div class="nav-links"></div>
-    </div>
-
-    <div class="main-content">
-    <div class="container">
-        
-        <h2>Start Your Shift</h2>
-        <p>Count the cash in the drawer and enter it to begin sales.</p>
-        <p class="shift-who" id="shiftWho"></p>
-
-        <script>(function () { try { var u = JSON.parse(localStorage.getItem("currentUser") || "{}"); var el = document.getElementById("shiftWho"); if (el) el.textContent = [u.name, u.store_location].filter(Boolean).join(" · "); } catch (e) { } })();</script>
-        <form data-onsubmit="openShift(event)">
-            <div class="form-group">
-                <label>Opening Cash Amount</label>
-                <input type="number" id="startCash" class="input-field" placeholder="0.00" step="0.01" required>
+        <div class="user-profile">
+            <div class="user-profile-row">
+                <div class="user-avatar"><i class="fas fa-user"></i></div>
+                <div class="user-info">
+                    <div id="userName"></div>
+                    <div id="userRole"></div>
+                </div>
             </div>
-            <div class="form-group">
-                <label>Notes (Optional)</label>
-                <textarea id="notes" class="input-field" placeholder="Any notes for this shift..."></textarea>
-            </div>
-            <button type="submit" class="btn-open">Open Shift</button>
-        </form>
+            <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
     </div>
 
-    <footer class="okw-sub-footer">
-        <div>&copy; 2025 OKWESIWA CO LTD. All rights reserved.</div>
-    </footer>
-    </div>
+    <main class="main-content">
+        <div class="okw-page-header">
+            <div class="okw-page-header-text">
+                <h1 class="okw-page-title">Open Shift</h1>
+                <p class="okw-page-subtitle">Count your starting cash drawer float and open your register to begin sales.</p>
+            </div>
+            <div class="okw-page-header-actions">
+                <a href="/pos" class="okw-btn okw-btn-outline" style="text-decoration:none;"><i class="fas fa-cash-register"></i> Open POS</a>
+            </div>
+        </div>
+
+        <div id="osAlreadyOpen" class="os-active-box" style="display:none;">
+            <div style="font-size:44px;color:#15803d;margin-bottom:12px;"><i class="fas fa-check-circle"></i></div>
+            <h3 style="margin:0 0 6px;font-size:18px;color:var(--ink,#0f172a);">Your Shift is Already Open</h3>
+            <p id="osActiveSince" style="margin:0 0 18px;font-size:13.5px;color:var(--muted,#64748b);">You already have an active register shift.</p>
+            <div style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap;">
+                <a href="/pos" class="okw-btn okw-btn-primary" style="text-decoration:none;"><i class="fas fa-cash-register"></i> Continue to POS</a>
+                <a href="/close-shift" class="okw-btn okw-btn-outline" style="text-decoration:none;"><i class="fas fa-lock"></i> Close Shift</a>
+            </div>
+        </div>
+
+        <div id="osMain" class="os-wrap">
+            <section class="os-meta-grid">
+                <div class="os-meta-card">
+                    <div class="os-meta-lbl">Cashier / Staff</div>
+                    <div id="osStaffName" class="os-meta-val"><span class="okw-sk-bar" style="width:120px;height:16px;"></span></div>
+                </div>
+                <div class="os-meta-card">
+                    <div class="os-meta-lbl">Business Location</div>
+                    <div id="osBranchName" class="os-meta-val"><span class="okw-sk-bar" style="width:110px;height:16px;"></span></div>
+                </div>
+                <div class="os-meta-card">
+                    <div class="os-meta-lbl">Shift Date</div>
+                    <div id="osDateNow" class="os-meta-val">—</div>
+                </div>
+            </section>
+
+            <section class="os-card">
+                <form id="openShiftForm" novalidate>
+                    <div class="os-field">
+                        <label for="startCash">Opening Cash Amount</label>
+                        <input type="number" id="startCash" class="os-cash-input" step="0.01" min="0" placeholder="0.00" required>
+                        <div class="os-presets">
+                            <button type="button" class="os-chip" data-preset="0">0.00</button>
+                            <button type="button" class="os-chip" data-preset="100">100.00</button>
+                            <button type="button" class="os-chip" data-preset="200">200.00</button>
+                            <button type="button" class="os-chip" data-preset="500">500.00</button>
+                            <button type="button" class="os-chip" data-preset="1000">1,000.00</button>
+                        </div>
+                    </div>
+
+                    <div class="os-field" style="margin-bottom:0;">
+                        <label for="notes">Opening Notes (Optional)</label>
+                        <textarea id="notes" class="os-textarea" placeholder="Add float breakdown or handover notes for this shift..."></textarea>
+                    </div>
+
+                    <div class="os-actions">
+                        <label class="os-chk">
+                            <input type="checkbox" id="optCustomerDisplay" checked>
+                            Open Customer Display window
+                        </label>
+                        <button type="submit" id="btnOpenShift" class="okw-btn okw-btn-primary" style="height:44px;padding:0 24px;font-size:14.5px;"><i class="fas fa-play"></i> Start Shift &amp; Open POS</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </main>
 
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                const token = localStorage.getItem('authToken');
-                if (!token) {
-                    (window.top || window).location.href = '/';
-                    return;
-                }
+    (function () {
+        function authHeaders(json = false) {
+            const t = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+            const h = {};
+            if (json) h['Content-Type'] = 'application/json';
+            if (t && t !== 'null' && t !== 'undefined') h['Authorization'] = `Bearer ${t}`;
+            return h;
+        }
 
-                const response = await fetch('/api/session', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (!response.ok) {
-                    (window.top || window).location.href = '/';
+        let submitting = false;
+        document.getElementById('osDateNow').textContent = new Date().toLocaleDateString(undefined, { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' });
+
+        document.querySelectorAll('.os-chip[data-preset]').forEach((chip) => {
+            chip.addEventListener('click', () => {
+                document.getElementById('startCash').value = Number(chip.getAttribute('data-preset')).toFixed(2);
+                document.getElementById('startCash').focus();
+            });
+        });
+
+        async function bootstrap() {
+            try {
+                const res = await fetch('/api/session', { headers: authHeaders(), credentials: 'include' });
+                if (!res.ok) {
+                    (window.top || window).location.href = '/login';
                     return;
                 }
-                
-                const data = await response.json();
-                const user = data.user;
-                const userRole = user.role ? user.role.toLowerCase() : '';
-                
-                // Allow staff roles (teller/cashier, managers, CEO, super_admin)
-                if (!['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'].includes(userRole)) {
-                    (window.top || window).location.href = '/';
+                const data = await res.json();
+                const user = data.user || {};
+                const role = String(user.role || '').toLowerCase();
+                if (!['super_admin', 'ceo', 'admin', 'manager', 'store_manager', 'cashier', 'teller'].includes(role)) {
+                    (window.top || window).location.href = '/login';
                     return;
                 }
-                
-                // Update UI with user info
-                const userNameEl = document.getElementById('userName');
-                if (userNameEl) userNameEl.textContent = user.name || 'Cashier';
-                
-                // Check if shift is already open
-                const shiftCheck = await fetch('/api/shifts/active', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                
-                if (shiftCheck.ok) {
-                    const shiftData = await shiftCheck.json();
-                    if (shiftData.active) {
-                        (window.top || window).location.href = 'pos';
+                document.getElementById('osStaffName').textContent = user.name || user.username || 'Staff';
+                document.getElementById('osBranchName').textContent = user.store_location || 'Main Branch';
+
+                const shiftRes = await fetch('/api/shifts/active', { headers: authHeaders(), credentials: 'include' });
+                if (shiftRes.ok) {
+                    const sd = await shiftRes.json();
+                    if (sd.active && sd.shift) {
+                        const rawStart = sd.shift.start_time || sd.shift.opened_at;
+                        const since = rawStart && !isNaN(new Date(rawStart)) ? `Started at ${new Date(rawStart).toLocaleString()}.` : 'You already have an active register shift.';
+                        document.getElementById('osActiveSince').textContent = since;
+                        document.getElementById('osMain').style.display = 'none';
+                        document.getElementById('osAlreadyOpen').style.display = 'block';
                         return;
                     }
                 }
-                document.body.style.visibility = 'visible';
-            } catch (error) {
-                console.error('Error checking session:', error);
-                (window.top || window).location.href = '/';
+                document.getElementById('startCash').focus();
+            } catch (err) {
+                (window.top || window).location.href = '/login';
             }
-        });
+        }
 
-        async function openShift(e) {
+        document.getElementById('openShiftForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            
-            // Open Customer Display immediately to use the user gesture (prevents popup blocker)
-            const customerWindow = window.open('customer-display', 'CustomerDisplay', 'width=800,height=600,menubar=no,toolbar=no');
+            if (submitting) return;
+            const rawCash = document.getElementById('startCash').value;
+            if (rawCash === '' || Number.isNaN(parseFloat(rawCash)) || parseFloat(rawCash) < 0) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Enter a valid opening cash amount (0 or higher)', 'warning');
+                document.getElementById('startCash').focus();
+                return;
+            }
 
-            const startCash = document.getElementById('startCash').value;
-            const notes = document.getElementById('notes').value;
-            const token = localStorage.getItem('authToken');
+            submitting = true;
+            const btn = document.getElementById('btnOpenShift');
+            btn.disabled = true;
+
+            const launchDisplay = document.getElementById('optCustomerDisplay').checked;
+            const customerWindow = launchDisplay
+                ? window.open('/customer-display', 'CustomerDisplay', 'width=800,height=600,menubar=no,toolbar=no')
+                : null;
 
             try {
-                // First get the current user's session
-                const sessionRes = await fetch('/api/session', {
-                    headers: { 
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-                
-                if (!sessionRes.ok) {
-                    if (customerWindow) customerWindow.close();
-                    (window.top || window).location.href = '/';
-                    return;
-                }
-                
-                const { user } = await sessionRes.json();
-
-                // Then open the shift
                 const res = await fetch('/api/shifts/open', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ 
-                        startCash: parseFloat(startCash) || 0, 
-                        notes 
+                    headers: authHeaders(true),
+                    credentials: 'include',
+                    body: JSON.stringify({
+                        startCash: parseFloat(rawCash) || 0,
+                        notes: document.getElementById('notes').value.trim()
                     })
                 });
-
-                if (res.ok) {
-                    (window.top || window).location.href = 'pos';
-                } else {
+                if (!res.ok) {
                     if (customerWindow) customerWindow.close();
-                    const error = await res.json();
-                    alert(error.message || "Failed to open shift. Please try again.");
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.message || 'Failed to open shift');
                 }
-            } catch (err) { 
-                if (customerWindow) customerWindow.close();
-                console.error('Shift open error:', err); 
-                alert("Connection error. Please check your connection and try again."); 
+                (window.top || window).location.href = '/pos';
+            } catch (err) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast(err.message || 'Could not open shift', 'danger');
+                submitting = false;
+                btn.disabled = false;
             }
-        }
-    </script>
-
-<!-- ================== GLOBAL UX FIXES ================== -->
-<style>
-#custom-toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
-.custom-toast.show { opacity: 1; transform: translateY(0); }
-.custom-toast.error { background: #e74c3c; border-left: 4px solid #c0392b; }
-.custom-toast.success { background: #27ae60; border-left: 4px solid #2ecc71; }
-</style>
-<script>
-(function() {
-    // 1. Toast Notification Override
-    const container = document.createElement('div');
-    container.id = 'custom-toast-container';
-    document.body.appendChild(container);
-
-    window.alert = function(message) {
-        const toast = document.createElement('div');
-        toast.className = 'custom-toast';
-        if (typeof message === 'string') {
-            const msg = message.toLowerCase();
-            if (msg.includes('error') || msg.includes('fail')) toast.classList.add('error');
-            else if (msg.includes('success') || msg.includes('saved')) toast.classList.add('success');
-        }
-        toast.textContent = message;
-        container.appendChild(toast);
-        toast.offsetHeight; // trigger reflow
-        toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    };
-
-    // 2. Mobile Table Auto-Labeler
-    function applyTableDataLabels() {
-        document.querySelectorAll('.card-table').forEach(table => {
-            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-            if (headers.length === 0) return;
-            table.querySelectorAll('tbody tr').forEach(tr => {
-                tr.querySelectorAll('td').forEach((td, index) => {
-                    if (headers[index] && !td.hasAttribute('data-label')) {
-                        td.setAttribute('data-label', headers[index]);
-                    }
-                });
-            });
         });
-    }
-    /* Optimized: Global MutationObserver removed to prevent DOM thrashing */
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', applyTableDataLabels);
-    } else {
-        applyTableDataLabels();
-    }
-})();
-</script>
-<!-- ====================================================== -->
+
+        document.addEventListener('DOMContentLoaded', bootstrap);
+    })();
+    </script>
 </body>
 </html>
