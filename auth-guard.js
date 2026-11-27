@@ -100,6 +100,7 @@
         '/print-labels': ROLES.MANAGERS,
         '/stock-report': ROLES.MANAGERS,
         '/add-product': ROLES.MANAGERS,
+        '/add-purchase': ROLES.MANAGERS,
         '/reports': ROLES.MANAGERS,
         '/core-reports': ROLES.MANAGERS,
         '/all-reports': ROLES.MANAGERS,

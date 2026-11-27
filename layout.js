@@ -74,7 +74,7 @@
 
         // Purchases (immediately under Products)
         { label: 'List Purchases', url: '/inventory?tab=orders', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Purchases', icon: 'shoppingCart' },
-        { label: 'Add Purchase', url: '/inventory?tab=orders&action=new', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Purchases', icon: 'shoppingBag' },
+        { label: 'Add Purchase', url: '/add-purchase', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Purchases', icon: 'shoppingBag' },
         { label: 'List Purchase Return', url: '/inventory?tab=purchase_returns', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Purchases', icon: 'receipt' },
 
         { label: 'Pending Approvals', url: '/ceo-portal?tab=approvals-pending', roles: ['ceo', 'admin'], group: 'CEO', icon: 'clock' },

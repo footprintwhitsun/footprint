@@ -875,7 +875,7 @@
         <div id="tab-orders" class="tab-content">
             <div class="page-header">
                 <h3>Purchase Orders</h3>
-                <button class="btn-add" data-onclick="openPOModal()">Create New PO</button>
+                <a href="/add-purchase" class="btn-add" style="text-decoration:none;"><i class="fas fa-plus"></i> Add Purchase</a>
             </div>
             <div style="margin-bottom: 20px;">
                 <input type="text" id="poSearch" placeholder="Search by PO # or supplier..." data-onkeyup="filterPOs()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
@@ -4424,7 +4424,7 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
                 const supplierName = p.supplier_name || 'Unknown';
 
                 return `
-                    <tr>
+                    <tr data-onclick="viewPO(${id})" style="cursor:pointer;">
                         <td data-label="PO #">#${id}</td>
                         <td data-label="Supplier">${OkwUI.escapeHtml(supplierName)}</td>
                         <td data-label="Total">${formatCurrency(total)}</td>
@@ -4467,7 +4467,7 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
                 const statusClass = isPending ? 'stock-low' : 'stock-ok';
 
                 return `
-                    <tr>
+                    <tr data-onclick="viewPO(${id})" style="cursor:pointer;">
                         <td data-label=""><input type="checkbox" class="receiving-check" value="${id}" ${!isPending ? 'disabled' : ''}></td>
                         <td data-label="PO #">#${id}</td>
                         <td data-label="Supplier">${OkwUI.escapeHtml(supplierName)}</td>
