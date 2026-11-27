@@ -368,7 +368,10 @@
 
             <!-- 2. PURCHASE ITEMS -->
             <section class="ap-card">
-                <h2 class="ap-section-title">2. Purchase Items</h2>
+                <h2 class="ap-section-title">
+                    <span>2. Purchase Items</span>
+                    <button type="button" id="btnDeleteAllItems" class="okw-btn okw-btn-outline" style="height:32px;padding:0 12px;font-size:12.5px;color:#b91c1c;border-color:#fecaca;" disabled>Delete All</button>
+                </h2>
                 <div class="ap-search-wrap">
                     <input type="search" id="poProductSearch" class="ap-input" placeholder="Search product by name, SKU, or brand to add to this purchase..." autocomplete="off">
                     <div id="poSearchResults" class="ap-search-results"></div>
@@ -529,11 +532,33 @@
         }
 
         let suppliersList = [];
+        let branchesList = [];
         let catalogProducts = [];
         let poItems = [];
         let attachedDoc = null;
         let currentGrandTotal = 0;
         let addAnotherMode = false;
+
+        function fmtStockQty(v) {
+            const n = Number(v || 0);
+            if (!Number.isFinite(n)) return '0';
+            return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3)));
+        }
+
+        function getProductStock(prod) {
+            if (!prod) return 0;
+            const locId = Number(document.getElementById('poLocation').value || 0);
+            const br = branchesList.find(b => Number(b.id) === locId);
+            if (br && prod.stock_levels && typeof prod.stock_levels === 'object') {
+                const keys = [br.name, br.location].filter(Boolean);
+                for (const k of keys) {
+                    if (Object.prototype.hasOwnProperty.call(prod.stock_levels, k)) {
+                        return Number(prod.stock_levels[k] || 0);
+                    }
+                }
+            }
+            return Number(prod.stock || 0);
+        }
 
         document.getElementById('poDate').value = new Date().toISOString().slice(0, 10);
         document.getElementById('poPaidOn').value = localDateTimeNow();
@@ -551,6 +576,7 @@
             supSel.innerHTML = '<option value="">Select Supplier</option>' + suppliersList.map(s => `<option value="${Number(s.id)}">${esc(s.name)}</option>`).join('');
 
             const branches = Array.isArray(branchRes) ? branchRes : (branchRes.branches || []);
+            branchesList = branches;
             const locSel = document.getElementById('poLocation');
             let userStoreId = null;
             try {
@@ -642,6 +668,8 @@
 
         function renderItems() {
             const tbody = document.getElementById('poItemsBody');
+            const delAllBtn = document.getElementById('btnDeleteAllItems');
+            if (delAllBtn) delAllBtn.disabled = !poItems.length;
             if (!poItems.length) {
                 tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted,#64748b);">No items added yet. Search for a product above to add it.</td></tr>';
                 recalcTotals();
@@ -649,12 +677,16 @@
             }
             tbody.innerHTML = poItems.map((it, idx) => {
                 computeItemFields(it);
+                const prod = catalogProducts.find(p => String(p.barcode) === String(it.barcode));
+                const curStock = prod ? getProductStock(prod) : Number(it.currentStock || 0);
+                const unitLabel = it.unit || (prod && prod.selling_unit) || 'Pc(s)';
                 return `
                     <tr>
                         <td>${idx + 1}</td>
                         <td>
                             <strong>${esc(it.name)}</strong>
                             <div style="font-size:11px;color:var(--muted,#64748b);font-family:ui-monospace,monospace;">${esc(it.barcode)}</div>
+                            <div style="font-size:11.5px;color:${curStock <= 0 ? '#b91c1c' : '#475569'};margin-top:2px;">Current stock: <strong>${esc(fmtStockQty(curStock))} ${esc(unitLabel)}</strong></div>
                         </td>
                         <td class="num"><input type="number" class="ap-cell-input" step="any" min="0.001" value="${esc(it.qty)}" data-po-field="qty" data-po-idx="${idx}"></td>
                         <td class="num"><input type="number" class="ap-cell-input" step="0.01" min="0" value="${esc(Number(it.unitCostBeforeDiscount).toFixed(2))}" data-po-field="costBefore" data-po-idx="${idx}"></td>
@@ -681,6 +713,8 @@
                 const item = {
                     barcode: prod.barcode,
                     name: prod.name,
+                    unit: prod.selling_unit || 'Pc(s)',
+                    currentStock: getProductStock(prod),
                     qty: 1,
                     unitCostBeforeDiscount: cost,
                     discountPercent: 0,
@@ -826,6 +860,15 @@
         document.getElementById('poDocClear').addEventListener('click', clearDoc);
 
         document.getElementById('poSupplier').addEventListener('change', updateSupplierMeta);
+        document.getElementById('poLocation').addEventListener('change', () => {
+            if (poItems.length) renderItems();
+        });
+        document.getElementById('btnDeleteAllItems').addEventListener('click', () => {
+            if (!poItems.length) return;
+            poItems = [];
+            renderItems();
+            if (window.OkwUI && OkwUI.toast) OkwUI.toast('All purchase items removed', 'info');
+        });
         document.getElementById('btnPayFull').addEventListener('click', () => {
             document.getElementById('poPaidAmount').value = currentGrandTotal.toFixed(2);
             recalcTotals();
