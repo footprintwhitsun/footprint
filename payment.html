@@ -454,6 +454,12 @@
                 .catch(e => console.error("Error loading customers", e));
         }
 
+        const paymentDisplayChannel = new BroadcastChannel('footprint_customer_display');
+        function emitPaymentDisplay(msg) {
+            try { paymentDisplayChannel.postMessage(msg); } catch (_) { }
+            try { localStorage.setItem('footprint_cd_event', JSON.stringify({ ...msg, _ts: Date.now() })); } catch (_) { }
+        }
+
         let selectedMethod = 'cash';
 
         function selectMethod(method) {
@@ -468,6 +474,7 @@
 
             selectedMethod = method;
             console.log(`🏪 Payment method selected: ${method.toUpperCase()}`);
+            emitPaymentDisplay({ type: 'PAYMENT_SELECTED', method, total: totalDue });
             
             // UI Updates
             document.querySelectorAll('.method-btn').forEach(btn => btn.classList.remove('active'));
@@ -493,6 +500,7 @@
                 changeEl.textContent = `Due: ${formatCurrency(Math.abs(change))}`;
                 changeEl.style.color = '#c62828';
             }
+            emitPaymentDisplay({ type: 'PAYMENT_SELECTED', method: 'cash', total: totalDue, tendered, change: Math.max(0, change) });
             validatePayment();
         }
 
@@ -741,6 +749,9 @@
                 const data = await response.json();
                 if (data.success) {
                     console.log('✅ TRANSACTION FINALIZED SUCCESSFULLY with customer ID:', customerId);
+                    const tendered = selectedMethod === 'cash' ? (parseFloat(document.getElementById('amountTendered')?.value || 0) || 0) : null;
+                    const chg = (tendered !== null && tendered > totalDue) ? (tendered - totalDue) : 0;
+                    emitPaymentDisplay({ type: 'TRANSACTION_COMPLETE', method, total: totalDue, change: chg });
                 }
                 
                 window.location.href = `receipt?id=${transactionId}`;

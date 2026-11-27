@@ -311,11 +311,37 @@
         .cd-pay-chip {
             font-size: 11px;
             font-weight: 600;
-            color: rgba(255, 255, 255, 0.9);
-            background: rgba(255, 255, 255, 0.14);
+            color: rgba(255, 255, 255, 0.85);
+            background: rgba(255, 255, 255, 0.12);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            padding: 3px 9px;
+            padding: 3px 10px;
             border-radius: 999px;
+            transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+        }
+        .cd-pay-chip.active {
+            background: var(--cd-accent);
+            border-color: var(--cd-accent);
+            color: #111827;
+            font-weight: 800;
+            transform: scale(1.05);
+        }
+        .cd-pay-status {
+            margin-top: 10px;
+            padding: 8px 12px;
+            border-radius: 10px;
+            background: rgba(249, 165, 26, 0.18);
+            border: 1px solid rgba(249, 165, 26, 0.45);
+            color: #ffffff;
+            font-size: 13px;
+            font-weight: 700;
+            display: none;
+            width: 100%;
+        }
+        .cd-pay-status.show {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
         }
 
         .cd-breakdown-card {
@@ -609,10 +635,16 @@
             <div class="cd-hero-total">
                 <span class="cd-hero-label">Total to Pay</span>
                 <span class="cd-hero-amount" id="grandTotal">GH₵ 0.00</span>
-                <div class="cd-pay-methods">
-                    <span class="cd-pay-chip">Cash</span>
-                    <span class="cd-pay-chip">Mobile Money</span>
-                    <span class="cd-pay-chip">Card</span>
+                <div class="cd-pay-methods" id="payMethods">
+                    <span class="cd-pay-chip" data-pay-chip="cash">Cash</span>
+                    <span class="cd-pay-chip" data-pay-chip="momo">Mobile Money</span>
+                    <span class="cd-pay-chip" data-pay-chip="card">Card</span>
+                    <span class="cd-pay-chip" data-pay-chip="credit">Credit</span>
+                    <span class="cd-pay-chip" data-pay-chip="split">Split</span>
+                </div>
+                <div class="cd-pay-status" id="paymentStatusBanner">
+                    <span id="paymentMethodText">Paying via Cash</span>
+                    <span id="paymentChangeText"></span>
                 </div>
             </div>
 
@@ -640,7 +672,8 @@
                 <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <h2>Thank You!</h2>
-            <p>Payment received. Please collect your receipt and come again.</p>
+            <p id="thankYouSub">Payment received. Please collect your receipt and come again.</p>
+            <div id="thankYouMeta" style="margin-top:14px;font-size:15px;font-weight:700;color:#15803d;"></div>
         </div>
     </div>
 
@@ -654,7 +687,50 @@
         const itemsList = document.getElementById('itemsList');
         const idleScreen = document.getElementById('idleScreen');
         const thankYouBox = document.getElementById('thankYouBox');
+        const payBanner = document.getElementById('paymentStatusBanner');
+        const payMethodText = document.getElementById('paymentMethodText');
+        const payChangeText = document.getElementById('paymentChangeText');
         let thankYouTimer = null;
+        let thankYouActive = false;
+        let lastEventTs = 0;
+
+        const METHOD_LABELS = {
+            cash: 'Cash',
+            momo: 'Mobile Money (MoMo)',
+            card: 'Card',
+            credit: 'Account Credit',
+            split: 'Split Payment'
+        };
+
+        function clearSelectedPayment() {
+            document.querySelectorAll('[data-pay-chip]').forEach(el => el.classList.remove('active'));
+            if (payBanner) payBanner.classList.remove('show');
+            if (payChangeText) payChangeText.textContent = '';
+        }
+
+        function showPaymentSelected(data) {
+            const raw = String(data.method || '').toLowerCase();
+            if (!raw) return;
+            idleScreen.classList.add('hidden');
+            document.querySelectorAll('[data-pay-chip]').forEach(el => {
+                el.classList.toggle('active', el.getAttribute('data-pay-chip') === raw);
+            });
+            if (payMethodText) {
+                payMethodText.textContent = `Paying via ${METHOD_LABELS[raw] || raw.toUpperCase()}`;
+            }
+            if (payChangeText) {
+                if (data.tendered && Number(data.tendered) > 0) {
+                    const chg = Number(data.change || 0);
+                    payChangeText.textContent = chg > 0 ? `Change: ${money(chg)}` : `Tendered: ${money(data.tendered)}`;
+                } else {
+                    payChangeText.textContent = '';
+                }
+            }
+            if (payBanner) payBanner.classList.add('show');
+            if (data.total !== undefined && data.total !== null) {
+                document.getElementById('grandTotal').textContent = money(data.total);
+            }
+        }
 
         function updateClock() {
             const now = new Date();
@@ -710,12 +786,14 @@
 
         function updateCart(data) {
             if (!data || !Array.isArray(data.cart) || data.cart.length === 0) {
-                resetDisplay();
+                if (!thankYouActive) resetDisplay();
                 return;
             }
 
+            thankYouActive = false;
             idleScreen.classList.add('hidden');
             thankYouBox.classList.remove('active');
+            clearSelectedPayment();
             if (thankYouTimer) clearTimeout(thankYouTimer);
 
             const totalUnits = data.cart.reduce((acc, item) => acc + Number(item.qty || 0), 0);
@@ -766,9 +844,12 @@
             }
         }
 
-        function resetDisplay() {
+        function resetDisplay(force = false) {
+            if (thankYouActive && !force) return;
+            thankYouActive = false;
             idleScreen.classList.remove('hidden');
             thankYouBox.classList.remove('active');
+            clearSelectedPayment();
             itemsList.innerHTML = '';
             document.getElementById('itemCount').textContent = '0 Items';
             document.getElementById('subtotal').textContent = money(0);
@@ -778,21 +859,41 @@
             if (thankYouTimer) clearTimeout(thankYouTimer);
         }
 
-        function showThankYou() {
+        function showThankYou(data = {}) {
+            thankYouActive = true;
+            idleScreen.classList.add('hidden');
+            const m = String(data.method || '').toLowerCase();
+            const metaEl = document.getElementById('thankYouMeta');
+            if (metaEl) {
+                const bits = [];
+                if (m) bits.push(`Paid via ${METHOD_LABELS[m] || m.toUpperCase()}`);
+                if (Number(data.change || 0) > 0) bits.push(`Change: ${money(data.change)}`);
+                metaEl.textContent = bits.join(' · ');
+            }
             thankYouBox.classList.add('active');
             if (thankYouTimer) clearTimeout(thankYouTimer);
             thankYouTimer = setTimeout(() => {
-                resetDisplay();
+                resetDisplay(true);
             }, 5000);
         }
 
-        channel.onmessage = (event) => {
-            const data = event.data || {};
+        function handleDisplayMessage(data) {
+            if (!data || typeof data !== 'object') return;
+            if (data._ts && data._ts === lastEventTs) return;
+            if (data._ts) lastEventTs = data._ts;
             if (data.type === 'CART_UPDATE') updateCart(data);
+            else if (data.type === 'PAYMENT_SELECTED') showPaymentSelected(data);
             else if (data.type === 'RESET') resetDisplay();
-            else if (data.type === 'TRANSACTION_COMPLETE') showThankYou();
+            else if (data.type === 'TRANSACTION_COMPLETE') showThankYou(data);
             else if (data.type === 'CLOSE') window.close();
-        };
+        }
+
+        channel.onmessage = (event) => handleDisplayMessage(event.data);
+        window.addEventListener('storage', (e) => {
+            if (e.key === 'footprint_cd_event' && e.newValue) {
+                try { handleDisplayMessage(JSON.parse(e.newValue)); } catch (_) { }
+            }
+        });
     })();
     </script>
 </body>

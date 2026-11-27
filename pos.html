@@ -2186,6 +2186,10 @@
         let currentUser = null;
 
         const customerChannel = new BroadcastChannel('footprint_customer_display');
+        function emitCustomerDisplay(msg) {
+            try { customerChannel.postMessage(msg); } catch (_) { }
+            try { localStorage.setItem('footprint_cd_event', JSON.stringify({ ...msg, _ts: Date.now() })); } catch (_) { }
+        }
         // Will be loaded from DB
         let products = [];
 
@@ -3590,12 +3594,15 @@
             const originalTransactionId = isReturn ? cart[0].originalTransactionId : null;
 
             if (method !== 'credit') {
+                emitCustomerDisplay({ type: 'PAYMENT_SELECTED', method });
                 const actionButtons = document.querySelectorAll('.actions .btn');
                 actionButtons.forEach(btn => {
                     btn.disabled = true;
                     btn.style.opacity = '0.5';
                 });
                 notify(`Processing ${method.toUpperCase()} payment...`, "success");
+            } else {
+                emitCustomerDisplay({ type: 'PAYMENT_SELECTED', method: 'credit' });
             }
 
             if (method === 'credit') {
@@ -3727,7 +3734,7 @@
                     return;
                 }
                 if (data.success) {
-                    handlePostPayment(data.transactionId);
+                    handlePostPayment(data.transactionId, method, grandTotal);
                 } else {
                     notify(data.message || 'Error processing sale', 'error');
                     actionButtons.forEach(btn => { btn.disabled = false; btn.style.opacity = '1'; });
@@ -4231,8 +4238,9 @@
         }
 
         let lastTransactionId = null;
-        function handlePostPayment(id) {
+        function handlePostPayment(id, method = '', total = null) {
             lastTransactionId = id;
+            emitCustomerDisplay({ type: 'TRANSACTION_COMPLETE', method, total });
 
             const modal = document.getElementById('receiptPromptModal');
             const title = modal.querySelector('h3');
