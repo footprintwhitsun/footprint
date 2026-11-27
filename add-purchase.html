@@ -462,24 +462,24 @@
             <!-- 4. ADD PAYMENT -->
             <section class="ap-card">
                 <h2 class="ap-section-title">
-                    <span>4. Add Payment</span>
+                    <span>4. Add Payment <span style="font-size:12px;font-weight:500;color:var(--muted,#64748b);">(Optional — leave Amount at 0 if unpaid)</span></span>
                     <span class="ap-advance-badge">Advance Balance: <strong id="poAdvanceBalance">GH₵ 0.00</strong></span>
                 </h2>
                 <div class="ap-grid-3">
                     <div class="ap-field">
-                        <label for="poPaidAmount">Amount <span class="ap-req">*</span></label>
+                        <label for="poPaidAmount">Amount Paid Now</label>
                         <div class="ap-amount-row">
-                            <input type="number" id="poPaidAmount" class="ap-input" step="0.01" min="0" value="0" required>
+                            <input type="number" id="poPaidAmount" class="ap-input" step="0.01" min="0" value="0">
                             <button type="button" id="btnPayFull" class="okw-btn okw-btn-outline" style="height:38px;white-space:nowrap;padding:0 12px;">Pay Full</button>
                         </div>
                     </div>
                     <div class="ap-field">
-                        <label for="poPaidOn">Paid on <span class="ap-req">*</span></label>
-                        <input type="datetime-local" id="poPaidOn" class="ap-input" required>
+                        <label for="poPaidOn">Paid on</label>
+                        <input type="datetime-local" id="poPaidOn" class="ap-input">
                     </div>
                     <div class="ap-field">
-                        <label for="poPaymentMethod">Payment Method <span class="ap-req">*</span></label>
-                        <select id="poPaymentMethod" class="ap-select" required>
+                        <label for="poPaymentMethod">Payment Method</label>
+                        <select id="poPaymentMethod" class="ap-select">
                             <option value="Cash">Cash</option>
                             <option value="MoMo">Mobile Money (MoMo)</option>
                             <option value="Bank Transfer">Bank Transfer</option>
@@ -497,7 +497,7 @@
                 </div>
 
                 <div id="poPaymentDueBanner" class="ap-payment-summary">
-                    <span>Payment Due</span>
+                    <span>Payment Due <span id="poLivePayStatus" style="margin-left:8px;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:700;background:#fee2e2;color:#991b1b;">Unpaid</span></span>
                     <span id="sumPaymentDue">GH₵ 0.00</span>
                 </div>
             </section>
@@ -662,8 +662,29 @@
             document.getElementById('sumPaymentDue').textContent = money(due);
 
             const dueBanner = document.getElementById('poPaymentDueBanner');
-            if (due <= 0.005 && currentGrandTotal > 0) dueBanner.classList.add('settled');
-            else dueBanner.classList.remove('settled');
+            const statusPill = document.getElementById('poLivePayStatus');
+            if (due <= 0.005 && currentGrandTotal > 0) {
+                dueBanner.classList.add('settled');
+                if (statusPill) {
+                    statusPill.textContent = 'Paid';
+                    statusPill.style.background = '#d1fae5';
+                    statusPill.style.color = '#065f46';
+                }
+            } else if (paid > 0 && currentGrandTotal > 0) {
+                dueBanner.classList.remove('settled');
+                if (statusPill) {
+                    statusPill.textContent = 'Partial';
+                    statusPill.style.background = '#fef3c7';
+                    statusPill.style.color = '#92400e';
+                }
+            } else {
+                dueBanner.classList.remove('settled');
+                if (statusPill) {
+                    statusPill.textContent = 'Unpaid';
+                    statusPill.style.background = '#fee2e2';
+                    statusPill.style.color = '#991b1b';
+                }
+            }
         }
 
         function renderItems() {
@@ -922,6 +943,7 @@
             const taxRate = taxOpt ? Number(taxOpt.getAttribute('data-rate') || 0) : 0;
             const taxName = taxOpt ? (taxOpt.getAttribute('data-name') || '') : '';
 
+            const paidAmt = Math.max(0, Number(document.getElementById('poPaidAmount').value || 0));
             const payload = {
                 supplierId,
                 branchId: Number(branchId),
@@ -938,9 +960,9 @@
                 shippingDetails: document.getElementById('poShippingDetails').value.trim(),
                 shippingCost: Number(document.getElementById('poShipping').value || 0),
                 notes: document.getElementById('poNotes').value.trim(),
-                paidAmount: Number(document.getElementById('poPaidAmount').value || 0),
-                paidOn: document.getElementById('poPaidOn').value || null,
-                paymentMethod: document.getElementById('poPaymentMethod').value || 'Cash',
+                paidAmount: paidAmt,
+                paidOn: paidAmt > 0 ? (document.getElementById('poPaidOn').value || null) : null,
+                paymentMethod: paidAmt > 0 ? (document.getElementById('poPaymentMethod').value || 'Cash') : '',
                 paymentNote: document.getElementById('poPaymentNote').value.trim(),
                 document: attachedDoc,
                 items: validItems
