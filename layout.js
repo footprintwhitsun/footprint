@@ -874,18 +874,80 @@
         renderCal();
     }
 
+    function getTourConfigForRole(user) {
+        const rawRole = (user && user.role ? user.role : 'cashier').toLowerCase().replace(/[\s-]+/g, '_');
+        const isCompany = rawRole === 'company' || rawRole === 'business_client' || (user && user.type === 'company');
+
+        if (isCompany) {
+            return {
+                badge: 'Company Portal Tour',
+                steps: [
+                    { title: 'Welcome to Your Company Portal', body: 'Manage your proforma invoices, quick sales, company transactions, and tax records from one dedicated workspace.', selector: '.sidebar' },
+                    { title: 'Proforma Invoices & Quick Sale', body: 'Use the Company menu to create and manage Proforma Invoices or process Quick Sales for your business account.', selector: '.nav-group[data-group="Company"]' },
+                    { title: 'Company Transactions & Tax', body: 'Review your full company transaction history and keep track of tax filings and summaries under Company Tax.', selector: 'a[href="/company-portal?tab=tax-management"]' },
+                    { title: 'Quick Tools & Profile', body: 'Click "+" in the top bar for your Business Calendar, To-Do list, or to replay this tour anytime. Update company details under Company Profile.', selector: '#okw-plus-btn' }
+                ]
+            };
+        }
+
+        if (rawRole === 'cashier' || rawRole === 'teller') {
+            return {
+                badge: 'Cashier Portal Tour',
+                steps: [
+                    { title: 'Welcome to Your Cashier Portal', body: 'Your streamlined 5-item till menu keeps POS checkout, shift controls, transactions, and customers right at your fingertips.', selector: '.sidebar, #posCashierSidebar' },
+                    { title: 'POS Checkout', body: 'Open POS to scan barcodes or search products, switch Selling Price Groups (like Wholesale), park sales, and print customer receipts.', selector: 'a[href="/pos"]' },
+                    { title: 'Open & Close Shift', body: 'Record your opening cash float in Open Shift before selling, and reconcile expected vs. counted cash in Close Shift at the end of your shift.', selector: 'a[href="/open-shift"]' },
+                    { title: 'Transactions & Receipts', body: 'View your branch sales history, look up receipts by their short receipt number (e.g. RCP000142), and reprint receipts whenever needed.', selector: 'a[href="/transactions"]' },
+                    { title: 'Customers & Quick Tools', body: 'Look up or add customer profiles in Customers, and use the top bar to switch Light/Dark mode, check notifications, or replay this tour.', selector: 'a[href="/customers"]' }
+                ]
+            };
+        }
+
+        if (rawRole === 'super_admin' || rawRole === 'super_profile' || rawRole === 'admin' || rawRole === 'ceo') {
+            const label = (rawRole === 'ceo') ? 'CEO Portal Tour' : 'Super Admin Tour';
+            return {
+                badge: label,
+                steps: [
+                    { title: 'Welcome to the Executive & Admin Portal', body: 'You have full oversight across all branches, approvals, financials, user roles, and security controls from one command center.', selector: '.sidebar' },
+                    { title: 'Approvals, Branches & Performance', body: 'Review pending credit approvals, inspect supply chain bottlenecks, and compare branch revenue and performance in real time.', selector: '.nav-group[data-group="CEO"]' },
+                    { title: 'Users & Role Permissions', body: 'Onboard staff, assign branches, suspend or activate accounts, and control granular role access under User Management.', selector: '.nav-group[data-group="User Management"]' },
+                    { title: 'Instant Search (Ctrl+K & Sidebar)', body: 'Press Ctrl+K (or use "Find page..." in the sidebar) to jump straight to any module, branch view, or report across the system.', selector: '#okw-cmd-trigger' },
+                    { title: 'Reports, Audit Logs & Exports', body: 'Run Profit/Loss, Z Reports, Tax Reports, Price Change History, Activity Logs, and Deleted Transactions with CSV, Excel, Print, and PDF exports.', selector: '.nav-group[data-group="Reports"]' },
+                    { title: 'Settings, Backups & Quick Tools (+)', body: 'Configure store locations, tax rates, receipt printers, and system backups under Settings, or click "+" for Calendar, To-Do tasks, and this tour.', selector: '.nav-group[data-group="Settings"]' }
+                ]
+            };
+        }
+
+        if (rawRole === 'storekeeper' || rawRole === 'driver') {
+            return {
+                badge: rawRole === 'driver' ? 'Driver Portal Tour' : 'Storekeeper Portal Tour',
+                steps: [
+                    { title: 'Welcome to Your Operations Portal', body: 'Track assigned deliveries, dispatch schedules, and physical stock counts cleanly from one focused workspace.', selector: '.sidebar' },
+                    { title: 'Deliveries & Stock Counts', body: 'Open Deliveries & Counts to view pending deliveries, confirm dispatches, and submit accurate stock counts for your branch.', selector: 'a[href="/operations"]' },
+                    { title: 'Quick Tools & Profile', body: 'Use the top bar "+" menu for Calendar and To-Do tasks, switch Light/Dark mode, or manage your Profile anytime.', selector: '#okw-plus-btn' }
+                ]
+            };
+        }
+
+        // Default: Store Manager / Manager / Custom Back-Office Role
+        return {
+            badge: 'Store Manager Tour',
+            steps: [
+                { title: 'Welcome to Your Store Manager Portal', body: 'Run your branch’s daily sales, inventory, pricing, expenses, staff, and reports from one organized workspace.', selector: '.sidebar' },
+                { title: 'Instant Search (Sidebar & Ctrl+K)', body: 'Use "Find page..." in the sidebar or press Ctrl+K from any screen to jump straight to Z Report, Suppliers, Drafts, or Stock Report.', selector: '#okw-cmd-trigger' },
+                { title: 'Sales, POS, Drafts & Quotations', body: 'Open Sales for POS checkout, All Sales, Sale Returns, Lay-aways, Quotations, Drafts, Discounts, and Promotions.', selector: '.nav-group[data-group="Sales"]' },
+                { title: 'Products, Pricing & Opening Stock', body: 'Add products, adjust prices, configure Selling Price Groups, print barcode labels, and bulk-import products or branch opening stock.', selector: '.nav-group[data-group="Products"]' },
+                { title: 'Inventory, Purchasing & Transfers', body: 'Manage Purchase Orders, Goods Receiving, Stock Adjustments, and inter-branch Stock Transfers under Inventory.', selector: '.nav-group[data-group="Inventory"]' },
+                { title: 'Reports, Filters & Quick Tools (+)', body: 'Every report includes KPIs, Search, Filters ▾, and Export ▾ (CSV, Excel, Print, PDF). Click "+" anytime for Calendar, To-Do tasks, or to replay this tour.', selector: '.nav-group[data-group="Reports"]' }
+            ]
+        };
+    }
+
     function startApplicationTour() {
         const prev = document.getElementById('okw-app-tour');
         if (prev) prev.remove();
-        const steps = [
-            { title: 'Welcome to Your Store Portal', body: 'This quick tour shows you where everything lives so you can run sales, stock, expenses, and reports effortlessly.', selector: '.sidebar' },
-            { title: 'Instant Sidebar Search', body: 'Use "Find page..." at the top of the sidebar to jump straight to any screen — type "z report", "suppliers", "drafts", or "payroll" and press Enter.', selector: '#okw-sidebar-search' },
-            { title: 'Global Quick Search (Ctrl+K)', body: 'Press Ctrl+K (or click Search in the top bar) from any page to jump across modules instantly.', selector: '#okw-cmd-trigger' },
-            { title: 'Quick Tools (+ Menu)', body: 'Click the "+" button anytime to open your Business Calendar, manage To-Do tasks, or replay this Application Tour.', selector: '#okw-plus-btn' },
-            { title: 'Sales, POS & Drafts', body: 'Open Sales in the sidebar for POS checkout, All Sales, Quotations, and Drafts (where you can Edit, Print, Delete, or send a Draft straight to POS).', selector: '.nav-group[data-group="Sales"]' },
-            { title: 'Inventory, Suppliers & Contacts', body: 'Manage Current Stock, Purchase Orders, Adjustments, Transfers, Suppliers, Customers, and Customer Groups — click any row for a printable form or click any column header to sort.', selector: '.nav-group[data-group="Inventory"]' },
-            { title: 'Reports, Filters & Export', body: 'Every report puts KPIs at the top, Search on the left, and Filters ▾ + Export ▾ (CSV, Excel, Print, PDF) cleanly on the right.', selector: '.nav-group[data-group="Reports"]' }
-        ];
+        const user = getCurrentUser();
+        const { badge, steps } = getTourConfigForRole(user);
         let idx = 0;
         const overlay = document.createElement('div');
         overlay.id = 'okw-app-tour';
@@ -900,6 +962,16 @@
                 highlighted = null;
             }
         }
+        function closeTour() {
+            clearHighlight();
+            document.removeEventListener('keydown', onKey);
+            overlay.remove();
+        }
+        function onKey(e) {
+            if (e.key === 'Escape') closeTour();
+        }
+        document.addEventListener('keydown', onKey);
+
         function renderStep() {
             clearHighlight();
             const s = steps[idx];
@@ -912,7 +984,7 @@
             }
             overlay.innerHTML = `
                 <div class="okw-card" style="width:100%;max-width:460px;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,0.35);">
-                    <div style="font-size:11.5px;font-weight:700;text-transform:uppercase;color:#F9A51A;letter-spacing:0.05em;">Step ${idx + 1} of ${steps.length}</div>
+                    <div style="font-size:11.5px;font-weight:700;text-transform:uppercase;color:#F9A51A;letter-spacing:0.05em;">${badge} · Step ${idx + 1} of ${steps.length}</div>
                     <h3 style="margin:6px 0 8px;font-size:18px;">${s.title}</h3>
                     <p style="margin:0 0 18px;font-size:13.5px;line-height:1.55;color:var(--ink-2,#334155);">${s.body}</p>
                     <div style="display:flex;justify-content:space-between;align-items:center;">
@@ -923,16 +995,17 @@
                         </div>
                     </div>
                 </div>`;
-            overlay.querySelector('#tour-skip').onclick = () => { clearHighlight(); overlay.remove(); };
+            overlay.querySelector('#tour-skip').onclick = closeTour;
             const prevBtn = overlay.querySelector('#tour-prev');
             if (prevBtn) prevBtn.onclick = () => { idx--; renderStep(); };
             overlay.querySelector('#tour-next').onclick = () => {
-                if (idx >= steps.length - 1) { clearHighlight(); overlay.remove(); }
+                if (idx >= steps.length - 1) closeTour();
                 else { idx++; renderStep(); }
             };
         }
         renderStep();
     }
+    global.startApplicationTour = startApplicationTour;
 
     function setupQuickToolsDropdown(topbar) {
         const btn = topbar.querySelector('#okw-plus-btn');
