@@ -1,425 +1,353 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OKWESIWA CO LTD | Close Shift</title>
+    <title>Close Shift - OKWESIWA CO LTD</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
-    <script src="currency.js"></script>
-    <script src="telemetry-guard.js"></script>
-    <script src="instant-nav.js"></script>
-    <script src="auth-guard.js"></script>
-    <style>
-        :root {
-            --primary-color: #273990; --accent-color: #f9a51a;
-            --secondary-color: #1c2b70;
-            --gray-light: #f6f6f7;
-            --success-color: #27ae60;
-        }
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
-        body { background: var(--gray-light); min-height: 100vh; display: flex; flex-direction: column; }
-
-        /* Header */
-        header {
-            background: var(--primary-color);
-            padding: 0 25px;
-            height: 70px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            color: white;
-        }
-        .brand { font-size: 24px; font-weight: 700; letter-spacing: 1px; font-family: 'Montserrat', sans-serif; display: flex; align-items: center; gap: 10px; white-space: nowrap; }
-        .back-btn { color: white; text-decoration: none; display: flex; align-items: center; gap: 8px; font-size: 14px; opacity: 0.9; }
-        .back-btn:hover { opacity: 1; }
-
-        /* Container */
-        .container {
-            max-width: 600px;
-            margin: 40px auto;
-            width: 90%;
-            background: white;
-            border-radius: 12px;
-            padding: 30px;
-        }
-
-        h2 { color: var(--primary-color); margin-bottom: 20px; text-align: center; }
-
-        .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px; }
-        .summary-item { background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: center; }
-        .summary-item label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
-        .summary-item span { font-size: 18px; font-weight: 600; color: #333; }
-        .summary-item.highlight { background: #e3f2fd; border: 1px solid #bbdefb; }
-        .summary-item.highlight span { color: var(--primary-color); }
-
-        .digital-totals { margin-bottom: 30px; padding: 15px; border: 1px dashed #ddd; border-radius: 8px; display: flex; justify-content: space-around; font-size: 14px; color: #555; }
-        .digital-totals strong { color: #333; }
-
-        .form-group { margin-bottom: 20px; }
-        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #555; margin-bottom: 8px; }
-        .input-field {
-            width: 100%; padding: 15px; font-size: 16px; border: 1px solid #ddd; border-radius: 8px; outline: none; transition: 0.3s;
-        }
-        .input-field:focus { border-color: var(--primary-color); }
-        textarea.input-field { resize: vertical; min-height: 80px; }
-
-        .diff-display { text-align: center; margin-bottom: 20px; font-weight: 600; font-size: 16px; padding: 10px; border-radius: 6px; }
-        .diff-display.balanced { background: #e8f5e9; color: var(--success-color); }
-        .diff-display.short { background: #ffebee; color: #c62828; }
-        .diff-display.over { background: #fff3e0; color: #f39c12; }
-
-        .btn-close {
-            width: 100%; padding: 15px; background: var(--secondary-color); color: white; border: none; border-radius: 8px;
-            font-size: 16px; font-weight: 600; cursor: pointer; transition: 0.2s;
-        }
-        .btn-close:hover { opacity: 0.9; }
-
-        /* Footer */
-        footer {
-            background: var(--primary-color);
-            padding: 8px 25px;
-            display: flex;
-            justify-content: center;
-            font-size: 12px;
-            color: white;
-            margin-top: auto;
-        }
-
-        /* Success Modal */
-        .modal-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            display: none; justify-content: center; align-items: center;
-            z-index: 3000;
-        }
-        .modal-box {
-            background: white; padding: 40px; border-radius: 16px;
-            text-align: center; box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-            animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            max-width: 90%; width: 350px;
-        }
-        .modal-icon { font-size: 64px; color: var(--success-color); margin-bottom: 20px; }
-        .modal-title { font-size: 20px; font-weight: 700; color: #333; margin-bottom: 10px; }
-        .modal-text { color: #666; font-size: 14px; }
-        
-        @keyframes popIn {
-            from { opacity: 0; transform: scale(0.8); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        /* Mobile Responsiveness */
-        @media (max-width: 768px) {
-            header { padding: 0 15px; height: 60px; }
-            .brand { font-size: 14px; gap: 8px; }
-            .brand img {
-            width: auto;
-            max-width: 140px;
-            height: 36px;
-            aspect-ratio: auto;
-            border-radius: 6px;
-            object-fit: contain;
-            background: #ffffff;
-            padding: 3px 10px;
-            border: 1.5px solid rgba(249, 165, 26, 0.7);
-        }
-            .back-btn { font-size: 0; }
-            .back-btn i { font-size: 18px; }
-
-            .container { margin: 20px auto; padding: 20px; }
-            
-            .summary-grid { grid-template-columns: 1fr; gap: 10px; }
-            .digital-totals { flex-direction: column; text-align: center; gap: 10px; }
-        }
-    </style>
-    <link rel="stylesheet" href="sidebar.css">
+    <link rel="stylesheet" href="/sidebar.css">
+    <script src="/auth-guard.js"></script>
+    <script src="/currency.js"></script>
+    <script src="/telemetry-guard.js"></script>
+    <script src="/instant-nav.js"></script>
     <script src="/layout.js"></script>
     <script src="/ui-components.js"></script>
     <link rel="stylesheet" href="/portal-skin.css">
-    <style id="shift-face">
-        .main-content .container { max-width: 760px !important; margin: 40px auto 0 !important; padding: 0 !important; background: transparent !important; box-shadow: none !important; border: 0 !important; }
-        .container h2 { text-align: left !important; font-family: var(--font-display); font-size: 28px; font-weight: 700; margin: 0 0 20px; }
-        .summary-grid { gap: 0 !important; background: var(--sheet); border: 1px solid var(--edge); border-radius: 12px; overflow: hidden; margin-bottom: 12px !important; }
-        .summary-item { background: transparent !important; border: 0 !important; border-left: 1px solid var(--edge) !important; border-radius: 0 !important; text-align: left !important; padding: 18px 20px !important; }
-        .summary-item:first-child { border-left: 0 !important; }
-        .summary-item label { font-size: 13px !important; font-weight: 500; color: var(--muted) !important; margin-bottom: 6px !important; }
-        .summary-item span { font-family: var(--font-display); font-size: 22px !important; font-weight: 600; font-variant-numeric: tabular-nums; }
-        .summary-item.highlight span { font-size: 28px !important; font-weight: 700; color: var(--brand) !important; border-bottom: 3px solid var(--brick); }
-        .digital-totals { display: flex !important; gap: 28px; border: 0 !important; background: transparent !important; padding: 0 4px !important; margin-bottom: 24px !important; justify-content: flex-start !important; font-size: 14px; color: var(--muted); }
-        .digital-totals strong { color: var(--ink); font-variant-numeric: tabular-nums; }
-        .form-group label { font-size: 13px; font-weight: 600; color: var(--muted); }
-        #actualCash { width: 100% !important; max-width: 320px; height: 72px; font-family: var(--font-display); font-size: 34px; font-weight: 600; padding: 0 20px; border-radius: 12px; font-variant-numeric: tabular-nums; }
-        .diff-display { text-align: left !important; background: var(--sheet-2); color: var(--ink-2); border-radius: 10px !important; font-size: 17px !important; }
-        .diff-display.balanced { background: #E4F3E9; color: #15803D; }
-        .diff-display.short { background: #FDE8E8; color: #B91C1C; }
-        .diff-display.over { background: #FEF3C7; color: #8A5300; }
-        .btn-close { height: 56px; border-radius: 12px !important; font-size: 17px !important; background: var(--brand) !important; }
-        .okw-sub-footer { display: none !important; }
-        [data-theme="dark"] .summary-item span, [data-theme="dark"] .digital-totals strong { color: var(--ink) !important; }
-        [data-theme="dark"] .summary-item.highlight span { color: #9DB0FF !important; }
-        [data-theme="dark"] .diff-display { background: var(--sheet-2); color: var(--ink-2); }
-        [data-theme="dark"] .diff-display.balanced { background: rgba(21, 128, 61, 0.22); color: #86EFAC; }
-        [data-theme="dark"] .diff-display.short { background: rgba(185, 28, 28, 0.25); color: #FCA5A5; }
-        [data-theme="dark"] .diff-display.over { background: rgba(180, 83, 9, 0.25); color: #FCD34D; }
-        [data-theme="dark"] .btn-close { background: #4A5FD0 !important; }
-        @media (max-width: 700px) { .summary-grid { grid-template-columns: 1fr !important; } .summary-item { border-left: 0 !important; border-top: 1px solid var(--edge) !important; } .summary-item:first-child { border-top: 0 !important; } }
-    </style>
     <style>
-        header.okw-sub-header {
-            height: 62px;
-            background: #ffffff !important;
-            border-top: 3px solid transparent;
-            border-image: linear-gradient(90deg, #273990 0%, #273990 72%, #F9A51A 100%) 1;
-            border-bottom: 1px solid #e1e5eb !important;
-            color: #273990 !important;
+        .cs-wrap { max-width: 980px; display: flex; flex-direction: column; gap: 18px; }
+        .cs-kpis {
+            display: grid;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+            gap: 12px;
+        }
+        .cs-kpi {
+            background: var(--sheet, #fff);
+            border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 12px;
+            padding: 16px;
+        }
+        .cs-kpi.highlight {
+            border-color: var(--brand, #273990);
+            background: #f5f7ff;
+        }
+        .cs-kpi-lbl {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: var(--muted, #64748b);
+        }
+        .cs-kpi-val {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--ink, #0f172a);
+            margin-top: 6px;
+            font-variant-numeric: tabular-nums;
+        }
+        .cs-kpi.highlight .cs-kpi-val { color: var(--brand, #273990); }
+        .cs-card {
+            background: var(--sheet, #fff);
+            border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 14px;
+            padding: 22px 24px;
+        }
+        .cs-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 22px;
+            align-items: start;
+        }
+        .cs-field { display: flex; flex-direction: column; gap: 6px; }
+        .cs-field label { font-size: 13px; font-weight: 600; color: var(--ink-2, #334155); }
+        .cs-cash-row { display: flex; gap: 8px; align-items: stretch; }
+        .cs-cash-input {
+            flex: 1;
+            min-width: 0;
+            height: 54px;
+            padding: 0 16px;
+            border: 1.5px solid var(--edge-strong, #cbd5e1);
+            border-radius: 10px;
+            font-size: 26px;
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
+            color: var(--ink, #0f172a);
+            background: var(--sheet, #fff);
+            outline: none;
+            box-sizing: border-box;
+        }
+        .cs-cash-input:focus, .cs-textarea:focus {
+            border-color: var(--brand, #273990);
+            box-shadow: 0 0 0 3px rgba(39, 57, 144, 0.12);
+        }
+        .cs-textarea {
+            width: 100%;
+            min-height: 112px;
+            padding: 12px 14px;
+            border: 1px solid var(--edge-strong, #cbd5e1);
+            border-radius: 10px;
+            font-family: var(--font-ui);
+            font-size: 13.5px;
+            color: var(--ink, #0f172a);
+            background: var(--sheet, #fff);
+            resize: vertical;
+            outline: none;
+            box-sizing: border-box;
+        }
+        .cs-diff {
+            margin-top: 12px;
+            padding: 12px 14px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 700;
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 28px !important;
-            position: relative;
-            z-index: 50;
-            box-shadow: 0 1px 3px rgba(17, 24, 39, 0.04) !important;
-            flex-shrink: 0;
+            gap: 10px;
+            background: #f1f5f9;
+            color: #334155;
         }
-        .okw-sub-header .hdr-left { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
-        .okw-sub-header .hdr-brand { font-size: 14.5px; font-weight: 800; color: #273990; letter-spacing: 0.05em; text-transform: uppercase; }
-        .okw-sub-header .hdr-sep { width: 1px; height: 18px; background: #e1e5eb; }
-        .okw-sub-header .hdr-badge { background: rgba(39, 57, 144, 0.08); color: #273990; border: 1px solid rgba(39, 57, 144, 0.16); border-left: 3px solid #F9A51A; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 6px; }
-        .okw-sub-header .hdr-right { display: flex; align-items: center; gap: 10px; }
-        .okw-sub-header .hdr-user { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 5px; border-radius: 999px; background: #f8fafc; border: 1px solid #e1e5eb; font-size: 13px; font-weight: 600; color: #111827; }
-        .okw-sub-header .hdr-avatar { width: 26px; height: 26px; border-radius: 50%; background: #273990; color: #ffffff; border: 1.5px solid #F9A51A; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
-        .okw-sub-header .hdr-back { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; background: #273990; color: #ffffff !important; text-decoration: none; font-size: 12.5px; font-weight: 600; transition: background-color 0.15s ease; }
-        .okw-sub-header .hdr-back:hover { background: #1C2B70; }
-        footer.okw-sub-footer { display: flex !important; align-items: center !important; justify-content: center !important; text-align: center !important; width: 100% !important; max-width: 100% !important; margin-left: 0 !important; margin-right: 0 !important; box-sizing: border-box !important; background: #273990 !important; color: #ffffff !important; border-top: 2px solid #F9A51A !important; padding: 12px 24px; font-size: 12.5px; font-weight: 500; margin-top: auto; }
-        @media (max-width: 768px) { header.okw-sub-header { padding: 0 14px !important; } .okw-sub-header .hdr-brand, .okw-sub-header .hdr-sep { display: none; } }
-        .main-content { margin-left: var(--sidebar-width); flex: 1; min-width: 0; padding: 24px 28px; box-sizing: border-box; }
-        .container { margin: 0 auto; }
-        @media (max-width: 992px) { .main-content { margin-left: 0; padding: 16px; } }
+        .cs-diff.balanced { background: #dcfce7; color: #15803d; }
+        .cs-diff.short { background: #fee2e2; color: #b91c1c; }
+        .cs-diff.over { background: #fef3c7; color: #92400e; }
+        .cs-actions {
+            margin-top: 18px;
+            padding-top: 16px;
+            border-top: 1px solid var(--edge, #e2e8f0);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        .cs-empty {
+            text-align: center;
+            padding: 40px 24px;
+            background: var(--sheet, #fff);
+            border: 1px solid var(--edge, #e2e8f0);
+            border-radius: 14px;
+        }
+        .cs-modal-overlay {
+            position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55);
+            display: none; justify-content: center; align-items: center; z-index: 3000;
+        }
+        .cs-modal-box {
+            background: var(--sheet, #fff); padding: 36px; border-radius: 16px;
+            text-align: center; box-shadow: 0 20px 50px rgba(15, 23, 42, 0.25);
+            max-width: 90%; width: 360px;
+        }
+        @media (max-width: 980px) { .cs-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 720px) { .cs-grid { grid-template-columns: 1fr; } }
+        @media (max-width: 520px) { .cs-kpis { grid-template-columns: 1fr; } }
     </style>
     <script src="/okw-events.js"></script>
 </head>
 <body>
-
     <button class="mobile-menu-btn" data-onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
     <div class="overlay" data-onclick="toggleSidebar()"></div>
 
     <div class="sidebar">
-        <div class="brand">
-            <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD">
-        </div>
+        <div class="brand"><img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD"></div>
         <div class="nav-links"></div>
+        <div class="user-profile">
+            <div class="user-profile-row">
+                <div class="user-avatar"><i class="fas fa-user"></i></div>
+                <div class="user-info">
+                    <div id="userName"></div>
+                    <div id="userRole"></div>
+                </div>
+            </div>
+            <button class="sidebar-logout-btn" data-onclick="logout()" title="Logout" aria-label="Logout"><i class="fas fa-sign-out-alt"></i></button>
+        </div>
     </div>
 
-    <div class="main-content">
-    <div class="container">
-        <h2>Close Shift & Reconcile</h2>
-        
-        <div class="summary-grid">
-            <div class="summary-item">
-                <label>Starting Cash</label>
-                <span id="startCash">--</span>
+    <main class="main-content">
+        <div class="okw-page-header">
+            <div class="okw-page-header-text">
+                <h1 class="okw-page-title">Close Shift &amp; Reconcile</h1>
+                <p class="okw-page-subtitle">Count your cash drawer, verify expected totals, and close your active register shift.</p>
             </div>
-            <div class="summary-item">
-                <label>Cash Sales</label>
-                <span id="cashSales">--</span>
-            </div>
-            <div class="summary-item highlight">
-                <label>Expected Cash</label>
-                <span id="expectedCash">--</span>
+            <div class="okw-page-header-actions">
+                <a href="/transactions" class="okw-btn okw-btn-outline" style="text-decoration:none;"><i class="fas fa-receipt"></i> View Transactions</a>
+                <a href="/pos" class="okw-btn okw-btn-outline" style="text-decoration:none;"><i class="fas fa-cash-register"></i> Back to POS</a>
             </div>
         </div>
 
-        <div class="digital-totals">
-            <div>Mobile Money: <strong id="momoTotal">--</strong></div>
-            <div>Card Payments: <strong id="cardTotal">--</strong></div>
+        <div id="csNoShift" class="cs-empty" style="display:none;">
+            <div style="font-size:36px;color:var(--muted,#94a3b8);margin-bottom:10px;"><i class="fas fa-clock"></i></div>
+            <h3 style="margin:0 0 6px;font-size:17px;color:var(--ink,#0f172a);">No Active Shift Found</h3>
+            <p style="margin:0 0 18px;font-size:13.5px;color:var(--muted,#64748b);">You do not currently have an open register shift to close.</p>
+            <a href="/open-shift" class="okw-btn okw-btn-primary" style="text-decoration:none;">Open New Shift</a>
         </div>
 
-        <form data-onsubmit="closeShift(event)">
-            <div class="form-group">
-                <label id="cashCountedLabel">Actual Cash Counted</label>
-                <input type="number" id="actualCash" step="0.01" placeholder="0.00" data-oninput="calculateDifference()">
-            </div>
-            <div class="diff-display" id="diffDisplay">Difference: 0.00</div>
+        <div id="csMain" class="cs-wrap">
+            <section class="cs-kpis">
+                <div class="cs-kpi">
+                    <div class="cs-kpi-lbl">Starting Cash</div>
+                    <div id="startCash" class="cs-kpi-val"><span class="okw-sk-bar" style="width:90px;height:20px;"></span></div>
+                </div>
+                <div class="cs-kpi">
+                    <div class="cs-kpi-lbl">Cash Sales</div>
+                    <div id="cashSales" class="cs-kpi-val"><span class="okw-sk-bar" style="width:90px;height:20px;"></span></div>
+                </div>
+                <div class="cs-kpi highlight">
+                    <div class="cs-kpi-lbl">Expected Cash</div>
+                    <div id="expectedCash" class="cs-kpi-val"><span class="okw-sk-bar" style="width:96px;height:20px;"></span></div>
+                </div>
+                <div class="cs-kpi">
+                    <div class="cs-kpi-lbl">Mobile Money</div>
+                    <div id="momoTotal" class="cs-kpi-val"><span class="okw-sk-bar" style="width:90px;height:20px;"></span></div>
+                </div>
+                <div class="cs-kpi">
+                    <div class="cs-kpi-lbl">Card Payments</div>
+                    <div id="cardTotal" class="cs-kpi-val"><span class="okw-sk-bar" style="width:90px;height:20px;"></span></div>
+                </div>
+            </section>
 
-            <div class="form-group">
-                <label>Notes</label>
-                <textarea id="notes" class="input-field" placeholder="Explain any discrepancies..."></textarea>
-            </div>
-            
-            <button type="submit" class="btn-close">Submit & Close Shift</button>
-        </form>
-    </div>
+            <section class="cs-card">
+                <form id="closeShiftForm" novalidate>
+                    <div class="cs-grid">
+                        <div class="cs-field">
+                            <label for="actualCash">Actual Cash Counted</label>
+                            <div class="cs-cash-row">
+                                <input type="number" id="actualCash" class="cs-cash-input" step="0.01" min="0" placeholder="0.00" required>
+                                <button type="button" id="btnMatchExpected" class="okw-btn okw-btn-outline" style="height:54px;white-space:nowrap;">Match Expected</button>
+                            </div>
+                            <div id="diffDisplay" class="cs-diff">
+                                <span>Variance</span>
+                                <span>—</span>
+                            </div>
+                        </div>
+
+                        <div class="cs-field">
+                            <label for="notes">Closing Notes (Optional)</label>
+                            <textarea id="notes" class="cs-textarea" placeholder="Explain any cash overage, shortage, or handover notes..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="cs-actions">
+                        <a href="/pos" class="okw-btn okw-btn-outline" style="text-decoration:none;">Cancel</a>
+                        <button type="submit" id="btnSubmitClose" class="okw-btn okw-btn-primary" style="height:44px;padding:0 24px;font-size:14.5px;"><i class="fas fa-lock"></i> Submit &amp; Close Shift</button>
+                    </div>
+                </form>
+            </section>
+        </div>
+    </main>
 
     <!-- Success Modal -->
-    <div id="successModal" class="modal-overlay">
-        <div class="modal-box">
-            <div class="modal-icon"><i class="fas fa-check-circle"></i></div>
-            <div class="modal-title">Shift Closed</div>
-            <div class="modal-text">Logging out...</div>
+    <div id="successModal" class="cs-modal-overlay" role="dialog" aria-modal="true">
+        <div class="cs-modal-box">
+            <div style="font-size:56px;color:#15803d;margin-bottom:14px;"><i class="fas fa-check-circle"></i></div>
+            <h3 style="margin:0 0 8px;font-size:20px;color:var(--ink,#0f172a);">Shift Closed</h3>
+            <p style="margin:0;font-size:14px;color:var(--muted,#64748b);">Your register has been reconciled. Signing out...</p>
         </div>
-    </div>
-
-    <footer class="okw-sub-footer">
-        <div>&copy; 2026 OKWESIWA CO LTD</div>
-    </footer>
     </div>
 
     <script>
-        let activeShiftId = null;
-        let expectedCash = 0;
+    (function () {
+        const money = (n) => (typeof formatCurrency === 'function' ? formatCurrency(Number(n) || 0) : 'GH₵ ' + (Number(n) || 0).toFixed(2));
+        function authHeaders(json = false) {
+            const t = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+            const h = {};
+            if (json) h['Content-Type'] = 'application/json';
+            if (t && t !== 'null' && t !== 'undefined') h['Authorization'] = `Bearer ${t}`;
+            return h;
+        }
 
-        document.addEventListener('DOMContentLoaded', async () => {
+        let expectedCash = 0;
+        let submitting = false;
+
+        function calculateDifference() {
+            const raw = document.getElementById('actualCash').value;
+            const actual = raw === '' ? 0 : (parseFloat(raw) || 0);
+            const diff = Number((actual - expectedCash).toFixed(2));
+            const el = document.getElementById('diffDisplay');
+            let status = 'Balanced';
+            let cls = 'balanced';
+            if (diff > 0.004) { status = 'Overage'; cls = 'over'; }
+            else if (diff < -0.004) { status = 'Shortage'; cls = 'short'; }
+            el.className = `cs-diff ${cls}`;
+            el.innerHTML = `<span>${status}</span><span>${diff > 0 ? '+' : ''}${money(diff)}</span>`;
+        }
+
+        async function bootstrap() {
             try {
-                // Check session
-                const token = localStorage.getItem('authToken');
-                const sessionRes = await fetch('/api/session', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                const sessionRes = await fetch('/api/session', { headers: authHeaders(), credentials: 'include' });
                 if (!sessionRes.ok) {
                     (window.top || window).location.href = '/login';
                     return;
                 }
-
-                // Load Summary
-                const res = await fetch('/api/shifts/summary', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (res.ok) {
-                    const data = await res.json();
-                    activeShiftId = data.shiftId;
-                    expectedCash = data.expectedCash;
-
-                    document.getElementById('startCash').textContent = formatCurrency(data.startCash);
-                    document.getElementById('cashSales').textContent = formatCurrency(data.cashSales);
-                    document.getElementById('expectedCash').textContent = formatCurrency(data.expectedCash);
-                    document.getElementById('momoTotal').textContent = formatCurrency(data.momoSales);
-                    document.getElementById('cardTotal').textContent = formatCurrency(data.cardSales);
-                    
-                    calculateDifference();
-                } else {
-                    alert("Could not load shift summary. You may not have an active shift.");
+                const res = await fetch('/api/shifts/summary', { headers: authHeaders(), credentials: 'include' });
+                if (!res.ok) {
+                    document.getElementById('csMain').style.display = 'none';
+                    document.getElementById('csNoShift').style.display = 'block';
+                    return;
                 }
+                const data = await res.json();
+                expectedCash = Number(data.expectedCash || 0);
+                document.getElementById('startCash').textContent = money(data.startCash || 0);
+                document.getElementById('cashSales').textContent = money(data.cashSales || 0);
+                document.getElementById('expectedCash').textContent = money(expectedCash);
+                document.getElementById('momoTotal').textContent = money(data.momoSales || 0);
+                document.getElementById('cardTotal').textContent = money(data.cardSales || 0);
+                calculateDifference();
             } catch (err) {
-                console.error(err);
-                alert("Error connecting to server.");
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Error loading shift summary', 'danger');
             }
-        });
-
-        function calculateDifference() {
-            const actual = parseFloat(document.getElementById('actualCash').value) || 0;
-            const diff = actual - expectedCash;
-            const display = document.getElementById('diffDisplay');
-            
-            display.textContent = `Difference: ${diff >= 0 ? '+' : ''}${formatCurrency(diff)}`;
-            display.className = 'diff-display ' + (diff === 0 ? 'balanced' : (diff > 0 ? 'over' : 'short'));
         }
 
-        async function closeShift(e) {
+        document.getElementById('actualCash').addEventListener('input', calculateDifference);
+        document.getElementById('btnMatchExpected').addEventListener('click', () => {
+            document.getElementById('actualCash').value = expectedCash.toFixed(2);
+            calculateDifference();
+        });
+
+        document.getElementById('closeShiftForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            if (submitting) return;
             const endCash = document.getElementById('actualCash').value;
-            const notes = document.getElementById('notes').value;
-            const token = localStorage.getItem('authToken');
-
-            const res = await fetch('/api/shifts/close', {
-                method: 'POST',
-                headers: { 
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ endCash, notes })
-            });
-
-            if (res.ok) {
-                const channel = new BroadcastChannel('footprint_customer_display');
-                channel.postMessage({ type: 'CLOSE' });
-                
+            if (endCash === '' || Number.isNaN(parseFloat(endCash))) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Enter the actual cash counted', 'warning');
+                document.getElementById('actualCash').focus();
+                return;
+            }
+            submitting = true;
+            const btn = document.getElementById('btnSubmitClose');
+            btn.disabled = true;
+            const notes = document.getElementById('notes').value.trim();
+            try {
+                const res = await fetch('/api/shifts/close', {
+                    method: 'POST',
+                    headers: authHeaders(true),
+                    credentials: 'include',
+                    body: JSON.stringify({ endCash, notes })
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.message || 'Error closing shift');
+                }
+                try {
+                    const channel = new BroadcastChannel('footprint_customer_display');
+                    channel.postMessage({ type: 'CLOSE' });
+                } catch (_) {}
                 document.getElementById('successModal').style.display = 'flex';
-                
-                // Logout
                 if (window.authGuard && typeof window.authGuard.logout === 'function') {
-                    setTimeout(() => {
-                        window.authGuard.logout();
-                    }, 2000);
+                    setTimeout(() => window.authGuard.logout(), 1800);
                 } else {
-                    await fetch('/api/logout', { 
-                        method: 'POST',
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    }).catch(() => {});
-                    
+                    await fetch('/api/logout', { method: 'POST', headers: authHeaders(), credentials: 'include' }).catch(() => {});
                     setTimeout(() => {
                         localStorage.clear();
                         sessionStorage.clear();
                         (window.top || window).location.replace('/login?logout=true');
-                    }, 2000);
+                    }, 1800);
                 }
-            } else {
-                alert("Error closing shift.");
+            } catch (err) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast(err.message || 'Error closing shift', 'danger');
+                submitting = false;
+                btn.disabled = false;
             }
-        }
+        });
 
-        (function initUnifiedHeader() {
-            function applyHeaderUser(u) {
-                if (!u) return;
-                const rawName = String(u.name || u.username || 'User').replace(/^OKWESIWA\s+(LTD\s+)?(Store\s+)?/i, '').trim();
-                const firstName = (rawName || u.username || 'User').split(/[\s_@]+/)[0];
-                const el = document.getElementById('userName');
-                if (el) el.textContent = firstName;
-            }
-            try {
-                const cached = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('companyUser') || localStorage.getItem('user') || 'null');
-                if (cached) applyHeaderUser(cached);
-            } catch (_) {}
-            (async function () {
-                try {
-                    const token = localStorage.getItem('authToken');
-                    if (!token) return;
-                    const r = await fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` } });
-                    if (r.ok) { const d = await r.json(); if (d && d.user) applyHeaderUser(d.user); }
-                } catch (_) {}
-            })();
-        })();
+        document.addEventListener('DOMContentLoaded', bootstrap);
+    })();
     </script>
-
-<!-- ================== GLOBAL UX FIXES ================== -->
-<style>
-#custom-toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
-.custom-toast.show { opacity: 1; transform: translateY(0); }
-.custom-toast.error { background: #e74c3c; border-left: 4px solid #c0392b; }
-.custom-toast.success { background: #27ae60; border-left: 4px solid #2ecc71; }
-</style>
-<script>
-(function() {
-    // 1. Toast Notification Override
-    const container = document.createElement('div');
-    container.id = 'custom-toast-container';
-    document.body.appendChild(container);
-
-    window.alert = function(message) {
-        const toast = document.createElement('div');
-        toast.className = 'custom-toast';
-        if (typeof message === 'string') {
-            const msg = message.toLowerCase();
-            if (msg.includes('error') || msg.includes('fail')) toast.classList.add('error');
-            else if (msg.includes('success') || msg.includes('saved')) toast.classList.add('success');
-        }
-        toast.textContent = message;
-        container.appendChild(toast);
-        toast.offsetHeight; // trigger reflow
-        toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 250);
-        }, 3500);
-    };
-})();
-</script>
-<!-- ====================================================== -->
 </body>
 </html>
