@@ -57,6 +57,7 @@
         { label: 'Customer Groups', url: '/catalog-ops?tab=groups', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Contacts', icon: 'layers' },
 
         // Products (immediately under Contacts)
+        { label: 'List Products', url: '/inventory?tab=stock', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'package' },
         { label: 'Add Product', url: '/add-product', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'shoppingBag' },
         { label: 'Update Price', url: '/catalog-ops?tab=prices', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'trendingUp' },
         { label: 'Print Labels', url: '/print-labels', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'tag' },
