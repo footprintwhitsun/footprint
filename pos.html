@@ -3855,13 +3855,13 @@
 
                 const warrantyOptions = (!item.returnMode && posWarranties.length)
                     ? `<div style="margin-top:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-                        <select data-onchange="setCartItemWarranty(${index}, this.value)" title="Item Warranty" style="height:22px;padding:0 6px;border:1px solid ${item.warranty_name ? '#86efac' : '#e2e8f0'};border-radius:6px;background:${item.warranty_name ? '#f0fdf4' : '#f8fafc'};color:${item.warranty_name ? '#166534' : '#475569'};font-size:10.5px;font-weight:600;max-width:155px;cursor:pointer;">
+                        <select data-onchange="setCartItemWarranty(${index}, this.value)" title="Item Warranty" style="height:22px;padding:0 6px;border:1px solid ${item.warranty_name ? '#86efac' : '#e2e8f0'};border-radius:6px;background:${item.warranty_name ? '#f0fdf4' : '#f8fafc'};color:${item.warranty_name ? '#166534' : '#475569'};font-size:10.5px;font-weight:600;max-width:165px;cursor:pointer;">
                             <option value="">No Warranty</option>
-                            ${posWarranties.map(w => `<option value="${Number(w.id)}"${String(item.warranty_id || '') === String(w.id) ? ' selected' : ''}>🛡 ${window.escapeHtml(w.name)} (${Number(w.duration || 0)} ${window.escapeHtml(w.duration_type || 'Months')})</option>`).join('')}
+                            ${posWarranties.map(w => `<option value="${Number(w.id)}"${String(item.warranty_id || '') === String(w.id) ? ' selected' : ''}>${window.escapeHtml(w.name)} (${Number(w.duration || 0)} ${window.escapeHtml(w.duration_type || 'Months')})</option>`).join('')}
                         </select>
-                        ${item.warranty_name ? `<input type="text" placeholder="Serial / IMEI (opt)" value="${window.escapeHtml(item.serial_no || '')}" data-onchange="setCartItemSerial(${index}, this.value)" style="height:22px;width:110px;padding:0 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:10.5px;">` : ''}
+                        ${item.warranty_name ? `<input type="text" placeholder="Serial / IMEI (opt)" value="${window.escapeHtml(item.serial_no || '')}" data-onchange="setCartItemSerial(${index}, this.value)" style="height:22px;width:115px;padding:0 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:10.5px;">` : ''}
                     </div>`
-                    : (item.warranty_name ? `<div style="margin-top:3px;font-size:10.5px;color:#166534;font-weight:600;">🛡 ${window.escapeHtml(item.warranty_name)}</div>` : '');
+                    : (item.warranty_name ? `<div style="margin-top:3px;font-size:10.5px;color:#166534;font-weight:600;">Warranty: ${window.escapeHtml(item.warranty_name)}</div>` : '');
 
                 itemsHtml += `
             <div class="cart-item ${returnClass}">

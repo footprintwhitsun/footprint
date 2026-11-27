@@ -375,10 +375,11 @@
                         const daysLeft = expDate ? Math.ceil((expDate.getTime() - now) / 86400000) : null;
                         const isActive = !expDate || daysLeft >= 0;
                         const label = isActive
-                            ? `🛡 ${first.warranty_name || 'Warranty'}${daysLeft !== null ? ` · ${daysLeft}d left` : ''}`
-                            : `🛡 Warranty Expired`;
-                        const tip = wItems.map(it => `${it.name || 'Item'}: ${it.warranty_name || 'Warranty'}${it.warranty_expires_at ? ' (exp ' + new Date(it.warranty_expires_at).toLocaleDateString() + ')' : ''}${it.serial_no ? ' · S/N ' + it.serial_no : ''}`).join(' | ');
-                        warrantyBadge = `<div style="margin-top:3px;"><span title="${esc(tip)}" style="display:inline-block;font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px;background:${isActive ? '#dcfce7' : '#fee2e2'};color:${isActive ? '#166534' : '#991b1b'};">${esc(label)}</span></div>`;
+                            ? `Warranty: ${first.warranty_name || 'Covered'}${daysLeft !== null ? ` · ${daysLeft}d left` : ''}`
+                            : `Warranty Expired`;
+                        const tip = wItems.map(it => `${it.name || 'Item'}: ${it.warranty_name || 'Warranty'}${it.warranty_expires_at ? ' (Valid until ' + new Date(it.warranty_expires_at).toLocaleDateString() + ')' : ''}${it.serial_no ? ' · S/N ' + it.serial_no : ''}`).join(' | ');
+                        const iconSvg = `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>`;
+                        warrantyBadge = `<div style="margin-top:3px;"><span title="${esc(tip)}" style="display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:${isActive ? '#dcfce7' : '#fee2e2'};color:${isActive ? '#166534' : '#991b1b'};">${iconSvg}${esc(label)}</span></div>`;
                     }
                 } catch (_) { }
                 return `

@@ -471,7 +471,7 @@
                     const wExp = item.warranty_expires_at ? new Date(item.warranty_expires_at).toLocaleDateString() : '';
                     const wSerial = item.serial_no ? ` · S/N: ${escHtml(item.serial_no)}` : '';
                     const warrantyLine = wName
-                        ? `<div style="font-size:10px; color:#166534; margin-top:2px;">Warranty: ${escHtml(wName)}${wExp ? ` (Valid until ${escHtml(wExp)})` : ''}${wSerial}</div>`
+                        ? `<div style="font-size:10px; color:#111; font-weight:600; margin-top:3px; padding-left:6px; border-left:2px solid #111;">Warranty: ${escHtml(wName)}${wExp ? ` · Valid until ${escHtml(wExp)}` : ''}${wSerial}</div>`
                         : '';
 
                     return `
