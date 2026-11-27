@@ -949,13 +949,20 @@ router.post('/api/pos/checkout', authenticateToken, requirePermission('sales', '
         // Deduct stock + stock_levels + product_batches + inventory_audit_log
         for (const it of verifiedItems) {
             const baseQty = Number((it.qty * it.unit_factor).toFixed(3));
+            const availStock = Number(it.stock_before || 0);
+            if (availStock <= 0 || baseQty > availStock) {
+                await client.query('ROLLBACK');
+                return res.status(400).json({
+                    message: `Insufficient stock for ${it.name} (Available: ${Math.max(0, availStock)}, Requested: ${baseQty}). Negative stock sales are not allowed.`
+                });
+            }
             await client.query(
                 `UPDATE products
-                 SET stock = COALESCE(stock, 0) - $1,
+                 SET stock = GREATEST(0, COALESCE(stock, 0) - $1),
                      stock_levels = jsonb_set(
                          COALESCE(stock_levels, '{}'::jsonb),
                          ARRAY[$3::text],
-                         to_jsonb(COALESCE((stock_levels->>$3::text)::numeric, 0) - $1)
+                         to_jsonb(GREATEST(0, COALESCE((stock_levels->>$3::text)::numeric, 0) - $1))
                      )
                  WHERE barcode = $2 AND COALESCE(tenant_id, 1) = $4`,
                 [baseQty, it.barcode, storeLoc, tenantId]

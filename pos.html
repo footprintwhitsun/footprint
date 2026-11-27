@@ -2874,17 +2874,18 @@
                             .replace(/&/g, '&amp;')
                             .replace(/"/g, '&quot;')
                             .replace(/</g, '&lt;');
-                    box.innerHTML = matches.map(
-                        (p, i) => `
-                <div class="suggestion-item" data-index="${i}" data-id="${p.id}" data-onclick="selectSuggestionById(this.dataset.id)">
+                    box.innerHTML = matches.map((p, i) => {
+                        const isOut = Number(p.stock || 0) <= 0;
+                        return `
+                <div class="suggestion-item" data-index="${i}" data-id="${p.id}"${isOut ? ' style="opacity:0.42;background:#f8fafc;cursor:not-allowed;"' : ' data-onclick="selectSuggestionById(this.dataset.id)"'}>
                     <div>
                         <strong>${escAttr(p.name)}</strong>
-                        <div style="font-size:12px; color:#666;">${escAttr(p.barcode)}</div>
+                        <div style="font-size:12px; color:#666;">${escAttr(p.barcode)}${isOut ? ' · <span style="color:#dc2626;font-weight:600;">Out of Stock</span>' : ''}</div>
                     </div>
-                    <div style="font-weight:bold; color:var(--primary);">${formatCurrency(p.price)}</div>
+                    <div style="font-weight:bold; color:${isOut ? '#94a3b8' : 'var(--primary)'};">${isOut ? 'Out of Stock' : formatCurrency(p.price)}</div>
                 </div>
-            `
-                    ).join('');
+            `;
+                    }).join('');
                     box.style.display = 'block';
                 } else {
                     box.style.display = 'none';
@@ -3066,13 +3067,19 @@
             const effectivePrice = computePosGroupPrice(basePrice);
             const safeProduct = { ...product, basePrice, price: effectivePrice };
 
-            if (Number(safeProduct.stock || 0) <= 0) {
+            const availStock = Number(safeProduct.stock || 0);
+            if (availStock <= 0) {
                 notify(`${safeProduct.name} is out of stock and cannot be sold.`, "error");
                 return;
             }
 
             const existingItem = cart.find(item => item.id === safeProduct.id);
             if (existingItem) {
+                const maxStock = Number(existingItem.stock ?? availStock);
+                if (existingItem.qty + 1 > maxStock) {
+                    notify(`Only ${maxStock} in stock for ${safeProduct.name}. Cannot sell into negative stock.`, "error");
+                    return;
+                }
                 existingItem.qty++;
                 notify(`Increased quantity: ${safeProduct.name}`, "success");
             } else {
@@ -3277,8 +3284,14 @@
                     notify(`Keeping ${item.qty} of ${item.name} (returning ${item.originalQty - item.qty})`, 'info');
                 }
             } else {
-                // Normal mode
-                item.qty += delta;
+                // Normal mode — never allow selling into negative stock
+                const maxStock = Number(item.stock ?? Infinity);
+                const nextQty = item.qty + delta;
+                if (delta > 0 && Number.isFinite(maxStock) && nextQty > maxStock) {
+                    notify(`Only ${maxStock} in stock for ${item.name}. Cannot sell into negative stock.`, 'error');
+                    return;
+                }
+                item.qty = nextQty;
                 if (item.qty <= 0) {
                     cart.splice(index, 1);
                 }
@@ -3304,10 +3317,15 @@
                         return;
                     }
                 } else {
-                    // Normal mode
-                    item.qty = qty;
+                    // Normal mode — cap at available stock
+                    const maxStock = Number(item.stock ?? Infinity);
                     if (qty <= 0) {
                         cart.splice(index, 1);
+                    } else if (Number.isFinite(maxStock) && qty > maxStock) {
+                        item.qty = maxStock;
+                        notify(`Only ${maxStock} in stock for ${item.name}. Quantity capped at available stock.`, 'error');
+                    } else {
+                        item.qty = qty;
                     }
                 }
                 renderCart();

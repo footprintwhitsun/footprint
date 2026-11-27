@@ -7479,7 +7479,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                 if (cRes.rows.length > 0) customerName = cRes.rows[0].name;
             }
 
-            // 1. Verify products exist & compute server-authoritative prices
+            // 1. Verify products exist, enforce non-negative stock & compute server-authoritative prices
             let serverSubtotal = 0;
             const verifiedItems = [];
             for (const item of items) {
@@ -7487,9 +7487,16 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                 if (!item.barcode || !Number.isFinite(qty) || qty <= 0) {
                     throw new Error('Each item must have a valid barcode and positive quantity');
                 }
-                const pRes = await client.query('SELECT id, name, price FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2', [item.barcode, tenantId]);
+                const pRes = await client.query('SELECT id, name, price, stock, stock_levels FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2 FOR UPDATE', [item.barcode, tenantId]);
                 if (pRes.rows.length === 0) throw new Error(`Product ${item.barcode} not found`);
                 const prod = pRes.rows[0];
+                if (!isReturn) {
+                    const totalAvail = Number(prod.stock || 0);
+                    if (totalAvail <= 0 || qty > totalAvail) {
+                        await client.query('ROLLBACK');
+                        return res.status(400).json({ message: `Insufficient stock for ${prod.name} (Available: ${Math.max(0, totalAvail)}, Requested: ${qty}). Negative stock sales are not allowed.` });
+                    }
+                }
                 const unitPrice = Number(prod.price || 0);
                 serverSubtotal += unitPrice * qty;
                 verifiedItems.push({ ...item, id: prod.id, name: prod.name, qty, price: unitPrice });

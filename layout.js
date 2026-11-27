@@ -71,9 +71,7 @@
         { label: 'Categories', url: '/categories', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'folder' },
         { label: 'Brands', url: '/catalog-ops?tab=brands', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'tag' },
         { label: 'Warranties', url: '/catalog-ops?tab=warranties', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'shield' },
-        { label: 'Batch & Expiry', url: '/inventory?tab=shelf', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'clock' },
         { label: 'Stock Taking', url: '/inventory?tab=stocktaking', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'clipboardCheck' },
-        { label: 'Negative Stock', url: '/negative-stock', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'activity' },
 
         { label: 'Pending Approvals', url: '/ceo-portal?tab=approvals-pending', roles: ['ceo', 'admin'], group: 'CEO', icon: 'clock' },
         { label: 'Approval History', url: '/ceo-portal?tab=approvals-history', roles: ['ceo', 'admin'], group: 'CEO', icon: 'fileCheck' },
