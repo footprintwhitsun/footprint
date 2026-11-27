@@ -788,8 +788,24 @@
         else if (d.amount !== undefined) parts.push(fmtC(d.amount));
 
         if (Array.isArray(d.items) && d.items.length) {
-            const preview = d.items.slice(0, 2).map(it => `${it.name || it.barcode} ×${it.qty}`).join(', ');
+            const preview = d.items.slice(0, 2).map(it => {
+                const nm = it.name || it.product_name || it.barcode || 'Item';
+                if (it.old_qty !== undefined && it.new_qty !== undefined) {
+                    const v = Number(it.variance ?? (Number(it.new_qty) - Number(it.old_qty)));
+                    return `${nm} (${it.old_qty} → ${it.new_qty}, ${v >= 0 ? '+' : ''}${v})`;
+                }
+                return `${nm} ×${it.qty ?? it.quantity ?? 1}`;
+            }).join(', ');
             parts.push(`${d.items.length} item${d.items.length === 1 ? '' : 's'} (${preview}${d.items.length > 2 ? ', …' : ''})`);
+        } else if (d.product || d.product_name) {
+            const nm = d.product || d.product_name;
+            if (d.previousQty !== undefined && d.newQty !== undefined) {
+                parts.push(`${nm} (${d.previousQty} → ${d.newQty}${d.change ? ', ' + d.change : ''})`);
+            } else if (d.stock !== undefined) {
+                parts.push(`${nm} (Qty: ${d.stock})`);
+            } else {
+                parts.push(nm);
+            }
         }
         if (Array.isArray(d.items_removed) && d.items_removed.length) {
             const preview = d.items_removed.slice(0, 2).map(it => `${it.name || it.barcode} ×${it.qty}`).join(', ');
@@ -799,8 +815,8 @@
             const diffStr = Object.entries(d.changes).slice(0, 3).map(([k, v]) => `${k.replace(/_/g, ' ')}: ${v.from} → ${v.to}`).join(', ');
             parts.push(`Amended (${diffStr})`);
         }
-        if (d.quantity_adjusted !== undefined) {
-            parts.push(`${d.product_barcode || ''} (${Number(d.quantity_adjusted) >= 0 ? '+' : ''}${d.quantity_adjusted})`);
+        if (d.quantity_adjusted !== undefined && !(Array.isArray(d.items) && d.items.length)) {
+            parts.push(`${d.product_name || d.product_barcode || ''} (${Number(d.quantity_adjusted) >= 0 ? '+' : ''}${d.quantity_adjusted})`);
         }
         if (d.reason) parts.push(`Reason: ${d.reason}`);
 
@@ -867,6 +883,14 @@
         ];
 
         const extraSections = [];
+        if (Object.keys(d).length) {
+            extraSections.push(`
+                <details style="margin-top:16px;border:1px solid var(--edge,#e2e8f0);border-radius:8px;padding:10px 12px;background:var(--frame,#f8fafc);">
+                    <summary style="cursor:pointer;font-size:12px;font-weight:700;color:var(--muted,#64748b);user-select:none;">Technical Event Payload (Raw Audit Data)</summary>
+                    <pre style="margin:10px 0 0;padding:10px;border-radius:6px;background:var(--sheet,#fff);border:1px solid var(--edge,#e2e8f0);font-size:11.5px;overflow-x:auto;white-space:pre-wrap;word-break:break-word;color:var(--ink-2,#334155);">${escapeHtml(JSON.stringify(d, null, 2))}</pre>
+                </details>`);
+        }
+
         if (itemsRemoved.length) {
             extraSections.push(`
                 <div style="margin-top:16px;">

@@ -8098,6 +8098,17 @@ app.post('/api/stock-adjustments', authenticateToken, requireRole(MANAGER_ROLES)
         const effBranchId = (branch_id !== undefined && branch_id !== null && branch_id !== '') ? branch_id : (req.user.store_id || null);
         if (effBranchId && !(await loadBranch(pool, tenantId, effBranchId))) return res.status(400).json({ message: 'Branch not found' });
         const branchName = await resolveStockKey(pool, { tenantId, branchId: effBranchId, barcode: product_barcode, fallbackName: req.user.store_location });
+        const prodBeforeRes = await pool.query(
+            'SELECT name, stock, stock_levels FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2 LIMIT 1',
+            [product_barcode, tenantId]
+        );
+        const prodBefore = prodBeforeRes.rows[0] || {};
+        const prodName = prodBefore.name || product_barcode;
+        const levelsBefore = (prodBefore.stock_levels && typeof prodBefore.stock_levels === 'object') ? prodBefore.stock_levels : {};
+        const prevBranchQty = Object.prototype.hasOwnProperty.call(levelsBefore, branchName) ? toQty(levelsBefore[branchName]) : toQty(prodBefore.stock);
+        const adjQty = Number(quantity_adjusted || 0);
+        const newBranchQty = Number((prevBranchQty + adjQty).toFixed(3));
+
         const result = await pool.query(`
             INSERT INTO stock_adjustments (tenant_id, product_barcode, adjustment_type, quantity_adjusted, reason, approver_id, branch_id, approved_at)
             VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP)
@@ -8120,14 +8131,27 @@ app.post('/api/stock-adjustments', authenticateToken, requireRole(MANAGER_ROLES)
             SELECT 'Stock Adjustment', $1::varchar, stock - $6, stock, $2, 'Adjustment', $3, $4, $5 FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $7
         `, [product_barcode, result.rows[0].id, user_id || req.user.id || null, branch_id || req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1)), reason || '', quantity_adjusted, tenantId]).catch(() => {});
 
-        const adjQty = Number(quantity_adjusted || 0);
         await logActivity(req, 'STOCK_ADJUSTMENT', {
+            product: prodName,
+            product_name: prodName,
+            sku: product_barcode,
             product_barcode,
             adjustment_type: adjustment_type || 'Correction',
             branch: branchName,
+            previousQty: prevBranchQty,
+            newQty: newBranchQty,
+            change: (adjQty > 0 ? '+' : '') + adjQty,
             quantity_adjusted: adjQty,
             direction: adjQty >= 0 ? 'added' : 'removed',
-            reason: reason || ''
+            reason: reason || '',
+            items: [{
+                name: prodName,
+                barcode: product_barcode,
+                old_qty: prevBranchQty,
+                new_qty: newBranchQty,
+                variance: adjQty,
+                qty: newBranchQty
+            }]
         });
         res.json({ success: true, id: result.rows[0].id });
     } catch (err) {
@@ -8320,12 +8344,33 @@ app.post('/api/stock-takes/:id/approve', authenticateToken, requireRole(MANAGER_
             }
         }
         const varianceResult = await client.query('SELECT COALESCE(SUM(variance), 0) as total_variance FROM stock_take_items WHERE stock_take_id = $1', [id]);
+        const approvedItemRows = await client.query(`
+            SELECT sti.product_barcode, COALESCE(p.name, sti.product_barcode) AS product_name,
+                   sti.system_count, sti.physical_count, sti.variance
+            FROM stock_take_items sti
+            LEFT JOIN products p ON p.barcode = sti.product_barcode AND COALESCE(p.tenant_id, 1) = $2
+            WHERE sti.stock_take_id = $1 AND COALESCE(sti.variance, 0) <> 0
+        `, [id, req.user.tenant_id || 1]).catch(() => ({ rows: [] }));
         await client.query(`
             UPDATE stock_takes SET status = 'Approved', approved_by = $1, completed_at = CURRENT_TIMESTAMP, variance_total = $2 WHERE id = $3
         `, [req.user.id, varianceResult.rows[0].total_variance, id]);
 
         await client.query('COMMIT');
-        await logActivity(req, 'APPROVE_STOCK_TAKE', { id, total_variance: varianceResult.rows[0].total_variance });
+        const approvedItems = approvedItemRows.rows.map(r => ({
+            name: r.product_name,
+            barcode: r.product_barcode,
+            old_qty: toQty(r.system_count),
+            new_qty: toQty(r.physical_count),
+            variance: toQty(r.variance),
+            qty: toQty(r.physical_count)
+        }));
+        await logActivity(req, 'APPROVE_STOCK_TAKE', {
+            id,
+            branch: req.user.store_location || DEFAULT_BRANCH_NAME,
+            adjustmentsCount: approvedItems.length,
+            total_variance: toQty(varianceResult.rows[0].total_variance),
+            items: approvedItems
+        });
         res.json({ success: true, message: 'Stock take approved' });
     } catch (err) {
         await client.query('ROLLBACK');

@@ -874,11 +874,24 @@
                     <label for="al-role">Staff Role</label>
                     <select id="al-role" class="okw-select" aria-label="Filter by role">
                         <option value="">All Roles</option>
+                        <option value="super_admin">Super Admin</option>
                         <option value="ceo">CEO</option>
                         <option value="admin">Admin</option>
                         <option value="manager">Manager</option>
                         <option value="store_manager">Store Manager</option>
                         <option value="cashier">Cashier</option>
+                    </select>
+                </div>
+                <div class="okw-filter-field">
+                    <label for="al-branch">Branch</label>
+                    <select id="al-branch" class="okw-select" aria-label="Filter by branch">
+                        <option value="">All Branches</option>
+                    </select>
+                </div>
+                <div class="okw-filter-field">
+                    <label for="al-staff">Staff Member</label>
+                    <select id="al-staff" class="okw-select" aria-label="Filter by staff">
+                        <option value="">All Staff</option>
                     </select>
                 </div>
                 <div class="okw-filter-field">
@@ -896,6 +909,14 @@
                     </select>
                 </div>
                 <div class="okw-filter-field">
+                    <label for="al-risk">Risk Level</label>
+                    <select id="al-risk" class="okw-select" aria-label="Filter by risk level">
+                        <option value="">All Levels</option>
+                        <option value="high">High Risk Only</option>
+                        <option value="medium">Medium &amp; High</option>
+                    </select>
+                </div>
+                <div class="okw-filter-field">
                     <label>Date Range</label>
                     <div id="al-date-picker"></div>
                 </div>
@@ -906,7 +927,10 @@
         panel.innerHTML = '<div id="audit-table-host">Loading activity log...</div>';
 
         const roleSel = ctx.toolbar.querySelector('#al-role');
+        const branchSel = ctx.toolbar.querySelector('#al-branch');
+        const staffSel = ctx.toolbar.querySelector('#al-staff');
         const catSel = ctx.toolbar.querySelector('#al-cat');
+        const riskSel = ctx.toolbar.querySelector('#al-risk');
         const resetBtn = ctx.toolbar.querySelector('#al-reset');
 
         OkwUI.dateRangePicker('#al-date-picker', (r) => {
@@ -942,35 +966,106 @@
             OkwUI.openAuditDetailModal(log);
         }
 
+        function classifyRisk(action) {
+            const a = String(action || '').toUpperCase();
+            if (/DELETE|VOID|REFUND|RETURN|SUSPEND|ROLE|RESET_PASSWORD|DISCOUNT_OVERRIDE|BACKUP/.test(a)) return 'high';
+            if (/STOCK_TAKE|STOCK_ADJUSTMENT|AMEND|UPDATE_PRICE|PRICE|TRANSFER|UPDATE_USER|CREATE_USER|OPENING_STOCK/.test(a)) return 'medium';
+            return 'low';
+        }
+
+        function extractItemAndQty(raw) {
+            let d = raw;
+            if (typeof d === 'string') { try { d = JSON.parse(d); } catch (_) { d = null; } }
+            if (!d || typeof d !== 'object') return '—';
+            if (Array.isArray(d.items) && d.items.length) {
+                const first = d.items[0];
+                const nm = first.name || first.product_name || first.barcode || 'Item';
+                if (first.old_qty !== undefined && first.new_qty !== undefined) {
+                    const v = Number(first.variance ?? (Number(first.new_qty) - Number(first.old_qty)));
+                    const more = d.items.length > 1 ? ` +${d.items.length - 1} more` : '';
+                    return `${nm} (${first.old_qty} → ${first.new_qty}, ${v >= 0 ? '+' : ''}${v})${more}`;
+                }
+                const totalUnits = d.items.reduce((s, it) => s + Number(it.qty ?? it.quantity ?? 1), 0);
+                const more = d.items.length > 1 ? ` (+${d.items.length - 1})` : '';
+                return `${nm} ×${totalUnits}${more}`;
+            }
+            if (d.product || d.product_name) {
+                const nm = d.product || d.product_name;
+                if (d.previousQty !== undefined && d.newQty !== undefined) {
+                    return `${nm} (${d.previousQty} → ${d.newQty}${d.change ? ', ' + d.change : ''})`;
+                }
+                if (d.quantity_adjusted !== undefined) {
+                    const q = Number(d.quantity_adjusted);
+                    return `${nm} (${q >= 0 ? '+' : ''}${q})`;
+                }
+                if (d.stock !== undefined) return `${nm} (Qty: ${d.stock})`;
+                return nm;
+            }
+            if (d.receipt_number || d.receiptNumber) return `Receipt #${d.receipt_number || d.receiptNumber}`;
+            if (d.po_id || d.poId) return `PO-${d.po_id || d.poId}`;
+            if (d.username) return `@${d.username}`;
+            if (d.name) return d.stock !== undefined ? `${d.name} (Qty: ${d.stock})` : d.name;
+            return '—';
+        }
+
         function renderFiltered() {
             const roleVal = (roleSel.value || '').trim().toLowerCase();
+            const branchVal = (branchSel.value || '').trim().toLowerCase();
+            const staffVal = (staffSel.value || '').trim().toLowerCase();
             const catVal = (catSel.value || '').trim().toLowerCase();
+            const riskVal = (riskSel.value || '').trim().toLowerCase();
             const filtered = allLogs.filter(l => {
                 if (roleVal && l.roleKey !== roleVal) return false;
+                if (branchVal && l.branchKey !== branchVal) return false;
+                if (staffVal && l.userKey !== staffVal) return false;
                 if (catVal && l.category !== catVal) return false;
+                if (riskVal === 'high' && l.risk !== 'high') return false;
+                if (riskVal === 'medium' && l.risk === 'low') return false;
                 return true;
             });
 
             const kpiEl = ctx.kpis.querySelector('#al-kpis');
             if (kpiEl) {
                 const salesBuys = filtered.filter(l => l.category === 'sell' || l.category === 'buy').length;
-                const quotesDrafts = filtered.filter(l => l.category === 'quotes' || l.category === 'drafts').length;
+                const highRisk = filtered.filter(l => l.risk === 'high').length;
                 const amendsDeletes = filtered.filter(l => l.category === 'amend' || l.category === 'delete').length;
                 kpiEl.innerHTML = [
                     OkwUI.kpiCard({ label: 'Total Events', value: filtered.length, tone: 'primary' }),
                     OkwUI.kpiCard({ label: 'Buy & Sell', value: salesBuys, tone: 'success' }),
-                    OkwUI.kpiCard({ label: 'Quotes & Drafts', value: quotesDrafts, tone: 'info' }),
-                    OkwUI.kpiCard({ label: 'Amends, Returns & Deletes', value: amendsDeletes, tone: amendsDeletes > 0 ? 'warning' : 'neutral' })
+                    OkwUI.kpiCard({ label: 'Stock & Amends', value: amendsDeletes, tone: amendsDeletes > 0 ? 'warning' : 'neutral' }),
+                    OkwUI.kpiCard({ label: 'High-Risk Events', value: highRisk, tone: highRisk > 0 ? 'danger' : 'neutral' })
                 ].join('');
             }
 
             OkwUI.dataTable('#audit-table-host', {
                 columns: [
                     { key: 'time', label: 'Timestamp' },
-                    { key: 'user', label: 'Staff' },
-                    { key: 'role', label: 'Role', render: (val) => OkwUI.badge(val, 'info') },
-                    { key: 'action', label: 'Action', render: (val, row) => OkwUI.badge(val, actionBadgeTone(row.category)) },
+                    {
+                        key: 'user',
+                        label: 'Staff & Role',
+                        render: (val, row) => `<div><strong>${esc(val)}</strong><div style="margin-top:2px;">${OkwUI.badge(row.role, 'info')}</div></div>`
+                    },
+                    { key: 'branch', label: 'Branch' },
+                    {
+                        key: 'action',
+                        label: 'Action',
+                        render: (val, row) => `
+                            <div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start;">
+                                ${OkwUI.badge(val, actionBadgeTone(row.category))}
+                                ${row.risk === 'high' ? '<span style="font-size:10px;font-weight:700;color:#b91c1c;">HIGH RISK</span>' : ''}
+                            </div>`
+                    },
+                    {
+                        key: 'itemQty',
+                        label: 'Item / Qty / Ref',
+                        render: (val) => `<span style="font-weight:600;color:var(--ink,#0f172a);">${esc(val)}</span>`
+                    },
                     { key: 'details', label: 'Summary' },
+                    {
+                        key: 'ip',
+                        label: 'IP Address',
+                        render: (val) => `<span style="font-family:ui-monospace,monospace;font-size:11.5px;color:var(--muted,#64748b);">${esc(val || '—')}</span>`
+                    },
                     {
                         key: 'id',
                         label: 'Inspect',
@@ -979,18 +1074,23 @@
                 ],
                 rows: filtered,
                 onRowClick: openDetailModal,
-                searchPlaceholder: 'Search staff, role, action, item, or receipt...',
+                searchPlaceholder: 'Search staff, branch, product, qty, SKU, receipt, or IP...',
                 exportFilename: 'okwesiwa-activity-log.xlsx',
-                printTitle: 'Activity Log',
+                printTitle: 'OKWESIWA CO LTD — Detailed Activity Log',
                 pageSize: 25
             });
 
-            panel.querySelectorAll('[data-al-view]').forEach(btn => {
-                btn.onclick = () => {
+            const hostEl = panel.querySelector('#audit-table-host');
+            if (hostEl && !hostEl.dataset.alViewBound) {
+                hostEl.dataset.alViewBound = '1';
+                hostEl.addEventListener('click', (e) => {
+                    const btn = e.target.closest('[data-al-view]');
+                    if (!btn) return;
+                    e.stopPropagation();
                     const hit = allLogs.find(x => String(x.id) === String(btn.dataset.alView));
                     if (hit) openDetailModal(hit);
-                };
-            });
+                });
+            }
         }
 
         async function load() {
@@ -1007,27 +1107,53 @@
             const list = Array.isArray(r.data) ? r.data : (r.data.logs || []);
             allLogs = list.map((l, idx) => {
                 const roleRaw = String(l.user_role || (l.details && l.details.actor_role) || 'system');
+                let parsed = l.details;
+                if (typeof parsed === 'string') { try { parsed = JSON.parse(parsed); } catch (_) { parsed = {}; } }
+                const branch = (parsed && (parsed.branch || parsed.store_location)) || l.store_location || '—';
+                const userName = l.user_name || l.user_email || (parsed && parsed.actor_name) || 'System';
                 return {
                     id: l.id || idx,
                     time: new Date(l.created_at).toLocaleString(),
-                    user: l.user_name || l.user_email || (l.details && l.details.actor_name) || 'System',
+                    user: userName,
+                    userKey: String(userName).toLowerCase(),
                     role: roleRaw.replace(/_/g, ' ').toUpperCase(),
                     roleKey: roleRaw.toLowerCase().replace(/[\s-]+/g, '_'),
+                    branch,
+                    branchKey: String(branch).toLowerCase(),
                     action: l.action,
                     category: classifyAction(l.action),
+                    risk: classifyRisk(l.action),
+                    itemQty: extractItemAndQty(parsed),
                     details: summarizeDetails(l.action, l.details),
                     rawDetails: l.details,
                     ip: l.ip_address || ''
                 };
             });
+
+            // Populate dynamic Branch & Staff filter options
+            const prevBranch = branchSel.value;
+            const prevStaff = staffSel.value;
+            const uniqBranches = Array.from(new Set(allLogs.map(l => l.branch).filter(b => b && b !== '—'))).sort();
+            const uniqStaff = Array.from(new Set(allLogs.map(l => l.user).filter(Boolean))).sort();
+            branchSel.innerHTML = '<option value="">All Branches</option>' + uniqBranches.map(b => `<option value="${esc(b.toLowerCase())}">${esc(b)}</option>`).join('');
+            staffSel.innerHTML = '<option value="">All Staff</option>' + uniqStaff.map(u => `<option value="${esc(u.toLowerCase())}">${esc(u)}</option>`).join('');
+            if (prevBranch) branchSel.value = prevBranch;
+            if (prevStaff) staffSel.value = prevStaff;
+
             renderFiltered();
         }
 
         roleSel.addEventListener('change', renderFiltered);
+        branchSel.addEventListener('change', renderFiltered);
+        staffSel.addEventListener('change', renderFiltered);
         catSel.addEventListener('change', renderFiltered);
+        riskSel.addEventListener('change', renderFiltered);
         resetBtn.addEventListener('click', () => {
             roleSel.value = '';
+            branchSel.value = '';
+            staffSel.value = '';
             catSel.value = '';
+            riskSel.value = '';
             dateRange = { from: '', to: '' };
             load();
         });
