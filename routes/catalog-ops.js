@@ -1111,6 +1111,109 @@ router.delete('/api/warranties/:id', authenticateToken, requireRole(MANAGER_ROLE
     }
 });
 
+// --- PURCHASE RETURNS ---
+router.get('/api/purchase-returns', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
+    try {
+        const r = await pool.query(`
+            SELECT sa.id,
+                   ('PR-' || LPAD(sa.id::text, 5, '0')) AS return_ref,
+                   sa.product_barcode,
+                   COALESCE(p.name, sa.product_barcode) AS product_name,
+                   ABS(COALESCE(sa.quantity_adjusted, 0)) AS quantity,
+                   COALESCE(p.cost_price, 0) AS unit_cost,
+                   (ABS(COALESCE(sa.quantity_adjusted, 0)) * COALESCE(p.cost_price, 0)) AS return_total,
+                   COALESCE(sa.reason, '') AS reason,
+                   COALESCE(b.name, 'Main') AS branch_name,
+                   COALESCE(u.name, u.username, 'Manager') AS recorded_by,
+                   COALESCE(sa.approved_at, sa.created_at) AS created_at
+            FROM stock_adjustments sa
+            LEFT JOIN products p ON p.barcode = sa.product_barcode AND COALESCE(p.tenant_id, 1) = $1
+            LEFT JOIN branches b ON b.id = sa.branch_id
+            LEFT JOIN users u ON u.id = sa.approver_id
+            WHERE COALESCE(sa.tenant_id, 1) = $1
+              AND sa.adjustment_type = 'Purchase Return'
+            ORDER BY COALESCE(sa.approved_at, sa.created_at) DESC, sa.id DESC
+            LIMIT 500
+        `, [tenantId]);
+        res.json({ returns: r.rows });
+    } catch (e) {
+        console.error('GET /api/purchase-returns error:', e);
+        res.status(500).json({ message: 'Failed to load purchase returns' });
+    }
+});
+
+router.post('/api/purchase-returns', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('stock', 'create'), async (req, res) => {
+    const tenantId = req.user.tenant_id || 1;
+    const { product_barcode, supplier_name = '', quantity, unit_cost = 0, reason = '' } = req.body || {};
+    const qty = Number(quantity || 0);
+    if (!product_barcode || !Number.isFinite(qty) || qty <= 0) {
+        return res.status(400).json({ message: 'Product and a positive return quantity are required' });
+    }
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        const pRes = await client.query(
+            'SELECT id, name, barcode, stock, cost_price, stock_levels FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2 FOR UPDATE',
+            [String(product_barcode).trim(), tenantId]
+        );
+        if (!pRes.rows.length) {
+            await client.query('ROLLBACK');
+            return res.status(404).json({ message: 'Product not found' });
+        }
+        const prod = pRes.rows[0];
+        const branchId = req.user.store_id || null;
+        const brRes = branchId
+            ? await client.query('SELECT name FROM branches WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 LIMIT 1', [branchId, tenantId])
+            : await client.query('SELECT id, name FROM branches WHERE COALESCE(tenant_id, 1) = $1 ORDER BY is_main DESC NULLS LAST, id ASC LIMIT 1', [tenantId]);
+        const branchName = (brRes.rows[0] && brRes.rows[0].name) || req.user.store_location || 'Main';
+        const effBranchId = branchId || (brRes.rows[0] && brRes.rows[0].id) || null;
+
+        const levels = (prod.stock_levels && typeof prod.stock_levels === 'object') ? prod.stock_levels : {};
+        const prevBranchQty = Object.prototype.hasOwnProperty.call(levels, branchName) ? Number(levels[branchName] || 0) : Number(prod.stock || 0);
+        const newBranchQty = Math.max(0, Number((prevBranchQty - qty).toFixed(3)));
+        const newTotalStock = Math.max(0, Number((Number(prod.stock || 0) - qty).toFixed(3)));
+
+        await client.query(
+            `UPDATE products
+             SET stock = $1::numeric,
+                 stock_levels = jsonb_set(COALESCE(stock_levels, '{}'::jsonb), ARRAY[$2::text], to_jsonb($3::numeric))
+             WHERE id = $4 AND COALESCE(tenant_id, 1) = $5`,
+            [newTotalStock, branchName, newBranchQty, prod.id, tenantId]
+        );
+
+        const fullReason = [supplier_name ? `Supplier: ${String(supplier_name).trim()}` : '', String(reason || '').trim()].filter(Boolean).join(' · ') || 'Returned to supplier';
+        const ins = await client.query(
+            `INSERT INTO stock_adjustments (tenant_id, product_barcode, adjustment_type, quantity_adjusted, reason, approver_id, branch_id, approved_at)
+             VALUES ($1, $2, 'Purchase Return', $3, $4, $5, $6, CURRENT_TIMESTAMP) RETURNING id`,
+            [tenantId, prod.barcode, -qty, fullReason, req.user.id || null, effBranchId]
+        );
+        await client.query('COMMIT');
+
+        const cost = Number(unit_cost || prod.cost_price || 0);
+        await logActivity(req, 'PURCHASE_RETURN', {
+            return_ref: `PR-${String(ins.rows[0].id).padStart(5, '0')}`,
+            supplier_name: String(supplier_name || '').trim(),
+            product: prod.name,
+            sku: prod.barcode,
+            branch: branchName,
+            previousQty: prevBranchQty,
+            newQty: newBranchQty,
+            change: `-${qty}`,
+            total: Number((qty * cost).toFixed(2)),
+            reason: fullReason,
+            items: [{ name: prod.name, barcode: prod.barcode, old_qty: prevBranchQty, new_qty: newBranchQty, variance: -qty, qty, price: cost, line_total: Number((qty * cost).toFixed(2)) }]
+        });
+        res.status(201).json({ success: true, id: ins.rows[0].id });
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        console.error('POST /api/purchase-returns error:', e);
+        res.status(500).json({ message: 'Failed to record purchase return' });
+    } finally {
+        client.release();
+    }
+});
+
 // --- STOCK REPORT & PRODUCT STOCK HISTORY ---
 router.get('/api/products/stock-report', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     const tenantId = req.user.tenant_id || 1;

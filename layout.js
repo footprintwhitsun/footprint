@@ -72,6 +72,11 @@
         { label: 'Warranties', url: '/catalog-ops?tab=warranties', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'shield' },
         { label: 'Stock Taking', url: '/inventory?tab=stocktaking', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'clipboardCheck' },
 
+        // Purchases (immediately under Products)
+        { label: 'List Purchases', url: '/inventory?tab=orders', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Purchases', icon: 'shoppingCart' },
+        { label: 'Add Purchase', url: '/inventory?tab=orders&action=new', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Purchases', icon: 'shoppingBag' },
+        { label: 'List Purchase Return', url: '/inventory?tab=purchase_returns', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Purchases', icon: 'receipt' },
+
         { label: 'Pending Approvals', url: '/ceo-portal?tab=approvals-pending', roles: ['ceo', 'admin'], group: 'CEO', icon: 'clock' },
         { label: 'Approval History', url: '/ceo-portal?tab=approvals-history', roles: ['ceo', 'admin'], group: 'CEO', icon: 'fileCheck' },
         { label: 'Branches', url: '/ceo-portal?tab=branches', roles: ['ceo', 'admin'], group: 'CEO', icon: 'mapPin' },
@@ -108,8 +113,7 @@
         { label: 'Daily Close', url: '/daily-close', roles: ['admin', 'manager', 'store_manager'], group: 'Till', icon: 'fileCheck' },
         { label: 'Transactions', url: '/transactions', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'receipt' },
 
-        // Inventory (Purchasing & Movement; Products & Catalog moved to Products group above)
-        { label: 'Purchase Orders', url: '/inventory?tab=orders', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'shoppingCart' },
+        // Inventory (Receiving & Movement; Purchases moved to Purchases group above)
         { label: 'Goods Receiving', url: '/inventory?tab=receiving', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'clipboardCheck' },
         { label: 'Distribution', url: '/inventory?tab=distribution', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'truck' },
         { label: 'Stock Adjustments', url: '/stock-adjustments?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'layers' },
@@ -1195,6 +1199,7 @@
                     'User Management': 'users',
                     'Contacts': 'users',
                     'Products': 'package',
+                    'Purchases': 'shoppingCart',
                     'CEO': 'shield',
                     'Company': 'layers',
                     'Sales': 'shoppingBag',

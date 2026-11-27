@@ -857,6 +857,21 @@
         </div>
 
         <!-- 3. PURCHASE ORDERS TAB -->
+        <div id="tab-purchase_returns" class="tab-content">
+            <div class="okw-page-header" style="margin-bottom:16px;">
+                <div class="okw-page-header-text">
+                    <h2 class="okw-page-title" style="font-size:20px;">Purchase Returns</h2>
+                    <p class="okw-page-subtitle">Track stock returned to suppliers and keep branch inventory accurate.</p>
+                </div>
+                <div class="okw-page-header-actions">
+                    <button type="button" id="btnOpenAddPurchaseReturn" class="okw-btn okw-btn-primary">+ Add Purchase Return</button>
+                </div>
+            </div>
+            <div class="inventory-card" style="padding:18px;">
+                <div id="purchaseReturnsHost">Loading purchase returns...</div>
+            </div>
+        </div>
+
         <div id="tab-orders" class="tab-content">
             <div class="page-header">
                 <h3>Purchase Orders</h3>
@@ -2290,7 +2305,8 @@
                 'shelf': 'Shelf & Batches',
                 'categories': 'Product Categories',
                 'negative': 'Negative Stock Analysis',
-                'returns': 'Returned Sales'
+                'returns': 'Returned Sales',
+                'purchase_returns': 'Purchase Returns'
             };
             
             // Only update title if element exists
@@ -2322,6 +2338,8 @@
                 loadNegativeStock();
             } else if (tabId === 'returns') {
                 loadReturns();
+            } else if (tabId === 'purchase_returns') {
+                loadPurchaseReturns();
             }
         }
 
@@ -2355,6 +2373,9 @@
             switchTab(tab);
             if (urlParams.get('action') === 'add' && typeof prepareAddProduct === 'function') {
                 setTimeout(() => prepareAddProduct(), 150);
+            }
+            if (tab === 'orders' && urlParams.get('action') === 'new' && typeof openPOModal === 'function') {
+                setTimeout(() => openPOModal(), 250);
             }
 
             document.getElementById('confirmModalCancel').addEventListener('click', () => {
@@ -6303,6 +6324,157 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
         // --- RETURNS FUNCTIONS ---
         let returnsData = [];
         let filteredReturns = [];
+        async function loadPurchaseReturns() {
+            const host = document.getElementById('purchaseReturnsHost');
+            if (!host) return;
+            host.innerHTML = '<div style="padding:20px;color:#64748b;">Loading purchase returns...</div>';
+            const token = localStorage.getItem('authToken');
+            const headers = (token && token !== 'null' && token !== 'undefined') ? { Authorization: `Bearer ${token}` } : {};
+            const esc = (v) => (window.OkwUI && OkwUI.escapeHtml ? OkwUI.escapeHtml(v) : String(v ?? ''));
+            const fmtM = (n) => (typeof formatCurrency === 'function' ? formatCurrency(Number(n) || 0) : 'GH₵ ' + (Number(n) || 0).toFixed(2));
+            const fmtQ = (v) => { const n = Number(v || 0); return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3))); };
+            try {
+                const res = await fetch('/api/purchase-returns', { headers, credentials: 'include' });
+                const d = await res.json().catch(() => ({}));
+                const rows = Array.isArray(d.returns) ? d.returns : [];
+                if (window.OkwUI && OkwUI.dataTable) {
+                    OkwUI.dataTable('#purchaseReturnsHost', {
+                        columns: [
+                            { key: 'created_at', label: 'Date', render: (v) => v ? esc(new Date(v).toLocaleDateString()) : '—' },
+                            { key: 'return_ref', label: 'Reference #' },
+                            { key: 'product_name', label: 'Product' },
+                            { key: 'product_barcode', label: 'SKU' },
+                            { key: 'branch_name', label: 'Branch' },
+                            { key: 'quantity', label: 'Returned Qty', numeric: true, render: (v) => esc(fmtQ(v)) },
+                            { key: 'unit_cost', label: 'Unit Cost', numeric: true, render: (v) => fmtM(v) },
+                            { key: 'return_total', label: 'Return Total', numeric: true, render: (v) => fmtM(v) },
+                            { key: 'reason', label: 'Supplier / Notes', render: (v) => esc(v || '—') }
+                        ],
+                        rows,
+                        emptyText: 'No purchase returns recorded yet.',
+                        searchPlaceholder: 'Search reference, product, SKU, supplier, or reason...',
+                        exportFilename: 'okwesiwa-purchase-returns.xlsx',
+                        printTitle: 'OKWESIWA CO LTD — Purchase Returns'
+                    });
+                }
+            } catch (_) {
+                host.innerHTML = '<div style="padding:20px;color:#b91c1c;">Failed to load purchase returns.</div>';
+            }
+
+            const addBtn = document.getElementById('btnOpenAddPurchaseReturn');
+            if (addBtn && !addBtn.dataset.prBound) {
+                addBtn.dataset.prBound = '1';
+                addBtn.addEventListener('click', openAddPurchaseReturnModal);
+            }
+        }
+
+        async function openAddPurchaseReturnModal() {
+            const token = localStorage.getItem('authToken');
+            const headers = { 'Content-Type': 'application/json' };
+            if (token && token !== 'null' && token !== 'undefined') headers.Authorization = `Bearer ${token}`;
+            const esc = (v) => (window.OkwUI && OkwUI.escapeHtml ? OkwUI.escapeHtml(v) : String(v ?? ''));
+
+            if (!Array.isArray(products) || !products.length) {
+                try { await loadInventory(); } catch (_) { }
+            }
+            let supList = [];
+            try {
+                const sr = await fetch('/api/suppliers', { headers, credentials: 'include' });
+                const sd = await sr.json().catch(() => []);
+                supList = Array.isArray(sd) ? sd : (sd.suppliers || []);
+            } catch (_) { }
+
+            const backdrop = document.createElement('div');
+            backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:10060;display:flex;align-items:center;justify-content:center;padding:16px;';
+            backdrop.innerHTML = `
+                <div class="okw-card" style="width:100%;max-width:500px;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,0.3);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                        <h3 style="margin:0;font-size:17px;">Add Purchase Return</h3>
+                        <button type="button" id="pr-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted,#64748b);line-height:1;">&times;</button>
+                    </div>
+                    <form id="pr-form" style="display:flex;flex-direction:column;gap:12px;">
+                        <div class="okw-field" style="margin:0;">
+                            <label class="okw-label" for="pr-supplier">Supplier</label>
+                            <select id="pr-supplier" class="okw-input">
+                                <option value="">Select Supplier (Optional)</option>
+                                ${supList.map(s => `<option value="${esc(s.name || '')}">${esc(s.name || '')}</option>`).join('')}
+                            </select>
+                        </div>
+                        <div class="okw-field" style="margin:0;">
+                            <label class="okw-label" for="pr-product">Product:*</label>
+                            <select id="pr-product" class="okw-input" required>
+                                <option value="">Select Product</option>
+                                ${(products || []).map(p => `<option value="${esc(p.barcode)}" data-cost="${Number(p.cost_price || 0)}">${esc(p.name)} (${esc(p.barcode)})</option>`).join('')}
+                            </select>
+                        </div>
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                            <div class="okw-field" style="margin:0;">
+                                <label class="okw-label" for="pr-qty">Return Qty:*</label>
+                                <input type="number" id="pr-qty" class="okw-input" step="any" min="0.001" placeholder="e.g. 5" required>
+                            </div>
+                            <div class="okw-field" style="margin:0;">
+                                <label class="okw-label" for="pr-cost">Unit Cost</label>
+                                <input type="number" id="pr-cost" class="okw-input" step="any" min="0" placeholder="0.00">
+                            </div>
+                        </div>
+                        <div class="okw-field" style="margin:0;">
+                            <label class="okw-label" for="pr-reason">Reason / Notes</label>
+                            <input type="text" id="pr-reason" class="okw-input" placeholder="e.g. Damaged on arrival, wrong item">
+                        </div>
+                        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+                            <button type="button" id="pr-cancel" class="okw-btn okw-btn-outline">Cancel</button>
+                            <button type="submit" id="pr-save" class="okw-btn okw-btn-primary">Save Return</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            document.body.appendChild(backdrop);
+
+            const close = () => backdrop.remove();
+            backdrop.querySelector('#pr-close').addEventListener('click', close);
+            backdrop.querySelector('#pr-cancel').addEventListener('click', close);
+            backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+
+            const prodSel = backdrop.querySelector('#pr-product');
+            const costEl = backdrop.querySelector('#pr-cost');
+            prodSel.addEventListener('change', () => {
+                const opt = prodSel.options[prodSel.selectedIndex];
+                if (opt && opt.dataset.cost) costEl.value = opt.dataset.cost;
+            });
+
+            backdrop.querySelector('#pr-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const saveBtn = backdrop.querySelector('#pr-save');
+                saveBtn.disabled = true;
+                try {
+                    const r = await fetch('/api/purchase-returns', {
+                        method: 'POST',
+                        headers,
+                        credentials: 'include',
+                        body: JSON.stringify({
+                            supplier_name: backdrop.querySelector('#pr-supplier').value.trim(),
+                            product_barcode: prodSel.value.trim(),
+                            quantity: Number(backdrop.querySelector('#pr-qty').value),
+                            unit_cost: Number(costEl.value || 0),
+                            reason: backdrop.querySelector('#pr-reason').value.trim()
+                        })
+                    });
+                    const out = await r.json().catch(() => ({}));
+                    if (!r.ok) {
+                        if (window.OkwUI && OkwUI.toast) OkwUI.toast(out.message || 'Failed to save purchase return', 'danger');
+                        saveBtn.disabled = false;
+                        return;
+                    }
+                    if (window.OkwUI && OkwUI.toast) OkwUI.toast('Purchase return recorded', 'success');
+                    close();
+                    loadPurchaseReturns();
+                } catch (_) {
+                    if (window.OkwUI && OkwUI.toast) OkwUI.toast('Network error saving purchase return', 'danger');
+                    saveBtn.disabled = false;
+                }
+            });
+        }
+
         let returnsPage = 1;
         let returnsRows = 10;
 
