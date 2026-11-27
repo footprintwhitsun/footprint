@@ -268,6 +268,12 @@
                             <button type="button" id="btnAddDeviceModel" class="okw-btn okw-btn-outline" style="height:38px;padding:0 12px;" title="Add new device model"><i class="fas fa-plus"></i></button>
                         </div>
                     </div>
+                    <div class="ap-field">
+                        <label for="apWarranty">Warranty (Optional)</label>
+                        <select id="apWarranty" class="ap-select">
+                            <option value="">None</option>
+                        </select>
+                    </div>
                 </div>
             </section>
 
@@ -307,12 +313,6 @@
                     <div class="ap-field">
                         <label for="apConvRate">Items per Package</label>
                         <input type="number" id="apConvRate" class="ap-input" step="any" min="1" value="1">
-                    </div>
-                    <div class="ap-field">
-                        <label for="apWarranty">Warranty (Optional)</label>
-                        <select id="apWarranty" class="ap-select">
-                            <option value="">None</option>
-                        </select>
                     </div>
                     <div class="ap-field" style="display:none;">
                         <input type="text" id="apBatch" value="">
