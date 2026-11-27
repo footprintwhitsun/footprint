@@ -1,573 +1,799 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
-    <script src="auth-guard.js"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OKWESIWA CO LTD | Customer View</title>
+    <title>OKWESIWA CO LTD | Customer Display</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" media="print" data-media-swap>
+    <script src="/auth-guard.js"></script>
+    <script src="/currency.js"></script>
+    <script src="/telemetry-guard.js"></script>
+    <script src="/instant-nav.js"></script>
+    <script src="/okw-events.js"></script>
     <style>
         :root {
-            --primary: #273990;
-            --secondary: #1c2b70;
-            --accent: #f9a51a;
-            --bg: #f5f7fa;
-            --border: #e0e0e0;
-            --text: #333;
-            --card-bg: #ffffff;
-        }
-        
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; -webkit-font-smoothing: antialiased; }
-        
-        body {
-            background: var(--bg);
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            color: var(--text);
+            --cd-brand: #273990;
+            --cd-brand-deep: #16225a;
+            --cd-accent: #F9A51A;
+            --cd-bg: #f4f6fa;
+            --cd-sheet: #ffffff;
+            --cd-edge: #e2e8f0;
+            --cd-ink: #0f172a;
+            --cd-ink-2: #334155;
+            --cd-muted: #64748b;
+            --cd-green: #15803d;
+            --cd-green-soft: #dcfce7;
+            --cd-font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
         }
 
-        /* IDLE STATE OVERLAY */
-        #idleScreen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: #1F3A60;
-            color: white;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            z-index: 100;
-            overflow: hidden;
-            transition: opacity 0.5s ease;
-        }
-        #idleScreen.hidden {
-            opacity: 0;
-            pointer-events: none;
-        }
-        .idle-content { text-align: center; animation: float 6s ease-in-out infinite; }
-        .idle-icon { font-size: 120px; margin-bottom: 30px; color: var(--accent); }
-        .idle-title { font-size: 48px; font-weight: 700; margin-bottom: 10px; letter-spacing: 1px; }
-        .idle-subtitle { font-size: 24px; opacity: 0.8; font-weight: 300; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-20px); }
-        }
-
-        /* HEADER */
-        header {
-            height: 60px;
-            background: #1F3A60;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-            flex-shrink: 0;
-        }
-        .brand { font-size: 28px; font-weight: 700; letter-spacing: 2px; font-family: 'Montserrat', sans-serif; display: flex; align-items: center; gap: 10px; }
-
-        /* ACTIVE TRANSACTION LAYOUT */
-        .container {
-            display: flex;
-            width: 100%;
-            height: calc(100vh - 170px); /* Adjust based on header and ticker height */
-            flex: 1;
-            padding: 10px;
-            justify-content: space-between;
-            gap: 15px;
-        }
-
-        /* MAIN CARD */
-        .main-card {
-            flex: 1;
+        html, body {
             height: 100%;
-            background: var(--card-bg);
-            display: flex;
-            flex-direction: column;
-            border-radius: 16px;
-            box-shadow: 0 4px 25px rgba(0,0,0,0.05);
-            border: 1px solid var(--border);
+            width: 100%;
+            overflow: hidden;
+            font-family: var(--cd-font);
+            background: var(--cd-bg);
+            color: var(--cd-ink);
+            -webkit-font-smoothing: antialiased;
         }
 
-        .card-header {
-            padding: 10px 15px;
-            background: #fff;
-            border-bottom: 1px solid var(--border);
+        body {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-            z-index: 10;
+            flex-direction: column;
         }
-        .cart-title { font-size: 24px; font-weight: 600; color: var(--primary); }
-        .item-count { background: var(--bg); padding: 5px 15px; border-radius: 20px; font-size: 14px; font-weight: 600; color: #666; }
-        
-        .cart-items {
+
+        /* ================= TOP BAR ================= */
+        .cd-header {
+            height: 58px;
+            background: var(--cd-sheet);
+            border-bottom: 1px solid var(--cd-edge);
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            flex-shrink: 0;
+            z-index: 20;
+        }
+        .cd-header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+        .cd-logo {
+            height: 30px;
+            width: auto;
+            max-width: 130px;
+            object-fit: contain;
+        }
+        .cd-divider-v {
+            width: 1px;
+            height: 20px;
+            background: var(--cd-edge);
+        }
+        .cd-branch-pill {
+            font-size: 11.5px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: var(--cd-brand);
+            background: rgba(39, 57, 144, 0.08);
+            border: 1px solid rgba(39, 57, 144, 0.16);
+            padding: 4px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .cd-live-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--cd-green);
+            background: var(--cd-green-soft);
+            padding: 4px 10px;
+            border-radius: 999px;
+            white-space: nowrap;
+        }
+        .cd-live-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+        }
+        .cd-header-right {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .cd-clock {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--cd-muted);
+            font-variant-numeric: tabular-nums;
+            margin-right: 4px;
+        }
+        .cd-btn {
+            height: 34px;
+            padding: 0 12px;
+            border-radius: 8px;
+            border: 1px solid var(--cd-edge);
+            background: var(--cd-sheet);
+            color: var(--cd-ink-2);
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+        }
+        .cd-btn:hover {
+            background: #f8fafc;
+            border-color: var(--cd-brand);
+            color: var(--cd-brand);
+        }
+        .cd-btn-primary {
+            background: var(--cd-brand);
+            border-color: var(--cd-brand);
+            color: #ffffff;
+        }
+        .cd-btn-primary:hover {
+            background: var(--cd-brand-deep);
+            color: #ffffff;
+        }
+
+        /* ================= MAIN SPLIT WORKSPACE ================= */
+        .cd-main {
+            flex: 1;
+            min-height: 0;
+            display: grid;
+            grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr);
+            gap: 18px;
+            padding: 18px 24px 22px;
+        }
+
+        /* LEFT: ITEMS PANEL */
+        .cd-items-panel {
+            background: var(--cd-sheet);
+            border: 1px solid var(--cd-edge);
+            border-radius: 16px;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.04);
+        }
+        .cd-items-head {
+            padding: 16px 22px;
+            border-bottom: 1px solid var(--cd-edge);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+        .cd-items-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--cd-ink);
+        }
+        .cd-count-pill {
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--cd-brand);
+            background: rgba(39, 57, 144, 0.08);
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-variant-numeric: tabular-nums;
+        }
+        .cd-items-list {
             flex: 1;
             overflow-y: auto;
-            padding: 0;
+            padding: 8px 0;
             scroll-behavior: smooth;
-            position: relative;
         }
-        
-        /* Compact items to display more products */
-        .cart-item {
+        .cd-item-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px 22px;
+            border-bottom: 1px solid #f1f5f9;
+            animation: cdSlideIn 0.22s ease-out;
+        }
+        .cd-item-row:last-child { border-bottom: none; }
+        .cd-item-row.latest {
+            background: #eff6ff;
+            border-left: 4px solid var(--cd-brand);
+            padding-left: 18px;
+        }
+        .cd-item-info { min-width: 0; flex: 1; }
+        .cd-item-name {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--cd-ink);
+            line-height: 1.3;
+        }
+        .cd-item-meta {
+            margin-top: 3px;
+            font-size: 13.5px;
+            color: var(--cd-muted);
+            font-variant-numeric: tabular-nums;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .cd-warranty-tag {
+            display: inline-flex;
+            align-items: center;
+            font-size: 11px;
+            font-weight: 600;
+            color: var(--cd-green);
+            background: var(--cd-green-soft);
+            padding: 2px 8px;
+            border-radius: 999px;
+        }
+        .cd-item-total {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--cd-ink);
+            font-variant-numeric: tabular-nums;
+            white-space: nowrap;
+        }
+        .cd-item-row.latest .cd-item-total {
+            color: var(--cd-brand);
+        }
+
+        @keyframes cdSlideIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* RIGHT: SUMMARY & TOTAL PANEL */
+        .cd-summary-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            min-height: 0;
+        }
+        .cd-hero-total {
+            background: linear-gradient(145deg, var(--cd-brand) 0%, var(--cd-brand-deep) 100%);
+            color: #ffffff;
+            border-radius: 18px;
+            padding: 28px 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: flex-start;
+            gap: 8px;
+            box-shadow: 0 14px 34px rgba(39, 57, 144, 0.24);
+            position: relative;
+            overflow: hidden;
+        }
+        .cd-hero-total::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--cd-accent);
+        }
+        .cd-hero-label {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: rgba(255, 255, 255, 0.78);
+        }
+        .cd-hero-amount {
+            font-size: clamp(40px, 4.6vw, 64px);
+            font-weight: 800;
+            line-height: 1.05;
+            letter-spacing: -0.02em;
+            font-variant-numeric: tabular-nums;
+            word-break: break-word;
+        }
+        .cd-pay-methods {
+            margin-top: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+        .cd-pay-chip {
+            font-size: 11px;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.9);
+            background: rgba(255, 255, 255, 0.14);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            padding: 3px 9px;
+            border-radius: 999px;
+        }
+
+        .cd-breakdown-card {
+            background: var(--cd-sheet);
+            border: 1px solid var(--cd-edge);
+            border-radius: 16px;
+            padding: 20px 22px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            flex: 1;
+        }
+        .cd-sum-row {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 15px;
-            border-bottom: 1px solid #f5f5f5;
-            transition: background 0.3s;
-            animation: slideIn 0.4s ease-out;
-            font-size: 15px;
+            font-size: 15.5px;
+            color: var(--cd-muted);
         }
-        .cart-item:nth-child(even) {
-            background: #fafafa;
+        .cd-sum-row strong {
+            color: var(--cd-ink);
+            font-weight: 700;
+            font-variant-numeric: tabular-nums;
         }
-        .cart-item.last-added {
-            background: #eef2ff; /* Highlight last added */
-            border-left: 4px solid var(--primary);
-        }
-        .item-details { flex: 1; min-width: 0; }
-        .item-name { font-size: 16px; font-weight: 600; color: #222; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .item-meta { font-size: 13px; color: #777; }
-        .item-price { font-size: 16px; font-weight: 700; color: var(--primary); margin-left: 15px; }
-    
-    @keyframes slideIn {
-            from { opacity: 0; transform: translateX(-20px); }
-            to { opacity: 1; transform: translateX(0); }
+        .cd-sum-row.savings strong,
+        .cd-sum-row.savings span {
+            color: var(--cd-green);
+            font-weight: 600;
         }
 
-        /* FOOTER SUMMARY */
-        .card-footer {
-            padding: 20px;
-            width: 28%;
-            background: #fff;        
-            border: 1px solid var(--border);
+        /* ================= THANK YOU OVERLAY ================= */
+        .cd-thankyou {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.65);
+            backdrop-filter: blur(6px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 90;
+            padding: 24px;
+        }
+        .cd-thankyou.active {
+            display: flex;
+            animation: cdFadeIn 0.25s ease;
+        }
+        .cd-thankyou-card {
+            background: var(--cd-sheet);
+            border-radius: 22px;
+            padding: 40px 44px;
+            text-align: center;
+            max-width: 460px;
+            width: 100%;
+            box-shadow: 0 24px 64px rgba(15, 23, 42, 0.35);
+            border-top: 5px solid #16a34a;
+        }
+        .cd-check-circle {
+            width: 68px;
+            height: 68px;
+            border-radius: 50%;
+            background: var(--cd-green-soft);
+            color: var(--cd-green);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 18px;
+        }
+        .cd-thankyou-card h2 {
+            font-size: 28px;
+            font-weight: 800;
+            color: var(--cd-ink);
+            margin-bottom: 8px;
+        }
+        .cd-thankyou-card p {
+            font-size: 15px;
+            color: var(--cd-muted);
+        }
+
+        /* ================= IDLE / WELCOME SCREEN ================= */
+        .cd-idle {
+            position: fixed;
+            inset: 0;
+            background: linear-gradient(145deg, #131e4d 0%, #273990 60%, #1c2b70 100%);
+            color: #ffffff;
             display: flex;
             flex-direction: column;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            justify-content: space-between;
+            padding: 28px 36px;
+            z-index: 80;
+            transition: opacity 0.35s ease, visibility 0.35s ease;
         }
-
-        .breakdown {
+        .cd-idle.hidden {
+            opacity: 0;
+            visibility: hidden;
+            pointer-events: none;
+        }
+        .cd-idle-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+        .cd-idle-logo-wrap {
+            background: #ffffff;
+            border: 2px solid var(--cd-accent);
+            border-radius: 10px;
+            padding: 6px 14px;
+            display: inline-flex;
+            align-items: center;
+        }
+        .cd-idle-logo-wrap img {
+            height: 34px;
+            width: auto;
+            max-width: 150px;
+            object-fit: contain;
+        }
+        .cd-idle-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .cd-idle-btn {
+            height: 36px;
+            padding: 0 14px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.22);
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            font-family: inherit;
+            font-size: 12.5px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .cd-idle-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: var(--cd-accent);
+        }
+        .cd-idle-center {
+            text-align: center;
+            max-width: 720px;
+            margin: 0 auto;
+        }
+        .cd-idle-time {
+            font-size: clamp(44px, 6vw, 76px);
+            font-weight: 800;
+            letter-spacing: -0.03em;
+            font-variant-numeric: tabular-nums;
+            line-height: 1;
             margin-bottom: 10px;
         }
-
-        .summary-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
+        .cd-idle-date {
             font-size: 16px;
-            color: #666;
-        }
-        .summary-row .label { font-weight: 400; }
-        .summary-row .value { font-weight: 600; color: #333; }
-        
-        .summary-row.discount .label,
-        .summary-row.discount .value { color: #108043; }
-        
-        .divider { height: 1px; background: #eee; margin: 15px 0; }
-
-        .total-section {
-            background: #1F3A60;
-            padding: 20px;
-            border-radius: 16px;
-            color: white;
-            box-shadow: 0 8px 20px rgba(39, 57, 144, 0.25);
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-        }
-        .total-label { 
-            font-size: 16px; font-weight: 500; color: rgba(255,255,255,0.9); 
-            text-transform: uppercase; letter-spacing: 1px; margin-bottom: 5px;
-        }
-        .total-amount { font-size: 42px; font-weight: 800; color: white; line-height: 1.1; }
-
-        .promo-box {
-            margin-top: 20px;
-            background: #1F3A60;
-            border-radius: 10px;
-            padding: 20px;
-            color: white;
-            text-align: center;
-            display: none; /* Hidden by default, shown if needed */
-            box-shadow: 0 10px 20px rgba(46, 125, 50, 0.2);
-        }
-        .promo-box.active { display: block; animation: popIn 0.5s; }
-        .promo-title { font-size: 20px; font-weight: 700; margin-bottom: 5px; }
-        
-        @keyframes popIn {
-            from { opacity: 0; transform: scale(0.9); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        /* TICKER FOOTER */
-        .ticker-wrap {
-            width: 100%;
-            height: 40px;
-            background: var(--secondary);
-            overflow: hidden;
-            box-sizing: content-box;
-            border-top: 4px solid var(--accent);
-            flex-shrink: 0;
-            z-index: 2000; /* Ensure visibility over idle screen */
-            position: relative;
-        }
-
-        .ticker {
-            display: inline-block;
-            height: 40px;
-            line-height: 40px;
-            white-space: nowrap;
-            padding-right: 100%;
-            box-sizing: content-box;
-            animation: ticker 30s linear infinite;
-        }
-
-        .ticker-item {
-            display: inline-block;
-            padding: 0 2rem;
-            font-size: 16px;
-            color: white;
             font-weight: 500;
+            color: rgba(255, 255, 255, 0.72);
+            margin-bottom: 34px;
         }
-
-        @keyframes ticker {
-            0% { transform: translate3d(0, 0, 0); }
-            100% { transform: translate3d(-100%, 0, 0); }
+        .cd-idle-title {
+            font-size: clamp(28px, 3.6vw, 44px);
+            font-weight: 800;
+            letter-spacing: -0.01em;
+            margin-bottom: 10px;
         }
-    </style>
-    <script src="currency.js"></script>
-    <script src="telemetry-guard.js"></script>
-    <script src="instant-nav.js"></script>
-    <link rel="stylesheet" href="sidebar.css">
-    <style>
-        header.okw-sub-header {
-            height: 62px;
-            background: #ffffff !important;
-            border-top: 3px solid transparent;
-            border-image: linear-gradient(90deg, #273990 0%, #273990 72%, #F9A51A 100%) 1;
-            border-bottom: 1px solid #e1e5eb !important;
-            color: #273990 !important;
+        .cd-idle-sub {
+            font-size: 18px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 400;
+        }
+        .cd-idle-accent-bar {
+            width: 64px;
+            height: 4px;
+            border-radius: 999px;
+            background: var(--cd-accent);
+            margin: 22px auto;
+        }
+        .cd-idle-bottom {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 0 28px !important;
-            position: relative;
-            z-index: 50;
-            box-shadow: 0 1px 3px rgba(17, 24, 39, 0.04) !important;
-            flex-shrink: 0;
+            flex-wrap: wrap;
+            gap: 12px;
+            padding-top: 18px;
+            border-top: 1px solid rgba(255, 255, 255, 0.14);
+            font-size: 13px;
+            color: rgba(255, 255, 255, 0.76);
         }
-        .okw-sub-header .hdr-left { display: flex; align-items: center; gap: 12px; white-space: nowrap; }
-        .okw-sub-header .hdr-brand { font-size: 14.5px; font-weight: 800; color: #273990; letter-spacing: 0.05em; text-transform: uppercase; }
-        .okw-sub-header .hdr-sep { width: 1px; height: 18px; background: #e1e5eb; }
-        .okw-sub-header .hdr-badge { background: rgba(39, 57, 144, 0.08); color: #273990; border: 1px solid rgba(39, 57, 144, 0.16); border-left: 3px solid #F9A51A; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 10px; border-radius: 6px; }
-        .okw-sub-header .hdr-right { display: flex; align-items: center; gap: 10px; }
-        .okw-sub-header .hdr-user { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 5px; border-radius: 999px; background: #f8fafc; border: 1px solid #e1e5eb; font-size: 13px; font-weight: 600; color: #111827; }
-        .okw-sub-header .hdr-avatar { width: 26px; height: 26px; border-radius: 50%; background: #273990; color: #ffffff; border: 1.5px solid #F9A51A; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; }
-        .okw-sub-header .hdr-back { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 8px; background: #273990; color: #ffffff !important; text-decoration: none; font-size: 12.5px; font-weight: 600; transition: background-color 0.15s ease; }
-        .okw-sub-header .hdr-back:hover { background: #1C2B70; }
-        .ticker-wrap.okw-sub-footer { display: flex !important; align-items: center !important; justify-content: center !important; text-align: center !important; width: 100% !important; max-width: 100% !important; margin-left: 0 !important; margin-right: 0 !important; box-sizing: border-box !important; height: 40px; background: #273990 !important; color: #ffffff !important; border-top: 2px solid #F9A51A !important; padding: 0 24px; font-size: 13px; font-weight: 600; z-index: 2000; position: relative; }
-        @media (max-width: 768px) { header.okw-sub-header { padding: 0 14px !important; } .okw-sub-header .hdr-brand, .okw-sub-header .hdr-sep { display: none; } }
+        .cd-idle-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+        .cd-pulse {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            background: #4ade80;
+            box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6);
+            animation: cdPulse 2s infinite;
+        }
+
+        @keyframes cdPulse {
+            0% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0.6); }
+            70% { box-shadow: 0 0 0 10px rgba(74, 222, 128, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(74, 222, 128, 0); }
+        }
+        @keyframes cdFadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        @media (max-width: 900px) {
+            .cd-main {
+                grid-template-columns: 1fr;
+                padding: 12px;
+            }
+            .cd-clock, .cd-live-pill { display: none; }
+        }
     </style>
-    <style id="display-face">
-        /* read from across a counter: the total is the biggest thing, in the brand blue */
-        .total-section, .total-box, .total-wrapper { background: #273990 !important; }
-        .total-label { letter-spacing: 0.06em; }
-        .total-amount, #grandTotal, #total { font-family: "Archivo", "Inter", sans-serif !important; font-size: 64px !important; font-weight: 700 !important; font-variant-numeric: tabular-nums; }
-    </style>
-    <script src="/okw-events.js"></script>
 </head>
 <body>
 
-    <!-- IDLE SCREEN -->
-    <div id="idleScreen">
-        <div class="idle-content">
-            <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; border: 2px solid #E8772E; box-shadow: 0 4px 20px rgba(0,0,0,0.5); margin-bottom: 18px; object-fit: contain; background: #ffffff; padding: 3px 8px;">
-            <div class="idle-title">Welcome to OKWESIWA CO LTD</div>
-            <div class="idle-subtitle">Next Customer Please</div>
-        </div>
-    </div>
-
-    <header class="okw-sub-header">
-        <div class="hdr-left">
-            <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD" style="width: auto; max-width: 120px; height: 32px; object-fit: contain;">
-            <span class="hdr-sep"></span>
-            <span class="hdr-badge">Display</span>
-        </div>
-        <div class="hdr-right">
-            <div class="hdr-user">
-                <span class="hdr-avatar"><i class="fas fa-user"></i></span>
-                <span id="userName">User</span>
+    <!-- IDLE / WELCOME SCREEN -->
+    <section id="idleScreen" class="cd-idle" aria-label="Welcome screen">
+        <div class="cd-idle-top">
+            <div class="cd-idle-logo-wrap">
+                <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD">
             </div>
-            <a href="/pos" class="hdr-back"><i class="fas fa-arrow-left"></i> <span>Till</span></a>
+            <div class="cd-idle-actions">
+                <button type="button" id="idleFsBtn" class="cd-idle-btn" title="Toggle Fullscreen">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                    <span>Fullscreen</span>
+                </button>
+                <a href="/pos" class="cd-idle-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                    <span>Back to Till</span>
+                </a>
+            </div>
+        </div>
+
+        <div class="cd-idle-center">
+            <div class="cd-idle-time" id="idleClock">--:--</div>
+            <div class="cd-idle-date" id="idleDate"></div>
+            <div class="cd-idle-accent-bar"></div>
+            <h1 class="cd-idle-title">Welcome to OKWESIWA CO LTD</h1>
+            <p class="cd-idle-sub">Next Customer Please — Your order will appear here as items are scanned</p>
+        </div>
+
+        <div class="cd-idle-bottom">
+            <div class="cd-idle-status">
+                <span class="cd-pulse"></span>
+                <span>Connected to POS · <span id="idleBranch">Main Branch</span></span>
+            </div>
+            <div>Accepted Payments: <strong>Cash · Mobile Money (MoMo) · Card</strong></div>
+        </div>
+    </section>
+
+    <!-- ACTIVE SALE TOP BAR -->
+    <header class="cd-header">
+        <div class="cd-header-left">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD" class="cd-logo">
+            <span class="cd-divider-v"></span>
+            <span class="cd-branch-pill" id="headerBranch">Customer Display</span>
+            <span class="cd-live-pill"><span class="cd-live-dot"></span>Live Till</span>
+        </div>
+        <div class="cd-header-right">
+            <span class="cd-clock" id="headerClock"></span>
+            <button type="button" id="activeFsBtn" class="cd-btn" title="Toggle Fullscreen">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+                <span>Fullscreen</span>
+            </button>
+            <a href="/pos" class="cd-btn cd-btn-primary">Till</a>
         </div>
     </header>
 
-    <!-- ACTIVE TRANSACTION -->
-    <div class="container">
-        <div class="main-card">
-            <!-- Header -->
-            <div class="card-header">
-                <div class="cart-title">Your Items</div>
-                <div class="item-count" id="itemCount">0 Items</div>
+    <!-- ACTIVE SALE SPLIT VIEW -->
+    <main class="cd-main">
+        <section class="cd-items-panel" aria-label="Scanned items">
+            <div class="cd-items-head">
+                <div class="cd-items-title">Your Order</div>
+                <div class="cd-count-pill" id="itemCount">0 Items</div>
             </div>
-            
-            <!-- Items List -->
-            <div class="cart-items" id="itemsList">
-                <!-- Items injected here -->
+            <div class="cd-items-list" id="itemsList"></div>
+        </section>
+
+        <aside class="cd-summary-panel" aria-label="Order totals">
+            <div class="cd-hero-total">
+                <span class="cd-hero-label">Total to Pay</span>
+                <span class="cd-hero-amount" id="grandTotal">GH₵ 0.00</span>
+                <div class="cd-pay-methods">
+                    <span class="cd-pay-chip">Cash</span>
+                    <span class="cd-pay-chip">Mobile Money</span>
+                    <span class="cd-pay-chip">Card</span>
+                </div>
             </div>
 
-            <!-- Scroll Buttons -->
-            <div class="scroll-controls" id="scrollControls">
-                <button class="scroll-btn" data-onclick="scrollCart(-150)"><i class="fas fa-chevron-up"></i></button>
-                <button class="scroll-btn" data-onclick="scrollCart(150)"><i class="fas fa-chevron-down"></i></button>
+            <div class="cd-breakdown-card">
+                <div class="cd-sum-row">
+                    <span>Subtotal</span>
+                    <strong id="subtotal">GH₵ 0.00</strong>
+                </div>
+                <div class="cd-sum-row savings" id="discountRow" style="display:none;">
+                    <span>Savings / Discount</span>
+                    <strong id="discount">-GH₵ 0.00</strong>
+                </div>
+                <div class="cd-sum-row" id="vatRow" style="display:none;">
+                    <span id="vatLabel">VAT</span>
+                    <strong id="vat">GH₵ 0.00</strong>
+                </div>
             </div>
+        </aside>
+    </main>
+
+    <!-- THANK YOU OVERLAY -->
+    <div id="thankYouBox" class="cd-thankyou" role="status" aria-live="polite">
+        <div class="cd-thankyou-card">
+            <div class="cd-check-circle">
+                <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <h2>Thank You!</h2>
+            <p>Payment received. Please collect your receipt and come again.</p>
         </div>
-
-        <!-- Footer Summary (Shifted to Right Hand Side) -->
-        <div class="card-footer">
-            <div class="breakdown">
-                <div class="summary-row">
-                    <span class="label">Subtotal</span>
-                    <span class="value" id="subtotal">--</span>
-                </div>
-                <div class="summary-row discount" id="discountRow" style="display:none;">
-                    <span class="label">Savings</span>
-                    <span class="value" id="discount">---</span>
-                </div>
-                <div class="summary-row" id="vatRow">
-                    <span class="label" id="vatLabel">VAT</span>
-                    <span class="value" id="vat">--</span>
-                </div>
-            </div>
-            
-            <div class="divider"></div>
-
-            <div class="total-section">
-                <span class="total-label">Total to Pay</span>
-                <span class="total-amount" id="grandTotal">--</span>
-            </div>
-
-            <div class="promo-box" id="thankYouBox">
-                <div class="promo-title">Thank You!</div>
-                <div>Please come again.</div>
-            </div>
-        </div>
-    </div>
-
-    <!-- FOOTER -->
-    <div class="ticker-wrap okw-sub-footer">
-        <div>OKWESIWA CO LTD</div>
     </div>
 
     <script>
+    (function () {
+        const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        const money = (n) => (typeof formatCurrency === 'function' ? formatCurrency(Number(n) || 0) : 'GH₵ ' + (Number(n) || 0).toFixed(2));
+        const fmtQty = (v) => { const n = Number(v || 0); return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(3))); };
+
         const channel = new BroadcastChannel('footprint_customer_display');
         const itemsList = document.getElementById('itemsList');
         const idleScreen = document.getElementById('idleScreen');
         const thankYouBox = document.getElementById('thankYouBox');
         let thankYouTimer = null;
-        
-        channel.onmessage = (event) => {
-            const data = event.data;
-            
-            if (data.type === 'CART_UPDATE') {
-                updateCart(data);
-            } else if (data.type === 'RESET') {
-                resetDisplay();
-            } else if (data.type === 'TRANSACTION_COMPLETE') {
-                showThankYou();
-            } else if (data.type === 'CLOSE') {
-                window.close();
+
+        function updateClock() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            const dateStr = now.toLocaleDateString([], { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const ic = document.getElementById('idleClock');
+            const id = document.getElementById('idleDate');
+            const hc = document.getElementById('headerClock');
+            if (ic) ic.textContent = timeStr;
+            if (id) id.textContent = dateStr;
+            if (hc) hc.textContent = timeStr;
+        }
+        updateClock();
+        setInterval(updateClock, 15000);
+
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(() => {});
+            } else {
+                document.exitFullscreen().catch(() => {});
             }
-        };
+        }
+        const idleFsBtn = document.getElementById('idleFsBtn');
+        const activeFsBtn = document.getElementById('activeFsBtn');
+        if (idleFsBtn) idleFsBtn.addEventListener('click', toggleFullscreen);
+        if (activeFsBtn) activeFsBtn.addEventListener('click', toggleFullscreen);
+
+        function applyBranchInfo(u) {
+            if (!u) return;
+            const branch = u.store_location || u.branch_name || 'Main Branch';
+            const ib = document.getElementById('idleBranch');
+            const hb = document.getElementById('headerBranch');
+            if (ib) ib.textContent = branch;
+            if (hb) hb.textContent = branch;
+        }
+
+        try {
+            const cached = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || 'null');
+            if (cached) applyBranchInfo(cached);
+        } catch (_) {}
+
+        (async function loadSessionBranch() {
+            try {
+                const token = localStorage.getItem('authToken');
+                const h = (token && token !== 'null' && token !== 'undefined') ? { Authorization: `Bearer ${token}` } : {};
+                const r = await fetch('/api/session', { headers: h, credentials: 'include' });
+                if (r.ok) {
+                    const d = await r.json().catch(() => ({}));
+                    if (d && d.user) applyBranchInfo(d.user);
+                }
+            } catch (_) {}
+        })();
 
         function updateCart(data) {
-            if (!data.cart || data.cart.length === 0) {
+            if (!data || !Array.isArray(data.cart) || data.cart.length === 0) {
                 resetDisplay();
                 return;
             }
 
-            // Hide idle screen
             idleScreen.classList.add('hidden');
-            thankYouBox.classList.remove('active'); // Hide thank you if adding more items
+            thankYouBox.classList.remove('active');
             if (thankYouTimer) clearTimeout(thankYouTimer);
 
-            // Update Item Count
-            const count = data.cart.reduce((acc, item) => acc + item.qty, 0);
-            document.getElementById('itemCount').textContent = `${count} Item${count !== 1 ? 's' : ''}`;
+            const totalUnits = data.cart.reduce((acc, item) => acc + Number(item.qty || 0), 0);
+            document.getElementById('itemCount').textContent = `${fmtQty(totalUnits)} Item${totalUnits !== 1 ? 's' : ''}`;
 
-            // Update Items List
-            itemsList.innerHTML = data.cart.map((item, idx) => `
-                <div class="cart-item ${idx === data.cart.length - 1 ? 'last-added' : ''}">
-                    <div class="item-details">
-                        <div class="item-name">${(typeof OkwUI !== "undefined" && OkwUI.escapeHtml) ? OkwUI.escapeHtml(item.name) : String(item.name == null ? "" : item.name).replace(/[&<>\"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}</div>
-            <div class="item-meta">${item.qty} x ${formatCurrency(item.price)}</div>
-                    </div>
-                    <div class="item-price">${formatCurrency(item.price * item.qty)}</div>
-                </div>
-            `).join('');
-            
-            // Show scroll buttons if more than 75 items (or unique products)
-            const scrollControls = document.getElementById('scrollControls');
-            if (data.cart.length > 75) {
-                scrollControls.style.display = 'flex';
-            } else {
-                scrollControls.style.display = 'none';
-            }
+            itemsList.innerHTML = data.cart.map((item, idx) => {
+                const isLatest = idx === data.cart.length - 1;
+                const price = Number(item.price || 0);
+                const qty = Number(item.qty || 1);
+                const warrantyTag = item.warranty_name
+                    ? `<span class="cd-warranty-tag">Warranty: ${esc(item.warranty_name)}</span>`
+                    : '';
+                return `
+                    <div class="cd-item-row${isLatest ? ' latest' : ''}">
+                        <div class="cd-item-info">
+                            <div class="cd-item-name">${esc(item.name || 'Item')}</div>
+                            <div class="cd-item-meta">
+                                <span>${esc(fmtQty(qty))} × ${esc(money(price))}</span>
+                                ${warrantyTag}
+                            </div>
+                        </div>
+                        <div class="cd-item-total">${esc(money(price * qty))}</div>
+                    </div>`;
+            }).join('');
 
-            // Auto scroll to bottom to show latest item
-            setTimeout(() => {
+            requestAnimationFrame(() => {
                 itemsList.scrollTop = itemsList.scrollHeight;
-            }, 50);
+            });
 
-            // Update Totals
-            document.getElementById('subtotal').textContent = `${formatCurrency(data.subtotal)}`;
-            
-            const vatEl = document.getElementById('vat');
+            document.getElementById('subtotal').textContent = money(data.subtotal);
+            document.getElementById('grandTotal').textContent = money(data.total);
+
             const vatRow = document.getElementById('vatRow');
-            vatEl.textContent = `${formatCurrency(data.vat)}`;
-            
-            // Only show VAT row if there's actual VAT
-            if (data.vat > 0) {
+            if (Number(data.vat || 0) > 0) {
                 vatRow.style.display = 'flex';
-                // Update VAT Label if rate is provided
-                if (data.vatRate) {
-                    document.getElementById('vatLabel').textContent = `VAT (${data.vatRate}%)`;
-                }
+                document.getElementById('vat').textContent = money(data.vat);
+                document.getElementById('vatLabel').textContent = data.vatRate ? `VAT (${data.vatRate}%)` : 'VAT';
             } else {
                 vatRow.style.display = 'none';
             }
-            document.getElementById('grandTotal').textContent = `${formatCurrency(data.total)}`;
-            
+
             const discRow = document.getElementById('discountRow');
-            if (data.discount > 0) {
+            if (Number(data.discount || 0) > 0) {
                 discRow.style.display = 'flex';
-                document.getElementById('discount').textContent = '-' + `${formatCurrency(data.discount)}`;
+                document.getElementById('discount').textContent = '-' + money(data.discount);
             } else {
                 discRow.style.display = 'none';
             }
         }
 
-        function scrollCart(amount) {
-            itemsList.scrollTop += amount;
-        }
-
         function resetDisplay() {
             idleScreen.classList.remove('hidden');
-            itemsList.innerHTML = '';
-            document.getElementById('grandTotal').textContent = '--';
-            document.getElementById('subtotal').textContent = '--';
-            document.getElementById('vat').textContent = '--';
-            document.getElementById('vatLabel').textContent = 'VAT';
-            document.getElementById('vatRow').style.display = 'none';
-            document.getElementById('itemCount').textContent = '0 Items';
             thankYouBox.classList.remove('active');
-            document.getElementById('scrollControls').style.display = 'none';
+            itemsList.innerHTML = '';
+            document.getElementById('itemCount').textContent = '0 Items';
+            document.getElementById('subtotal').textContent = money(0);
+            document.getElementById('grandTotal').textContent = money(0);
+            document.getElementById('vatRow').style.display = 'none';
+            document.getElementById('discountRow').style.display = 'none';
             if (thankYouTimer) clearTimeout(thankYouTimer);
         }
 
         function showThankYou() {
             thankYouBox.classList.add('active');
-            // Optionally revert to idle after a delay
+            if (thankYouTimer) clearTimeout(thankYouTimer);
             thankYouTimer = setTimeout(() => {
                 resetDisplay();
             }, 5000);
         }
 
-        (function initUnifiedHeader() {
-            function applyHeaderUser(u) {
-                if (!u) return;
-                const rawName = String(u.name || u.username || 'User').replace(/^OKWESIWA\s+(LTD\s+)?(Store\s+)?/i, '').trim();
-                const firstName = (rawName || u.username || 'User').split(/[\s_@]+/)[0];
-                const el = document.getElementById('userName');
-                if (el) el.textContent = firstName;
-            }
-            try {
-                const cached = JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('companyUser') || localStorage.getItem('user') || 'null');
-                if (cached) applyHeaderUser(cached);
-            } catch (_) {}
-            (async function () {
-                try {
-                    const token = localStorage.getItem('authToken');
-                    if (!token) return;
-                    const r = await fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` } });
-                    if (r.ok) { const d = await r.json(); if (d && d.user) applyHeaderUser(d.user); }
-                } catch (_) {}
-            })();
-        })();
+        channel.onmessage = (event) => {
+            const data = event.data || {};
+            if (data.type === 'CART_UPDATE') updateCart(data);
+            else if (data.type === 'RESET') resetDisplay();
+            else if (data.type === 'TRANSACTION_COMPLETE') showThankYou();
+            else if (data.type === 'CLOSE') window.close();
+        };
+    })();
     </script>
-
-<!-- ================== GLOBAL UX FIXES ================== -->
-<style>
-#custom-toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #f9a51a; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: all 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
-.custom-toast.show { opacity: 1; transform: translateY(0); }
-.custom-toast.error { background: #e74c3c; border-left: 4px solid #c0392b; }
-.custom-toast.success { background: #27ae60; border-left: 4px solid #2ecc71; }
-</style>
-<script>
-(function() {
-    // 1. Toast Notification Override
-    const container = document.createElement('div');
-    container.id = 'custom-toast-container';
-    document.body.appendChild(container);
-
-    window.alert = function(message) {
-        const toast = document.createElement('div');
-        toast.className = 'custom-toast';
-        if (typeof message === 'string') {
-            const msg = message.toLowerCase();
-            if (msg.includes('error') || msg.includes('fail')) toast.classList.add('error');
-            else if (msg.includes('success') || msg.includes('saved')) toast.classList.add('success');
-        }
-        toast.textContent = message;
-        container.appendChild(toast);
-        toast.offsetHeight; // trigger reflow
-        toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    };
-
-    // 2. Mobile Table Auto-Labeler
-    function applyTableDataLabels() {
-        document.querySelectorAll('.card-table').forEach(table => {
-            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-            if (headers.length === 0) return;
-            table.querySelectorAll('tbody tr').forEach(tr => {
-                tr.querySelectorAll('td').forEach((td, index) => {
-                    if (headers[index] && !td.hasAttribute('data-label')) {
-                        td.setAttribute('data-label', headers[index]);
-                    }
-                });
-            });
-        });
-    }
-    /* Optimized: Global MutationObserver removed to prevent DOM thrashing */
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', applyTableDataLabels);
-    } else {
-        applyTableDataLabels();
-    }
-})();
-</script>
-<!-- ====================================================== -->
 </body>
 </html>
