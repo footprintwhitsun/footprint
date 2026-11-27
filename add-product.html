@@ -664,14 +664,27 @@
                 const units = Array.isArray(unitRes) ? unitRes : (unitRes.units || []);
                 if (units.length) {
                     const unitSel = document.getElementById('apUnit');
+                    const unitMetaMap = new Map();
                     const existing = new Set([...unitSel.options].map((o) => o.value.toLowerCase()));
                     units.forEach((u) => {
-                        const name = typeof u === 'string' ? u : (u.name || u.unit_name || '');
-                        if (name && !existing.has(name.toLowerCase())) {
+                        const name = typeof u === 'string' ? u : (u.name || u.alt_unit || u.unit_name || '');
+                        if (!name) return;
+                        unitMetaMap.set(name.toLowerCase(), u);
+                        if (!existing.has(name.toLowerCase())) {
                             const opt = document.createElement('option');
                             opt.value = name;
-                            opt.textContent = name;
+                            const shortPart = u.short_name && u.short_name.toLowerCase() !== name.toLowerCase() ? ` (${u.short_name})` : '';
+                            const convPart = u.is_multiple && u.base_unit && Number(u.factor) > 0 ? ` — ${Number(u.factor)} ${u.base_unit}` : '';
+                            opt.textContent = `${name}${shortPart}${convPart}`;
                             unitSel.appendChild(opt);
+                            existing.add(name.toLowerCase());
+                        }
+                    });
+                    unitSel.addEventListener('change', () => {
+                        const meta = unitMetaMap.get(unitSel.value.toLowerCase());
+                        const packEl = document.getElementById('apPackUnit');
+                        if (meta && meta.is_multiple && packEl) {
+                            packEl.value = meta.name || meta.alt_unit || packEl.value;
                         }
                     });
                 }

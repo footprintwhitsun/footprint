@@ -1,14 +1,15 @@
 const express = require('express');
 const router = express.Router();
-const { pool } = require('../db/pool');
+const { pool, adminPool } = require('../db/pool');
 const { authenticateToken, requireRole, requirePermission, MANAGER_ROLES } = require('../middleware/auth');
 const { logActivity } = require('../services/audit');
 
 let schemaReady = false;
 async function ensurePhase4Schema() {
     if (schemaReady || !pool) return;
+    const ddlPool = adminPool || pool;
     try {
-        await pool.query(`
+        await ddlPool.query(`
             CREATE TABLE IF NOT EXISTS brands (
                 id SERIAL PRIMARY KEY,
                 tenant_id INTEGER DEFAULT 1,
@@ -22,6 +23,10 @@ async function ensurePhase4Schema() {
             CREATE TABLE IF NOT EXISTS unit_conversions (
                 id SERIAL PRIMARY KEY,
                 tenant_id INTEGER DEFAULT 1,
+                name VARCHAR(80) DEFAULT '',
+                short_name VARCHAR(30) DEFAULT '',
+                allow_decimal BOOLEAN DEFAULT FALSE,
+                is_multiple BOOLEAN DEFAULT FALSE,
                 base_unit VARCHAR(60) NOT NULL,
                 alt_unit VARCHAR(60) NOT NULL,
                 factor NUMERIC(12,4) NOT NULL,
@@ -114,15 +119,29 @@ async function ensurePhase4Schema() {
             `);
         }
 
-        // Seed common building-materials unit conversions
+        // Ensure extended unit columns exist on legacy deployments
+        for (const stmt of [
+            `ALTER TABLE unit_conversions ADD COLUMN IF NOT EXISTS name VARCHAR(80) DEFAULT ''`,
+            `ALTER TABLE unit_conversions ADD COLUMN IF NOT EXISTS short_name VARCHAR(30) DEFAULT ''`,
+            `ALTER TABLE unit_conversions ADD COLUMN IF NOT EXISTS allow_decimal BOOLEAN DEFAULT FALSE`,
+            `ALTER TABLE unit_conversions ADD COLUMN IF NOT EXISTS is_multiple BOOLEAN DEFAULT FALSE`
+        ]) {
+            try { await ddlPool.query(stmt); } catch (_) { }
+        }
+
+        // Seed common building-materials units & conversions
         const ucCount = await pool.query('SELECT COUNT(*)::int AS cnt FROM unit_conversions');
         if (ucCount.rows[0].cnt === 0) {
             await pool.query(`
-                INSERT INTO unit_conversions (base_unit, alt_unit, factor, notes) VALUES
-                ('Bag', 'Pallet', 50, '1 pallet = 50 bags of cement'),
-                ('Rod', 'Tonne', 80, '1 tonne = 80 rods of 12mm'),
-                ('Piece', 'Bundle', 10, '1 bundle = 10 pieces'),
-                ('Metre', 'Roll', 50, '1 roll = 50 metres')
+                INSERT INTO unit_conversions (name, short_name, allow_decimal, is_multiple, base_unit, alt_unit, factor, notes) VALUES
+                ('Piece', 'Pc(s)', FALSE, FALSE, 'Piece', 'Piece', 1, 'Standard single item unit'),
+                ('Bag', 'Bag', FALSE, FALSE, 'Bag', 'Bag', 1, 'Standard bag unit'),
+                ('Kilogram', 'kg', TRUE, FALSE, 'Kilogram', 'Kilogram', 1, 'Weight in kilograms (decimals allowed)'),
+                ('Metre', 'm', TRUE, FALSE, 'Metre', 'Metre', 1, 'Length in metres (decimals allowed)'),
+                ('Pallet', 'Plt', FALSE, TRUE, 'Bag', 'Pallet', 50, '1 pallet = 50 bags of cement'),
+                ('Tonne', 't', TRUE, TRUE, 'Rod', 'Tonne', 80, '1 tonne = 80 rods of 12mm'),
+                ('Bundle', 'Bdl', FALSE, TRUE, 'Piece', 'Bundle', 10, '1 bundle = 10 pieces'),
+                ('Roll', 'Roll', TRUE, TRUE, 'Metre', 'Roll', 50, '1 roll = 50 metres')
             `);
         }
         schemaReady = true;
@@ -167,24 +186,121 @@ router.post('/api/brands', authenticateToken, requireRole(MANAGER_ROLES), requir
     res.status(201).json({ success: true, brand: r.rows[0] });
 });
 
-// 2. Unit conversions
+// 2. Units & Unit Conversions
+function normalizeUnitRow(u) {
+    const name = (u.name && String(u.name).trim()) || String(u.alt_unit || u.base_unit || '').trim();
+    const shortName = (u.short_name && String(u.short_name).trim()) || name;
+    const factor = Number(u.factor || 1);
+    const baseUnit = String(u.base_unit || name).trim();
+    const altUnit = String(u.alt_unit || name).trim();
+    const inferredMultiple = factor !== 1 || (baseUnit.toLowerCase() !== altUnit.toLowerCase());
+    const isMultiple = typeof u.is_multiple === 'boolean' ? (u.is_multiple || inferredMultiple) : inferredMultiple;
+    return {
+        ...u,
+        name,
+        short_name: shortName,
+        allow_decimal: Boolean(u.allow_decimal),
+        is_multiple: isMultiple,
+        base_unit: baseUnit,
+        alt_unit: altUnit,
+        factor
+    };
+}
+
 router.get('/api/units', authenticateToken, async (req, res) => {
     await ensurePhase4Schema();
     const tenantId = req.user.tenant_id || 1;
-    const units = await safeQuery('SELECT * FROM unit_conversions WHERE COALESCE(tenant_id, 1) = $1 ORDER BY id ASC', [tenantId]);
+    const raw = await safeQuery('SELECT * FROM unit_conversions WHERE COALESCE(tenant_id, 1) = $1 ORDER BY id ASC', [tenantId]);
+    const units = raw.map(normalizeUnitRow);
     res.json({ units });
 });
 
 router.post('/api/units', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('products', 'edit'), async (req, res) => {
     await ensurePhase4Schema();
     const tenantId = req.user.tenant_id || 1;
-    const { base_unit, alt_unit, factor, notes = '' } = req.body;
-    if (!base_unit || !alt_unit || !factor) return res.status(400).json({ message: 'Base unit, alt unit, and factor are required' });
-    const r = await pool.query(
-        `INSERT INTO unit_conversions (tenant_id, base_unit, alt_unit, factor, notes) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-        [tenantId, base_unit.trim(), alt_unit.trim(), Number(factor), notes]
-    );
-    res.status(201).json({ success: true, unit: r.rows[0] });
+    const body = req.body || {};
+    const rawName = String(body.name || body.alt_unit || '').trim();
+    const rawShort = String(body.short_name || rawName).trim();
+    const allowDecimal = body.allow_decimal === true || body.allow_decimal === 'true' || body.allow_decimal === 'yes' || body.allow_decimal === 1 || body.allow_decimal === '1';
+    const isConversionPayload = !body.name && body.base_unit && body.alt_unit;
+    const isMultiple = isConversionPayload || body.is_multiple === true || body.is_multiple === 'true' || body.is_multiple === 1;
+    const baseUnit = isMultiple ? String(body.base_unit || '').trim() : rawName;
+    const altUnit = String(body.alt_unit || rawName).trim();
+    const factor = isMultiple ? Number(body.factor) : 1;
+    const notes = String(body.notes || '').trim();
+
+    if (!rawName) return res.status(400).json({ message: 'Unit name is required' });
+    if (!rawShort) return res.status(400).json({ message: 'Short name is required' });
+    if (isMultiple && (!baseUnit || !Number.isFinite(factor) || factor <= 0)) {
+        return res.status(400).json({ message: 'Base unit and a positive conversion factor are required' });
+    }
+
+    try {
+        const r = await pool.query(
+            `INSERT INTO unit_conversions (tenant_id, name, short_name, allow_decimal, is_multiple, base_unit, alt_unit, factor, notes)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+            [tenantId, rawName, rawShort, allowDecimal, isMultiple, baseUnit, altUnit, factor, notes]
+        );
+        return res.status(201).json({ success: true, unit: normalizeUnitRow(r.rows[0]) });
+    } catch (err) {
+        // Fallback if live DB lacks extended columns on restricted role
+        const r = await pool.query(
+            `INSERT INTO unit_conversions (tenant_id, base_unit, alt_unit, factor, notes) VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+            [tenantId, baseUnit, altUnit, factor, notes]
+        );
+        return res.status(201).json({ success: true, unit: normalizeUnitRow({ ...r.rows[0], name: rawName, short_name: rawShort, allow_decimal: allowDecimal, is_multiple: isMultiple }) });
+    }
+});
+
+router.put('/api/units/:id', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('products', 'edit'), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ message: 'Invalid unit ID' });
+
+    const body = req.body || {};
+    const rawName = String(body.name || body.alt_unit || '').trim();
+    const rawShort = String(body.short_name || rawName).trim();
+    const allowDecimal = body.allow_decimal === true || body.allow_decimal === 'true' || body.allow_decimal === 'yes' || body.allow_decimal === 1 || body.allow_decimal === '1';
+    const isMultiple = body.is_multiple === true || body.is_multiple === 'true' || body.is_multiple === 1;
+    const baseUnit = isMultiple ? String(body.base_unit || '').trim() : rawName;
+    const altUnit = String(body.alt_unit || rawName).trim();
+    const factor = isMultiple ? Number(body.factor) : 1;
+    const notes = String(body.notes || '').trim();
+
+    if (!rawName) return res.status(400).json({ message: 'Unit name is required' });
+    if (isMultiple && (!baseUnit || !Number.isFinite(factor) || factor <= 0)) {
+        return res.status(400).json({ message: 'Base unit and a positive conversion factor are required' });
+    }
+
+    try {
+        const r = await pool.query(
+            `UPDATE unit_conversions
+             SET name = $1, short_name = $2, allow_decimal = $3, is_multiple = $4, base_unit = $5, alt_unit = $6, factor = $7, notes = $8
+             WHERE id = $9 AND COALESCE(tenant_id, 1) = $10 RETURNING *`,
+            [rawName, rawShort, allowDecimal, isMultiple, baseUnit, altUnit, factor, notes, id, tenantId]
+        );
+        if (!r.rows.length) return res.status(404).json({ message: 'Unit not found' });
+        return res.json({ success: true, unit: normalizeUnitRow(r.rows[0]) });
+    } catch (err) {
+        const r = await pool.query(
+            `UPDATE unit_conversions SET base_unit = $1, alt_unit = $2, factor = $3, notes = $4
+             WHERE id = $5 AND COALESCE(tenant_id, 1) = $6 RETURNING *`,
+            [baseUnit, altUnit, factor, notes, id, tenantId]
+        );
+        if (!r.rows.length) return res.status(404).json({ message: 'Unit not found' });
+        return res.json({ success: true, unit: normalizeUnitRow({ ...r.rows[0], name: rawName, short_name: rawShort, allow_decimal: allowDecimal, is_multiple: isMultiple }) });
+    }
+});
+
+router.delete('/api/units/:id', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('products', 'edit'), async (req, res) => {
+    await ensurePhase4Schema();
+    const tenantId = req.user.tenant_id || 1;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isFinite(id)) return res.status(400).json({ message: 'Invalid unit ID' });
+    const r = await pool.query('DELETE FROM unit_conversions WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 RETURNING id', [id, tenantId]);
+    if (!r.rows.length) return res.status(404).json({ message: 'Unit not found' });
+    res.json({ success: true });
 });
 
 // 3. Bulk Price Update (Preview + Apply + History)

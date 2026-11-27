@@ -155,24 +155,190 @@
     }
 
     async function renderUnits() {
-        const res = await fetch('/api/units', { headers });
+        const res = await fetch('/api/units', { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
+        const units = Array.isArray(d.units) ? d.units : [];
         const actionsHost = document.getElementById('cat-page-actions');
-        if (actionsHost) actionsHost.innerHTML = `<button type="button" class="okw-btn okw-btn-primary" id="u-open-add">+ Add Unit</button>`;
+        if (actionsHost) {
+            actionsHost.innerHTML = `
+                <button type="button" class="okw-btn okw-btn-outline" id="u-open-conv">+ Add Unit Conversion</button>
+                <button type="button" class="okw-btn okw-btn-primary" id="u-open-add">+ Add Unit</button>
+            `;
+        }
         const panel = document.getElementById('cat-panel');
         panel.innerHTML = `<div id="units-tbl"></div>`;
+
+        const fmtFactor = (v) => {
+            const n = Number(v || 1);
+            return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(4)));
+        };
+
         OkwUI.dataTable('#units-tbl', {
             columns: [
-                { key: 'alt_unit', label: 'Pack / Sell Unit' },
-                { key: 'factor', label: 'Equals Base Qty', numeric: true },
-                { key: 'base_unit', label: 'Base Unit' },
-                { key: 'notes', label: 'Notes' }
+                {
+                    key: 'name',
+                    label: 'Name',
+                    render: (r) => {
+                        const nm = esc(r.name || r.alt_unit || '');
+                        if (r.is_multiple && r.base_unit && Number(r.factor) > 0) {
+                            return `<strong>${nm}</strong> <span style="color:var(--muted,#64748b);font-size:12px;">(${esc(fmtFactor(r.factor))} ${esc(r.base_unit)})</span>`;
+                        }
+                        return `<strong>${nm}</strong>`;
+                    }
+                },
+                { key: 'short_name', label: 'Short Name', render: (r) => esc(r.short_name || r.name || r.alt_unit || '') },
+                {
+                    key: 'allow_decimal',
+                    label: 'Allow Decimal',
+                    render: (r) => r.allow_decimal
+                        ? `<span class="okw-badge okw-badge-success">Yes</span>`
+                        : `<span class="okw-badge okw-badge-neutral">No</span>`
+                },
+                {
+                    key: 'base_unit',
+                    label: 'Conversion / Base Unit',
+                    render: (r) => r.is_multiple
+                        ? `1 ${esc(r.name || r.alt_unit)} = <strong>${esc(fmtFactor(r.factor))}</strong> ${esc(r.base_unit)}`
+                        : `<span style="color:var(--muted,#64748b);">Base Unit</span>`
+                },
+                { key: 'notes', label: 'Notes', render: (r) => esc(r.notes || '—') },
+                {
+                    key: 'actions',
+                    label: 'Actions',
+                    render: (r) => `
+                        <div style="display:inline-flex;gap:6px;">
+                            <button type="button" class="okw-btn okw-btn-outline" style="height:28px;padding:0 10px;font-size:12px;" data-unit-edit="${Number(r.id)}">Edit</button>
+                            <button type="button" class="okw-btn okw-btn-outline" style="height:28px;padding:0 10px;font-size:12px;color:#b91c1c;border-color:#fecaca;" data-unit-del="${Number(r.id)}">Delete</button>
+                        </div>
+                    `
+                }
             ],
-            rows: d.units || [],
+            rows: units,
             exportFilename: 'okwesiwa-units.xlsx'
         });
+
+        function openUnitFormModal(existing = null) {
+            const existingNames = Array.from(new Set(
+                units
+                    .map(u => String(u.name || u.base_unit || '').trim())
+                    .filter(Boolean)
+                    .concat(['Piece', 'Bag', 'Kilogram', 'Metre', 'Litre', 'Box', 'Rod'])
+            )).sort((a, b) => a.localeCompare(b));
+
+            const isEdit = Boolean(existing && existing.id);
+            const backdrop = document.createElement('div');
+            backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:10050;display:flex;align-items:center;justify-content:center;padding:16px;';
+            backdrop.innerHTML = `
+                <div class="okw-card" style="width:100%;max-width:500px;padding:22px 24px;box-shadow:0 24px 60px rgba(0,0,0,0.28);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                        <h3 style="margin:0;font-size:17px;">${isEdit ? 'Edit Unit' : 'Add Unit'}</h3>
+                        <button type="button" id="um-close" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--muted,#64748b);line-height:1;">&times;</button>
+                    </div>
+                    <form id="um-form" style="display:flex;flex-direction:column;gap:12px;">
+                        <div class="okw-field" style="margin:0;">
+                            <label class="okw-label" for="um-name">Name:*</label>
+                            <input type="text" id="um-name" class="okw-input" placeholder="e.g. Kilogram, Piece, Carton" value="${esc(existing ? (existing.name || existing.alt_unit || '') : '')}" required>
+                        </div>
+                        <div class="okw-field" style="margin:0;">
+                            <label class="okw-label" for="um-short">Short name:*</label>
+                            <input type="text" id="um-short" class="okw-input" placeholder="e.g. kg, Pc(s), Ctn" value="${esc(existing ? (existing.short_name || '') : '')}" required>
+                        </div>
+                        <div class="okw-field" style="margin:0;">
+                            <label class="okw-label" for="um-dec">Allow decimal:*</label>
+                            <select id="um-dec" class="okw-input" required>
+                                <option value="false"${existing && !existing.allow_decimal ? ' selected' : (!existing ? ' selected' : '')}>No</option>
+                                <option value="true"${existing && existing.allow_decimal ? ' selected' : ''}>Yes</option>
+                            </select>
+                        </div>
+                        <label style="display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--ink,#0f172a);cursor:pointer;margin-top:2px;">
+                            <input type="checkbox" id="um-mult" style="width:16px;height:16px;accent-color:var(--brand,#273990);"${existing && existing.is_multiple ? ' checked' : ''}>
+                            <span>Add as multiple of other unit</span>
+                        </label>
+                        <div id="um-mult-box" style="display:${existing && existing.is_multiple ? 'grid' : 'none'};grid-template-columns:auto 1fr 1.2fr;gap:8px;align-items:center;padding:12px;border-radius:10px;background:var(--frame,#f8fafc);border:1px solid var(--edge,#e2e8f0);">
+                            <span style="font-size:13px;font-weight:600;color:var(--ink-2,#334155);white-space:nowrap;">1 <span id="um-unit-echo">${esc(existing ? (existing.name || 'Unit') : 'Unit')}</span> =</span>
+                            <input type="number" id="um-factor" class="okw-input" step="any" min="0.0001" placeholder="Times base unit (e.g. 50)" value="${existing && existing.is_multiple ? esc(fmtFactor(existing.factor)) : ''}">
+                            <input type="text" id="um-base" class="okw-input" list="um-base-list" placeholder="Select base unit" value="${existing && existing.is_multiple ? esc(existing.base_unit || '') : ''}">
+                            <datalist id="um-base-list">
+                                ${existingNames.map(n => `<option value="${esc(n)}"></option>`).join('')}
+                            </datalist>
+                        </div>
+                        <div class="okw-field" style="margin:0;">
+                            <label class="okw-label" for="um-notes">Notes</label>
+                            <input type="text" id="um-notes" class="okw-input" placeholder="Optional description" value="${esc(existing ? (existing.notes || '') : '')}">
+                        </div>
+                        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:6px;">
+                            <button type="button" id="um-cancel" class="okw-btn okw-btn-outline">Cancel</button>
+                            <button type="submit" id="um-save" class="okw-btn okw-btn-primary">${isEdit ? 'Save Changes' : 'Save Unit'}</button>
+                        </div>
+                    </form>
+                </div>
+            `;
+            document.body.appendChild(backdrop);
+
+            const close = () => backdrop.remove();
+            backdrop.querySelector('#um-close').addEventListener('click', close);
+            backdrop.querySelector('#um-cancel').addEventListener('click', close);
+            backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+
+            const nameEl = backdrop.querySelector('#um-name');
+            const echoEl = backdrop.querySelector('#um-unit-echo');
+            const multChk = backdrop.querySelector('#um-mult');
+            const multBox = backdrop.querySelector('#um-mult-box');
+            const factorEl = backdrop.querySelector('#um-factor');
+            const baseEl = backdrop.querySelector('#um-base');
+
+            nameEl.addEventListener('input', () => {
+                echoEl.textContent = nameEl.value.trim() || 'Unit';
+            });
+            multChk.addEventListener('change', () => {
+                multBox.style.display = multChk.checked ? 'grid' : 'none';
+                factorEl.required = multChk.checked;
+                baseEl.required = multChk.checked;
+            });
+
+            backdrop.querySelector('#um-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const payload = {
+                    name: nameEl.value.trim(),
+                    short_name: backdrop.querySelector('#um-short').value.trim(),
+                    allow_decimal: backdrop.querySelector('#um-dec').value === 'true',
+                    is_multiple: multChk.checked,
+                    base_unit: multChk.checked ? baseEl.value.trim() : nameEl.value.trim(),
+                    alt_unit: nameEl.value.trim(),
+                    factor: multChk.checked ? Number(factorEl.value) : 1,
+                    notes: backdrop.querySelector('#um-notes').value.trim()
+                };
+                if (multChk.checked && (!payload.base_unit || !Number.isFinite(payload.factor) || payload.factor <= 0)) {
+                    OkwUI.toast('Enter a valid base unit and positive conversion factor', 'warning');
+                    return;
+                }
+                const saveBtn = backdrop.querySelector('#um-save');
+                saveBtn.disabled = true;
+                try {
+                    const url = isEdit ? `/api/units/${existing.id}` : '/api/units';
+                    const method = isEdit ? 'PUT' : 'POST';
+                    const r = await fetch(url, { method, headers, credentials: 'include', body: JSON.stringify(payload) });
+                    const out = await r.json().catch(() => ({}));
+                    if (!r.ok) {
+                        OkwUI.toast(out.message || 'Failed to save unit', 'danger');
+                        saveBtn.disabled = false;
+                        return;
+                    }
+                    OkwUI.toast(isEdit ? 'Unit updated' : 'Unit added', 'success');
+                    close();
+                    renderUnits();
+                } catch (_) {
+                    OkwUI.toast('Network error saving unit', 'danger');
+                    saveBtn.disabled = false;
+                }
+            });
+        }
+
         const addBtn = document.getElementById('u-open-add');
-        if (addBtn) addBtn.onclick = () => openSimpleModal({
+        if (addBtn) addBtn.addEventListener('click', () => openUnitFormModal(null));
+
+        const convBtn = document.getElementById('u-open-conv');
+        if (convBtn) convBtn.addEventListener('click', () => openSimpleModal({
             title: 'Add Unit Conversion',
             fields: [
                 { id: 'base_unit', label: 'Base Unit', placeholder: 'e.g. Bag', required: true },
@@ -181,10 +347,39 @@
                 { id: 'notes', label: 'Notes', placeholder: 'Optional description' }
             ],
             onSave: async (v) => {
-                const r = await fetch('/api/units', { method: 'POST', headers, body: JSON.stringify(v) });
+                const payload = {
+                    name: String(v.alt_unit || '').trim(),
+                    short_name: String(v.alt_unit || '').trim(),
+                    allow_decimal: false,
+                    is_multiple: true,
+                    base_unit: String(v.base_unit || '').trim(),
+                    alt_unit: String(v.alt_unit || '').trim(),
+                    factor: Number(v.factor),
+                    notes: String(v.notes || '').trim()
+                };
+                const r = await fetch('/api/units', { method: 'POST', headers, credentials: 'include', body: JSON.stringify(payload) });
                 if (r.ok) { OkwUI.toast('Unit conversion added', 'success'); renderUnits(); return true; }
-                OkwUI.toast('Failed to add unit', 'danger');
+                const err = await r.json().catch(() => ({}));
+                OkwUI.toast(err.message || 'Failed to add unit conversion', 'danger');
                 return false;
+            }
+        }));
+
+        panel.addEventListener('click', async (e) => {
+            const editBtn = e.target.closest('[data-unit-edit]');
+            if (editBtn) {
+                const id = Number(editBtn.getAttribute('data-unit-edit'));
+                const target = units.find(u => Number(u.id) === id);
+                if (target) openUnitFormModal(target);
+                return;
+            }
+            const delBtn = e.target.closest('[data-unit-del]');
+            if (delBtn) {
+                const id = Number(delBtn.getAttribute('data-unit-del'));
+                if (!confirm('Delete this unit?')) return;
+                const r = await fetch(`/api/units/${id}`, { method: 'DELETE', headers, credentials: 'include' });
+                if (r.ok) { OkwUI.toast('Unit deleted', 'success'); renderUnits(); }
+                else OkwUI.toast('Failed to delete unit', 'danger');
             }
         });
     }
