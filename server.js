@@ -626,15 +626,43 @@ async function initDb() {
                 total_amount DECIMAL(10, 2) DEFAULT 0,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             );
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS reference_no VARCHAR(80);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS purchase_date DATE;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(30) DEFAULT 'Unpaid';
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(40);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS paid_amount NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS discount_type VARCHAR(20) DEFAULT 'none';
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS discount_input NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS tax_id VARCHAR(64);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS tax_name VARCHAR(80);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS tax_rate NUMERIC(6,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS tax_amount NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS shipping_details TEXT;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS shipping_cost NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS pay_term_number INTEGER;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS pay_term_type VARCHAR(20);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS paid_on TIMESTAMP;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS payment_note TEXT;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS document_name VARCHAR(255);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS document_mime VARCHAR(120);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS document_data TEXT;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS notes TEXT;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS created_by INTEGER;
 
             -- Create Purchase Order Items Table
             CREATE TABLE IF NOT EXISTS purchase_order_items (
                 id SERIAL PRIMARY KEY,
                 po_id INTEGER REFERENCES purchase_orders(id) ON DELETE CASCADE,
                 product_barcode VARCHAR(50),
-                quantity INTEGER NOT NULL,
+                quantity NUMERIC(12, 3) NOT NULL,
                 unit_cost DECIMAL(10, 2) NOT NULL
             );
+            ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS unit_cost_before_discount NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(6,2) DEFAULT 0;
+            ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS profit_margin NUMERIC(8,2) DEFAULT 0;
+            ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS selling_price NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS line_total NUMERIC(12,2) DEFAULT 0;
 
             -- Create Transactions Table
             CREATE TABLE IF NOT EXISTS transactions (
@@ -5570,9 +5598,9 @@ app.post('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), 
         if (!branchId) branchId = await mainBranchId(pool, tenantId);
     }
 
-    const client = await pool.connect();
+    const ddlPool = adminPool || pool;
     try {
-        await client.query(`
+        await ddlPool.query(`
             ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS reference_no VARCHAR(80);
             ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS purchase_date DATE;
             ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS payment_status VARCHAR(30) DEFAULT 'Unpaid';
@@ -5602,6 +5630,12 @@ app.post('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), 
             ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS selling_price NUMERIC(12,2) DEFAULT 0;
             ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS line_total NUMERIC(12,2) DEFAULT 0;
         `);
+    } catch (ddlErr) {
+        console.warn('PO DDL check warning (non-fatal if columns exist):', ddlErr.message);
+    }
+
+    const client = await pool.connect();
+    try {
         await client.query('BEGIN');
         const supCheck = await client.query('SELECT id, name FROM suppliers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [supplierId, tenantId]);
         if (!supCheck.rows.length) {
