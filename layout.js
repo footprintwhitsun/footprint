@@ -58,7 +58,6 @@
 
         // Products (immediately under Contacts)
         { label: 'Add Product', url: '/add-product', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'shoppingBag' },
-        { label: 'Stock Report', url: '/stock-report', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'barChart' },
         { label: 'Update Price', url: '/catalog-ops?tab=prices', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'trendingUp' },
         { label: 'Print Labels', url: '/print-labels', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'tag' },
         { label: 'Barcode Generator', url: '/inventory?tab=barcodes', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Products', icon: 'tag' },
@@ -152,7 +151,7 @@
         { label: 'Customer Groups Report', url: '/reports?tab=detailed&report=customer_groups', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'users' },
         { label: 'Register Report', url: '/reports?tab=detailed&report=shifts', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'clock' },
         { label: 'Sales Representative Report', url: '/reports?tab=detailed&report=teller', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Sales & Customers', icon: 'user' },
-        { label: 'Stock Report', url: '/reports?tab=detailed&report=stock', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'package' },
+        { label: 'Stock Report', url: '/stock-report', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'barChart' },
         { label: 'Stock Adjustment Report', url: '/reports?tab=detailed&report=adj', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'layers' },
         { label: 'Stock Count Variance', url: '/reports?tab=detailed&report=variance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'clipboardCheck' },
         { label: 'Trending Products', url: '/reports?tab=detailed&report=trending', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Stock & Products', icon: 'trendingUp' },
