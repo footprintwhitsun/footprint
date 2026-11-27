@@ -874,25 +874,52 @@
 
         <div id="tab-orders" class="tab-content">
             <div class="page-header">
-                <h3>Purchase Orders</h3>
+                <h3>All Purchases</h3>
                 <a href="/add-purchase" class="btn-add" style="text-decoration:none;"><i class="fas fa-plus"></i> Add Purchase</a>
             </div>
-            <div style="margin-bottom: 20px;">
-                <input type="text" id="poSearch" placeholder="Search by PO # or supplier..." data-onkeyup="filterPOs()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:14px;">
+                <label style="display:inline-flex; align-items:center; gap:8px; font-size:13px; color:#475569; font-weight:500;">
+                    <span>Show</span>
+                    <select id="poRowsPerPage" data-onchange="changePoRows()" style="height:34px; padding:0 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff; outline:none;">
+                        <option value="25" selected>25</option>
+                        <option value="50">50</option>
+                        <option value="100">100</option>
+                        <option value="10000">All</option>
+                    </select>
+                    <span>entries</span>
+                </label>
+                <input type="text" id="poSearch" placeholder="Search reference, location, supplier, status, or staff..." data-onkeyup="filterPOs()" style="width:320px; max-width:100%; height:36px; padding:0 12px; border:1px solid #cbd5e1; border-radius:8px;">
             </div>
-            <div class="inventory-card">
-                <table class="po-table">
-                    <thead><tr><th>PO #</th><th>Supplier</th><th>Total</th><th>Status</th><th>Action</th></tr></thead>
-                    <tbody id="poTable"><tr><td colspan="5" style="text-align:center; color:#888;">Loading...</td></tr></tbody>
+            <div class="inventory-card" style="overflow-x:auto;">
+                <table class="po-table" style="width:100%; border-collapse:collapse;">
+                    <thead>
+                        <tr>
+                            <th>Action</th>
+                            <th>Date</th>
+                            <th>Reference No</th>
+                            <th>Location</th>
+                            <th>Supplier</th>
+                            <th>Purchase Status</th>
+                            <th>Payment Status</th>
+                            <th style="text-align:right;">Grand Total</th>
+                            <th style="text-align:right;">Payment due</th>
+                            <th>Added By</th>
+                        </tr>
+                    </thead>
+                    <tbody id="poTable"><tr><td colspan="10" style="text-align:center; padding:24px; color:#64748b;">Loading...</td></tr></tbody>
+                    <tfoot id="poTableFoot" style="background:#f8fafc; font-weight:700; border-top:2px solid #e2e8f0;">
+                        <tr>
+                            <td colspan="7" style="text-align:right; padding:12px 14px; color:#0f172a;">Total:</td>
+                            <td id="poFootGrandTotal" style="text-align:right; padding:12px 14px; font-variant-numeric:tabular-nums; color:#0f172a;">GH₵ 0.00</td>
+                            <td colspan="2" style="padding:12px 14px; font-size:12.5px; line-height:1.5; font-variant-numeric:tabular-nums;">
+                                <div>Purchase Due - <span id="poFootPurchaseDue" style="color:#b91c1c;">GH₵ 0.00</span></div>
+                                <div>Purchase Return - <span id="poFootPurchaseReturn" style="color:#0f172a;">GH₵ 0.00</span></div>
+                            </td>
+                        </tr>
+                    </tfoot>
                 </table>
             </div>
-            <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
-                <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="poRowsPerPage" data-onchange="changePoRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="100">100</option>
-                </select>
+            <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 14px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 12px;">
                 <span id="poPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
                 <button data-onclick="changePoPage(-1)" id="btnPoPrev" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
                 <button data-onclick="changePoPage(1)" id="btnPoNext" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
@@ -4392,14 +4419,23 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
         }
 
         // --- PROCUREMENT FUNCTIONS ---
+        let totalPurchaseReturnAmt = 0;
+
         async function loadPOs() {
             try {
                 const token = localStorage.getItem('authToken');
-                const res = await fetch('/api/purchase-orders', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
+                const h = (token && token !== 'null' && token !== 'undefined') ? { 'Authorization': `Bearer ${token}` } : {};
+                const [res, prRes] = await Promise.all([
+                    fetch('/api/purchase-orders', { headers: h, credentials: 'include' }),
+                    fetch('/api/purchase-returns', { headers: h, credentials: 'include' }).catch(() => null)
+                ]);
                 if (res.ok) allPurchaseOrders = await res.json();
                 filteredPOs = [...allPurchaseOrders];
+                if (prRes && prRes.ok) {
+                    const prData = await prRes.json().catch(() => ({}));
+                    const prRows = Array.isArray(prData.returns) ? prData.returns : [];
+                    totalPurchaseReturnAmt = prRows.reduce((s, r) => s + Number(r.return_total || 0), 0);
+                }
             } catch (e) { console.error(e); }
 
             renderPOTable();
@@ -4408,31 +4444,64 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
 
         function renderPOTable() {
             const tbody = document.getElementById('poTable');
+            const rowsSel = document.getElementById('poRowsPerPage');
+            if (rowsSel) poRows = parseInt(rowsSel.value, 10) || 25;
             const start = (poPage - 1) * poRows;
             const end = start + poRows;
             const pageData = filteredPOs.slice(start, end);
-            
+
+            let sumGrand = 0;
+            let sumDue = 0;
+            filteredPOs.forEach(p => {
+                const gt = Number(p.TotalValue ?? p.total_amount ?? 0);
+                const paid = Number(p.paid_amount ?? 0);
+                const payStatusRaw = String(p.payment_status || (paid >= gt && gt > 0 ? 'Paid' : (paid > 0 ? 'Partial' : 'Due'))).toLowerCase();
+                const due = payStatusRaw === 'paid' ? 0 : Math.max(0, gt - paid);
+                sumGrand += gt;
+                sumDue += due;
+            });
+
+            const footGt = document.getElementById('poFootGrandTotal');
+            const footDue = document.getElementById('poFootPurchaseDue');
+            const footRet = document.getElementById('poFootPurchaseReturn');
+            if (footGt) footGt.textContent = formatCurrency(sumGrand);
+            if (footDue) footDue.textContent = formatCurrency(sumDue);
+            if (footRet) footRet.textContent = formatCurrency(totalPurchaseReturnAmt);
+
             tbody.innerHTML = pageData.length ? pageData.map(p => {
-                // Map new schema fields
                 const id = p.PO_ID || p.id;
-                // const supplierId = p.SupplierID || p.supplier_id;
-                const total = p.TotalValue || p.total_amount || 0;
-                const status = p.Status || p.status;
-                
-                // Resolve Supplier Name from ID
-                // const supplier = suppliers.find(s => s.id == supplierId);
+                const refNo = p.reference_no || (`PO-${id}`);
+                const dateRaw = p.purchase_date || p.created_at;
+                const dateStr = dateRaw ? new Date(dateRaw).toLocaleDateString() : '—';
+                const location = p.branch_name || 'Main';
                 const supplierName = p.supplier_name || 'Unknown';
+                const total = Number(p.TotalValue ?? p.total_amount ?? 0);
+                const paid = Number(p.paid_amount ?? 0);
+                const status = p.Status || p.status || 'Pending';
+                const payStatus = p.payment_status || (paid >= total && total > 0 ? 'Paid' : (paid > 0 ? 'Partial' : 'Due'));
+                const due = String(payStatus).toLowerCase() === 'paid' ? 0 : Math.max(0, total - paid);
+                const addedBy = p.added_by_name || p.created_by_name || '—';
+                const isPending = String(status).toLowerCase() === 'pending';
+                const payCls = String(payStatus).toLowerCase() === 'paid' ? 'stock-ok' : 'stock-low';
 
                 return `
                     <tr data-onclick="viewPO(${id})" style="cursor:pointer;">
-                        <td data-label="PO #">#${id}</td>
-                        <td data-label="Supplier">${OkwUI.escapeHtml(supplierName)}</td>
-                        <td data-label="Total">${formatCurrency(total)}</td>
-                        <td data-label="Status"><span class="stock-badge ${status === 'Received' ? 'stock-ok' : 'stock-low'}">${status}</span></td>
-                        <td data-label="Action"><button data-onclick="viewPO(${id})" title="View Details" style="padding: 5px 15px; background: #f0f7ff; color: var(--primary-color); border: 1px solid #b3e5fc; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px;">View</button></td>
+                        <td data-label="Action" style="white-space:nowrap;">
+                            <button type="button" data-onclick="viewPO(${id})" title="View Purchase" style="padding: 4px 10px; background: #f0f7ff; color: var(--primary-color); border: 1px solid #b3e5fc; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; margin-right: 4px;">View</button>
+                            ${isPending ? `<button type="button" data-onclick="receiveGoods(${id})" title="Receive Goods" style="padding: 4px 10px; background: var(--secondary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px;">Receive</button>` : ''}
+                        </td>
+                        <td data-label="Date" style="white-space:nowrap;">${OkwUI.escapeHtml(dateStr)}</td>
+                        <td data-label="Reference No" style="font-family:ui-monospace,monospace; font-weight:600;">${OkwUI.escapeHtml(refNo)}</td>
+                        <td data-label="Location">${OkwUI.escapeHtml(location)}</td>
+                        <td data-label="Supplier"><strong>${OkwUI.escapeHtml(supplierName)}</strong></td>
+                        <td data-label="Purchase Status"><span class="stock-badge ${status === 'Received' ? 'stock-ok' : 'stock-low'}">${OkwUI.escapeHtml(status)}</span></td>
+                        <td data-label="Payment Status"><span class="stock-badge ${payCls}">${OkwUI.escapeHtml(payStatus)}</span></td>
+                        <td data-label="Grand Total" style="text-align:right; font-weight:700; font-variant-numeric:tabular-nums;">${formatCurrency(total)}</td>
+                        <td data-label="Payment due" style="text-align:right; font-variant-numeric:tabular-nums; color:${due > 0 ? '#b91c1c' : '#15803d'}; font-weight:600;">${formatCurrency(due)}</td>
+                        <td data-label="Added By">${OkwUI.escapeHtml(addedBy)}</td>
                     </tr>
                 `;
-            }).join('') : '<tr><td colspan="5" style="text-align:center;">No POs found</td></tr>';
+            }).join('') : '<tr><td colspan="10" style="text-align:center; padding:28px; color:#64748b;">No data available in table</td></tr>';
             updatePagination('po', filteredPOs.length, poPage, poRows);
         }
 

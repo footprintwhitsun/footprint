@@ -5426,23 +5426,37 @@ app.delete('/api/suppliers/:id', authenticateToken, requireRole(MANAGER_ROLES), 
 app.get('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     try {
         const tenantId = req.user.tenant_id || 1;
-        let query = `
-            SELECT po.*, s.name as supplier_name, b.name as branch_name
-            FROM purchase_orders po 
-            LEFT JOIN suppliers s ON po.supplier_id = s.id AND COALESCE(s.tenant_id, 1) = $1
-            LEFT JOIN branches b ON po.branch_id = b.id
-            WHERE COALESCE(po.tenant_id, 1) = $1
-        `;
         const params = [tenantId];
-
+        let branchCond = '';
         if (req.user.role !== 'super_admin' && req.user.role !== 'admin' && req.user.role !== 'ceo' && req.user.store_id) {
-            query += ' AND po.branch_id = $2';
+            branchCond = ' AND po.branch_id = $2';
             params.push(req.user.store_id);
         }
 
-        query += ' ORDER BY po.created_at DESC';
-
-        const result = await pool.query(query, params);
+        let result;
+        try {
+            result = await pool.query(`
+                SELECT po.*,
+                       s.name AS supplier_name,
+                       b.name AS branch_name,
+                       COALESCE(u.name, u.username, '') AS added_by_name
+                FROM purchase_orders po
+                LEFT JOIN suppliers s ON po.supplier_id = s.id AND COALESCE(s.tenant_id, 1) = $1
+                LEFT JOIN branches b ON po.branch_id = b.id
+                LEFT JOIN users u ON po.created_by = u.id
+                WHERE COALESCE(po.tenant_id, 1) = $1${branchCond}
+                ORDER BY po.created_at DESC
+            `, params);
+        } catch (_) {
+            result = await pool.query(`
+                SELECT po.*, s.name AS supplier_name, b.name AS branch_name, '' AS added_by_name
+                FROM purchase_orders po
+                LEFT JOIN suppliers s ON po.supplier_id = s.id AND COALESCE(s.tenant_id, 1) = $1
+                LEFT JOIN branches b ON po.branch_id = b.id
+                WHERE COALESCE(po.tenant_id, 1) = $1${branchCond}
+                ORDER BY po.created_at DESC
+            `, params);
+        }
         res.json(result.rows);
     } catch (err) { res.status(500).json({ message: 'Server error' }); }
 });
