@@ -6357,7 +6357,7 @@ app.put('/transactions/:id/finalize', authenticateToken, async (req, res) => {
                 if (paymentMethod === 'credit' && !alreadyCompleted) {
                     const total = Math.abs(parseFloat(txnRes.rows[0].total_amount));
                     const isReturn = txnRes.rows[0].is_return || false;
-                    const receiptNum = receiptNumber || txnRes.rows[0].receipt_number || ('RCP' + Date.now());
+                    const receiptNum = receiptNumber || txnRes.rows[0].receipt_number || ('RCP' + String(txnRes.rows[0].id || 0).padStart(6, '0'));
 
                     // For returns, subtract from balance (reduce debt). For sales, add to balance.
                     const balanceChange = isReturn ? -total : total;
@@ -7438,7 +7438,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
             }
             const authoritativeTotal = isReturn ? -Math.abs(Number(total)) : Math.max(0, Number((serverSubtotal - safeDiscount).toFixed(2)));
 
-            const receiptNumber = (isReturn ? 'REF' : 'RCP') + Date.now() + crypto.randomInt(100, 1000);
+            const tempReceipt = (isReturn ? 'REF' : 'RCP') + 'T' + crypto.randomInt(100000, 999999);
             // Resolve canonical store for the logged-in seller (manager or teller)
             let sellerStoreLoc = req.user.store_location || null;
             let sellerStoreId = req.user.store_id || null;
@@ -7464,8 +7464,10 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                 `INSERT INTO transactions
                 (tenant_id, user_id, store_location, total_amount, original_total, current_total, payment_method, receipt_number, items, created_at, customer_id, customer_name, status, tax_breakdown, is_return, original_transaction_id, return_items)
                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10, $11, $12, $13, $14, $15, $16) RETURNING id`,
-                [tenantId, req.user.id, canonicalStoreLoc, authoritativeTotal, isReturn ? 0 : authoritativeTotal, authoritativeTotal, paymentMethod, receiptNumber, JSON.stringify(verifiedItems), parsedCustomerId, customerName, status || 'pending', JSON.stringify(taxBreakdown || []), isReturn || false, originalTransactionId || null, JSON.stringify(returnItems || [])]
+                [tenantId, req.user.id, canonicalStoreLoc, authoritativeTotal, isReturn ? 0 : authoritativeTotal, authoritativeTotal, paymentMethod, tempReceipt, JSON.stringify(verifiedItems), parsedCustomerId, customerName, status || 'pending', JSON.stringify(taxBreakdown || []), isReturn || false, originalTransactionId || null, JSON.stringify(returnItems || [])]
             );
+            const receiptNumber = (isReturn ? 'REF' : 'RCP') + String(txnRes.rows[0].id).padStart(6, '0');
+            await client.query('UPDATE transactions SET receipt_number = $1 WHERE id = $2', [receiptNumber, txnRes.rows[0].id]);
 
             // Handle Stock Management (Deduction for sales, Restoration for returns)
             if (isReturn) {

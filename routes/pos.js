@@ -993,7 +993,7 @@ router.post('/api/pos/checkout', authenticateToken, requirePermission('sales', '
             ? 'split'
             : ((cleanPayments[0] && cleanPayments[0].method) || (balanceDue > 0 ? 'credit' : 'cash'));
         const status = balanceDue > 0.009 ? 'part-paid' : 'completed';
-        const receiptNumber = 'OKW-' + Date.now() + '-' + crypto.randomInt(100, 999);
+        const tempReceipt = 'RCPT' + crypto.randomInt(100000, 999999);
 
         const trxRes = await client.query(
             `INSERT INTO transactions
@@ -1007,9 +1007,12 @@ router.post('/api/pos/checkout', authenticateToken, requirePermission('sales', '
                 grandTotal, primaryMethod, JSON.stringify(cleanPayments), totalPaid, balanceDue, changeAmount,
                 requestedDiscount, approverId, price_group,
                 delivery && delivery.enabled ? JSON.stringify(delivery) : null,
-                JSON.stringify(taxBreakdown), receiptNumber, JSON.stringify(verifiedItems), status
+                JSON.stringify(taxBreakdown), tempReceipt, JSON.stringify(verifiedItems), status
             ]
         );
+        const receiptNumber = 'RCP' + String(trxRes.rows[0].id).padStart(6, '0');
+        await client.query('UPDATE transactions SET receipt_number = $1 WHERE id = $2', [receiptNumber, trxRes.rows[0].id]);
+        trxRes.rows[0].receipt_number = receiptNumber;
 
         if (scopedIdemKey) {
             await runOptional(client, 'sp_idem_upd', () =>
@@ -1190,14 +1193,17 @@ router.post('/api/pos/returns', authenticateToken, async (req, res) => {
             );
         }
 
-        const retReceipt = 'RET-' + Date.now() + '-' + crypto.randomInt(100, 999);
+        const tempRetReceipt = 'REFT' + crypto.randomInt(100000, 999999);
         const retRes = await client.query(
             `INSERT INTO transactions
                 (tenant_id, user_id, customer_id, customer_name, store_location, total_amount, original_total, current_total,
                  payment_method, receipt_number, items, status, is_return, original_transaction_id, discount_approved_by)
              VALUES ($1,$2,$3,$4,$5,$6,$6,$6,$7,$8,$9,'completed',true,$10,$11) RETURNING *`,
-            [orig.tenant_id || req.user.tenant_id || 1, req.user.id || null, orig.customer_id, orig.customer_name, storeLoc, -refundTotal, refund_method, retReceipt, JSON.stringify(verifiedReturnItems), orig.id, approverId]
+            [orig.tenant_id || req.user.tenant_id || 1, req.user.id || null, orig.customer_id, orig.customer_name, storeLoc, -refundTotal, refund_method, tempRetReceipt, JSON.stringify(verifiedReturnItems), orig.id, approverId]
         );
+        const retReceipt = 'REF' + String(retRes.rows[0].id).padStart(6, '0');
+        await client.query('UPDATE transactions SET receipt_number = $1 WHERE id = $2', [retReceipt, retRes.rows[0].id]);
+        retRes.rows[0].receipt_number = retReceipt;
 
         await runOptional(client, 'sp_refund_insert', () =>
             client.query(

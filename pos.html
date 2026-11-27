@@ -4,15 +4,19 @@
 <head>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"
+        media="print" data-media-swap>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OKWESIWA CO LTD | Register</title>
     <link rel="icon" type="image/svg+xml" href="/okwesiwa-logo.svg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" media="print" data-media-swap>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet" media="print" data-media-swap>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Montserrat:wght@500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" media="print" data-media-swap>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"
+        media="print" data-media-swap>
     <script src="currency.js"></script>
     <script src="telemetry-guard.js"></script>
     <script src="instant-nav.js"></script>
@@ -22,9 +26,9 @@
     <script src="/ui-components.js"></script>
     <script src="/pos-upgrade.js"></script>
     <script>
-        (function() {
+        (function () {
             if ('serviceWorker' in navigator) {
-                navigator.serviceWorker.register('/sw.js').catch(function(err) {
+                navigator.serviceWorker.register('/sw.js').catch(function (err) {
                     console.log('SW registration skipped:', err);
                 });
             }
@@ -39,12 +43,14 @@
             --p-color-border-hover: #94a3b8;
             --p-color-text: #0f172a;
             --p-color-text-subdued: #64748b;
-            --p-color-primary: #273990; --p-color-accent: #F9A51A;
+            --p-color-primary: #273990;
+            --p-color-accent: #F9A51A;
             --p-color-primary-hover: #1C2B70;
             --p-color-primary-subdued: rgba(39, 57, 144, 0.10);
             --p-header-bg: #273990;
             --p-header-border: #1C2B70;
-            --primary: #273990; --accent: #F9A51A;
+            --primary: #273990;
+            --accent: #F9A51A;
             --secondary: #1C2B70;
             --bg: #f8fafc;
             --border: #e2e8f0;
@@ -93,6 +99,7 @@
             gap: 10px;
             white-space: nowrap;
         }
+
         .brand img {
             width: auto;
             max-width: 140px;
@@ -104,6 +111,7 @@
             padding: 3px 10px;
             border: 1.5px solid rgba(232, 119, 46, 0.7);
         }
+
         .pos-badge {
             background: rgba(232, 119, 46, 0.15);
             color: #E8772E;
@@ -144,6 +152,7 @@
             font-weight: 500;
             color: #17202A;
         }
+
         .user-pill:hover {
             background: rgba(23, 32, 42, 0.1);
             border-color: #8c9196;
@@ -387,7 +396,7 @@
             font-size: 13px;
             font-weight: 600;
             color: #202223;
-            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
             transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
         }
 
@@ -813,6 +822,7 @@
             color: #0f172a !important;
             font-weight: 700 !important;
         }
+
         .btn-payment-split:hover {
             background: #e09112 !important;
             color: #0f172a !important;
@@ -824,6 +834,7 @@
             color: #334155 !important;
             font-weight: 600 !important;
         }
+
         .btn-park:hover {
             background: #f1f5f9 !important;
             border-color: #94a3b8 !important;
@@ -926,12 +937,18 @@
         .posLiveClock {
             color: #ffffff !important;
             font-weight: 700;
-            font-family: inherit; font-variant-numeric: tabular-nums;
+            font-family: inherit;
+            font-variant-numeric: tabular-nums;
         }
 
         @keyframes ticker {
-            0% { transform: translate3d(0, 0, 0); }
-            100% { transform: translate3d(-100%, 0, 0); }
+            0% {
+                transform: translate3d(0, 0, 0);
+            }
+
+            100% {
+                transform: translate3d(-100%, 0, 0);
+            }
         }
 
         /* NOTIFICATION */
@@ -1021,7 +1038,8 @@
             margin: 16px 0;
             outline: none;
             transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, opacity 0.15s ease, transform 0.15s ease;
-            font-family: inherit; font-variant-numeric: tabular-nums;
+            font-family: inherit;
+            font-variant-numeric: tabular-nums;
             background: #fdfdfd;
         }
 
@@ -1373,16 +1391,16 @@
             }
 
             .brand img {
-            width: auto;
-            max-width: 140px;
-            height: 36px;
-            aspect-ratio: auto;
-            border-radius: 6px;
-            object-fit: contain;
-            background: #ffffff;
-            padding: 3px 10px;
-            border: 1.5px solid rgba(232, 119, 46, 0.7);
-        }
+                width: auto;
+                max-width: 140px;
+                height: 36px;
+                aspect-ratio: auto;
+                border-radius: 6px;
+                object-fit: contain;
+                background: #ffffff;
+                padding: 3px 10px;
+                border: 1.5px solid rgba(232, 119, 46, 0.7);
+            }
 
             #dateTime {
                 display: none;
@@ -1402,18 +1420,18 @@
             }
 
             .user-avatar {
-            width: 26px;
-            height: 26px;
-            background: #1F3A60;
-            color: #ffffff;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 50%;
-            font-size: 11px;
-            font-weight: 700;
-            border: 1px solid rgba(232, 119, 46, 0.5);
-        }
+                width: 26px;
+                height: 26px;
+                background: #1F3A60;
+                color: #ffffff;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 50%;
+                font-size: 11px;
+                font-weight: 700;
+                border: 1px solid rgba(232, 119, 46, 0.5);
+            }
 
             .user-pill span {
                 display: none;
@@ -1513,61 +1531,282 @@
                 border-radius: 4px;
             }
         }
-    .user-profile-row { display: flex; align-items: center; gap: 10px; }
-        
-        .sidebar-logout-btn { margin-left: auto; flex-shrink: 0; background: none; border: none; color: rgba(255,255,255,0.65); cursor: pointer; padding: 7px; border-radius: 6px; font-size: 16px; line-height: 1; transition: color 0.2s ease, background 0.2s ease; } .sidebar-logout-btn:hover { color: white; background: rgba(220,53,69,0.6); }
-        </style>
+
+        .user-profile-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .sidebar-logout-btn {
+            margin-left: auto;
+            flex-shrink: 0;
+            background: none;
+            border: none;
+            color: rgba(255, 255, 255, 0.65);
+            cursor: pointer;
+            padding: 7px;
+            border-radius: 6px;
+            font-size: 16px;
+            line-height: 1;
+            transition: color 0.2s ease, background 0.2s ease;
+        }
+
+        .sidebar-logout-btn:hover {
+            color: white;
+            background: rgba(220, 53, 69, 0.6);
+        }
+    </style>
     <link rel="stylesheet" href="sidebar.css">
     <script src="/layout.js"></script>
     <link rel="stylesheet" href="/portal-skin.css">
     <style id="pos-face">
         /* the total is the loudest thing on the till; Cash is the primary action */
-        .cart-summary .summary-row.total { background: transparent !important; border: 0 !important; border-top: 1px solid var(--edge) !important; border-radius: 0 !important; margin-top: 10px; padding: 14px 0 6px !important; align-items: flex-end; }
-        .cart-summary .summary-row.total span:first-child { font-size: 14px; font-weight: 600; color: var(--muted); }
-        #grandTotal { font-family: var(--font-display); font-size: 44px !important; font-weight: 700; line-height: 1; color: var(--brand); font-variant-numeric: tabular-nums; }
-        .cart-summary .actions { display: grid !important; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
-        .cart-summary .actions .btn { height: 52px; font-size: 14px; font-weight: 700; border-radius: 10px; background: var(--sheet) !important; color: var(--ink) !important; border: 1px solid var(--edge-strong) !important; }
-        .cart-summary .actions .btn:hover { border-color: var(--brand) !important; }
-        .cart-summary .actions .btn-payment-cash { grid-column: 1 / -1; height: 64px; font-size: 18px; background: var(--brand) !important; color: #fff !important; border-color: var(--brand) !important; }
-        .cart-summary .actions .btn-payment-cash:hover { background: var(--brand-hover) !important; }
-        .cart-summary .actions .btn-payment-momo { background: var(--brick) !important; border-color: var(--brick) !important; color: #231800 !important; }
-        .cart-summary .actions .btn-return, .cart-summary .actions .btn-refund { color: var(--bad) !important; }
-        .cart-header { font-family: var(--font-display); }
-        .quick-picks { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; padding: 14px 20px 0; overflow-x: auto; scrollbar-width: none; }
-        .quick-pick { flex: 0 0 auto; }
-        @media (max-width: 700px) {
-            #okw-pos-upgrade-shell, #okw-pos-upgrade-shell * { min-width: 0; }
-            #okw-pos-upgrade-shell [style*="flex"], #okw-pos-upgrade-shell > div > div { flex-wrap: wrap !important; }
-            #okw-pos-upgrade-shell input, #okw-pos-upgrade-shell select { flex: 1 1 140px; }
-            .cart-section { flex-direction: column; }
-            .cart-summary { width: 100% !important; }
+        .cart-summary .summary-row.total {
+            background: transparent !important;
+            border: 0 !important;
+            border-top: 1px solid var(--edge) !important;
+            border-radius: 0 !important;
+            margin-top: 10px;
+            padding: 14px 0 6px !important;
+            align-items: flex-end;
         }
-        .quick-picks[hidden] { display: none; }
-        .quick-picks-title { font-size: 13px; font-weight: 600; color: var(--muted); margin-right: 4px; }
-        .quick-pick { display: inline-flex; align-items: center; gap: 8px; height: 40px; max-width: 260px; padding: 0 14px; border: 1px solid var(--edge-strong); border-radius: 999px; background: var(--sheet); color: var(--ink); font: inherit; font-size: 13px; cursor: pointer; }
-        .quick-pick:hover { border-color: var(--brand); background: rgba(39, 57, 144, 0.05); }
-        .quick-pick span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .quick-pick b { flex-shrink: 0; font-family: var(--font-display); font-weight: 600; color: var(--brand); font-variant-numeric: tabular-nums; }
-        #scanResult:empty { display: none; }
+
+        .cart-summary .summary-row.total span:first-child {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--muted);
+        }
+
+        #grandTotal {
+            font-family: var(--font-display);
+            font-size: 44px !important;
+            font-weight: 700;
+            line-height: 1;
+            color: var(--brand);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .cart-summary .actions {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 14px;
+        }
+
+        .cart-summary .actions .btn {
+            height: 52px;
+            font-size: 14px;
+            font-weight: 700;
+            border-radius: 10px;
+            background: var(--sheet) !important;
+            color: var(--ink) !important;
+            border: 1px solid var(--edge-strong) !important;
+        }
+
+        .cart-summary .actions .btn:hover {
+            border-color: var(--brand) !important;
+        }
+
+        .cart-summary .actions .btn-payment-cash {
+            grid-column: 1 / -1;
+            height: 64px;
+            font-size: 18px;
+            background: var(--brand) !important;
+            color: #fff !important;
+            border-color: var(--brand) !important;
+        }
+
+        .cart-summary .actions .btn-payment-cash:hover {
+            background: var(--brand-hover) !important;
+        }
+
+        .cart-summary .actions .btn-payment-momo {
+            background: var(--brick) !important;
+            border-color: var(--brick) !important;
+            color: #231800 !important;
+        }
+
+        .cart-summary .actions .btn-return,
+        .cart-summary .actions .btn-refund {
+            color: var(--bad) !important;
+        }
+
+        .cart-header {
+            font-family: var(--font-display);
+        }
+
+        .quick-picks {
+            display: flex;
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 20px 0;
+            overflow-x: auto;
+            scrollbar-width: none;
+        }
+
+        .quick-pick {
+            flex: 0 0 auto;
+        }
+
+        @media (max-width: 700px) {
+
+            #okw-pos-upgrade-shell,
+            #okw-pos-upgrade-shell * {
+                min-width: 0;
+            }
+
+            #okw-pos-upgrade-shell [style*="flex"],
+            #okw-pos-upgrade-shell>div>div {
+                flex-wrap: wrap !important;
+            }
+
+            #okw-pos-upgrade-shell input,
+            #okw-pos-upgrade-shell select {
+                flex: 1 1 140px;
+            }
+
+            .cart-section {
+                flex-direction: column;
+            }
+
+            .cart-summary {
+                width: 100% !important;
+            }
+        }
+
+        .quick-picks[hidden] {
+            display: none;
+        }
+
+        .quick-picks-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--muted);
+            margin-right: 4px;
+        }
+
+        .quick-pick {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            height: 40px;
+            max-width: 260px;
+            padding: 0 14px;
+            border: 1px solid var(--edge-strong);
+            border-radius: 999px;
+            background: var(--sheet);
+            color: var(--ink);
+            font: inherit;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .quick-pick:hover {
+            border-color: var(--brand);
+            background: rgba(39, 57, 144, 0.05);
+        }
+
+        .quick-pick span {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .quick-pick b {
+            flex-shrink: 0;
+            font-family: var(--font-display);
+            font-weight: 600;
+            color: var(--brand);
+            font-variant-numeric: tabular-nums;
+        }
+
+        #scanResult:empty {
+            display: none;
+        }
+
         /* dark theme: the till follows it too */
-        [data-theme="dark"] .cart-section, [data-theme="dark"] .cart-main, [data-theme="dark"] .cart-summary,
-        [data-theme="dark"] .products-section, [data-theme="dark"] .product-card,
-        [data-theme="dark"] .token-content, [data-theme="dark"] .modal-content,
+        [data-theme="dark"] .cart-section,
+        [data-theme="dark"] .cart-main,
+        [data-theme="dark"] .cart-summary,
+        [data-theme="dark"] .products-section,
+        [data-theme="dark"] .product-card,
+        [data-theme="dark"] .token-content,
+        [data-theme="dark"] .modal-content,
         [data-theme="dark"] #okw-pos-view-nav,
-        [data-theme="dark"] #okw-pos-upgrade-shell { background: var(--sheet) !important; color: var(--ink) !important; border-color: var(--edge) !important; }
-        [data-theme="dark"] .okw-pos-nav-btn:not(.active) { color: var(--ink-2) !important; }
-        [data-theme="dark"] #okw-pos-upgrade-shell input, [data-theme="dark"] #okw-pos-upgrade-shell select,
-        [data-theme="dark"] #promoCode, [data-theme="dark"] .qty-btn, [data-theme="dark"] .cart-items input,
-        [data-theme="dark"] .search-bar input, [data-theme="dark"] .customer-search-box,
-        [data-theme="dark"] .quick-pick { background: var(--sheet-2) !important; color: var(--ink) !important; border-color: var(--edge-strong) !important; }
-        [data-theme="dark"] .cart-header, [data-theme="dark"] .cart-items, [data-theme="dark"] .summary-row, [data-theme="dark"] #grandTotal { color: var(--ink); }
-        [data-theme="dark"] #grandTotal { color: #9DB0FF; }
-        [data-theme="dark"] .cart-summary .actions .btn { background: var(--sheet-2) !important; color: var(--ink) !important; }
-        [data-theme="dark"] .cart-summary .actions .btn-payment-cash { background: #4A5FD0 !important; color: #fff !important; }
-        [data-theme="dark"] .cart-summary .actions .btn-payment-momo { background: var(--brick) !important; color: #231800 !important; }
-        .cart-labels { background: transparent !important; border: 0 !important; border-bottom: 1px solid var(--edge) !important; border-radius: 0 !important; text-transform: none !important; letter-spacing: 0 !important; font-size: 12px !important; font-weight: 500 !important; color: var(--muted) !important; }
-        .qty-btn { width: 36px !important; height: 36px !important; border-radius: 8px !important; font-size: 16px; }
-        .cart-summary .actions .btn-return { grid-column: 1 / -1; height: 44px; }
+        [data-theme="dark"] #okw-pos-upgrade-shell {
+            background: var(--sheet) !important;
+            color: var(--ink) !important;
+            border-color: var(--edge) !important;
+        }
+
+        [data-theme="dark"] .okw-pos-nav-btn:not(.active) {
+            color: var(--ink-2) !important;
+        }
+
+        [data-theme="dark"] #okw-pos-upgrade-shell input,
+        [data-theme="dark"] #okw-pos-upgrade-shell select,
+        [data-theme="dark"] #promoCode,
+        [data-theme="dark"] .qty-btn,
+        [data-theme="dark"] .cart-items input,
+        [data-theme="dark"] .search-bar input,
+        [data-theme="dark"] .customer-search-box,
+        [data-theme="dark"] .quick-pick {
+            background: var(--sheet-2) !important;
+            color: var(--ink) !important;
+            border-color: var(--edge-strong) !important;
+        }
+
+        [data-theme="dark"] .cart-header,
+        [data-theme="dark"] .cart-items,
+        [data-theme="dark"] .summary-row,
+        [data-theme="dark"] #grandTotal {
+            color: var(--ink);
+        }
+
+        [data-theme="dark"] #grandTotal {
+            color: #9DB0FF;
+        }
+
+        [data-theme="dark"] .cart-summary .actions .btn {
+            background: var(--sheet-2) !important;
+            color: var(--ink) !important;
+        }
+
+        [data-theme="dark"] .cart-summary .actions .btn-payment-cash {
+            background: #4A5FD0 !important;
+            color: #fff !important;
+        }
+
+        [data-theme="dark"] .cart-summary .actions .btn-payment-momo {
+            background: var(--brick) !important;
+            color: #231800 !important;
+        }
+
+        .cart-labels {
+            background: transparent !important;
+            border: 0 !important;
+            border-bottom: 1px solid var(--edge) !important;
+            border-radius: 0 !important;
+            text-transform: none !important;
+            letter-spacing: 0 !important;
+            font-size: 12px !important;
+            font-weight: 500 !important;
+            color: var(--muted) !important;
+        }
+
+        .qty-btn {
+            width: 36px !important;
+            height: 36px !important;
+            border-radius: 8px !important;
+            font-size: 16px;
+        }
+
+        .cart-summary .actions .btn-return {
+            grid-column: 1 / -1;
+            height: 44px;
+        }
 
         /* ================= POS CASHIER SIDEBAR RAIL ================= */
         .pos-sidebar-toggle {
@@ -1584,20 +1823,23 @@
             transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
             flex-shrink: 0;
         }
+
         .pos-sidebar-toggle:hover {
             background: var(--frame-hover, #f1f5f9);
             border-color: var(--brand, #273990);
             color: var(--brand, #273990);
         }
+
         .pos-layout {
             min-width: 0;
         }
+
         .pos-sidebar {
-            width: 212px;
+            width: 204px;
             flex-shrink: 0;
-            background: var(--frame, #f4f5f7);
-            color: var(--ink-2, #334155);
-            border-right: 1px solid var(--edge, #e2e8f0);
+            background: var(--color-sidebar, #16224a);
+            color: var(--color-sidebar-text, #e2e8f0);
+            border-right: 1px solid rgba(255, 255, 255, 0.08);
             display: flex;
             flex-direction: column;
             position: sticky;
@@ -1608,39 +1850,44 @@
             transition: width 0.18s ease, transform 0.2s ease;
             z-index: 40;
         }
+
         .pos-sidebar.collapsed {
-            width: var(--sidebar-collapsed-width, 60px);
+            width: 60px;
         }
+
         .pos-sidebar-head {
-            padding: 12px 12px 10px;
-            border-bottom: 1px solid var(--edge, #e2e8f0);
+            padding: 12px 14px 10px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 8px;
         }
+
         .pos-sidebar-role {
-            font-size: 11px;
-            font-weight: 600;
-            letter-spacing: 0.03em;
+            font-size: 10.5px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
             text-transform: uppercase;
-            color: var(--brand, #273990);
-            background: rgba(39, 57, 144, 0.08);
-            border: 1px solid rgba(39, 57, 144, 0.18);
+            color: #F9A51A;
+            background: rgba(249, 165, 26, 0.14);
+            border: 1px solid rgba(249, 165, 26, 0.35);
             border-radius: 999px;
-            padding: 3px 10px;
+            padding: 3px 9px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        [data-theme="dark"] .pos-sidebar-role {
-            color: #9DB0FF;
-            background: rgba(157, 176, 255, 0.12);
-            border-color: rgba(157, 176, 255, 0.25);
-        }
+
         .pos-sidebar.collapsed .pos-sidebar-head {
+            padding: 10px 6px;
+            justify-content: center;
+        }
+
+        .pos-sidebar.collapsed .pos-sidebar-role {
             display: none;
         }
+
         .pos-sidebar-nav {
             flex: 1;
             padding: 10px 8px;
@@ -1648,25 +1895,28 @@
             flex-direction: column;
             gap: 3px;
         }
+
         .pos-sidebar-section {
-            font-size: 10.5px;
+            font-size: 10px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
-            color: var(--muted, #64748b);
-            padding: 8px 10px 4px;
+            letter-spacing: 0.07em;
+            color: rgba(226, 232, 240, 0.45);
+            padding: 10px 10px 4px;
             white-space: nowrap;
         }
+
         .pos-sidebar.collapsed .pos-sidebar-section {
             display: none;
         }
+
         .pos-sidebar-link {
             display: flex;
             align-items: center;
             gap: 11px;
-            padding: 9px 11px;
+            padding: 10px 11px;
             border-radius: 8px;
-            color: var(--ink-2, #334155);
+            color: rgba(241, 245, 249, 0.84);
             text-decoration: none;
             font-size: 13.5px;
             font-weight: 500;
@@ -1679,28 +1929,25 @@
             transition: background-color 0.15s ease, color 0.15s ease;
             white-space: nowrap;
         }
+
         .pos-sidebar-link svg {
             width: 18px;
             height: 18px;
             flex-shrink: 0;
-            color: var(--muted, #64748b);
+            opacity: 0.9;
         }
+
         .pos-sidebar-link:hover {
-            background: var(--frame-hover, #e8ecf2);
-            color: var(--ink, #0f172a);
+            background: rgba(255, 255, 255, 0.09);
+            color: #ffffff;
         }
-        .pos-sidebar-link:hover svg {
-            color: var(--ink, #0f172a);
-        }
+
         .pos-sidebar-link.active {
-            background: rgba(39, 57, 144, 0.1);
-            color: var(--brand, #273990);
+            background: rgba(249, 165, 26, 0.16);
+            color: #ffffff;
             font-weight: 600;
         }
-        [data-theme="dark"] .pos-sidebar-link.active {
-            background: rgba(157, 176, 255, 0.14);
-            color: #9DB0FF;
-        }
+
         .pos-sidebar-link.active::before {
             content: '';
             position: absolute;
@@ -1709,38 +1956,36 @@
             bottom: 7px;
             width: 3px;
             border-radius: 0 3px 3px 0;
-            background: var(--brand, #273990);
+            background: #F9A51A;
         }
-        [data-theme="dark"] .pos-sidebar-link.active::before {
-            background: #9DB0FF;
-        }
+
         .pos-sidebar-link.active svg {
-            color: var(--brand, #273990);
+            color: #F9A51A;
+            opacity: 1;
         }
-        [data-theme="dark"] .pos-sidebar-link.active svg {
-            color: #9DB0FF;
-        }
+
         .pos-sidebar-link.danger:hover {
-            background: rgba(220, 38, 38, 0.1);
-            color: #dc2626;
+            background: rgba(220, 38, 38, 0.22);
+            color: #fecaca;
         }
-        .pos-sidebar-link.danger:hover svg {
-            color: #dc2626;
-        }
+
         .pos-sidebar.collapsed .pos-sidebar-link {
             justify-content: center;
             padding: 10px;
         }
+
         .pos-sidebar.collapsed .pos-sidebar-link span {
             display: none;
         }
+
         .pos-sidebar-footer {
             padding: 8px;
-            border-top: 1px solid var(--edge, #e2e8f0);
+            border-top: 1px solid rgba(255, 255, 255, 0.08);
             display: flex;
             flex-direction: column;
             gap: 2px;
         }
+
         .pos-sidebar-backdrop {
             display: none;
             position: fixed;
@@ -1748,9 +1993,11 @@
             background: rgba(15, 23, 42, 0.45);
             z-index: 950;
         }
+
         .pos-sidebar-backdrop.open {
             display: block;
         }
+
         @media (max-width: 1024px) {
             .pos-sidebar {
                 position: fixed;
@@ -1761,18 +2008,18 @@
                 width: 224px !important;
                 transform: translateX(-100%);
                 z-index: 960;
-                box-shadow: 6px 0 24px rgba(15, 23, 42, 0.2);
+                box-shadow: 6px 0 24px rgba(15, 23, 42, 0.28);
             }
+
             .pos-sidebar.mobile-open {
                 transform: translateX(0);
             }
-            .pos-sidebar.collapsed .pos-sidebar-head {
-                display: flex;
-            }
+
             .pos-sidebar.collapsed .pos-sidebar-link {
                 justify-content: flex-start;
-                padding: 9px 11px;
+                padding: 10px 11px;
             }
+
             .pos-sidebar.collapsed .pos-sidebar-link span,
             .pos-sidebar.collapsed .pos-sidebar-section,
             .pos-sidebar.collapsed .pos-sidebar-role {
@@ -1793,7 +2040,8 @@
             <div class="scanner-header">
                 <h3>Scan Barcode with Camera</h3>
                 <button data-onclick="closeCameraScanner()"
-                    style="background:none;border:none;color:white;cursor:pointer;font-size:20px;" aria-label="Close">&times;</button>
+                    style="background:none;border:none;color:white;cursor:pointer;font-size:20px;"
+                    aria-label="Close">&times;</button>
             </div>
             <div class="scanner-body">
                 <div style="position: relative;">
@@ -1830,7 +2078,8 @@
             <div class="scanner-header">
                 <h3>Multiple Products Found</h3>
                 <button data-onclick="closeProductSelection()"
-                    style="background:none;border:none;color:white;cursor:pointer;font-size:20px;" aria-label="Close">&times;</button>
+                    style="background:none;border:none;color:white;cursor:pointer;font-size:20px;"
+                    aria-label="Close">&times;</button>
             </div>
             <div class="scanner-body">
                 <div id="barcodeInfo" style="margin-bottom: 20px; text-align: center;">
@@ -1855,11 +2104,15 @@
         <div class="token-content" style="max-width: 400px;">
             <div style="font-size: 44px; color: #108043; margin-bottom: 12px;"><i class="fas fa-check-circle"></i></div>
             <h3 style="color:#111216; font-size: 17px; font-weight: 700; margin-bottom:8px;">Sale Successful</h3>
-            <p style="color:#6d7175; font-size:13px; margin-bottom:22px;">Would you like to print a receipt for this transaction?</p>
+            <p style="color:#6d7175; font-size:13px; margin-bottom:22px;">Would you like to print a receipt for this
+                transaction?</p>
 
             <div style="display:flex; gap:10px;">
-                <button id="btnNoReceipt" class="pos-btn-action" style="flex:1; justify-content:center; height:44px;">No, Done</button>
-                <button id="btnPrintReceipt" class="pos-btn-action primary" style="flex:1; justify-content:center; height:44px;"><i class="fas fa-print" style="margin-right:6px;"></i> Yes, Print</button>
+                <button id="btnNoReceipt" class="pos-btn-action"
+                    style="flex:1; justify-content:center; height:44px;">No, Done</button>
+                <button id="btnPrintReceipt" class="pos-btn-action primary"
+                    style="flex:1; justify-content:center; height:44px;"><i class="fas fa-print"
+                        style="margin-right:6px;"></i> Yes, Print</button>
             </div>
         </div>
     </div>
@@ -1867,8 +2120,10 @@
     <!-- Credit Sale Modal -->
     <div id="creditSaleModal" class="token-modal">
         <div class="token-content" style="max-width: 450px;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom: 1px solid #e1e3e5; padding-bottom: 12px;">
-                <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-user-tag" style="color:#1F3A60; margin-right:6px;"></i> Credit Sale</h3>
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; border-bottom: 1px solid #e1e3e5; padding-bottom: 12px;">
+                <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-user-tag"
+                        style="color:#1F3A60; margin-right:6px;"></i> Credit Sale</h3>
                 <button data-onclick="closeCreditSaleModal()"
                     style="background:none; border:none; font-size:20px; color:#6d7175; cursor:pointer;">&times;</button>
             </div>
@@ -1887,13 +2142,14 @@
                             style="color:#d72c0d; font-weight:600;">--</span></div>
                     <div class="customer-detail-row"
                         style="margin-top:5px; border-top:1px dashed #d1d5db; padding-top:6px;">
-                        <strong>Available Credit:</strong> <strong id="ccAvailable"
-                            style="color:#108043;">--</strong>
+                        <strong>Available Credit:</strong> <strong id="ccAvailable" style="color:#108043;">--</strong>
                     </div>
                 </div>
 
                 <div class="credit-summary">
-                    <div style="font-size:11px; font-weight:700; color:#6d7175; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:5px;">Total Amount Due</div>
+                    <div
+                        style="font-size:11px; font-weight:700; color:#6d7175; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:5px;">
+                        Total Amount Due</div>
                     <div class="credit-total" id="creditSaleTotal">--</div>
                 </div>
 
@@ -1907,7 +2163,8 @@
     <div id="managerTokenModal" class="token-modal">
         <div class="token-content">
             <div style="margin-bottom:14px;">
-                <div style="width:48px; height:48px; border-radius:50%; background:rgba(31, 58, 96, 0.12); color:#172C49; display:flex; align-items:center; justify-content:center; margin:0 auto; font-size:22px;">
+                <div
+                    style="width:48px; height:48px; border-radius:50%; background:rgba(31, 58, 96, 0.12); color:#172C49; display:flex; align-items:center; justify-content:center; margin:0 auto; font-size:22px;">
                     <i class="fas fa-user-shield"></i>
                 </div>
             </div>
@@ -1916,11 +2173,14 @@
 
             <input type="password" id="managerTokenInput" class="token-input" maxlength="6" placeholder="••••••"
                 autocomplete="off">
-            <div id="tokenError" style="color:#d72c0d; font-size:12.5px; font-weight:600; margin-bottom:14px; display:none;">Invalid Token
+            <div id="tokenError"
+                style="color:#d72c0d; font-size:12.5px; font-weight:600; margin-bottom:14px; display:none;">Invalid
+                Token
             </div>
 
             <div style="display:flex; gap:10px;">
-                <button data-onclick="closeManagerTokenModal()" class="pos-btn-action" style="flex:1; justify-content:center; height:42px;">Cancel</button>
+                <button data-onclick="closeManagerTokenModal()" class="pos-btn-action"
+                    style="flex:1; justify-content:center; height:42px;">Cancel</button>
                 <button data-onclick="verifyManagerToken()" class="pos-btn-action primary"
                     style="flex:1; justify-content:center; height:42px;">Verify</button>
             </div>
@@ -1932,7 +2192,8 @@
         <div class="token-content" style="max-width: 500px; text-align:left; width: 95%;">
             <div
                 style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px; border-bottom: 1px solid #e1e3e5; padding-bottom: 12px;">
-                <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-clock" style="color:#1F3A60; margin-right:6px;"></i> Parked Orders</h3>
+                <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-clock"
+                        style="color:#1F3A60; margin-right:6px;"></i> Parked Orders</h3>
                 <button data-onclick="document.getElementById('parkedModal').classList.remove('active')"
                     style="background:none; border:none; font-size:20px; color:#6d7175; cursor:pointer;">&times;</button>
             </div>
@@ -1946,8 +2207,7 @@
             <h3 style="color:#111216; font-size:16px; font-weight:700; margin-bottom:6px;">Park Order</h3>
             <p style="color:#6d7175; font-size:13px; margin-bottom:16px;">Enter reference name (e.g. Customer Name):</p>
 
-            <input type="text" id="parkRefInput" class="customer-search-box"
-                style="font-size:14px; margin-bottom:16px;"
+            <input type="text" id="parkRefInput" class="customer-search-box" style="font-size:14px; margin-bottom:16px;"
                 placeholder="Customer Name or Note" autocomplete="off">
 
             <div style="display:flex; gap:10px;">
@@ -1962,21 +2222,27 @@
     <!-- Receipt Search Modal -->
     <div id="receiptSearchModal" class="token-modal">
         <div class="token-content" style="max-width: 500px; text-align:left;">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom: 1px solid #e1e3e5; padding-bottom: 12px;">
-                <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-receipt" style="color:#1F3A60; margin-right:6px;"></i> Search Receipt</h3>
+            <div
+                style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; border-bottom: 1px solid #e1e3e5; padding-bottom: 12px;">
+                <h3 style="color:#111216; font-size:16px; font-weight:700; margin:0;"><i class="fas fa-receipt"
+                        style="color:#1F3A60; margin-right:6px;"></i> Search Receipt</h3>
                 <button data-onclick="closeReceiptSearch()"
                     style="background:none; border:none; font-size:20px; color:#6d7175; cursor:pointer;">&times;</button>
             </div>
 
             <div style="margin-bottom:20px;">
-                <label style="display:block; margin-bottom:8px; color: #6d7175; font-size: 13px; font-weight:600;">Receipt Number</label>
+                <label
+                    style="display:block; margin-bottom:8px; color: #6d7175; font-size: 13px; font-weight:600;">Receipt
+                    Number</label>
                 <input type="text" id="receiptNumberInput" class="customer-search-box"
-                    placeholder="e.g. RCP1234567890 or 1234567890" autocomplete="off">
-                <p style="color: #8c9196; font-size: 12px; margin-top: 4px;">You can enter the receipt number with or without 'RCP' prefix</p>
+                    placeholder="e.g. RCP000142 or 000142" autocomplete="off">
+                <p style="color: #8c9196; font-size: 12px; margin-top: 4px;">You can enter the receipt number with or
+                    without 'RCP' prefix</p>
             </div>
 
             <div style="display:flex; gap:10px;">
-                <button data-onclick="closeReceiptSearch()" class="pos-btn-action" style="flex:1; justify-content:center; height:42px;">Cancel</button>
+                <button data-onclick="closeReceiptSearch()" class="pos-btn-action"
+                    style="flex:1; justify-content:center; height:42px;">Cancel</button>
                 <button data-onclick="searchReceipt()" class="pos-btn-action primary"
                     style="flex:1; justify-content:center; height:42px;"><i class="fas fa-search"></i> Search</button>
             </div>
@@ -1987,22 +2253,36 @@
     <h1 class="sr-only">Point of sale till</h1>
     <header>
         <div class="brand">
-            <button type="button" id="posSidebarToggle" class="pos-sidebar-toggle" title="Toggle menu" aria-label="Toggle cashier menu" aria-controls="posCashierSidebar" aria-expanded="true">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            <button type="button" id="posSidebarToggle" class="pos-sidebar-toggle" title="Toggle menu"
+                aria-label="Toggle cashier menu" aria-controls="posCashierSidebar" aria-expanded="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <line x1="3" y1="6" x2="21" y2="6" />
+                    <line x1="3" y1="12" x2="21" y2="12" />
+                    <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
             </button>
-            <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD" style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 2px solid #F9A51A;">
+            <img src="/okwesiwa-logo.svg" alt="OKWESIWA CO LTD"
+                style="width: auto; max-width: 140px; height: 36px; border-radius: 6px; object-fit: contain; background: #ffffff; padding: 3px 8px; border: 2px solid #F9A51A;">
         </div>
 
-        <nav id="okw-pos-view-nav" aria-label="POS views" style="display:inline-flex; align-items:center; gap:4px; background:var(--sheet, #ffffff); padding:3px; border-radius:10px; border:1px solid var(--edge-strong, #cbd5e1);">
-            <button type="button" class="okw-pos-nav-btn active" data-pos-view="till" style="border:none; background:#273990; color:#ffffff; padding:5px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;">Till</button>
-            <button type="button" class="okw-pos-nav-btn" data-pos-view="quotes" style="border:none; background:transparent; color:#334155; padding:5px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;">Quotes</button>
-            <button type="button" class="okw-pos-nav-btn" data-pos-view="discounts" style="border:none; background:transparent; color:#334155; padding:5px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;">Discounts</button>
-            <button type="button" class="okw-pos-nav-btn" data-pos-view="splits" style="border:none; background:transparent; color:#334155; padding:5px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;">Splits</button>
+        <nav id="okw-pos-view-nav" aria-label="POS views"
+            style="display:inline-flex; align-items:center; gap:4px; background:var(--sheet, #ffffff); padding:3px; border-radius:10px; border:1px solid var(--edge-strong, #cbd5e1);">
+            <button type="button" class="okw-pos-nav-btn active" data-pos-view="till"
+                style="border:none; background:#273990; color:#ffffff; padding:5px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;">Till</button>
+            <button type="button" class="okw-pos-nav-btn" data-pos-view="quotes"
+                style="border:none; background:transparent; color:#334155; padding:5px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;">Quotes</button>
+            <button type="button" class="okw-pos-nav-btn" data-pos-view="discounts"
+                style="border:none; background:transparent; color:#334155; padding:5px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;">Discounts</button>
+            <button type="button" class="okw-pos-nav-btn" data-pos-view="splits"
+                style="border:none; background:transparent; color:#334155; padding:5px 12px; border-radius:7px; font-size:12.5px; font-weight:600; cursor:pointer;">Splits</button>
         </nav>
 
         <div class="user-menu">
-            <div id="connectionStatusBadge" style="display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:20px; background:#dcfce7; color:#15803d; transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease;">
-                <span style="width:8px; height:8px; border-radius:50%; background:#22c55e; display:inline-block;" id="statusDot"></span>
+            <div id="connectionStatusBadge"
+                style="display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:20px; background:#dcfce7; color:#15803d; transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease;">
+                <span style="width:8px; height:8px; border-radius:50%; background:#22c55e; display:inline-block;"
+                    id="statusDot"></span>
                 <span id="statusText">Online</span>
             </div>
 
@@ -2034,7 +2314,8 @@
                     <strong>Cashier</strong>
                     <span>Cashier</span>
                 </div>
-                <a href="/dashboard" id="posManagerPortalLink" style="display:none;"><i class="fas fa-th-large"></i> Manager Portal</a>
+                <a href="/dashboard" id="posManagerPortalLink" style="display:none;"><i class="fas fa-th-large"></i>
+                    Manager Portal</a>
                 <a href="profile"><i class="fas fa-user-cog"></i> Profile</a>
                 <a href="transactions"><i class="fas fa-history"></i> Sales History</a>
                 <a href="#" data-onclick="openCustomerDisplay(); return false"><i class="fas fa-desktop"></i> Customer
@@ -2052,43 +2333,88 @@
                 <span class="pos-sidebar-role" id="posSidebarRoleBadge">Cashier</span>
             </div>
             <nav class="pos-sidebar-nav">
-                <a href="/dashboard" id="posSidebarDashboardLink" class="pos-sidebar-link" title="Dashboard" style="display:none;">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                <a href="/dashboard" id="posSidebarDashboardLink" class="pos-sidebar-link" title="Dashboard"
+                    style="display:none;">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                        <polyline points="9 22 9 12 15 12 15 22" />
+                    </svg>
                     <span>Dashboard</span>
                 </a>
                 <div class="pos-sidebar-section">Till Menu</div>
                 <a href="/pos" class="pos-sidebar-link active" title="POS" aria-current="page">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+                        <line x1="3" y1="6" x2="21" y2="6" />
+                        <path d="M16 10a4 4 0 0 1-8 0" />
+                    </svg>
                     <span>POS</span>
                 </a>
                 <a href="/open-shift" class="pos-sidebar-link" title="Open Shift">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" />
+                        <polyline points="12 6 12 12 16 14" />
+                    </svg>
                     <span>Open Shift</span>
                 </a>
                 <a href="/close-shift" class="pos-sidebar-link" title="Close Shift">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
                     <span>Close Shift</span>
                 </a>
                 <a href="/transactions" class="pos-sidebar-link" title="Transactions">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z" />
+                        <line x1="8" y1="8" x2="16" y2="8" />
+                        <line x1="8" y1="12" x2="16" y2="12" />
+                        <line x1="8" y1="16" x2="12" y2="16" />
+                    </svg>
                     <span>Transactions</span>
                 </a>
                 <a href="/customers" class="pos-sidebar-link" title="Customers">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="9" cy="7" r="4" />
+                        <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                        <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                    </svg>
                     <span>Customers</span>
                 </a>
             </nav>
             <div class="pos-sidebar-footer">
                 <button type="button" id="posSidebarDisplayBtn" class="pos-sidebar-link" title="Customer Display">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+                        <line x1="8" y1="21" x2="16" y2="21" />
+                        <line x1="12" y1="17" x2="12" y2="21" />
+                    </svg>
                     <span>Customer Display</span>
                 </button>
                 <a href="/profile" class="pos-sidebar-link" title="Profile">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
+                        <circle cx="12" cy="7" r="4" />
+                    </svg>
                     <span>Profile</span>
                 </a>
                 <button type="button" id="posSidebarLogoutBtn" class="pos-sidebar-link danger" title="Logout">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"
+                        stroke-linejoin="round" aria-hidden="true">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                        <polyline points="16 17 21 12 16 7" />
+                        <line x1="21" y1="12" x2="9" y2="12" />
+                    </svg>
                     <span>Logout</span>
                 </button>
             </div>
@@ -2112,25 +2438,34 @@
                     <div class="cart-header">
                         <span>Current Sale</span>
                         <div style="display:flex; gap:10px; align-items:center;">
-                            <select id="posPriceGroupSelect" aria-label="Selling Price Group" title="Selling Price Group" style="height:28px;padding:0 8px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#1e293b;font-size:12px;font-weight:600;max-width:170px;cursor:pointer;">
+                            <select id="posPriceGroupSelect" aria-label="Selling Price Group"
+                                title="Selling Price Group"
+                                style="height:28px;padding:0 8px;border:1px solid #d1d5db;border-radius:8px;background:#fff;color:#1e293b;font-size:12px;font-weight:600;max-width:170px;cursor:pointer;">
                                 <option value="">Default Selling Price</option>
                             </select>
                             <span id="parkedCount" style="display:none;">0</span>
-                            <span id="cartCount" style="font-size:12.5px; font-weight:600; color:#6d7175; background:#f6f6f7; padding:3px 10px; border-radius:12px; border:1px solid #e1e3e5;">0 items</span>
+                            <span id="cartCount"
+                                style="font-size:12.5px; font-weight:600; color:#6d7175; background:#f6f6f7; padding:3px 10px; border-radius:12px; border:1px solid #e1e3e5;">0
+                                items</span>
                             <button data-onclick="clearCart()" title="Clear Cart"
-                                style="background:none;border:none;color:#8c9196;cursor:pointer;transition:color 0.15s ease;" data-onmouseover="this.style.color='#d72c0d'" data-onmouseout="this.style.color='#8c9196'">
+                                style="background:none;border:none;color:#8c9196;cursor:pointer;transition:color 0.15s ease;"
+                                data-onmouseover="this.style.color='#d72c0d'"
+                                data-onmouseout="this.style.color='#8c9196'">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
                         </div>
                     </div>
 
                     <div class="cart-items" id="cartItems">
-                        <div style="text-align:center;color:#8c9196;margin-top:60px;display:flex;flex-direction:column;align-items:center;gap:12px;">
-                            <div style="width:48px;height:48px;border-radius:50%;background:#f6f6f7;display:flex;align-items:center;justify-content:center;color:#8c9196;font-size:20px;">
+                        <div
+                            style="text-align:center;color:#8c9196;margin-top:60px;display:flex;flex-direction:column;align-items:center;gap:12px;">
+                            <div
+                                style="width:48px;height:48px;border-radius:50%;background:#f6f6f7;display:flex;align-items:center;justify-content:center;color:#8c9196;font-size:20px;">
                                 <i class="fas fa-shopping-cart"></i>
                             </div>
                             <div style="font-size:14px;font-weight:600;color:#202223;">Cart is empty</div>
-                            <div style="font-size:12.5px;color:#6d7175;max-width:240px;">Scan barcode or type a product name in the search bar to begin.</div>
+                            <div style="font-size:12.5px;color:#6d7175;max-width:240px;">Scan barcode or type a product
+                                name in the search bar to begin.</div>
                         </div>
                     </div>
                 </div>
@@ -2145,18 +2480,27 @@
 
                     <div class="summary-row"><span>Subtotal</span><span id="subTotal">GH₵0.00</span></div>
                     <div class="summary-row" id="discountRow" style="display:none;color:#172C49;">
-                        <span>Discount</span><span id="discountAmt">---</span></div>
+                        <span>Discount</span><span id="discountAmt">---</span>
+                    </div>
                     <div id="taxRows"></div>
                     <div class="summary-row total"><span>Total Due</span><span id="grandTotal">GH₵0.00</span></div>
 
                     <div class="actions">
-                        <button class="btn btn-payment-cash" data-onclick="processQuickPayment('cash')"><i class="fas fa-money-bill-wave"></i> Cash</button>
-                        <button class="btn btn-payment-momo" data-onclick="processQuickPayment('momo')"><i class="fas fa-mobile-alt"></i> Momo</button>
-                        <button class="btn btn-payment-card" data-onclick="processQuickPayment('card')"><i class="fas fa-credit-card"></i> Card</button>
-                        <button class="btn btn-payment-credit" data-onclick="processQuickPayment('credit')"><i class="fas fa-user-tag"></i> Credit</button>
-                        <button class="btn btn-payment-split" data-onclick="if(window.okwOpenSplitPayment)window.okwOpenSplitPayment()"><i class="fas fa-columns"></i> Split</button>
-                        <button id="returnBtn" class="btn btn-refund" style="display:none;" data-onclick="processReturn()"><i class="fas fa-undo"></i> Refund</button>
-                        <button class="btn btn-return" data-onclick="openReceiptSearch()"><i class="fas fa-receipt"></i> Return</button>
+                        <button class="btn btn-payment-cash" data-onclick="processQuickPayment('cash')"><i
+                                class="fas fa-money-bill-wave"></i> Cash</button>
+                        <button class="btn btn-payment-momo" data-onclick="processQuickPayment('momo')"><i
+                                class="fas fa-mobile-alt"></i> Momo</button>
+                        <button class="btn btn-payment-card" data-onclick="processQuickPayment('card')"><i
+                                class="fas fa-credit-card"></i> Card</button>
+                        <button class="btn btn-payment-credit" data-onclick="processQuickPayment('credit')"><i
+                                class="fas fa-user-tag"></i> Credit</button>
+                        <button class="btn btn-payment-split"
+                            data-onclick="if(window.okwOpenSplitPayment)window.okwOpenSplitPayment()"><i
+                                class="fas fa-columns"></i> Split</button>
+                        <button id="returnBtn" class="btn btn-refund" style="display:none;"
+                            data-onclick="processReturn()"><i class="fas fa-undo"></i> Refund</button>
+                        <button class="btn btn-return" data-onclick="openReceiptSearch()"><i class="fas fa-receipt"></i>
+                            Return</button>
                     </div>
                 </div>
             </div>
@@ -3050,7 +3394,7 @@
                     applyPosPriceGroupToCart();
                     notify(activePosPriceGroup ? `Pricing tier: ${activePosPriceGroup.name} (${Number(activePosPriceGroup.adjustment_pct || 0)}%)` : 'Switched to Default Selling Price', 'success');
                 });
-            } catch (_) {}
+            } catch (_) { }
         }
         if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadPosPriceGroups);
         else loadPosPriceGroups();
@@ -4088,7 +4432,7 @@
                     await fetch('/api/logout', {
                         method: 'POST',
                         headers: { 'Authorization': `Bearer ${token}` }
-                    }).catch(() => {});
+                    }).catch(() => { });
                 }
             } catch (e) { console.error(e); }
             localStorage.clear();
@@ -4454,7 +4798,7 @@
                 if (window.OfflineQueue && typeof window.OfflineQueue.cacheProducts === 'function') {
                     window.OfflineQueue.cacheProducts(products);
                 }
-                try { localStorage.setItem('okw_pos_catalog_cache', JSON.stringify(products)); } catch (_) {}
+                try { localStorage.setItem('okw_pos_catalog_cache', JSON.stringify(products)); } catch (_) { }
                 console.log(`Successfully loaded ${products.length} products:`, products);
                 renderQuickPicks();
 
@@ -4510,400 +4854,401 @@
             const isMgrRole = ['manager', 'store_manager', 'ceo', 'admin'].includes(roleNorm);
             const mgrLink = document.getElementById('posManagerPortalLink');
             if (mgrLink) {
-                if (isMgrRole) {
-                    mgrLink.href = ['ceo', 'admin'].includes(roleNorm) ? '/ceo-portal' : '/dashboard';
-                    mgrLink.innerHTML = ['ceo', 'admin'].includes(roleNorm)
-                        ? '<i class="fas fa-th-large"></i> CEO Portal'
-                        : '<i class="fas fa-th-large"></i> Manager Portal';
-                    mgrLink.style.display = 'flex';
-                } else {
-                    mgrLink.style.display = 'none';
+                if (['manager', 'store_manager', 'ceo', 'admin'].includes(roleNorm)) {
+                    if (isMgrRole) {
+                        mgrLink.href = ['ceo', 'admin'].includes(roleNorm) ? '/ceo-portal' : '/dashboard';
+                        mgrLink.innerHTML = ['ceo', 'admin'].includes(roleNorm)
+                            ? '<i class="fas fa-th-large"></i> CEO Portal'
+                            : '<i class="fas fa-th-large"></i> Manager Portal';
+                        mgrLink.style.display = 'flex';
+                    } else {
+                        mgrLink.style.display = 'none';
+                    }
                 }
-            }
-            const sbDash = document.getElementById('posSidebarDashboardLink');
-            if (sbDash) {
-                if (isMgrRole) {
-                    sbDash.href = ['ceo', 'admin'].includes(roleNorm) ? '/ceo-portal' : '/dashboard';
-                    const lbl = sbDash.querySelector('span');
-                    if (lbl) lbl.textContent = ['ceo', 'admin'].includes(roleNorm) ? 'CEO Portal' : 'Dashboard';
-                    sbDash.style.display = 'flex';
-                } else {
-                    sbDash.style.display = 'none';
+                const sbDash = document.getElementById('posSidebarDashboardLink');
+                if (sbDash) {
+                    if (isMgrRole) {
+                        sbDash.href = ['ceo', 'admin'].includes(roleNorm) ? '/ceo-portal' : '/dashboard';
+                        const lbl = sbDash.querySelector('span');
+                        if (lbl) lbl.textContent = ['ceo', 'admin'].includes(roleNorm) ? 'CEO Portal' : 'Dashboard';
+                        sbDash.style.display = 'flex';
+                    } else {
+                        sbDash.style.display = 'none';
+                    }
                 }
-            }
-            const sbRoleBadge = document.getElementById('posSidebarRoleBadge');
-            if (sbRoleBadge) {
-                const roleTitle = (roleNorm === 'teller' || roleNorm === 'cashier') ? 'Cashier' : (user.role || 'Staff').replace(/_/g, ' ');
-                const loc = user.store_location || user.branch_name || '';
-                sbRoleBadge.textContent = loc ? `${roleTitle} · ${loc}` : roleTitle;
-                sbRoleBadge.title = sbRoleBadge.textContent;
-            }
-            if (typeof window.syncPosSidebarDefault === 'function') {
-                window.syncPosSidebarDefault(isMgrRole);
-            }
-            const branchLabel = `Branch: ${(user.store_location || user.branch_name || 'Main').toUpperCase()}`;
-            const footerBranch = document.getElementById('footerBranchDisplay');
-            if (footerBranch) footerBranch.textContent = branchLabel;
-            document.querySelectorAll('.footerBranchDisplay').forEach(el => {
-                el.textContent = branchLabel;
-            });
-        }
-
-        async function checkSessionAndShift() {
-            try {
-                const token = localStorage.getItem('authToken');
-                if (!token) {
-                    window.location.href = '/login';
-                    return false;
+                const sbRoleBadge = document.getElementById('posSidebarRoleBadge');
+                if (sbRoleBadge) {
+                    const roleTitle = (roleNorm === 'teller' || roleNorm === 'cashier') ? 'Cashier' : (user.role || 'Staff').replace(/_/g, ' ');
+                    const loc = user.store_location || user.branch_name || '';
+                    sbRoleBadge.textContent = loc ? `${roleTitle} · ${loc}` : roleTitle;
+                    sbRoleBadge.title = sbRoleBadge.textContent;
                 }
+                if (typeof window.syncPosSidebarDefault === 'function') {
+                    window.syncPosSidebarDefault(isMgrRole);
+                }
+                const branchLabel = `Branch: ${(user.store_location || user.branch_name || 'Main').toUpperCase()}`;
+                const footerBranch = document.getElementById('footerBranchDisplay');
+                if (footerBranch) footerBranch.textContent = branchLabel;
+                document.querySelectorAll('.footerBranchDisplay').forEach(el => {
+                    el.textContent = branchLabel;
+                });
+            }
 
-                // Run session, active shift, and active taxes requests in parallel for fast POS startup
-                const [sessionRes, shiftRes, taxesRes] = await Promise.all([
-                    fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/shifts/active', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/taxes/active', { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => null)
-                ]);
+            async function checkSessionAndShift() {
+                try {
+                    const token = localStorage.getItem('authToken');
+                    if (!token) {
+                        window.location.href = '/login';
+                        return false;
+                    }
 
-                if (!sessionRes.ok) {
+                    // Run session, active shift, and active taxes requests in parallel for fast POS startup
+                    const [sessionRes, shiftRes, taxesRes] = await Promise.all([
+                        fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` } }),
+                        fetch('/api/shifts/active', { headers: { 'Authorization': `Bearer ${token}` } }),
+                        fetch('/api/taxes/active', { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => null)
+                    ]);
+
+                    if (!sessionRes.ok) {
+                        window.location.href = '/';
+                        return false;
+                    }
+
+                    const { user } = await sessionRes.json();
+
+                    // Store user in global scope and localStorage for POS till & offline/upgrade scripts
+                    window.currentUser = user;
+                    currentUser = user;
+                    if (typeof loadParkedOrders === 'function') loadParkedOrders();
+                    try {
+                        localStorage.setItem('currentUser', JSON.stringify(user));
+                        localStorage.setItem('user', JSON.stringify(user));
+                    } catch (_) { }
+                    applyUserHeaderAndMenu(user);
+                    window.dispatchEvent(new CustomEvent('okw:user-ready', { detail: user }));
+
+                    if (!shiftRes.ok) {
+                        window.location.href = '/open-shift';
+                        return false;
+                    }
+
+                    const shiftData = await shiftRes.json();
+                    if (!shiftData.active) {
+                        window.location.href = '/open-shift';
+                        return false;
+                    }
+
+                    if (taxesRes && taxesRes.ok) {
+                        try { activeTaxes = await taxesRes.json(); } catch (_) { activeTaxes = []; }
+                    }
+
+                    return true;
+                } catch (error) {
+                    console.error('Session check error:', error);
                     window.location.href = '/';
                     return false;
                 }
-
-                const { user } = await sessionRes.json();
-
-                // Store user in global scope and localStorage for POS till & offline/upgrade scripts
-                window.currentUser = user;
-                currentUser = user;
-                if (typeof loadParkedOrders === 'function') loadParkedOrders();
-                try {
-                    localStorage.setItem('currentUser', JSON.stringify(user));
-                    localStorage.setItem('user', JSON.stringify(user));
-                } catch (_) {}
-                applyUserHeaderAndMenu(user);
-                window.dispatchEvent(new CustomEvent('okw:user-ready', { detail: user }));
-
-                if (!shiftRes.ok) {
-                    window.location.href = '/open-shift';
-                    return false;
-                }
-
-                const shiftData = await shiftRes.json();
-                if (!shiftData.active) {
-                    window.location.href = '/open-shift';
-                    return false;
-                }
-
-                if (taxesRes && taxesRes.ok) {
-                    try { activeTaxes = await taxesRes.json(); } catch (_) { activeTaxes = []; }
-                }
-
-                return true;
-            } catch (error) {
-                console.error('Session check error:', error);
-                window.location.href = '/';
-                return false;
             }
-        }
 
-        function updateConnectionBadge() {
-            const badge = document.getElementById('connectionStatusBadge');
-            const dot = document.getElementById('statusDot');
-            const text = document.getElementById('statusText');
-            if (!badge || !dot || !text) return;
-            if (navigator.onLine) {
-                badge.style.background = '#dcfce7';
-                badge.style.color = '#15803d';
-                dot.style.background = '#22c55e';
-                text.textContent = 'Online';
-            } else {
-                badge.style.background = '#fee2e2';
-                badge.style.color = '#b91c1c';
-                dot.style.background = '#ef4444';
-                text.textContent = 'Offline Mode';
+            function updateConnectionBadge() {
+                const badge = document.getElementById('connectionStatusBadge');
+                const dot = document.getElementById('statusDot');
+                const text = document.getElementById('statusText');
+                if (!badge || !dot || !text) return;
+                if (navigator.onLine) {
+                    badge.style.background = '#dcfce7';
+                    badge.style.color = '#15803d';
+                    dot.style.background = '#22c55e';
+                    text.textContent = 'Online';
+                } else {
+                    badge.style.background = '#fee2e2';
+                    badge.style.color = '#b91c1c';
+                    dot.style.background = '#ef4444';
+                    text.textContent = 'Offline Mode';
+                }
             }
-        }
-        window.addEventListener('online', updateConnectionBadge);
-        window.addEventListener('offline', updateConnectionBadge);
+            window.addEventListener('online', updateConnectionBadge);
+            window.addEventListener('offline', updateConnectionBadge);
 
-        function initPosFooter() {
-            function updateClock() {
-                const now = new Date();
-                const dateTimeStr = now.toLocaleString([], {
-                    year: 'numeric',
-                    month: 'numeric',
-                    day: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                    second: '2-digit',
-                    hour12: true
-                });
-                document.querySelectorAll('.posLiveClock').forEach(el => {
-                    el.textContent = dateTimeStr;
-                });
-            }
-            updateClock();
-            setInterval(updateClock, 1000);
-
-            function updateBranch() {
-                try {
-                    const cachedUser = window.currentUser || JSON.parse(localStorage.getItem('currentUser') || '{}');
-                    const branchName = cachedUser.store_location || cachedUser.branch_name || 'TEMA';
-                    document.querySelectorAll('.footerBranchDisplay').forEach(el => {
-                        el.textContent = `Branch: ${branchName.toUpperCase()}`;
+            function initPosFooter() {
+                function updateClock() {
+                    const now = new Date();
+                    const dateTimeStr = now.toLocaleString([], {
+                        year: 'numeric',
+                        month: 'numeric',
+                        day: 'numeric',
+                        hour: 'numeric',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: true
                     });
-                } catch(e) {}
-            }
-            updateBranch();
-        }
-
-        // Initialize on page load
-        document.addEventListener('DOMContentLoaded', async function () {
-            initPosFooter();
-            updateConnectionBadge();
-            try {
-                const cached = JSON.parse(localStorage.getItem('currentUser') || 'null');
-                if (cached) applyUserHeaderAndMenu(cached);
-            } catch (_) {}
-
-            // Check session, shift status, and active taxes in parallel
-            const isAuthenticated = await checkSessionAndShift();
-            if (!isAuthenticated) return;
-
-            const user = window.currentUser;
-            applyUserHeaderAndMenu(user);
-
-            // Initial load of products
-            refreshProducts().then(() => {
-                console.log('Initial product load complete');
-                renderNotifications();
-                // Start background checking every 60 seconds
-                notifCheckInterval = setInterval(checkProductUpdates, 60000);
-            }).catch(err => {
-                console.error('Error during initial product load:', err);
-            });
-
-            // Setup Keyboard Hotkeys (F1 - F5)
-            window.addEventListener('keydown', function (e) {
-                // Ignore hotkeys if any modal is active to prevent accidental triggers
-                if (document.querySelector('.token-modal.active')) return;
-
-                switch (e.key) {
-                    case 'F1':
-                        e.preventDefault();
-                        processQuickPayment('cash');
-                        break;
-                    case 'F2':
-                        e.preventDefault();
-                        processQuickPayment('momo');
-                        break;
-                    case 'F3':
-                        e.preventDefault();
-                        processQuickPayment('card');
-                        break;
-                    case 'F4':
-                        e.preventDefault();
-                        processQuickPayment('credit');
-                        break;
-                    case 'F5':
-                        e.preventDefault();
-                        parkOrder();
-                        break;
+                    document.querySelectorAll('.posLiveClock').forEach(el => {
+                        el.textContent = dateTimeStr;
+                    });
                 }
-            });
+                updateClock();
+                setInterval(updateClock, 1000);
 
-            // Search / Enter-to-add must run before hardware scanner so suggestion Enter is handled first
-            setupSearchSuggestions();
-            setupHardwareScanner();
+                function updateBranch() {
+                    try {
+                        const cachedUser = window.currentUser || JSON.parse(localStorage.getItem('currentUser') || '{}');
+                        const branchName = cachedUser.store_location || cachedUser.branch_name || 'TEMA';
+                        document.querySelectorAll('.footerBranchDisplay').forEach(el => {
+                            el.textContent = `Branch: ${branchName.toUpperCase()}`;
+                        });
+                    } catch (e) { }
+                }
+                updateBranch();
+            }
 
-            // Add refresh button handler
-            const refreshBtn = document.getElementById('refreshProducts');
-            if (refreshBtn) refreshBtn.addEventListener('click', refreshProducts);
+            // Initialize on page load
+            document.addEventListener('DOMContentLoaded', async function () {
+                initPosFooter();
+                updateConnectionBadge();
+                try {
+                    const cached = JSON.parse(localStorage.getItem('currentUser') || 'null');
+                    if (cached) applyUserHeaderAndMenu(cached);
+                } catch (_) { }
 
-            const posSearchInput = document.getElementById('okw-pos-search') || document.getElementById('barcodeInput');
-            if (posSearchInput && typeof posSearchInput.focus === 'function') posSearchInput.focus();
+                // Check session, shift status, and active taxes in parallel
+                const isAuthenticated = await checkSessionAndShift();
+                if (!isAuthenticated) return;
 
-            // Manager Token Input Enter Key
-            const tokenInput = document.getElementById('managerTokenInput');
-            if (tokenInput) {
-                tokenInput.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        verifyManagerToken();
+                const user = window.currentUser;
+                applyUserHeaderAndMenu(user);
+
+                // Initial load of products
+                refreshProducts().then(() => {
+                    console.log('Initial product load complete');
+                    renderNotifications();
+                    // Start background checking every 60 seconds
+                    notifCheckInterval = setInterval(checkProductUpdates, 60000);
+                }).catch(err => {
+                    console.error('Error during initial product load:', err);
+                });
+
+                // Setup Keyboard Hotkeys (F1 - F5)
+                window.addEventListener('keydown', function (e) {
+                    // Ignore hotkeys if any modal is active to prevent accidental triggers
+                    if (document.querySelector('.token-modal.active')) return;
+
+                    switch (e.key) {
+                        case 'F1':
+                            e.preventDefault();
+                            processQuickPayment('cash');
+                            break;
+                        case 'F2':
+                            e.preventDefault();
+                            processQuickPayment('momo');
+                            break;
+                        case 'F3':
+                            e.preventDefault();
+                            processQuickPayment('card');
+                            break;
+                        case 'F4':
+                            e.preventDefault();
+                            processQuickPayment('credit');
+                            break;
+                        case 'F5':
+                            e.preventDefault();
+                            parkOrder();
+                            break;
                     }
                 });
-            }
 
-            // Auto-refresh data when window regains focus (e.g. switching back from CEO Portal)
-            window.addEventListener('focus', () => {
-                refreshProducts();
-            });
-            updateParkedCount();
+                // Search / Enter-to-add must run before hardware scanner so suggestion Enter is handled first
+                setupSearchSuggestions();
+                setupHardwareScanner();
 
-            // Park Name Input Enter Key
-            const parkInput = document.getElementById('parkRefInput');
-            if (parkInput) {
-                parkInput.addEventListener('keydown', function (e) {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        confirmParkOrder();
-                    }
-                });
-            }
+                // Add refresh button handler
+                const refreshBtn = document.getElementById('refreshProducts');
+                if (refreshBtn) refreshBtn.addEventListener('click', refreshProducts);
 
-            // Receipt Prompt Modal Handlers
-            document.getElementById('btnNoReceipt').onclick = () => {
-                document.getElementById('receiptPromptModal').classList.remove('active');
-                clearCart();
-                refreshProducts(); // Refresh stock levels after sale
-            };
+                const posSearchInput = document.getElementById('okw-pos-search') || document.getElementById('barcodeInput');
+                if (posSearchInput && typeof posSearchInput.focus === 'function') posSearchInput.focus();
 
-            document.getElementById('btnPrintReceipt').onclick = () => {
-                if (lastTransactionId) {
-                    window.location.href = `receipt?id=${lastTransactionId}`;
+                // Manager Token Input Enter Key
+                const tokenInput = document.getElementById('managerTokenInput');
+                if (tokenInput) {
+                    tokenInput.addEventListener('keydown', function (e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            verifyManagerToken();
+                        }
+                    });
                 }
-            };
-        });
 
-        // Clean up on page unload
-        window.addEventListener('beforeunload', closeCameraScanner);
-        window.addEventListener('pagehide', () => customerChannel.close());
+                // Auto-refresh data when window regains focus (e.g. switching back from CEO Portal)
+                window.addEventListener('focus', () => {
+                    refreshProducts();
+                });
+                updateParkedCount();
+
+                // Park Name Input Enter Key
+                const parkInput = document.getElementById('parkRefInput');
+                if (parkInput) {
+                    parkInput.addEventListener('keydown', function (e) {
+                        if (e.key === 'Enter') {
+                            e.preventDefault();
+                            confirmParkOrder();
+                        }
+                    });
+                }
+
+                // Receipt Prompt Modal Handlers
+                document.getElementById('btnNoReceipt').onclick = () => {
+                    document.getElementById('receiptPromptModal').classList.remove('active');
+                    clearCart();
+                    refreshProducts(); // Refresh stock levels after sale
+                };
+
+                document.getElementById('btnPrintReceipt').onclick = () => {
+                    if (lastTransactionId) {
+                        window.location.href = `receipt?id=${lastTransactionId}`;
+                    }
+                };
+            });
+
+            // Clean up on page unload
+            window.addEventListener('beforeunload', closeCameraScanner);
+            window.addEventListener('pagehide', () => customerChannel.close());
     </script>
 
     <script>
-        // Park/Unpark Logic
-        function updateParkedCount() {
-            const count = parkedOrders.length;
-            const badge = document.getElementById('parkedCount');
-            if (badge) {
-                badge.textContent = count;
-                badge.style.display = count > 0 ? 'block' : 'none';
-            }
-        }
-
-        function parkOrder() {
-            if (cart.length === 0) return notify("Cart is empty", "error");
-            document.getElementById('parkRefInput').value = "Customer " + (parkedOrders.length + 1);
-            document.getElementById('parkNameModal').classList.add('active');
-            setTimeout(() => {
-                const input = document.getElementById('parkRefInput');
-                input.focus();
-                input.select();
-            }, 100);
-        }
-
-        // Parked orders live in the database (pos_holds) so any till can resume them.
-        // localStorage is only an offline copy; entries not yet saved carry pending:true.
-        function parkedAuthHeaders() {
-            return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` };
-        }
-        function saveParkedLocal() {
-            localStorage.setItem('parkedOrders', JSON.stringify(parkedOrders));
-        }
-        function parkedEsc(v) {
-            return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-        }
-        function holdToParked(h) {
-            const meta = h.meta || {};
-            return {
-                id: h.id,
-                ref: h.label,
-                cart: Array.isArray(h.items) ? h.items : [],
-                discountRate: Number(meta.discountRate || 0),
-                promoCode: meta.promoCode || null,
-                timestamp: h.created_at
-            };
-        }
-        async function pushParkedToServer(order) {
-            const user = currentUser || {};
-            const res = await fetch('/api/pos/holds', {
-                method: 'POST',
-                headers: parkedAuthHeaders(),
-                body: JSON.stringify({
-                    label: order.ref,
-                    items: order.cart,
-                    store_location: user.store_location || '',
-                    meta: { discountRate: order.discountRate || 0, promoCode: order.promoCode || null }
-                })
-            });
-            if (!res.ok) throw new Error('hold save failed');
-            const data = await res.json();
-            return holdToParked(data.hold);
-        }
-        async function loadParkedOrders() {
-            // 1) save anything parked while offline, 2) replace the list with the database copy
-            try {
-                for (const o of parkedOrders.filter(p => p.pending)) {
-                    const saved = await pushParkedToServer(o);
-                    parkedOrders = parkedOrders.map(p => p === o ? saved : p);
+            // Park/Unpark Logic
+            function updateParkedCount() {
+                const count = parkedOrders.length;
+                const badge = document.getElementById('parkedCount');
+                if (badge) {
+                    badge.textContent = count;
+                    badge.style.display = count > 0 ? 'block' : 'none';
                 }
+            }
+
+            function parkOrder() {
+                if (cart.length === 0) return notify("Cart is empty", "error");
+                document.getElementById('parkRefInput').value = "Customer " + (parkedOrders.length + 1);
+                document.getElementById('parkNameModal').classList.add('active');
+                setTimeout(() => {
+                    const input = document.getElementById('parkRefInput');
+                    input.focus();
+                    input.select();
+                }, 100);
+            }
+
+            // Parked orders live in the database (pos_holds) so any till can resume them.
+            // localStorage is only an offline copy; entries not yet saved carry pending:true.
+            function parkedAuthHeaders() {
+                return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('authToken')}` };
+            }
+            function saveParkedLocal() {
+                localStorage.setItem('parkedOrders', JSON.stringify(parkedOrders));
+            }
+            function parkedEsc(v) {
+                return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
+            function holdToParked(h) {
+                const meta = h.meta || {};
+                return {
+                    id: h.id,
+                    ref: h.label,
+                    cart: Array.isArray(h.items) ? h.items : [],
+                    discountRate: Number(meta.discountRate || 0),
+                    promoCode: meta.promoCode || null,
+                    timestamp: h.created_at
+                };
+            }
+            async function pushParkedToServer(order) {
                 const user = currentUser || {};
-                const qs = user.store_location ? `?store_location=${encodeURIComponent(user.store_location)}` : '';
-                const res = await fetch('/api/pos/holds' + qs, { headers: parkedAuthHeaders() });
-                if (res.ok) {
-                    const data = await res.json();
-                    const pendingLeft = parkedOrders.filter(p => p.pending);
-                    parkedOrders = (data.holds || []).map(holdToParked).concat(pendingLeft);
-                    saveParkedLocal();
-                }
-            } catch (e) { /* offline: keep the local copy */ }
-            updateParkedCount();
-        }
-        async function deleteParkedOnServer(order) {
-            if (order.pending || typeof order.id !== 'number' || order.id > 2147483647) return;
-            try { await fetch('/api/pos/holds/' + order.id, { method: 'DELETE', headers: parkedAuthHeaders() }); } catch (e) { /* offline */ }
-        }
-
-        async function confirmParkOrder() {
-            const refInput = document.getElementById('parkRefInput').value.trim();
-            const ref = refInput || "Customer " + (parkedOrders.length + 1);
-
-            let order = {
-                id: Date.now(),
-                ref: ref,
-                cart: [...cart],
-                discountRate: discountRate,
-                promoCode: currentPromoCode,
-                timestamp: new Date().toISOString(),
-                pending: true
-            };
-            let savedOnServer = false;
-            try {
-                order = await pushParkedToServer(order);
-                savedOnServer = true;
-            } catch (e) { /* offline: stays on this device until the next load */ }
-
-            parkedOrders.push(order);
-            saveParkedLocal();
-
-            clearCart(); // This clears current cart
-            updateParkedCount();
-            logClientActivity('PARK_ORDER', { reference: ref, itemCount: order.cart.length });
-            document.getElementById('parkNameModal').classList.remove('active');
-            notify(savedOnServer ? "Order parked successfully" : "Parked on this device only (offline) - it will sync when online", savedOnServer ? "success" : "warning");
-        }
-
-        function openParkedModal() {
-            renderParkedOrders();
-            document.getElementById('parkedModal').classList.add('active');
-        }
-
-        function renderParkedOrders() {
-            const list = document.getElementById('parkedOrdersList');
-            if (parkedOrders.length === 0) {
-                list.innerHTML = '<p style="text-align:center; color:#666; padding: 20px;">No parked orders.</p>';
-                return;
+                const res = await fetch('/api/pos/holds', {
+                    method: 'POST',
+                    headers: parkedAuthHeaders(),
+                    body: JSON.stringify({
+                        label: order.ref,
+                        items: order.cart,
+                        store_location: user.store_location || '',
+                        meta: { discountRate: order.discountRate || 0, promoCode: order.promoCode || null }
+                    })
+                });
+                if (!res.ok) throw new Error('hold save failed');
+                const data = await res.json();
+                return holdToParked(data.hold);
+            }
+            async function loadParkedOrders() {
+                // 1) save anything parked while offline, 2) replace the list with the database copy
+                try {
+                    for (const o of parkedOrders.filter(p => p.pending)) {
+                        const saved = await pushParkedToServer(o);
+                        parkedOrders = parkedOrders.map(p => p === o ? saved : p);
+                    }
+                    const user = currentUser || {};
+                    const qs = user.store_location ? `?store_location=${encodeURIComponent(user.store_location)}` : '';
+                    const res = await fetch('/api/pos/holds' + qs, { headers: parkedAuthHeaders() });
+                    if (res.ok) {
+                        const data = await res.json();
+                        const pendingLeft = parkedOrders.filter(p => p.pending);
+                        parkedOrders = (data.holds || []).map(holdToParked).concat(pendingLeft);
+                        saveParkedLocal();
+                    }
+                } catch (e) { /* offline: keep the local copy */ }
+                updateParkedCount();
+            }
+            async function deleteParkedOnServer(order) {
+                if (order.pending || typeof order.id !== 'number' || order.id > 2147483647) return;
+                try { await fetch('/api/pos/holds/' + order.id, { method: 'DELETE', headers: parkedAuthHeaders() }); } catch (e) { /* offline */ }
             }
 
-            list.innerHTML = parkedOrders.map((order, index) => {
-                const total = order.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-                const date = new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            async function confirmParkOrder() {
+                const refInput = document.getElementById('parkRefInput').value.trim();
+                const ref = refInput || "Customer " + (parkedOrders.length + 1);
 
-                // Generate a hover preview of the first 10 items in the cart
-                const itemPreview = order.cart.slice(0, 10).map(i => `${i.qty}x ${i.name}`).join(', ');
-                const moreItems = order.cart.length > 10 ? `, ...and ${order.cart.length - 10} more items` : '';
-                const tooltipText = `${itemPreview}${moreItems}`;
+                let order = {
+                    id: Date.now(),
+                    ref: ref,
+                    cart: [...cart],
+                    discountRate: discountRate,
+                    promoCode: currentPromoCode,
+                    timestamp: new Date().toISOString(),
+                    pending: true
+                };
+                let savedOnServer = false;
+                try {
+                    order = await pushParkedToServer(order);
+                    savedOnServer = true;
+                } catch (e) { /* offline: stays on this device until the next load */ }
 
-                return `
+                parkedOrders.push(order);
+                saveParkedLocal();
+
+                clearCart(); // This clears current cart
+                updateParkedCount();
+                logClientActivity('PARK_ORDER', { reference: ref, itemCount: order.cart.length });
+                document.getElementById('parkNameModal').classList.remove('active');
+                notify(savedOnServer ? "Order parked successfully" : "Parked on this device only (offline) - it will sync when online", savedOnServer ? "success" : "warning");
+            }
+
+            function openParkedModal() {
+                renderParkedOrders();
+                document.getElementById('parkedModal').classList.add('active');
+            }
+
+            function renderParkedOrders() {
+                const list = document.getElementById('parkedOrdersList');
+                if (parkedOrders.length === 0) {
+                    list.innerHTML = '<p style="text-align:center; color:#666; padding: 20px;">No parked orders.</p>';
+                    return;
+                }
+
+                list.innerHTML = parkedOrders.map((order, index) => {
+                    const total = order.cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
+                    const date = new Date(order.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+                    // Generate a hover preview of the first 10 items in the cart
+                    const itemPreview = order.cart.slice(0, 10).map(i => `${i.qty}x ${i.name}`).join(', ');
+                    const moreItems = order.cart.length > 10 ? `, ...and ${order.cart.length - 10} more items` : '';
+                    const tooltipText = `${itemPreview}${moreItems}`;
+
+                    return `
             <div class="parked-item" data-tooltip="${parkedEsc(tooltipText)}">
                 <div>
                     <div style="font-weight:bold; color:#333;">${parkedEsc(order.ref)}</div>
@@ -4915,190 +5260,221 @@
                 </div>
             </div>
         `;
-            }).join('');
-        }
-
-        function retrieveOrder(index) {
-            if (cart.length > 0) {
-                if (!confirm("Current cart is not empty. Overwrite with parked order?")) return;
+                }).join('');
             }
 
-            const order = parkedOrders[index];
-            cart = order.cart;
-            discountRate = order.discountRate || 0;
-            currentPromoCode = order.promoCode || null;
+            function retrieveOrder(index) {
+                if (cart.length > 0) {
+                    if (!confirm("Current cart is not empty. Overwrite with parked order?")) return;
+                }
 
-            // Remove from parked (and from the database)
-            const [taken] = parkedOrders.splice(index, 1);
-            saveParkedLocal();
-            deleteParkedOnServer(taken);
+                const order = parkedOrders[index];
+                cart = order.cart;
+                discountRate = order.discountRate || 0;
+                currentPromoCode = order.promoCode || null;
 
-            renderCart();
-            updateParkedCount();
-            logClientActivity('RETRIEVE_PARKED_ORDER', { reference: order.ref });
-            document.getElementById('parkedModal').classList.remove('active');
-            notify("Order retrieved", "success");
-        }
+                // Remove from parked (and from the database)
+                const [taken] = parkedOrders.splice(index, 1);
+                saveParkedLocal();
+                deleteParkedOnServer(taken);
 
-        function discardOrder(index) {
-            if (!confirm("Discard this parked order permanently?")) return;
-            const orderRef = parkedOrders[index].ref;
-            const [discarded] = parkedOrders.splice(index, 1);
-            saveParkedLocal();
-            deleteParkedOnServer(discarded);
-            renderParkedOrders();
-            updateParkedCount();
-            logClientActivity('DISCARD_PARKED_ORDER', { reference: orderRef });
-            notify("Parked order discarded", "success");
-        }
+                renderCart();
+                updateParkedCount();
+                logClientActivity('RETRIEVE_PARKED_ORDER', { reference: order.ref });
+                document.getElementById('parkedModal').classList.remove('active');
+                notify("Order retrieved", "success");
+            }
 
-        async function logClientActivity(action, details = {}) {
-            try {
-                const token = localStorage.getItem('authToken');
-                await fetch('/api/audit/log', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ action, details })
-                });
-            } catch (e) { console.error("Logging error", e); }
-        }
+            function discardOrder(index) {
+                if (!confirm("Discard this parked order permanently?")) return;
+                const orderRef = parkedOrders[index].ref;
+                const [discarded] = parkedOrders.splice(index, 1);
+                saveParkedLocal();
+                deleteParkedOnServer(discarded);
+                renderParkedOrders();
+                updateParkedCount();
+                logClientActivity('DISCARD_PARKED_ORDER', { reference: orderRef });
+                notify("Parked order discarded", "success");
+            }
+
+            async function logClientActivity(action, details = {}) {
+                try {
+                    const token = localStorage.getItem('authToken');
+                    await fetch('/api/audit/log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify({ action, details })
+                    });
+                } catch (e) { console.error("Logging error", e); }
+            }
     </script>
 
 
-<!-- ================== GLOBAL UX FIXES ================== -->
-<style>
-#custom-toast-container { position: fixed; top: 20px; right: 20px; z-index: 999999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-.custom-toast { background: #0d121f; color: #ffffff; border: 1px solid #E8772E; padding: 8px 25px; border-radius: 8px; box-shadow: 0 4px 14px rgba(0,0,0,0.3); font-family: "Inter", sans-serif; font-size: 14px; opacity: 0; transform: translateY(-20px); transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease; pointer-events: auto; max-width: 350px; word-wrap: break-word; }
-.custom-toast.show { opacity: 1; transform: translateY(0); }
-.custom-toast.error { background: #e74c3c; border-left: 4px solid #c0392b; }
-.custom-toast.success { background: #27ae60; border-left: 4px solid #2ecc71; }
-</style>
-<script>
-(function() {
-    // 1. Toast Notification Override
-    const container = document.createElement('div');
-    container.id = 'custom-toast-container';
-    document.body.appendChild(container);
-
-    window.alert = function(message) {
-        const toast = document.createElement('div');
-        toast.className = 'custom-toast';
-        if (typeof message === 'string') {
-            const msg = message.toLowerCase();
-            if (msg.includes('error') || msg.includes('fail')) toast.classList.add('error');
-            else if (msg.includes('success') || msg.includes('saved')) toast.classList.add('success');
+    <!-- ================== GLOBAL UX FIXES ================== -->
+    <style>
+        #custom-toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 999999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
         }
-        toast.textContent = message;
-        container.appendChild(toast);
-        toast.offsetHeight; // trigger reflow
-        toast.classList.add('show');
-        setTimeout(() => {
-            toast.classList.remove('show');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
-    };
 
-    // 2. Mobile Table Auto-Labeler
-    function applyTableDataLabels() {
-        document.querySelectorAll('.card-table').forEach(table => {
-            const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
-            if (headers.length === 0) return;
-            table.querySelectorAll('tbody tr').forEach(tr => {
-                tr.querySelectorAll('td').forEach((td, index) => {
-                    if (headers[index] && !td.hasAttribute('data-label')) {
-                        td.setAttribute('data-label', headers[index]);
+        .custom-toast {
+            background: #0d121f;
+            color: #ffffff;
+            border: 1px solid #E8772E;
+            padding: 8px 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+            font-family: "Inter", sans-serif;
+            font-size: 14px;
+            opacity: 0;
+            transform: translateY(-20px);
+            transition: background-color 0.3s ease, border-color 0.3s ease, color 0.3s ease, opacity 0.3s ease, transform 0.3s ease;
+            pointer-events: auto;
+            max-width: 350px;
+            word-wrap: break-word;
+        }
+
+        .custom-toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .custom-toast.error {
+            background: #e74c3c;
+            border-left: 4px solid #c0392b;
+        }
+
+        .custom-toast.success {
+            background: #27ae60;
+            border-left: 4px solid #2ecc71;
+        }
+    </style>
+    <script>
+            (function () {
+                // 1. Toast Notification Override
+                const container = document.createElement('div');
+                container.id = 'custom-toast-container';
+                document.body.appendChild(container);
+
+                window.alert = function (message) {
+                    const toast = document.createElement('div');
+                    toast.className = 'custom-toast';
+                    if (typeof message === 'string') {
+                        const msg = message.toLowerCase();
+                        if (msg.includes('error') || msg.includes('fail')) toast.classList.add('error');
+                        else if (msg.includes('success') || msg.includes('saved')) toast.classList.add('success');
                     }
-                });
-            });
-        });
-    }
-    /* Optimized: Global MutationObserver removed to prevent DOM thrashing */
-    
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', applyTableDataLabels);
-    } else {
-        applyTableDataLabels();
-    }
+                    toast.textContent = message;
+                    container.appendChild(toast);
+                    toast.offsetHeight; // trigger reflow
+                    toast.classList.add('show');
+                    setTimeout(() => {
+                        toast.classList.remove('show');
+                        setTimeout(() => toast.remove(), 300);
+                    }, 4000);
+                };
 
-    // 3. POS Cashier Sidebar Rail Controller (matches layout.js collapse + auto-close behavior)
-    (function initPosSidebar() {
-        const sidebar = document.getElementById('posCashierSidebar');
-        const toggleBtn = document.getElementById('posSidebarToggle');
-        const backdrop = document.getElementById('posSidebarBackdrop');
-        const displayBtn = document.getElementById('posSidebarDisplayBtn');
-        const logoutBtn = document.getElementById('posSidebarLogoutBtn');
-        if (!sidebar || !toggleBtn) return;
+                // 2. Mobile Table Auto-Labeler
+                function applyTableDataLabels() {
+                    document.querySelectorAll('.card-table').forEach(table => {
+                        const headers = Array.from(table.querySelectorAll('thead th')).map(th => th.textContent.trim());
+                        if (headers.length === 0) return;
+                        table.querySelectorAll('tbody tr').forEach(tr => {
+                            tr.querySelectorAll('td').forEach((td, index) => {
+                                if (headers[index] && !td.hasAttribute('data-label')) {
+                                    td.setAttribute('data-label', headers[index]);
+                                }
+                            });
+                        });
+                    });
+                }
+                /* Optimized: Global MutationObserver removed to prevent DOM thrashing */
 
-        const posSidebarKey = 'okwesiwa_sidebar_collapsed';
-        const isMobile = () => window.matchMedia('(max-width: 1024px)').matches;
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', applyTableDataLabels);
+                } else {
+                    applyTableDataLabels();
+                }
 
-        function setDesktopCollapsed(collapsed) {
-            sidebar.classList.toggle('collapsed', collapsed);
-            toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-            try { localStorage.setItem(posSidebarKey, collapsed ? '1' : '0'); } catch (_) {}
-        }
+                // 3. POS Cashier Sidebar Rail Controller
+                (function initPosSidebar() {
+                    const sidebar = document.getElementById('posCashierSidebar');
+                    const toggleBtn = document.getElementById('posSidebarToggle');
+                    const backdrop = document.getElementById('posSidebarBackdrop');
+                    const displayBtn = document.getElementById('posSidebarDisplayBtn');
+                    const logoutBtn = document.getElementById('posSidebarLogoutBtn');
+                    if (!sidebar || !toggleBtn) return;
 
-        function setMobileOpen(open) {
-            sidebar.classList.toggle('mobile-open', open);
-            if (backdrop) backdrop.classList.toggle('open', open);
-            toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-        }
+                    const STORAGE_KEY = 'okw_pos_sidebar_collapsed';
+                    const isMobile = () => window.matchMedia('(max-width: 1024px)').matches;
 
-        window.syncPosSidebarDefault = function () {
-            const saved = localStorage.getItem(posSidebarKey);
-            // Match other pages: default collapsed on POS unless user explicitly expanded it
-            const collapsed = saved === '0' ? false : true;
-            sidebar.classList.toggle('collapsed', collapsed);
-            toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
-        };
+                    function setDesktopCollapsed(collapsed) {
+                        sidebar.classList.toggle('collapsed', collapsed);
+                        toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+                    }
 
-        window.syncPosSidebarDefault();
+                    function setMobileOpen(open) {
+                        sidebar.classList.toggle('mobile-open', open);
+                        if (backdrop) backdrop.classList.toggle('open', open);
+                        toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+                    }
 
-        toggleBtn.addEventListener('click', () => {
-            if (isMobile()) {
-                setMobileOpen(!sidebar.classList.contains('mobile-open'));
-            } else {
-                setDesktopCollapsed(!sidebar.classList.contains('collapsed'));
-            }
-        });
+                    window.syncPosSidebarDefault = function (isMgrRole) {
+                        const saved = localStorage.getItem(STORAGE_KEY);
+                        if (saved === '1') setDesktopCollapsed(true);
+                        else if (saved === '0') setDesktopCollapsed(false);
+                        else setDesktopCollapsed(!!isMgrRole);
+                    };
 
-        // Auto-collapse when interacting with the POS till workspace (same as layout.js)
-        const handleEnterTill = (e) => {
-            const target = e.target;
-            if (!target || typeof target.closest !== 'function') return;
-            if (!target.closest('.pos-layout')) return;
-            if (isMobile()) {
-                if (sidebar.classList.contains('mobile-open')) setMobileOpen(false);
-            } else if (!sidebar.classList.contains('collapsed')) {
-                setDesktopCollapsed(true);
-            }
-        };
-        document.addEventListener('pointerdown', handleEnterTill, true);
-        document.addEventListener('focusin', handleEnterTill, true);
+                    // Apply initial state immediately from cached user so there is no layout jump
+                    try {
+                        const raw = localStorage.getItem('currentUser') || localStorage.getItem('user') || sessionStorage.getItem('user');
+                        const u = raw ? JSON.parse(raw) : null;
+                        const roleNorm = String((u && u.role) || 'cashier').toLowerCase().replace(/[\s-]+/g, '_');
+                        window.syncPosSidebarDefault(['manager', 'store_manager', 'ceo', 'admin'].includes(roleNorm));
+                    } catch (_) {
+                        window.syncPosSidebarDefault(false);
+                    }
 
-        if (backdrop) {
-            backdrop.addEventListener('click', () => setMobileOpen(false));
-        }
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && sidebar.classList.contains('mobile-open')) {
-                setMobileOpen(false);
-            }
-        });
-        if (displayBtn) {
-            displayBtn.addEventListener('click', () => {
-                setMobileOpen(false);
-                if (typeof window.openCustomerDisplay === 'function') window.openCustomerDisplay();
-            });
-        }
-        if (logoutBtn) {
-            logoutBtn.addEventListener('click', () => {
-                if (typeof window.logout === 'function') window.logout();
-            });
-        }
-    })();
-})();
-</script>
-<!-- ====================================================== -->
+                    toggleBtn.addEventListener('click', () => {
+                        if (isMobile()) {
+                            setMobileOpen(!sidebar.classList.contains('mobile-open'));
+                        } else {
+                            const nextCollapsed = !sidebar.classList.contains('collapsed');
+                            setDesktopCollapsed(nextCollapsed);
+                            try { localStorage.setItem(STORAGE_KEY, nextCollapsed ? '1' : '0'); } catch (_) { }
+                        }
+                    });
+
+                    if (backdrop) {
+                        backdrop.addEventListener('click', () => setMobileOpen(false));
+                    }
+                    document.addEventListener('keydown', (e) => {
+                        if (e.key === 'Escape' && sidebar.classList.contains('mobile-open')) {
+                            setMobileOpen(false);
+                        }
+                    });
+                    if (displayBtn) {
+                        displayBtn.addEventListener('click', () => {
+                            setMobileOpen(false);
+                            if (typeof window.openCustomerDisplay === 'function') window.openCustomerDisplay();
+                        });
+                    }
+                    if (logoutBtn) {
+                        logoutBtn.addEventListener('click', () => {
+                            if (typeof window.logout === 'function') window.logout();
+                        });
+                    }
+                })();
+            })();
+    </script>
+    <!-- ====================================================== -->
 </body>
 
 </html>
