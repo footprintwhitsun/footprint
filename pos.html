@@ -1575,7 +1575,7 @@
             height: 36px;
             border-radius: 8px;
             border: 1px solid rgba(255, 255, 255, 0.22);
-            background: rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.12);
             color: #ffffff;
             display: inline-flex;
             align-items: center;
@@ -1585,18 +1585,18 @@
             flex-shrink: 0;
         }
         .pos-sidebar-toggle:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: rgba(249, 165, 26, 0.65);
+            background: rgba(255, 255, 255, 0.22);
+            border-color: rgba(249, 165, 26, 0.7);
         }
         .pos-layout {
             min-width: 0;
         }
         .pos-sidebar {
-            width: 204px;
+            width: 212px;
             flex-shrink: 0;
-            background: var(--color-sidebar, #16224a);
-            color: var(--color-sidebar-text, #e2e8f0);
-            border-right: 1px solid rgba(255, 255, 255, 0.08);
+            background: var(--frame, #f4f5f7);
+            color: var(--ink-2, #334155);
+            border-right: 1px solid var(--edge, #e2e8f0);
             display: flex;
             flex-direction: column;
             position: sticky;
@@ -1608,35 +1608,36 @@
             z-index: 40;
         }
         .pos-sidebar.collapsed {
-            width: 60px;
+            width: var(--sidebar-collapsed-width, 60px);
         }
         .pos-sidebar-head {
-            padding: 12px 14px 10px;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 12px 12px 10px;
+            border-bottom: 1px solid var(--edge, #e2e8f0);
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 8px;
         }
         .pos-sidebar-role {
-            font-size: 10.5px;
-            font-weight: 700;
-            letter-spacing: 0.06em;
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.03em;
             text-transform: uppercase;
-            color: #F9A51A;
-            background: rgba(249, 165, 26, 0.14);
-            border: 1px solid rgba(249, 165, 26, 0.35);
+            color: var(--brand, #273990);
+            background: rgba(39, 57, 144, 0.08);
+            border: 1px solid rgba(39, 57, 144, 0.18);
             border-radius: 999px;
-            padding: 3px 9px;
+            padding: 3px 10px;
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        .pos-sidebar.collapsed .pos-sidebar-head {
-            padding: 10px 6px;
-            justify-content: center;
+        [data-theme="dark"] .pos-sidebar-role {
+            color: #9DB0FF;
+            background: rgba(157, 176, 255, 0.12);
+            border-color: rgba(157, 176, 255, 0.25);
         }
-        .pos-sidebar.collapsed .pos-sidebar-role {
+        .pos-sidebar.collapsed .pos-sidebar-head {
             display: none;
         }
         .pos-sidebar-nav {
@@ -1647,12 +1648,12 @@
             gap: 3px;
         }
         .pos-sidebar-section {
-            font-size: 10px;
+            font-size: 10.5px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.07em;
-            color: rgba(226, 232, 240, 0.45);
-            padding: 10px 10px 4px;
+            letter-spacing: 0.06em;
+            color: var(--muted, #64748b);
+            padding: 8px 10px 4px;
             white-space: nowrap;
         }
         .pos-sidebar.collapsed .pos-sidebar-section {
@@ -1662,9 +1663,9 @@
             display: flex;
             align-items: center;
             gap: 11px;
-            padding: 10px 11px;
+            padding: 9px 11px;
             border-radius: 8px;
-            color: rgba(241, 245, 249, 0.84);
+            color: var(--ink-2, #334155);
             text-decoration: none;
             font-size: 13.5px;
             font-weight: 500;
@@ -1681,16 +1682,23 @@
             width: 18px;
             height: 18px;
             flex-shrink: 0;
-            opacity: 0.9;
+            color: var(--muted, #64748b);
         }
         .pos-sidebar-link:hover {
-            background: rgba(255, 255, 255, 0.09);
-            color: #ffffff;
+            background: var(--frame-hover, #e8ecf2);
+            color: var(--ink, #0f172a);
+        }
+        .pos-sidebar-link:hover svg {
+            color: var(--ink, #0f172a);
         }
         .pos-sidebar-link.active {
-            background: rgba(249, 165, 26, 0.16);
-            color: #ffffff;
+            background: rgba(39, 57, 144, 0.1);
+            color: var(--brand, #273990);
             font-weight: 600;
+        }
+        [data-theme="dark"] .pos-sidebar-link.active {
+            background: rgba(157, 176, 255, 0.14);
+            color: #9DB0FF;
         }
         .pos-sidebar-link.active::before {
             content: '';
@@ -1700,15 +1708,23 @@
             bottom: 7px;
             width: 3px;
             border-radius: 0 3px 3px 0;
-            background: #F9A51A;
+            background: var(--brand, #273990);
+        }
+        [data-theme="dark"] .pos-sidebar-link.active::before {
+            background: #9DB0FF;
         }
         .pos-sidebar-link.active svg {
-            color: #F9A51A;
-            opacity: 1;
+            color: var(--brand, #273990);
+        }
+        [data-theme="dark"] .pos-sidebar-link.active svg {
+            color: #9DB0FF;
         }
         .pos-sidebar-link.danger:hover {
-            background: rgba(220, 38, 38, 0.22);
-            color: #fecaca;
+            background: rgba(220, 38, 38, 0.1);
+            color: #dc2626;
+        }
+        .pos-sidebar-link.danger:hover svg {
+            color: #dc2626;
         }
         .pos-sidebar.collapsed .pos-sidebar-link {
             justify-content: center;
@@ -1719,7 +1735,7 @@
         }
         .pos-sidebar-footer {
             padding: 8px;
-            border-top: 1px solid rgba(255, 255, 255, 0.08);
+            border-top: 1px solid var(--edge, #e2e8f0);
             display: flex;
             flex-direction: column;
             gap: 2px;
@@ -1744,14 +1760,17 @@
                 width: 224px !important;
                 transform: translateX(-100%);
                 z-index: 960;
-                box-shadow: 6px 0 24px rgba(15, 23, 42, 0.28);
+                box-shadow: 6px 0 24px rgba(15, 23, 42, 0.2);
             }
             .pos-sidebar.mobile-open {
                 transform: translateX(0);
             }
+            .pos-sidebar.collapsed .pos-sidebar-head {
+                display: flex;
+            }
             .pos-sidebar.collapsed .pos-sidebar-link {
                 justify-content: flex-start;
-                padding: 10px 11px;
+                padding: 9px 11px;
             }
             .pos-sidebar.collapsed .pos-sidebar-link span,
             .pos-sidebar.collapsed .pos-sidebar-section,
@@ -5000,7 +5019,7 @@
         applyTableDataLabels();
     }
 
-    // 3. POS Cashier Sidebar Rail Controller
+    // 3. POS Cashier Sidebar Rail Controller (matches layout.js collapse + auto-close behavior)
     (function initPosSidebar() {
         const sidebar = document.getElementById('posCashierSidebar');
         const toggleBtn = document.getElementById('posSidebarToggle');
@@ -5009,12 +5028,13 @@
         const logoutBtn = document.getElementById('posSidebarLogoutBtn');
         if (!sidebar || !toggleBtn) return;
 
-        const STORAGE_KEY = 'okw_pos_sidebar_collapsed';
+        const STORAGE_KEY = 'okwesiwa_sidebar_collapsed';
         const isMobile = () => window.matchMedia('(max-width: 1024px)').matches;
 
         function setDesktopCollapsed(collapsed) {
             sidebar.classList.toggle('collapsed', collapsed);
             toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            try { localStorage.setItem(STORAGE_KEY, collapsed ? '1' : '0'); } catch (_) {}
         }
 
         function setMobileOpen(open) {
@@ -5023,32 +5043,37 @@
             toggleBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
         }
 
-        window.syncPosSidebarDefault = function (isMgrRole) {
+        window.syncPosSidebarDefault = function () {
             const saved = localStorage.getItem(STORAGE_KEY);
-            if (saved === '1') setDesktopCollapsed(true);
-            else if (saved === '0') setDesktopCollapsed(false);
-            else setDesktopCollapsed(!!isMgrRole);
+            // Match other pages: default collapsed on POS unless user explicitly expanded it
+            const collapsed = saved === '0' ? false : true;
+            sidebar.classList.toggle('collapsed', collapsed);
+            toggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
         };
 
-        // Apply initial state immediately from cached user so there is no layout jump
-        try {
-            const raw = localStorage.getItem('currentUser') || localStorage.getItem('user') || sessionStorage.getItem('user');
-            const u = raw ? JSON.parse(raw) : null;
-            const roleNorm = String((u && u.role) || 'cashier').toLowerCase().replace(/[\s-]+/g, '_');
-            window.syncPosSidebarDefault(['manager', 'store_manager', 'ceo', 'admin'].includes(roleNorm));
-        } catch (_) {
-            window.syncPosSidebarDefault(false);
-        }
+        window.syncPosSidebarDefault();
 
         toggleBtn.addEventListener('click', () => {
             if (isMobile()) {
                 setMobileOpen(!sidebar.classList.contains('mobile-open'));
             } else {
-                const nextCollapsed = !sidebar.classList.contains('collapsed');
-                setDesktopCollapsed(nextCollapsed);
-                try { localStorage.setItem(STORAGE_KEY, nextCollapsed ? '1' : '0'); } catch (_) {}
+                setDesktopCollapsed(!sidebar.classList.contains('collapsed'));
             }
         });
+
+        // Auto-collapse when interacting with the POS till workspace (same as layout.js)
+        const handleEnterTill = (e) => {
+            const target = e.target;
+            if (!target || typeof target.closest !== 'function') return;
+            if (!target.closest('.pos-layout')) return;
+            if (isMobile()) {
+                if (sidebar.classList.contains('mobile-open')) setMobileOpen(false);
+            } else if (!sidebar.classList.contains('collapsed')) {
+                setDesktopCollapsed(true);
+            }
+        };
+        document.addEventListener('pointerdown', handleEnterTill, true);
+        document.addEventListener('focusin', handleEnterTill, true);
 
         if (backdrop) {
             backdrop.addEventListener('click', () => setMobileOpen(false));
