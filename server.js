@@ -6015,50 +6015,112 @@ app.get('/api/batches/expiry', authenticateToken, requireRole(PAGE_ROLES.STAFF_A
 app.post('/api/stock-take', authenticateToken, requireRole(MANAGER_ROLES), async (req, res) => {
     if (!req.user) return res.status(401).json({ message: 'Not authenticated' });
 
-    const { adjustments } = req.body; // Array of { barcode, physicalQty }
+    const { adjustments, notes = '' } = req.body; // Array of { barcode, physicalQty }
     if (!Array.isArray(adjustments) || !adjustments.length) {
         return res.status(400).json({ message: 'No stock adjustments provided' });
     }
     const tenantId = req.user.tenant_id || 1;
-    const userBranch = req.user.store_location || DEFAULT_BRANCH_NAME;
     const auditBranchId = req.user.store_id || (await mainBranchId(pool, tenantId));
     const client = await pool.connect();
 
     try {
         await client.query('BEGIN');
+        const changedItems = [];
+        let lastBranchKey = req.user.store_location || DEFAULT_BRANCH_NAME;
+
         for (const adj of adjustments) {
-            // Get current stock info to calculate variance
-            const resProd = await client.query('SELECT stock, stock_levels FROM products WHERE barcode = $1 AND tenant_id = $2', [adj.barcode, tenantId]);
+            // Get full product details to calculate variance and record complete audit trail
+            const resProd = await client.query(
+                'SELECT id, name, barcode, category, brand, price, cost_price, stock, stock_levels FROM products WHERE barcode = $1 AND tenant_id = $2 FOR UPDATE',
+                [adj.barcode, tenantId]
+            );
             if (resProd.rows.length === 0) continue;
 
             const product = resProd.rows[0];
-            const stockLevels = product.stock_levels || {};
-            const currentBranchStock = toQty(stockLevels[userBranch]);
-            const newBranchStock = toQty(adj.physicalQty);
-            const variance = newBranchStock - currentBranchStock;
+            const stockLevels = (product.stock_levels && typeof product.stock_levels === 'object') ? product.stock_levels : {};
+            const branchKey = await resolveStockKey(client, {
+                tenantId,
+                branchId: auditBranchId,
+                barcode: adj.barcode,
+                fallbackName: req.user.store_location
+            });
+            lastBranchKey = branchKey;
+
+            const hasKey = Object.prototype.hasOwnProperty.call(stockLevels, branchKey);
+            const currentBranchStock = hasKey ? toQty(stockLevels[branchKey]) : toQty(product.stock);
+            const newBranchStock = Math.max(0, toQty(adj.physicalQty));
+            const variance = Number((newBranchStock - currentBranchStock).toFixed(3));
 
             if (variance !== 0) {
+                const updatedLevels = { ...stockLevels, [branchKey]: newBranchStock };
+                const newTotalStock = Object.values(updatedLevels).reduce((s, v) => s + Math.max(0, toQty(v)), 0);
+
                 await client.query(`
-                    UPDATE products 
-                    SET stock = COALESCE(stock, 0) + $1,
+                    UPDATE products
+                    SET stock = $1::numeric,
                         stock_levels = jsonb_set(
-                            COALESCE(stock_levels, '{}'::jsonb), 
-                            ARRAY[$2::text], 
+                            COALESCE(stock_levels, '{}'::jsonb),
+                            ARRAY[$2::text],
                             to_jsonb($3::numeric)
                         )
                     WHERE barcode = $4 AND tenant_id = $5
-                `, [variance, userBranch, newBranchStock, adj.barcode, tenantId]);
+                `, [newTotalStock, branchKey, newBranchStock, adj.barcode, tenantId]);
 
-                // Log audit
+                // Log inventory audit
                 await client.query(`
                     INSERT INTO inventory_audit_log (action_type, product_barcode, quantity_before, quantity_after, reference_id, reference_type, user_id, branch_id, notes)
-                    VALUES ('Stock Take', $1, $2, $3, NULL, 'Stock Take', $4, $5, 'Quick Update')
-                `, [adj.barcode, currentBranchStock, newBranchStock, req.user.id, auditBranchId]);
+                    VALUES ('Stock Take', $1, $2, $3, NULL, 'Stock Take', $4, $5, $6)
+                `, [adj.barcode, currentBranchStock, newBranchStock, req.user.id, auditBranchId, String(notes || 'Quick Update')]);
+
+                // Also log to stock_adjustments so Product Stock History reflects the count update
+                await client.query('SAVEPOINT sp_st_adj');
+                try {
+                    await client.query(`
+                        INSERT INTO stock_adjustments (tenant_id, product_barcode, adjustment_type, quantity_adjusted, reason, approver_id, branch_id, approved_at)
+                        VALUES ($1, $2, 'Stock Take', $3, $4, $5, $6, CURRENT_TIMESTAMP)
+                    `, [tenantId, adj.barcode, variance, String(notes || `Stock Take (${currentBranchStock} -> ${newBranchStock})`), req.user.id, auditBranchId]);
+                    await client.query('RELEASE SAVEPOINT sp_st_adj');
+                } catch (_) {
+                    await client.query('ROLLBACK TO SAVEPOINT sp_st_adj');
+                }
+
+                const unitCost = Number(product.cost_price || product.price || 0);
+                changedItems.push({
+                    product_id: product.id,
+                    name: product.name,
+                    barcode: product.barcode,
+                    category: product.category || '',
+                    brand: product.brand || '',
+                    branch: branchKey,
+                    old_qty: currentBranchStock,
+                    new_qty: newBranchStock,
+                    variance,
+                    qty: newBranchStock,
+                    price: unitCost,
+                    line_total: Number((Math.abs(variance) * unitCost).toFixed(2))
+                });
             }
         }
         await client.query('COMMIT');
-        await logActivity(req, 'STOCK_TAKE_UPDATE', { adjustmentsCount: adjustments.length });
-        res.json({ success: true });
+
+        const totalVariance = Number(changedItems.reduce((s, i) => s + Number(i.variance || 0), 0).toFixed(3));
+        const auditPayload = {
+            branch: lastBranchKey,
+            adjustmentsCount: changedItems.length,
+            totalVariance: (totalVariance > 0 ? '+' : '') + totalVariance,
+            notes: String(notes || 'Quick Update'),
+            items: changedItems
+        };
+        if (changedItems.length === 1) {
+            const one = changedItems[0];
+            auditPayload.product = one.name;
+            auditPayload.sku = one.barcode;
+            auditPayload.previousQty = one.old_qty;
+            auditPayload.newQty = one.new_qty;
+            auditPayload.change = (one.variance > 0 ? '+' : '') + one.variance;
+        }
+        await logActivity(req, 'STOCK_TAKE_UPDATE', auditPayload);
+        res.json({ success: true, updated: changedItems.length, items: changedItems });
     } catch (err) {
         await client.query('ROLLBACK');
         console.error(err);

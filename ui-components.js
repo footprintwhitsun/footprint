@@ -550,7 +550,35 @@
                 <tbody>${summaryPairs.join('')}</tbody>
             </table>` : '';
 
-        const itemsHtml = items.length ? `
+        const isStockTakeItems = items.length > 0 && items.some(it => it && (it.old_qty !== undefined || it.new_qty !== undefined || it.variance !== undefined));
+        const itemsHtml = items.length ? (isStockTakeItems ? `
+            <div class="pr-section-bar" style="margin-top:16px;">Stock Count Adjustments</div>
+            <table class="pr-items-tbl" data-no-table-tools="1">
+                <thead>
+                    <tr>
+                        <th style="width:36px;">#</th>
+                        <th>Product</th>
+                        <th>Barcode / SKU</th>
+                        <th class="okw-num" style="width:90px;">Previous Qty</th>
+                        <th class="okw-num" style="width:90px;">New Qty</th>
+                        <th class="okw-num" style="width:95px;">Change</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${items.map((it, idx) => {
+                        const v = Number(it.variance ?? 0);
+                        const vText = (v > 0 ? '+' : '') + v;
+                        return `<tr>
+                            <td>${idx + 1}</td>
+                            <td><strong>${escapeHtml(it.name || it.product_name || 'Item')}</strong></td>
+                            <td>${escapeHtml(it.barcode || it.product_barcode || '—')}</td>
+                            <td class="okw-num">${escapeHtml(it.old_qty ?? '—')}</td>
+                            <td class="okw-num"><strong>${escapeHtml(it.new_qty ?? it.qty ?? '—')}</strong></td>
+                            <td class="okw-num" style="font-weight:700;color:${v > 0 ? '#15803d' : (v < 0 ? '#dc2626' : '#475569')};">${escapeHtml(vText)}</td>
+                        </tr>`;
+                    }).join('')}
+                </tbody>
+            </table>` : `
             <div class="pr-section-bar" style="margin-top:16px;">Itemized Breakdown</div>
             <table class="pr-items-tbl" data-no-table-tools="1">
                 <thead>
@@ -578,7 +606,7 @@
                         </tr>`;
                     }).join('')}
                 </tbody>
-            </table>` : (parsedItemsList.length ? `
+            </table>`) : (parsedItemsList.length ? `
             <div class="pr-section-bar" style="margin-top:16px;">Itemized Breakdown</div>
             <table class="pr-items-tbl">
                 <thead>
