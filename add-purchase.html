@@ -17,7 +17,7 @@
     <link rel="stylesheet" href="/portal-skin.css">
     <style>
         .ap-form, .ap-form *, .ap-form *::before, .ap-form *::after { box-sizing: border-box; }
-        .ap-form { max-width: 1120px; display: flex; flex-direction: column; gap: 18px; }
+        .ap-form { max-width: 1280px; display: flex; flex-direction: column; gap: 18px; }
         .ap-card {
             background: var(--sheet, #ffffff);
             border: 1px solid var(--edge, #e2e8f0);
@@ -31,11 +31,17 @@
             margin: 0 0 14px 0;
             padding-bottom: 10px;
             border-bottom: 1px solid var(--edge, #e2e8f0);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
         }
+        .ap-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
         .ap-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
         .ap-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
         .ap-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
         .ap-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-2, #334155); }
+        .ap-req { color: #dc2626; }
         .ap-input, .ap-select, .ap-textarea {
             width: 100%;
             min-width: 0;
@@ -49,10 +55,64 @@
             font-size: 13.5px;
             outline: none;
         }
-        .ap-textarea { height: auto; min-height: 76px; padding: 10px 12px; resize: vertical; }
+        .ap-textarea { height: auto; min-height: 74px; padding: 10px 12px; resize: vertical; }
         .ap-input:focus, .ap-select:focus, .ap-textarea:focus {
             border-color: var(--brand, #273990);
             box-shadow: 0 0 0 3px rgba(39, 57, 144, 0.12);
+        }
+        .ap-readonly-box {
+            min-height: 38px;
+            padding: 8px 12px;
+            border: 1px dashed var(--edge-strong, #cbd5e1);
+            border-radius: 8px;
+            background: var(--frame, #f8fafc);
+            color: var(--ink-2, #334155);
+            font-size: 13px;
+            line-height: 1.4;
+            display: flex;
+            align-items: center;
+        }
+        .ap-payterm-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .ap-file-box {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .ap-file-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ap-file-input {
+            width: 100%;
+            padding: 6px 10px;
+            border: 1px solid var(--edge-strong, #cbd5e1);
+            border-radius: 8px;
+            background: var(--sheet, #ffffff);
+            color: var(--ink, #0f172a);
+            font-size: 12.5px;
+        }
+        .ap-help {
+            font-size: 11.5px;
+            color: var(--muted, #64748b);
+            line-height: 1.4;
+        }
+        .ap-file-chip {
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 6px 10px;
+            border-radius: 8px;
+            background: #eef2ff;
+            border: 1px solid #c7d2fe;
+            color: #1e3a8a;
+            font-size: 12px;
+            font-weight: 600;
         }
         .ap-search-wrap { position: relative; margin-bottom: 14px; }
         .ap-search-results {
@@ -81,47 +141,134 @@
         }
         .ap-search-item:last-child { border-bottom: none; }
         .ap-search-item:hover { background: var(--frame-hover, #f8fafc); }
-        .ap-items-table { width: 100%; border-collapse: collapse; }
+        .ap-items-table { width: 100%; border-collapse: collapse; min-width: 980px; }
         .ap-items-table th {
             text-align: left;
-            font-size: 11.5px;
+            font-size: 11px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.04em;
+            letter-spacing: 0.03em;
             color: var(--muted, #64748b);
-            padding: 10px 10px;
+            padding: 10px 8px;
             border-bottom: 1px solid var(--edge, #e2e8f0);
             background: var(--frame, #f8fafc);
+            white-space: nowrap;
         }
         .ap-items-table td {
-            padding: 10px 10px;
+            padding: 9px 8px;
             border-bottom: 1px solid var(--edge, #f1f5f9);
-            font-size: 13.5px;
+            font-size: 13px;
             vertical-align: middle;
         }
         .ap-items-table .num { text-align: right; font-variant-numeric: tabular-nums; }
-        .ap-summary-box {
+        .ap-cell-input {
+            width: 100%;
+            min-width: 72px;
+            height: 32px;
+            padding: 0 8px;
+            border: 1px solid var(--edge-strong, #cbd5e1);
+            border-radius: 6px;
+            background: var(--sheet, #ffffff);
+            color: var(--ink, #0f172a);
+            font-family: var(--font-ui);
+            font-size: 13px;
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            outline: none;
+        }
+        .ap-cell-input:focus {
+            border-color: var(--brand, #273990);
+            box-shadow: 0 0 0 2px rgba(39, 57, 144, 0.12);
+        }
+        .ap-table-totals {
+            display: flex;
+            justify-content: flex-end;
+            gap: 28px;
+            flex-wrap: wrap;
+            padding: 12px 14px;
+            margin-top: 12px;
             background: var(--frame, #f8fafc);
             border: 1px solid var(--edge, #e2e8f0);
-            border-radius: 12px;
-            padding: 16px 18px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
+            border-radius: 10px;
+            font-size: 13.5px;
         }
-        .ap-sum-row {
+        .ap-table-totals strong {
+            color: var(--ink, #0f172a);
+            font-variant-numeric: tabular-nums;
+            margin-left: 6px;
+        }
+        .ap-calc-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            height: 38px;
+            padding: 0 12px;
+            border-radius: 8px;
+            background: var(--frame, #f8fafc);
+            border: 1px solid var(--edge, #e2e8f0);
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink-2, #334155);
+            font-variant-numeric: tabular-nums;
+        }
+        .ap-total-banner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 18px;
+            margin-top: 16px;
+            border-radius: 12px;
+            background: var(--frame, #f8fafc);
+            border: 1px solid var(--edge-strong, #cbd5e1);
+        }
+        .ap-total-banner .label {
+            font-size: 14px;
+            font-weight: 700;
+            color: var(--ink, #0f172a);
+        }
+        .ap-total-banner .val {
+            font-size: 20px;
+            font-weight: 800;
+            color: var(--brand, #273990);
+            font-variant-numeric: tabular-nums;
+        }
+        .ap-advance-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            background: var(--frame, #f8fafc);
+            border: 1px solid var(--edge, #e2e8f0);
+            font-size: 12.5px;
+            font-weight: 600;
+            color: var(--ink-2, #334155);
+            font-variant-numeric: tabular-nums;
+        }
+        .ap-amount-row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .ap-payment-summary {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 12px 16px;
+            margin-top: 14px;
+            border-radius: 10px;
+            background: #fef2f2;
+            border: 1px solid #fecaca;
             font-size: 13.5px;
-            color: var(--ink-2, #334155);
-        }
-        .ap-sum-row.total {
-            padding-top: 10px;
-            border-top: 1px solid var(--edge-strong, #cbd5e1);
-            font-size: 17px;
             font-weight: 700;
-            color: var(--brand, #273990);
+            color: #991b1b;
+            font-variant-numeric: tabular-nums;
+        }
+        .ap-payment-summary.settled {
+            background: #ecfdf5;
+            border-color: #a7f3d0;
+            color: #065f46;
         }
         .ap-footer {
             display: flex;
@@ -129,8 +276,11 @@
             gap: 10px;
             flex-wrap: wrap;
         }
-        @media (max-width: 900px) {
-            .ap-grid-3, .ap-grid-2 { grid-template-columns: 1fr; }
+        @media (max-width: 1080px) {
+            .ap-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 820px) {
+            .ap-grid-4, .ap-grid-3, .ap-grid-2 { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -146,7 +296,7 @@
         <div class="okw-page-header">
             <div class="okw-page-header-text">
                 <h1 class="okw-page-title">Add Purchase</h1>
-                <p class="okw-page-subtitle">Create a supplier purchase order, add line items, and record payment terms.</p>
+                <p class="okw-page-subtitle">Record a supplier purchase order with item costs, margins, taxes, shipping, document attachment, and payment.</p>
             </div>
             <div class="okw-page-header-actions">
                 <a href="/inventory?tab=orders" class="okw-btn okw-btn-outline" style="text-decoration:none;display:inline-flex;align-items:center;gap:7px;"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>List Purchases</a>
@@ -154,38 +304,69 @@
         </div>
 
         <form id="addPurchaseForm" class="ap-form" novalidate>
+            <!-- 1. PURCHASE DETAILS -->
             <section class="ap-card">
                 <h2 class="ap-section-title">1. Purchase Details</h2>
-                <div class="ap-grid-3">
+                <div class="ap-grid-4">
                     <div class="ap-field">
-                        <label for="poSupplier">Supplier *</label>
+                        <label for="poSupplier">Supplier <span class="ap-req">*</span></label>
                         <select id="poSupplier" class="ap-select" required>
                             <option value="">Loading suppliers...</option>
                         </select>
                     </div>
                     <div class="ap-field">
-                        <label for="poRefNo">Reference No. (Optional)</label>
+                        <label>Address</label>
+                        <div id="poSupplierAddress" class="ap-readonly-box">Select a supplier to view address</div>
+                    </div>
+                    <div class="ap-field">
+                        <label for="poRefNo">Reference No</label>
                         <input type="text" id="poRefNo" class="ap-input" placeholder="e.g. SUP-INV-2026-01">
                     </div>
                     <div class="ap-field">
-                        <label for="poDate">Purchase Date *</label>
+                        <label for="poDate">Purchase Date <span class="ap-req">*</span></label>
                         <input type="date" id="poDate" class="ap-input" required>
                     </div>
+
                     <div class="ap-field">
-                        <label for="poStatus">Purchase Status *</label>
+                        <label for="poStatus">Purchase Status <span class="ap-req">*</span></label>
                         <select id="poStatus" class="ap-select" required>
                             <option value="Pending">Pending</option>
                             <option value="Ordered">Ordered</option>
                             <option value="Received">Received (Add to Stock Now)</option>
                         </select>
                     </div>
-                    <div class="ap-field" style="grid-column: span 2;">
-                        <label for="poNotes">Notes / Delivery Instructions</label>
-                        <input type="text" id="poNotes" class="ap-input" placeholder="Optional supplier invoice notes or delivery details">
+                    <div class="ap-field">
+                        <label for="poLocation">Business Location <span class="ap-req">*</span></label>
+                        <select id="poLocation" class="ap-select" required>
+                            <option value="">Loading locations...</option>
+                        </select>
+                    </div>
+                    <div class="ap-field">
+                        <label for="poPayTermNumber">Pay Term</label>
+                        <div class="ap-payterm-group">
+                            <input type="number" id="poPayTermNumber" class="ap-input" min="0" step="1" placeholder="e.g. 30">
+                            <select id="poPayTermType" class="ap-select" aria-label="Pay term unit">
+                                <option value="">Select</option>
+                                <option value="Days">Days</option>
+                                <option value="Months">Months</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="ap-field">
+                        <label for="poDocument">Attach Document</label>
+                        <div class="ap-file-box">
+                            <input type="file" id="poDocument" class="ap-file-input" accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png">
+                            <div id="poDocChip" class="ap-file-chip">
+                                <span id="poDocName" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+                                <button type="button" id="poDocClear" style="border:none;background:none;color:#b91c1c;font-weight:700;cursor:pointer;padding:0 4px;" title="Remove file">&times;</button>
+                            </div>
+                            <span class="ap-help">Max File size: 5MB<br>Allowed File: .pdf, .csv, .zip, .doc, .docx, .jpeg, .jpg, .png</span>
+                        </div>
                     </div>
                 </div>
             </section>
 
+            <!-- 2. PURCHASE ITEMS -->
             <section class="ap-card">
                 <h2 class="ap-section-title">2. Purchase Items</h2>
                 <div class="ap-search-wrap">
@@ -197,69 +378,124 @@
                     <table class="ap-items-table" data-no-table-tools="1">
                         <thead>
                             <tr>
-                                <th style="width:42px;">#</th>
-                                <th>Product</th>
-                                <th>SKU / Barcode</th>
-                                <th class="num" style="width:120px;">Qty</th>
-                                <th class="num" style="width:150px;">Unit Cost</th>
-                                <th class="num" style="width:140px;">Line Total</th>
-                                <th style="width:60px;text-align:center;">Remove</th>
+                                <th style="width:36px;">#</th>
+                                <th style="min-width:180px;">Product Name</th>
+                                <th class="num" style="width:105px;">Purchase Quantity</th>
+                                <th class="num" style="width:130px;">Unit Cost (Before Discount)</th>
+                                <th class="num" style="width:105px;">Discount Percent</th>
+                                <th class="num" style="width:125px;">Unit Cost (Before Tax)</th>
+                                <th class="num" style="width:120px;">Line Total</th>
+                                <th class="num" style="width:105px;">Profit Margin %</th>
+                                <th class="num" style="width:135px;">Unit Selling Price (Inc. tax)</th>
+                                <th style="width:46px;text-align:center;"></th>
                             </tr>
                         </thead>
                         <tbody id="poItemsBody">
-                            <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted,#64748b);">No items added yet. Search for a product above to add it.</td></tr>
+                            <tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted,#64748b);">No items added yet. Search for a product above to add it.</td></tr>
                         </tbody>
                     </table>
                 </div>
+
+                <div class="ap-table-totals">
+                    <div>Total Items: <strong id="sumTotalItems">0.00</strong></div>
+                    <div>Net Total Amount: <strong id="sumNetTotal">GH₵ 0.00</strong></div>
+                </div>
             </section>
 
+            <!-- 3. DISCOUNT, TAX, SHIPPING & NOTES -->
             <section class="ap-card">
-                <h2 class="ap-section-title">3. Charges, Payment &amp; Summary</h2>
-                <div class="ap-grid-2">
-                    <div class="ap-grid-2">
-                        <div class="ap-field">
-                            <label for="poDiscount">Discount</label>
-                            <input type="number" id="poDiscount" class="ap-input" step="0.01" min="0" value="0">
-                        </div>
-                        <div class="ap-field">
-                            <label for="poTax">Purchase Tax</label>
-                            <input type="number" id="poTax" class="ap-input" step="0.01" min="0" value="0">
-                        </div>
-                        <div class="ap-field">
-                            <label for="poShipping">Shipping / Delivery Cost</label>
-                            <input type="number" id="poShipping" class="ap-input" step="0.01" min="0" value="0">
-                        </div>
-                        <div class="ap-field">
-                            <label for="poPaymentStatus">Payment Status</label>
-                            <select id="poPaymentStatus" class="ap-select">
-                                <option value="Unpaid">Unpaid (Credit)</option>
-                                <option value="Partial">Partial Payment</option>
-                                <option value="Paid">Paid in Full</option>
-                            </select>
-                        </div>
-                        <div class="ap-field">
-                            <label for="poPaymentMethod">Payment Method</label>
-                            <select id="poPaymentMethod" class="ap-select">
-                                <option value="Cash">Cash</option>
-                                <option value="MoMo">Mobile Money (MoMo)</option>
-                                <option value="Bank Transfer">Bank Transfer</option>
-                                <option value="Credit">Supplier Credit</option>
-                            </select>
-                        </div>
-                        <div class="ap-field">
-                            <label for="poPaidAmount">Amount Paid</label>
-                            <input type="number" id="poPaidAmount" class="ap-input" step="0.01" min="0" value="0">
-                        </div>
+                <h2 class="ap-section-title">3. Discount, Tax, Shipping &amp; Notes</h2>
+                <div class="ap-grid-3">
+                    <div class="ap-field">
+                        <label for="poDiscountType">Discount Type</label>
+                        <select id="poDiscountType" class="ap-select">
+                            <option value="none">None</option>
+                            <option value="fixed">Fixed</option>
+                            <option value="percentage">Percentage (%)</option>
+                        </select>
+                    </div>
+                    <div class="ap-field">
+                        <label for="poDiscountAmount">Discount Amount</label>
+                        <input type="number" id="poDiscountAmount" class="ap-input" step="0.01" min="0" value="0">
+                    </div>
+                    <div class="ap-field">
+                        <label>Discount: (-)</label>
+                        <div class="ap-calc-pill"><span>Discount: (-)</span><span id="sumDiscountVal">GH₵ 0.00</span></div>
                     </div>
 
-                    <div class="ap-summary-box">
-                        <div class="ap-sum-row"><span>Total Items</span><strong id="sumItems">0 (0 units)</strong></div>
-                        <div class="ap-sum-row"><span>Subtotal</span><strong id="sumSubtotal">GH₵ 0.00</strong></div>
-                        <div class="ap-sum-row"><span>Discount</span><span id="sumDiscount">-GH₵ 0.00</span></div>
-                        <div class="ap-sum-row"><span>Tax &amp; Shipping</span><span id="sumExtras">GH₵ 0.00</span></div>
-                        <div class="ap-sum-row total"><span>Grand Total</span><span id="sumTotal">GH₵ 0.00</span></div>
-                        <div class="ap-sum-row"><span>Balance Due</span><strong id="sumBalance" style="color:#b91c1c;">GH₵ 0.00</strong></div>
+                    <div class="ap-field">
+                        <label for="poTaxSelect">Purchase Tax</label>
+                        <select id="poTaxSelect" class="ap-select">
+                            <option value="" data-rate="0">None (0%)</option>
+                        </select>
                     </div>
+                    <div class="ap-field">
+                        <label>Purchase Tax: (+)</label>
+                        <div class="ap-calc-pill"><span>Purchase Tax: (+)</span><span id="sumTaxVal">GH₵ 0.00</span></div>
+                    </div>
+                    <div class="ap-field">
+                        <label for="poShipping">(+) Additional Shipping charges</label>
+                        <input type="number" id="poShipping" class="ap-input" step="0.01" min="0" value="0">
+                    </div>
+                </div>
+
+                <div class="ap-grid-2" style="margin-top:16px;">
+                    <div class="ap-field">
+                        <label for="poShippingDetails">Shipping Details</label>
+                        <textarea id="poShippingDetails" class="ap-textarea" placeholder="Carrier, waybill number, delivery address, or dispatch notes"></textarea>
+                    </div>
+                    <div class="ap-field">
+                        <label for="poNotes">Additional Notes</label>
+                        <textarea id="poNotes" class="ap-textarea" placeholder="Optional supplier invoice remarks or internal notes"></textarea>
+                    </div>
+                </div>
+
+                <div class="ap-total-banner">
+                    <span class="label">Purchase Total</span>
+                    <span class="val" id="sumPurchaseTotal">GH₵ 0.00</span>
+                </div>
+            </section>
+
+            <!-- 4. ADD PAYMENT -->
+            <section class="ap-card">
+                <h2 class="ap-section-title">
+                    <span>4. Add Payment</span>
+                    <span class="ap-advance-badge">Advance Balance: <strong id="poAdvanceBalance">GH₵ 0.00</strong></span>
+                </h2>
+                <div class="ap-grid-3">
+                    <div class="ap-field">
+                        <label for="poPaidAmount">Amount <span class="ap-req">*</span></label>
+                        <div class="ap-amount-row">
+                            <input type="number" id="poPaidAmount" class="ap-input" step="0.01" min="0" value="0" required>
+                            <button type="button" id="btnPayFull" class="okw-btn okw-btn-outline" style="height:38px;white-space:nowrap;padding:0 12px;">Pay Full</button>
+                        </div>
+                    </div>
+                    <div class="ap-field">
+                        <label for="poPaidOn">Paid on <span class="ap-req">*</span></label>
+                        <input type="datetime-local" id="poPaidOn" class="ap-input" required>
+                    </div>
+                    <div class="ap-field">
+                        <label for="poPaymentMethod">Payment Method <span class="ap-req">*</span></label>
+                        <select id="poPaymentMethod" class="ap-select" required>
+                            <option value="Cash">Cash</option>
+                            <option value="MoMo">Mobile Money (MoMo)</option>
+                            <option value="Bank Transfer">Bank Transfer</option>
+                            <option value="Card">Card</option>
+                            <option value="Cheque">Cheque</option>
+                            <option value="Advance">Advance</option>
+                            <option value="Credit">Supplier Credit</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="ap-field" style="margin-top:16px;">
+                    <label for="poPaymentNote">Payment Note</label>
+                    <textarea id="poPaymentNote" class="ap-textarea" placeholder="Transaction reference, receipt number, or payment remarks"></textarea>
+                </div>
+
+                <div id="poPaymentDueBanner" class="ap-payment-summary">
+                    <span>Payment Due</span>
+                    <span id="sumPaymentDue">GH₵ 0.00</span>
                 </div>
             </section>
 
@@ -275,6 +511,9 @@
     (function () {
         const esc = (v) => String(v == null ? '' : v).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         const money = (n) => (typeof formatCurrency === 'function' ? formatCurrency(Number(n) || 0) : 'GH₵ ' + (Number(n) || 0).toFixed(2));
+        const ALLOWED_DOC_EXT = /\.(pdf|csv|zip|doc|docx|jpeg|jpg|png)$/i;
+        const MAX_DOC_BYTES = 5 * 1024 * 1024;
+
         function authHeaders(json = false) {
             const t = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
             const h = {};
@@ -283,65 +522,148 @@
             return h;
         }
 
+        function localDateTimeNow() {
+            const d = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        }
+
+        let suppliersList = [];
         let catalogProducts = [];
         let poItems = [];
+        let attachedDoc = null;
+        let currentGrandTotal = 0;
         let addAnotherMode = false;
 
         document.getElementById('poDate').value = new Date().toISOString().slice(0, 10);
+        document.getElementById('poPaidOn').value = localDateTimeNow();
 
         async function loadLookups() {
-            const [supRes, prodRes] = await Promise.all([
+            const [supRes, branchRes, taxRes, prodRes] = await Promise.all([
                 fetch('/api/suppliers', { headers: authHeaders(false), credentials: 'include' }).then(r => r.ok ? r.json() : []).catch(() => []),
+                fetch('/api/branches', { headers: authHeaders(false), credentials: 'include' }).then(r => r.ok ? r.json() : []).catch(() => []),
+                fetch('/api/taxes/active', { headers: authHeaders(false), credentials: 'include' }).then(r => r.ok ? r.json() : []).catch(() => []),
                 fetch('/api/products?limit=all', { headers: authHeaders(false), credentials: 'include' }).then(r => r.ok ? r.json() : []).catch(() => [])
             ]);
-            const suppliers = Array.isArray(supRes) ? supRes : (supRes.suppliers || []);
+
+            suppliersList = Array.isArray(supRes) ? supRes : (supRes.suppliers || []);
             const supSel = document.getElementById('poSupplier');
-            supSel.innerHTML = '<option value="">Select Supplier</option>' + suppliers.map(s => `<option value="${Number(s.id)}">${esc(s.name)}</option>`).join('');
+            supSel.innerHTML = '<option value="">Select Supplier</option>' + suppliersList.map(s => `<option value="${Number(s.id)}">${esc(s.name)}</option>`).join('');
+
+            const branches = Array.isArray(branchRes) ? branchRes : (branchRes.branches || []);
+            const locSel = document.getElementById('poLocation');
+            let userStoreId = null;
+            try {
+                const u = JSON.parse(localStorage.getItem('user') || '{}');
+                userStoreId = u.store_id || null;
+            } catch (_) {}
+            locSel.innerHTML = '<option value="">Select Business Location</option>' + branches.map(b => {
+                const label = b.location ? `${b.name} (${b.location})` : b.name;
+                return `<option value="${Number(b.id)}">${esc(label)}</option>`;
+            }).join('');
+            if (userStoreId && branches.some(b => Number(b.id) === Number(userStoreId))) {
+                locSel.value = String(userStoreId);
+            } else {
+                const mainB = branches.find(b => b.is_main) || branches[0];
+                if (mainB) locSel.value = String(mainB.id);
+            }
+
+            const taxes = Array.isArray(taxRes) ? taxRes : [];
+            const taxSel = document.getElementById('poTaxSelect');
+            taxSel.innerHTML = '<option value="" data-rate="0">None (0%)</option>' + taxes.map(t => {
+                const rate = Number(t.rate || 0);
+                return `<option value="${esc(t.id)}" data-name="${esc(t.name)}" data-rate="${rate}">${esc(t.name)} (${rate}%)</option>`;
+            }).join('');
 
             catalogProducts = Array.isArray(prodRes) ? prodRes : (prodRes.products || prodRes.data || []);
         }
 
+        function updateSupplierMeta() {
+            const id = Number(document.getElementById('poSupplier').value || 0);
+            const sup = suppliersList.find(s => Number(s.id) === id);
+            const addrEl = document.getElementById('poSupplierAddress');
+            const advEl = document.getElementById('poAdvanceBalance');
+            if (!sup) {
+                addrEl.textContent = 'Select a supplier to view address';
+                advEl.textContent = money(0);
+                return;
+            }
+            const parts = [sup.address, sup.city, sup.phone].filter(Boolean);
+            addrEl.textContent = parts.length ? parts.join(' · ') : 'No address on file';
+            const adv = Number(sup.advance_balance || sup.credit_balance || 0);
+            advEl.textContent = money(adv);
+        }
+
+        function computeItemFields(it) {
+            const qty = Math.max(0, Number(it.qty || 0));
+            const costBefore = Math.max(0, Number(it.unitCostBeforeDiscount || 0));
+            const discPct = Math.min(100, Math.max(0, Number(it.discountPercent || 0)));
+            const unitCost = Number((costBefore * (1 - discPct / 100)).toFixed(2));
+            const lineTotal = Number((qty * unitCost).toFixed(2));
+            it.unitCostBeforeTax = unitCost;
+            it.lineTotal = lineTotal;
+            return it;
+        }
+
         function recalcTotals() {
-            const subtotal = poItems.reduce((s, it) => s + (Number(it.qty || 0) * Number(it.cost || 0)), 0);
-            const units = poItems.reduce((s, it) => s + Number(it.qty || 0), 0);
-            const disc = Math.max(0, Number(document.getElementById('poDiscount').value || 0));
-            const tax = Math.max(0, Number(document.getElementById('poTax').value || 0));
+            const totalUnits = poItems.reduce((s, it) => s + Math.max(0, Number(it.qty || 0)), 0);
+            const netTotal = poItems.reduce((s, it) => s + Number(it.lineTotal || 0), 0);
+
+            const discType = document.getElementById('poDiscountType').value;
+            const discInput = Math.max(0, Number(document.getElementById('poDiscountAmount').value || 0));
+            let discVal = 0;
+            if (discType === 'percentage') discVal = netTotal * (Math.min(100, discInput) / 100);
+            else if (discType === 'fixed') discVal = Math.min(netTotal, discInput);
+
+            const afterDisc = Math.max(0, netTotal - discVal);
+            const taxSel = document.getElementById('poTaxSelect');
+            const taxOpt = taxSel.options[taxSel.selectedIndex];
+            const taxRate = taxOpt ? Math.max(0, Number(taxOpt.getAttribute('data-rate') || 0)) : 0;
+            const taxVal = afterDisc * (taxRate / 100);
+
             const ship = Math.max(0, Number(document.getElementById('poShipping').value || 0));
-            const grand = Math.max(0, subtotal - disc + tax + ship);
+            const grand = Math.max(0, afterDisc + taxVal + ship);
+            currentGrandTotal = Number(grand.toFixed(2));
 
-            const payStatus = document.getElementById('poPaymentStatus').value;
-            const paidEl = document.getElementById('poPaidAmount');
-            if (payStatus === 'Paid') paidEl.value = grand.toFixed(2);
-            else if (payStatus === 'Unpaid') paidEl.value = '0';
-            const paid = Math.max(0, Number(paidEl.value || 0));
-            const bal = Math.max(0, grand - paid);
+            const paid = Math.max(0, Number(document.getElementById('poPaidAmount').value || 0));
+            const due = Math.max(0, currentGrandTotal - paid);
 
-            document.getElementById('sumItems').textContent = `${poItems.length} (${Number(units.toFixed(3))} units)`;
-            document.getElementById('sumSubtotal').textContent = money(subtotal);
-            document.getElementById('sumDiscount').textContent = '-' + money(disc);
-            document.getElementById('sumExtras').textContent = money(tax + ship);
-            document.getElementById('sumTotal').textContent = money(grand);
-            document.getElementById('sumBalance').textContent = money(bal);
+            document.getElementById('sumTotalItems').textContent = totalUnits.toFixed(2);
+            document.getElementById('sumNetTotal').textContent = money(netTotal);
+            document.getElementById('sumDiscountVal').textContent = money(discVal);
+            document.getElementById('sumTaxVal').textContent = money(taxVal);
+            document.getElementById('sumPurchaseTotal').textContent = money(currentGrandTotal);
+            document.getElementById('sumPaymentDue').textContent = money(due);
+
+            const dueBanner = document.getElementById('poPaymentDueBanner');
+            if (due <= 0.005 && currentGrandTotal > 0) dueBanner.classList.add('settled');
+            else dueBanner.classList.remove('settled');
         }
 
         function renderItems() {
             const tbody = document.getElementById('poItemsBody');
             if (!poItems.length) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted,#64748b);">No items added yet. Search for a product above to add it.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--muted,#64748b);">No items added yet. Search for a product above to add it.</td></tr>';
                 recalcTotals();
                 return;
             }
             tbody.innerHTML = poItems.map((it, idx) => {
-                const line = Number(it.qty || 0) * Number(it.cost || 0);
+                computeItemFields(it);
                 return `
                     <tr>
                         <td>${idx + 1}</td>
-                        <td><strong>${esc(it.name)}</strong></td>
-                        <td style="font-family:ui-monospace,monospace;font-size:12px;">${esc(it.barcode)}</td>
-                        <td class="num"><input type="number" class="ap-input" style="height:32px;text-align:right;" step="any" min="0.001" value="${esc(it.qty)}" data-po-qty="${idx}"></td>
-                        <td class="num"><input type="number" class="ap-input" style="height:32px;text-align:right;" step="0.01" min="0" value="${esc(it.cost)}" data-po-cost="${idx}"></td>
-                        <td class="num" style="font-weight:700;" data-po-line="${idx}">${esc(money(line))}</td>
-                        <td style="text-align:center;"><button type="button" class="okw-btn okw-btn-outline" style="height:30px;padding:0 9px;color:#b91c1c;border-color:#fecaca;" data-po-del="${idx}" title="Remove">&times;</button></td>
+                        <td>
+                            <strong>${esc(it.name)}</strong>
+                            <div style="font-size:11px;color:var(--muted,#64748b);font-family:ui-monospace,monospace;">${esc(it.barcode)}</div>
+                        </td>
+                        <td class="num"><input type="number" class="ap-cell-input" step="any" min="0.001" value="${esc(it.qty)}" data-po-field="qty" data-po-idx="${idx}"></td>
+                        <td class="num"><input type="number" class="ap-cell-input" step="0.01" min="0" value="${esc(Number(it.unitCostBeforeDiscount).toFixed(2))}" data-po-field="costBefore" data-po-idx="${idx}"></td>
+                        <td class="num"><input type="number" class="ap-cell-input" step="0.01" min="0" max="100" value="${esc(Number(it.discountPercent).toFixed(2))}" data-po-field="discPct" data-po-idx="${idx}"></td>
+                        <td class="num" style="font-weight:600;" data-po-cost-net="${idx}">${esc(money(it.unitCostBeforeTax))}</td>
+                        <td class="num" style="font-weight:700;" data-po-line="${idx}">${esc(money(it.lineTotal))}</td>
+                        <td class="num"><input type="number" class="ap-cell-input" step="0.01" value="${esc(Number(it.profitMargin).toFixed(2))}" data-po-field="margin" data-po-idx="${idx}"></td>
+                        <td class="num"><input type="number" class="ap-cell-input" step="0.01" min="0" value="${esc(Number(it.sellingPrice).toFixed(2))}" data-po-field="sellPrice" data-po-idx="${idx}"></td>
+                        <td style="text-align:center;"><button type="button" class="okw-btn okw-btn-outline" style="height:30px;padding:0 8px;color:#b91c1c;border-color:#fecaca;" data-po-del="${idx}" title="Remove">&times;</button></td>
                     </tr>`;
             }).join('');
             recalcTotals();
@@ -351,13 +673,24 @@
             const existing = poItems.find(it => it.barcode === prod.barcode);
             if (existing) {
                 existing.qty = Number((Number(existing.qty || 0) + 1).toFixed(3));
+                computeItemFields(existing);
             } else {
-                poItems.push({
+                const cost = Number(prod.cost_price || prod.price || 0);
+                const sell = Number(prod.price || cost || 0);
+                const margin = cost > 0 ? Number((((sell - cost) / cost) * 100).toFixed(2)) : 0;
+                const item = {
                     barcode: prod.barcode,
                     name: prod.name,
                     qty: 1,
-                    cost: Number(prod.cost_price || prod.price || 0)
-                });
+                    unitCostBeforeDiscount: cost,
+                    discountPercent: 0,
+                    unitCostBeforeTax: cost,
+                    lineTotal: cost,
+                    profitMargin: margin,
+                    sellingPrice: sell
+                };
+                computeItemFields(item);
+                poItems.push(item);
             }
             renderItems();
         }
@@ -383,7 +716,7 @@
                         <div style="font-size:11.5px;color:var(--muted,#64748b);">${esc(p.barcode)}${p.brand ? ' · ' + esc(p.brand) : ''}</div>
                     </div>
                     <div style="text-align:right;font-size:12.5px;">
-                        <div style="font-weight:700;color:var(--brand,#273990);">Cost: ${esc(money(p.cost_price || 0))}</div>
+                        <div style="font-weight:700;color:var(--brand,#273990);">Cost: ${esc(money(p.cost_price || 0))} · Sell: ${esc(money(p.price || 0))}</div>
                         <div style="font-size:11px;color:var(--muted,#64748b);">Stock: ${Number(p.stock || 0)}</div>
                     </div>
                 </div>
@@ -408,22 +741,50 @@
 
         const itemsBody = document.getElementById('poItemsBody');
         itemsBody.addEventListener('input', (e) => {
-            const qIdx = e.target.getAttribute('data-po-qty');
-            const cIdx = e.target.getAttribute('data-po-cost');
-            if (qIdx !== null) {
-                const i = Number(qIdx);
-                poItems[i].qty = Math.max(0, Number(e.target.value || 0));
-                const cell = itemsBody.querySelector(`[data-po-line="${i}"]`);
-                if (cell) cell.textContent = money(poItems[i].qty * poItems[i].cost);
-                recalcTotals();
-            } else if (cIdx !== null) {
-                const i = Number(cIdx);
-                poItems[i].cost = Math.max(0, Number(e.target.value || 0));
-                const cell = itemsBody.querySelector(`[data-po-line="${i}"]`);
-                if (cell) cell.textContent = money(poItems[i].qty * poItems[i].cost);
-                recalcTotals();
+            const field = e.target.getAttribute('data-po-field');
+            const idxStr = e.target.getAttribute('data-po-idx');
+            if (!field || idxStr === null) return;
+            const i = Number(idxStr);
+            const it = poItems[i];
+            if (!it) return;
+            const val = Number(e.target.value || 0);
+
+            if (field === 'qty') {
+                it.qty = Math.max(0, val);
+                computeItemFields(it);
+            } else if (field === 'costBefore') {
+                it.unitCostBeforeDiscount = Math.max(0, val);
+                computeItemFields(it);
+                it.sellingPrice = Number((it.unitCostBeforeTax * (1 + Number(it.profitMargin || 0) / 100)).toFixed(2));
+                const sellEl = itemsBody.querySelector(`[data-po-field="sellPrice"][data-po-idx="${i}"]`);
+                if (sellEl) sellEl.value = it.sellingPrice.toFixed(2);
+            } else if (field === 'discPct') {
+                it.discountPercent = Math.min(100, Math.max(0, val));
+                computeItemFields(it);
+                it.sellingPrice = Number((it.unitCostBeforeTax * (1 + Number(it.profitMargin || 0) / 100)).toFixed(2));
+                const sellEl = itemsBody.querySelector(`[data-po-field="sellPrice"][data-po-idx="${i}"]`);
+                if (sellEl) sellEl.value = it.sellingPrice.toFixed(2);
+            } else if (field === 'margin') {
+                it.profitMargin = val;
+                it.sellingPrice = Number((it.unitCostBeforeTax * (1 + val / 100)).toFixed(2));
+                const sellEl = itemsBody.querySelector(`[data-po-field="sellPrice"][data-po-idx="${i}"]`);
+                if (sellEl) sellEl.value = it.sellingPrice.toFixed(2);
+            } else if (field === 'sellPrice') {
+                it.sellingPrice = Math.max(0, val);
+                it.profitMargin = it.unitCostBeforeTax > 0
+                    ? Number((((it.sellingPrice - it.unitCostBeforeTax) / it.unitCostBeforeTax) * 100).toFixed(2))
+                    : 0;
+                const marginEl = itemsBody.querySelector(`[data-po-field="margin"][data-po-idx="${i}"]`);
+                if (marginEl) marginEl.value = it.profitMargin.toFixed(2);
             }
+
+            const costCell = itemsBody.querySelector(`[data-po-cost-net="${i}"]`);
+            if (costCell) costCell.textContent = money(it.unitCostBeforeTax);
+            const lineCell = itemsBody.querySelector(`[data-po-line="${i}"]`);
+            if (lineCell) lineCell.textContent = money(it.lineTotal);
+            recalcTotals();
         });
+
         itemsBody.addEventListener('click', (e) => {
             const del = e.target.closest('[data-po-del]');
             if (!del) return;
@@ -431,7 +792,46 @@
             renderItems();
         });
 
-        ['poDiscount', 'poTax', 'poShipping', 'poPaymentStatus', 'poPaidAmount'].forEach((id) => {
+        // Document upload handling (max 5MB, allowed extensions)
+        const docInput = document.getElementById('poDocument');
+        const docChip = document.getElementById('poDocChip');
+        const docNameEl = document.getElementById('poDocName');
+        function clearDoc() {
+            attachedDoc = null;
+            docInput.value = '';
+            docChip.style.display = 'none';
+            docNameEl.textContent = '';
+        }
+        docInput.addEventListener('change', () => {
+            const file = docInput.files && docInput.files[0];
+            if (!file) { clearDoc(); return; }
+            if (!ALLOWED_DOC_EXT.test(file.name)) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Unsupported file type. Allowed: .pdf, .csv, .zip, .doc, .docx, .jpeg, .jpg, .png', 'warning');
+                clearDoc();
+                return;
+            }
+            if (file.size > MAX_DOC_BYTES) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('File exceeds the 5MB maximum size limit', 'warning');
+                clearDoc();
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = () => {
+                attachedDoc = { name: file.name, mime: file.type || '', data: String(reader.result || '') };
+                docNameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+                docChip.style.display = 'flex';
+            };
+            reader.readAsDataURL(file);
+        });
+        document.getElementById('poDocClear').addEventListener('click', clearDoc);
+
+        document.getElementById('poSupplier').addEventListener('change', updateSupplierMeta);
+        document.getElementById('btnPayFull').addEventListener('click', () => {
+            document.getElementById('poPaidAmount').value = currentGrandTotal.toFixed(2);
+            recalcTotals();
+        });
+
+        ['poDiscountType', 'poDiscountAmount', 'poTaxSelect', 'poShipping', 'poPaidAmount'].forEach((id) => {
             const el = document.getElementById(id);
             if (el) el.addEventListener('input', recalcTotals);
             if (el) el.addEventListener('change', recalcTotals);
@@ -445,11 +845,25 @@
         document.getElementById('addPurchaseForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const supplierId = document.getElementById('poSupplier').value;
+            const branchId = document.getElementById('poLocation').value;
             if (!supplierId) {
                 if (window.OkwUI && OkwUI.toast) OkwUI.toast('Please select a supplier', 'warning');
                 return;
             }
-            const validItems = poItems.filter(it => Number(it.qty) > 0);
+            if (!branchId) {
+                if (window.OkwUI && OkwUI.toast) OkwUI.toast('Please select a business location', 'warning');
+                return;
+            }
+            const validItems = poItems.filter(it => Number(it.qty) > 0).map(it => ({
+                barcode: it.barcode,
+                name: it.name,
+                qty: Number(it.qty),
+                unitCostBeforeDiscount: Number(it.unitCostBeforeDiscount),
+                discountPercent: Number(it.discountPercent),
+                cost: Number(it.unitCostBeforeTax),
+                profitMargin: Number(it.profitMargin),
+                sellingPrice: Number(it.sellingPrice)
+            }));
             if (!validItems.length) {
                 if (window.OkwUI && OkwUI.toast) OkwUI.toast('Add at least one product to this purchase', 'warning');
                 return;
@@ -460,18 +874,32 @@
             saveBtn.disabled = true;
             anotherBtn.disabled = true;
 
+            const taxSel = document.getElementById('poTaxSelect');
+            const taxOpt = taxSel.options[taxSel.selectedIndex];
+            const taxRate = taxOpt ? Number(taxOpt.getAttribute('data-rate') || 0) : 0;
+            const taxName = taxOpt ? (taxOpt.getAttribute('data-name') || '') : '';
+
             const payload = {
                 supplierId,
+                branchId: Number(branchId),
                 referenceNo: document.getElementById('poRefNo').value.trim(),
                 purchaseDate: document.getElementById('poDate').value || null,
                 purchaseStatus: document.getElementById('poStatus').value || 'Pending',
-                paymentStatus: document.getElementById('poPaymentStatus').value || 'Unpaid',
-                paymentMethod: document.getElementById('poPaymentMethod').value || 'Cash',
-                paidAmount: Number(document.getElementById('poPaidAmount').value || 0),
-                discountAmount: Number(document.getElementById('poDiscount').value || 0),
-                taxAmount: Number(document.getElementById('poTax').value || 0),
+                payTermNumber: document.getElementById('poPayTermNumber').value || null,
+                payTermType: document.getElementById('poPayTermType').value || '',
+                discountType: document.getElementById('poDiscountType').value || 'none',
+                discountAmount: Number(document.getElementById('poDiscountAmount').value || 0),
+                taxId: taxSel.value || null,
+                taxName,
+                taxRate,
+                shippingDetails: document.getElementById('poShippingDetails').value.trim(),
                 shippingCost: Number(document.getElementById('poShipping').value || 0),
                 notes: document.getElementById('poNotes').value.trim(),
+                paidAmount: Number(document.getElementById('poPaidAmount').value || 0),
+                paidOn: document.getElementById('poPaidOn').value || null,
+                paymentMethod: document.getElementById('poPaymentMethod').value || 'Cash',
+                paymentNote: document.getElementById('poPaymentNote').value.trim(),
+                document: attachedDoc,
                 items: validItems
             };
 
@@ -491,8 +919,13 @@
                 if (addAnotherMode) {
                     addAnotherMode = false;
                     poItems = [];
+                    clearDoc();
+                    const savedBranch = document.getElementById('poLocation').value;
                     document.getElementById('addPurchaseForm').reset();
+                    document.getElementById('poLocation').value = savedBranch;
                     document.getElementById('poDate').value = new Date().toISOString().slice(0, 10);
+                    document.getElementById('poPaidOn').value = localDateTimeNow();
+                    updateSupplierMeta();
                     renderItems();
                 } else {
                     window.location.href = '/inventory?tab=orders';

@@ -4627,6 +4627,15 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
                 const balance = Math.max(0, netTotal - paid);
 
                 if (window.OkwUI && typeof OkwUI.openPrintableRecord === 'function') {
+                    const metaRows = [];
+                    if (po.supplier_address) metaRows.push(['Supplier Address', po.supplier_address]);
+                    if (po.pay_term_number) metaRows.push(['Pay Term', `${po.pay_term_number} ${po.pay_term_type || 'Days'}`]);
+                    if (po.shipping_details) metaRows.push(['Shipping Details', po.shipping_details]);
+                    if (po.payment_method) metaRows.push(['Payment Method', po.payment_method]);
+                    if (po.paid_on) metaRows.push(['Paid On', new Date(po.paid_on).toLocaleString()]);
+                    if (po.payment_note) metaRows.push(['Payment Note', po.payment_note]);
+                    if (po.document_name) metaRows.push(['Attached Document', po.document_name]);
+
                     OkwUI.openPrintableRecord({
                         title: 'Purchase Order',
                         refNumber: po.reference_no || ('PO-' + po.id),
@@ -4636,7 +4645,7 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
                         branch: po.branch_name || '',
                         status: po.status || 'Pending',
                         paymentStatus: po.payment_status || 'Unpaid',
-                        metaRows: po.payment_method ? [['Payment Method', po.payment_method]] : [],
+                        metaRows,
                         items,
                         subtotal,
                         discount: Number(po.discount_amount || 0),

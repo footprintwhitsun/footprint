@@ -5466,7 +5466,7 @@ app.get('/api/purchase-orders/:id', authenticateToken, requireRole(MANAGER_ROLES
     const tenantId = req.user.tenant_id || 1;
     try {
         const poRes = await pool.query(`
-            SELECT po.*, s.name as supplier_name, b.name as branch_name
+            SELECT po.*, s.name as supplier_name, s.address as supplier_address, b.name as branch_name
             FROM purchase_orders po 
             LEFT JOIN suppliers s ON po.supplier_id = s.id AND COALESCE(s.tenant_id, 1) = $2
             LEFT JOIN branches b ON po.branch_id = b.id
@@ -5492,24 +5492,73 @@ app.get('/api/purchase-orders/:id', authenticateToken, requireRole(MANAGER_ROLES
 app.post('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), requirePermission('purchases', 'create'), async (req, res) => {
     const {
         supplierId,
+        branchId: requestedBranchId = null,
         items,
         referenceNo = '',
         purchaseDate = null,
         purchaseStatus = 'Pending',
-        paymentStatus = 'Unpaid',
+        payTermNumber = null,
+        payTermType = '',
+        paymentStatus = '',
         paymentMethod = 'Cash',
         paidAmount = 0,
+        paidOn = null,
+        paymentNote = '',
+        discountType = 'none',
         discountAmount = 0,
+        taxId = null,
+        taxName = '',
+        taxRate = 0,
         taxAmount = 0,
+        shippingDetails = '',
         shippingCost = 0,
-        notes = ''
+        notes = '',
+        document = null
     } = req.body;
     const tenantId = req.user.tenant_id || 1;
     if (!supplierId || !Array.isArray(items) || !items.length) {
         return res.status(400).json({ message: 'Supplier and items are required' });
     }
-    let branchId = req.user.store_id;
+
+    // Validate optional attached document (max 5MB, allowed extensions)
+    let docName = null;
+    let docMime = null;
+    let docData = null;
+    if (document && document.name && document.data) {
+        const allowedExt = /\.(pdf|csv|zip|doc|docx|jpeg|jpg|png)$/i;
+        const cleanName = String(document.name).trim().slice(0, 200);
+        if (!allowedExt.test(cleanName)) {
+            return res.status(400).json({ message: 'Unsupported file type. Allowed: .pdf, .csv, .zip, .doc, .docx, .jpeg, .jpg, .png' });
+        }
+        const rawData = String(document.data);
+        const commaIdx = rawData.indexOf(',');
+        const b64 = commaIdx >= 0 ? rawData.slice(commaIdx + 1) : rawData;
+        const approxBytes = Math.floor((b64.length * 3) / 4);
+        if (approxBytes > 5 * 1024 * 1024) {
+            return res.status(400).json({ message: 'Attached document exceeds the 5MB maximum file size' });
+        }
+        docName = cleanName;
+        docMime = String(document.mime || '').slice(0, 120);
+        docData = rawData;
+    }
+
+    const userRole = String(req.user.role || '').toLowerCase();
+    const isCrossBranch = ['super_admin', 'admin', 'ceo'].includes(userRole);
+    let branchId = req.user.store_id || null;
     let branchName = req.user.store_location || DEFAULT_BRANCH_NAME;
+
+    if (requestedBranchId && (isCrossBranch || !branchId || Number(requestedBranchId) === Number(branchId))) {
+        try {
+            const bRes = await pool.query(
+                'SELECT id, name FROM branches WHERE id = $1 AND COALESCE(tenant_id, 1) = $2 AND deleted_at IS NULL',
+                [Number(requestedBranchId), tenantId]
+            );
+            if (bRes.rows.length > 0) {
+                branchId = bRes.rows[0].id;
+                branchName = bRes.rows[0].name;
+            }
+        } catch (e) { console.error('Requested branch lookup error in PO creation:', e); }
+    }
 
     if (!branchId) {
         if (req.user.store_location) {
@@ -5530,9 +5579,28 @@ app.post('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), 
             ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS payment_method VARCHAR(40);
             ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS paid_amount NUMERIC(12,2) DEFAULT 0;
             ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS discount_amount NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS discount_type VARCHAR(20) DEFAULT 'none';
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS discount_input NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS tax_id VARCHAR(64);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS tax_name VARCHAR(80);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS tax_rate NUMERIC(6,2) DEFAULT 0;
             ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS tax_amount NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS shipping_details TEXT;
             ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS shipping_cost NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS pay_term_number INTEGER;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS pay_term_type VARCHAR(20);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS paid_on TIMESTAMP;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS payment_note TEXT;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS document_name VARCHAR(255);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS document_mime VARCHAR(120);
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS document_data TEXT;
             ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS notes TEXT;
+            ALTER TABLE purchase_orders ADD COLUMN IF NOT EXISTS created_by INTEGER;
+            ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS unit_cost_before_discount NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS discount_percent NUMERIC(6,2) DEFAULT 0;
+            ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS profit_margin NUMERIC(8,2) DEFAULT 0;
+            ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS selling_price NUMERIC(12,2) DEFAULT 0;
+            ALTER TABLE purchase_order_items ADD COLUMN IF NOT EXISTS line_total NUMERIC(12,2) DEFAULT 0;
         `);
         await client.query('BEGIN');
         const supCheck = await client.query('SELECT id, name FROM suppliers WHERE id = $1 AND COALESCE(tenant_id, 1) = $2', [supplierId, tenantId]);
@@ -5542,48 +5610,123 @@ app.post('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), 
         }
         const supplierName = supCheck.rows[0].name;
 
-        const subtotal = Number(items.reduce((sum, item) => {
+        const normalizedItems = items.map((item) => {
             const qty = Math.max(0, Number(item.qty || 0));
-            const cost = Math.max(0, Number(item.cost || 0));
-            return sum + qty * cost;
-        }, 0).toFixed(2));
-        const safeDiscount = Math.max(0, Number(discountAmount || 0));
-        const safeTax = Math.max(0, Number(taxAmount || 0));
-        const safeShipping = Math.max(0, Number(shippingCost || 0));
-        const netTotal = Number(Math.max(0, subtotal - safeDiscount + safeTax + safeShipping).toFixed(2));
+            const costBeforeDisc = Math.max(0, Number(item.unitCostBeforeDiscount ?? item.cost ?? 0));
+            const discPct = Math.min(100, Math.max(0, Number(item.discountPercent || 0)));
+            const unitCost = Number((costBeforeDisc * (1 - discPct / 100)).toFixed(2));
+            const lineTotal = Number((qty * unitCost).toFixed(2));
+            const sellingPrice = Math.max(0, Number(item.sellingPrice || 0));
+            const profitMargin = item.profitMargin != null && item.profitMargin !== ''
+                ? Number(Number(item.profitMargin).toFixed(2))
+                : (unitCost > 0 && sellingPrice > 0 ? Number((((sellingPrice - unitCost) / unitCost) * 100).toFixed(2)) : 0);
+            return {
+                barcode: item.barcode || '',
+                name: item.name || item.barcode || 'Item',
+                qty,
+                costBeforeDisc,
+                discPct,
+                unitCost,
+                lineTotal,
+                profitMargin,
+                sellingPrice
+            };
+        }).filter(it => it.qty > 0);
+
+        if (!normalizedItems.length) {
+            await client.query('ROLLBACK');
+            return res.status(400).json({ message: 'At least one item with quantity greater than 0 is required' });
+        }
+
+        const subtotal = Number(normalizedItems.reduce((sum, it) => sum + it.lineTotal, 0).toFixed(2));
+        const safeDiscountType = ['none', 'fixed', 'percentage'].includes(String(discountType).toLowerCase())
+            ? String(discountType).toLowerCase()
+            : (Number(discountAmount || 0) > 0 ? 'fixed' : 'none');
+        const safeDiscountInput = Math.max(0, Number(discountAmount || 0));
+        let safeDiscount = 0;
+        if (safeDiscountType === 'percentage') {
+            safeDiscount = Number((subtotal * (Math.min(100, safeDiscountInput) / 100)).toFixed(2));
+        } else if (safeDiscountType === 'fixed') {
+            safeDiscount = Number(Math.min(subtotal, safeDiscountInput).toFixed(2));
+        }
+
+        const afterDiscount = Math.max(0, subtotal - safeDiscount);
+        const safeTaxRate = Math.max(0, Number(taxRate || 0));
+        const safeTax = safeTaxRate > 0
+            ? Number((afterDiscount * (safeTaxRate / 100)).toFixed(2))
+            : Number(Math.max(0, Number(taxAmount || 0)).toFixed(2));
+        const safeShipping = Number(Math.max(0, Number(shippingCost || 0)).toFixed(2));
+        const netTotal = Number(Math.max(0, afterDiscount + safeTax + safeShipping).toFixed(2));
+
         const safeStatus = ['Pending', 'Ordered', 'Received'].includes(String(purchaseStatus)) ? String(purchaseStatus) : 'Pending';
-        let safePayStatus = ['Paid', 'Partial', 'Unpaid'].includes(String(paymentStatus)) ? String(paymentStatus) : 'Unpaid';
-        let safePaid = Math.max(0, Number(paidAmount || 0));
-        if (safePayStatus === 'Paid' && safePaid <= 0) safePaid = netTotal;
-        if (safePayStatus === 'Unpaid') safePaid = 0;
-        if (safePaid >= netTotal && netTotal > 0) safePayStatus = 'Paid';
-        else if (safePaid > 0 && safePaid < netTotal) safePayStatus = 'Partial';
+        let safePaid = Number(Math.max(0, Number(paidAmount || 0)).toFixed(2));
+        let safePayStatus = ['Paid', 'Partial', 'Unpaid'].includes(String(paymentStatus)) ? String(paymentStatus) : '';
+        if (!safePayStatus) {
+            if (safePaid >= netTotal && netTotal > 0) safePayStatus = 'Paid';
+            else if (safePaid > 0) safePayStatus = 'Partial';
+            else safePayStatus = 'Unpaid';
+        } else {
+            if (safePayStatus === 'Paid' && safePaid <= 0) safePaid = netTotal;
+            if (safePayStatus === 'Unpaid') safePaid = 0;
+            if (safePaid >= netTotal && netTotal > 0) safePayStatus = 'Paid';
+            else if (safePaid > 0 && safePaid < netTotal) safePayStatus = 'Partial';
+        }
+
+        const safePayTermNum = payTermNumber !== null && payTermNumber !== '' && Number(payTermNumber) > 0 ? Math.floor(Number(payTermNumber)) : null;
+        const safePayTermType = ['Days', 'Months'].includes(String(payTermType)) ? String(payTermType) : null;
+        const safePaidOn = paidOn ? new Date(paidOn) : (safePaid > 0 ? new Date() : null);
+        const validPaidOn = safePaidOn && !Number.isNaN(safePaidOn.getTime()) ? safePaidOn.toISOString() : null;
 
         const refNo = String(referenceNo || '').trim() || ('PO-' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + '-' + crypto.randomInt(1000, 9999));
 
         const poRes = await client.query(
             `INSERT INTO purchase_orders
-                (supplier_id, total_amount, status, branch_id, tenant_id, reference_no, purchase_date, payment_status, payment_method, paid_amount, discount_amount, tax_amount, shipping_cost, notes)
-             VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7::date, CURRENT_DATE),$8,$9,$10,$11,$12,$13,$14) RETURNING id, reference_no`,
-            [supplierId, netTotal, safeStatus, branchId, tenantId, refNo, purchaseDate || null, safePayStatus, String(paymentMethod || 'Cash'), safePaid, safeDiscount, safeTax, safeShipping, String(notes || '')]
+                (supplier_id, total_amount, status, branch_id, tenant_id, reference_no, purchase_date,
+                 payment_status, payment_method, paid_amount, paid_on, payment_note,
+                 discount_type, discount_input, discount_amount,
+                 tax_id, tax_name, tax_rate, tax_amount,
+                 shipping_details, shipping_cost,
+                 pay_term_number, pay_term_type,
+                 document_name, document_mime, document_data,
+                 notes, created_by)
+             VALUES ($1,$2,$3,$4,$5,$6,COALESCE($7::date, CURRENT_DATE),
+                     $8,$9,$10,$11::timestamp,$12,
+                     $13,$14,$15,
+                     $16,$17,$18,$19,
+                     $20,$21,
+                     $22,$23,
+                     $24,$25,$26,
+                     $27,$28)
+             RETURNING id, reference_no`,
+            [
+                supplierId, netTotal, safeStatus, branchId, tenantId, refNo, purchaseDate || null,
+                safePayStatus, String(paymentMethod || 'Cash'), safePaid, validPaidOn, String(paymentNote || ''),
+                safeDiscountType, safeDiscountInput, safeDiscount,
+                taxId ? String(taxId) : null, String(taxName || ''), safeTaxRate, safeTax,
+                String(shippingDetails || ''), safeShipping,
+                safePayTermNum, safePayTermType,
+                docName, docMime, docData,
+                String(notes || ''), req.user.id || null
+            ]
         );
         const poId = poRes.rows[0].id;
 
-        for (const item of items) {
-            const qty = Math.max(0, Number(item.qty || 0));
-            const cost = Math.max(0, Number(item.cost || 0));
+        for (const item of normalizedItems) {
             await client.query(
-                'INSERT INTO purchase_order_items (po_id, product_barcode, quantity, unit_cost, tenant_id) VALUES ($1, $2, $3, $4, $5)',
-                [poId, item.barcode, qty, cost, tenantId]
+                `INSERT INTO purchase_order_items
+                    (po_id, product_barcode, quantity, unit_cost, unit_cost_before_discount, discount_percent, profit_margin, selling_price, line_total, tenant_id)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                [poId, item.barcode, item.qty, item.unitCost, item.costBeforeDisc, item.discPct, item.profitMargin, item.sellingPrice, item.lineTotal, tenantId]
             );
-            if (safeStatus === 'Received' && qty > 0 && item.barcode) {
+            if (safeStatus === 'Received' && item.qty > 0 && item.barcode) {
                 await client.query(
                     `UPDATE products
                      SET stock = COALESCE(stock, 0) + $1,
                          cost_price = CASE WHEN $2 > 0 THEN $2 ELSE cost_price END,
-                         stock_levels = jsonb_set(COALESCE(stock_levels, '{}'::jsonb), ARRAY[$3::text], to_jsonb(COALESCE((stock_levels->>$3::text)::numeric, 0) + $1))
-                     WHERE barcode = $4 AND COALESCE(tenant_id, 1) = $5`,
-                    [qty, cost, branchName, item.barcode, tenantId]
+                         price = CASE WHEN $3 > 0 THEN $3 ELSE price END,
+                         stock_levels = jsonb_set(COALESCE(stock_levels, '{}'::jsonb), ARRAY[$4::text], to_jsonb(COALESCE((stock_levels->>$4::text)::numeric, 0) + $1))
+                     WHERE barcode = $5 AND COALESCE(tenant_id, 1) = $6`,
+                    [item.qty, item.unitCost, item.sellingPrice, branchName, item.barcode, tenantId]
                 );
             }
         }
@@ -5593,22 +5736,30 @@ app.post('/api/purchase-orders', authenticateToken, requireRole(MANAGER_ROLES), 
             reference_no: refNo,
             supplier_id: supplierId,
             supplier_name: supplierName,
+            branch_id: branchId,
+            branch_name: branchName,
             purchase_status: safeStatus,
+            pay_term: safePayTermNum ? `${safePayTermNum} ${safePayTermType || 'Days'}` : '',
             payment_status: safePayStatus,
             payment_method: paymentMethod,
             subtotal,
+            discount_type: safeDiscountType,
             discount_amount: safeDiscount,
+            tax_name: taxName,
+            tax_rate: safeTaxRate,
             tax_amount: safeTax,
             shipping_cost: safeShipping,
             total: netTotal,
             paid_amount: safePaid,
-            item_count: items.length,
-            items: items.map(it => ({
-                barcode: it.barcode || '',
-                name: it.name || it.barcode || 'Item',
-                qty: Math.max(0, Number(it.qty || 0)),
-                price: Math.max(0, Number(it.cost || 0)),
-                line_total: Number((Math.max(0, Number(it.qty || 0)) * Math.max(0, Number(it.cost || 0))).toFixed(2))
+            document_name: docName || '',
+            item_count: normalizedItems.length,
+            items: normalizedItems.map(it => ({
+                barcode: it.barcode,
+                name: it.name,
+                qty: it.qty,
+                price: it.unitCost,
+                selling_price: it.sellingPrice,
+                line_total: it.lineTotal
             }))
         });
         res.json({ success: true, id: poId, reference_no: refNo, total: netTotal, status: safeStatus, payment_status: safePayStatus });
