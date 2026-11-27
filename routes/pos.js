@@ -840,6 +840,17 @@ router.post('/api/pos/checkout', authenticateToken, requirePermission('sales', '
             const { unitPrice, factor, unitName } = computeServerUnitPrice(prod, price_group, it.unit_name, qty);
             // each line is rounded to the pesewa as it is added, so rounding never drifts across a long sale
             itemsSubtotal = Math.round((itemsSubtotal + Math.round((unitPrice * qty + Number.EPSILON) * 100) / 100) * 100) / 100;
+            const wDur = Number(it.warranty_duration !== undefined ? it.warranty_duration : (prod.warranty_duration || 0));
+            const wName = String(it.warranty_name !== undefined ? it.warranty_name : (prod.warranty_name || '')).trim();
+            const wType = it.warranty_duration_type || prod.warranty_duration_type || 'Months';
+            let wExpires = null;
+            if (wDur > 0 && wName) {
+                const exp = new Date();
+                if (wType === 'Days') exp.setDate(exp.getDate() + wDur);
+                else if (wType === 'Years') exp.setFullYear(exp.getFullYear() + wDur);
+                else exp.setMonth(exp.getMonth() + wDur);
+                wExpires = exp.toISOString();
+            }
             verifiedItems.push({
                 id: prod.id,
                 barcode: prod.barcode,
@@ -848,7 +859,13 @@ router.post('/api/pos/checkout', authenticateToken, requirePermission('sales', '
                 unit_name: unitName,
                 unit_factor: factor,
                 price: unitPrice,
-                stock_before: Number(prod.stock || 0)
+                stock_before: Number(prod.stock || 0),
+                warranty_id: (it.warranty_id !== undefined ? it.warranty_id : prod.warranty_id) || null,
+                warranty_name: wExpires ? wName : '',
+                warranty_duration: wExpires ? wDur : 0,
+                warranty_duration_type: wExpires ? wType : '',
+                warranty_expires_at: wExpires,
+                serial_no: it.serial_no ? String(it.serial_no).trim() : ''
             });
         }
 

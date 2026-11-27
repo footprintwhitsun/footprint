@@ -309,12 +309,14 @@
                         <input type="number" id="apConvRate" class="ap-input" step="any" min="1" value="1">
                     </div>
                     <div class="ap-field">
-                        <label for="apBatch">Batch / Lot Number (Optional)</label>
-                        <input type="text" id="apBatch" class="ap-input" placeholder="e.g. LOT-2026-01">
+                        <label for="apWarranty">Warranty (Optional)</label>
+                        <select id="apWarranty" class="ap-select">
+                            <option value="">None</option>
+                        </select>
                     </div>
-                    <div class="ap-field">
-                        <label for="apExpiry">Expiry Date (Optional)</label>
-                        <input type="date" id="apExpiry" class="ap-input">
+                    <div class="ap-field" style="display:none;">
+                        <input type="text" id="apBatch" value="">
+                        <input type="date" id="apExpiry" value="">
                     </div>
                 </div>
 
@@ -633,7 +635,7 @@
         // --- Lookups ---
         async function loadLookups() {
             try {
-                const [catRes, brRes, unitRes, locRes, taxRes, dmRes, varRes, prodRes] = await Promise.all([
+                const [catRes, brRes, unitRes, locRes, taxRes, dmRes, varRes, prodRes, warRes] = await Promise.all([
                     fetch('/api/categories', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => []),
                     fetch('/api/brands', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => []),
                     fetch('/api/units', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => []),
@@ -641,7 +643,8 @@
                     fetch('/api/taxes/active', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => []),
                     fetch('/api/device-models', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : {}).catch(() => ({})),
                     fetch('/api/variations', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : {}).catch(() => ({})),
-                    fetch('/api/products?limit=250', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => [])
+                    fetch('/api/products?limit=250', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => []),
+                    fetch('/api/warranties', { headers, credentials: 'include' }).then((r) => r.ok ? r.json() : []).catch(() => [])
                 ]);
 
                 const cats = Array.isArray(catRes) ? catRes : (catRes.categories || []);
@@ -687,6 +690,16 @@
                             packEl.value = meta.name || meta.alt_unit || packEl.value;
                         }
                     });
+                }
+
+                const warranties = Array.isArray(warRes) ? warRes : (warRes.warranties || []);
+                const warSel = document.getElementById('apWarranty');
+                if (warSel) {
+                    warSel.innerHTML = '<option value="">None</option>' + warranties.map((w) => {
+                        const dur = Number(w.duration || 0);
+                        const dtype = w.duration_type || 'Months';
+                        return `<option value="${esc(w.id)}" data-name="${esc(w.name)}" data-duration="${dur}" data-type="${esc(dtype)}">${esc(w.name)} (${dur} ${esc(dtype)})</option>`;
+                    }).join('');
                 }
 
                 const branches = Array.isArray(locRes) ? locRes : (locRes.branches || []);
@@ -1079,6 +1092,10 @@
                 reorder_level: Math.max(0, Math.round(Number(rawReorder === '' ? 10 : rawReorder) || 0)),
                 packaging_unit: document.getElementById('apPackUnit').value.trim() || 'Box',
                 conversion_rate: parseFloat(document.getElementById('apConvRate').value) || 1,
+                warranty_id: (() => { const s = document.getElementById('apWarranty'); return s && s.value ? Number(s.value) : null; })(),
+                warranty_name: (() => { const s = document.getElementById('apWarranty'); const o = s && s.options[s.selectedIndex]; return o && s.value ? (o.dataset.name || o.textContent) : ''; })(),
+                warranty_duration: (() => { const s = document.getElementById('apWarranty'); const o = s && s.options[s.selectedIndex]; return o && s.value ? Number(o.dataset.duration || 0) : 0; })(),
+                warranty_duration_type: (() => { const s = document.getElementById('apWarranty'); const o = s && s.options[s.selectedIndex]; return o && s.value ? (o.dataset.type || 'Months') : 'Months'; })(),
                 batch_number: document.getElementById('apBatch').value.trim(),
                 expiry_date: document.getElementById('apExpiry').value || null,
                 track_batch: Boolean(document.getElementById('apBatch').value.trim()),

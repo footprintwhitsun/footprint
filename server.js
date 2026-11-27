@@ -3486,7 +3486,11 @@ async function ensureExtendedProductColumns() {
         `ALTER TABLE products ADD COLUMN IF NOT EXISTS preparation_time_minutes INTEGER DEFAULT 0`,
         `ALTER TABLE products ADD COLUMN IF NOT EXISTS disable_woocommerce_sync BOOLEAN DEFAULT FALSE`,
         `ALTER TABLE products ADD COLUMN IF NOT EXISTS variation_items JSONB DEFAULT '[]'::jsonb`,
-        `ALTER TABLE products ADD COLUMN IF NOT EXISTS combo_items JSONB DEFAULT '[]'::jsonb`
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS combo_items JSONB DEFAULT '[]'::jsonb`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS warranty_id INTEGER`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS warranty_name VARCHAR(160) DEFAULT ''`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS warranty_duration INTEGER DEFAULT 0`,
+        `ALTER TABLE products ADD COLUMN IF NOT EXISTS warranty_duration_type VARCHAR(20) DEFAULT 'Months'`
     ];
     let anySucceeded = false;
     for (const sql of alterStmts) {
@@ -3606,7 +3610,8 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
         cost_inc_tax = 0, selling_price_exc_tax = 0, margin_pct = 0,
         device_model = '', enable_sr_no = false, not_for_selling = false, weight = '',
         preparation_time_minutes = 0, disable_woocommerce_sync = false,
-        variation_items = [], combo_items = []
+        variation_items = [], combo_items = [],
+        warranty_id = null, warranty_name = '', warranty_duration = 0, warranty_duration_type = 'Months'
     } = req.body;
     try {
         await ensureExtendedProductColumns();
@@ -3681,7 +3686,11 @@ app.post('/api/products', authenticateToken, requireRole(MANAGER_ROLES), async (
             ['preparation_time_minutes', cleanPrepMins],
             ['disable_woocommerce_sync', !!disable_woocommerce_sync],
             ['variation_items', JSON.stringify(varList), '::jsonb'],
-            ['combo_items', JSON.stringify(comboList), '::jsonb']
+            ['combo_items', JSON.stringify(comboList), '::jsonb'],
+            ['warranty_id', warranty_id ? Number(warranty_id) : null],
+            ['warranty_name', String(warranty_name || '')],
+            ['warranty_duration', Math.max(0, Math.round(Number(warranty_duration || 0)))],
+            ['warranty_duration_type', ['Days', 'Months', 'Years'].includes(warranty_duration_type) ? warranty_duration_type : 'Months']
         ].filter(([col]) => prodCols.has(col));
 
         // Check if a soft-deleted product with the same barcode+name already exists
@@ -7480,6 +7489,15 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
             }
 
             // 1. Verify products exist, enforce non-negative stock & compute server-authoritative prices
+            const computeWarrantyExpiry = (dur, type) => {
+                const n = Number(dur || 0);
+                if (!Number.isFinite(n) || n <= 0) return null;
+                const d = new Date();
+                if (type === 'Days') d.setDate(d.getDate() + n);
+                else if (type === 'Years') d.setFullYear(d.getFullYear() + n);
+                else d.setMonth(d.getMonth() + n);
+                return d.toISOString();
+            };
             let serverSubtotal = 0;
             const verifiedItems = [];
             for (const item of items) {
@@ -7487,7 +7505,7 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                 if (!item.barcode || !Number.isFinite(qty) || qty <= 0) {
                     throw new Error('Each item must have a valid barcode and positive quantity');
                 }
-                const pRes = await client.query('SELECT id, name, price, stock, stock_levels FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2 FOR UPDATE', [item.barcode, tenantId]);
+                const pRes = await client.query('SELECT * FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2 FOR UPDATE', [item.barcode, tenantId]);
                 if (pRes.rows.length === 0) throw new Error(`Product ${item.barcode} not found`);
                 const prod = pRes.rows[0];
                 if (!isReturn) {
@@ -7499,7 +7517,24 @@ app.post('/api/transactions', authenticateToken, async (req, res) => {
                 }
                 const unitPrice = Number(prod.price || 0);
                 serverSubtotal += unitPrice * qty;
-                verifiedItems.push({ ...item, id: prod.id, name: prod.name, qty, price: unitPrice });
+                const wId = item.warranty_id !== undefined ? item.warranty_id : (prod.warranty_id || null);
+                const wName = item.warranty_name !== undefined ? String(item.warranty_name || '') : String(prod.warranty_name || '');
+                const wDur = Number(item.warranty_duration !== undefined ? item.warranty_duration : (prod.warranty_duration || 0));
+                const wType = item.warranty_duration_type || prod.warranty_duration_type || 'Months';
+                const wExpires = (!isReturn && wDur > 0 && wName) ? computeWarrantyExpiry(wDur, wType) : null;
+                verifiedItems.push({
+                    ...item,
+                    id: prod.id,
+                    name: prod.name,
+                    qty,
+                    price: unitPrice,
+                    warranty_id: wId || null,
+                    warranty_name: wExpires ? wName : '',
+                    warranty_duration: wExpires ? wDur : 0,
+                    warranty_duration_type: wExpires ? wType : '',
+                    warranty_expires_at: wExpires,
+                    serial_no: item.serial_no ? String(item.serial_no).trim() : ''
+                });
             }
 
             const safeDiscount = Math.max(0, Number(discount || 0));

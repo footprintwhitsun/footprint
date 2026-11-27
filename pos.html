@@ -3053,8 +3053,45 @@
                 });
             } catch (_) {}
         }
-        if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', loadPosPriceGroups);
-        else loadPosPriceGroups();
+        let posWarranties = [];
+        async function loadPosWarranties() {
+            try {
+                const t = localStorage.getItem('authToken') || localStorage.getItem('token') || '';
+                const h = (t && t !== 'null' && t !== 'undefined') ? { Authorization: `Bearer ${t}` } : {};
+                const res = await fetch('/api/warranties', { headers: h, credentials: 'include' });
+                if (!res.ok) return;
+                const d = await res.json().catch(() => ({}));
+                posWarranties = Array.isArray(d.warranties) ? d.warranties : [];
+            } catch (_) { }
+        }
+        function setCartItemWarranty(index, warrantyId) {
+            const item = cart[index];
+            if (!item) return;
+            if (!warrantyId) {
+                item.warranty_id = null;
+                item.warranty_name = '';
+                item.warranty_duration = 0;
+                item.warranty_duration_type = '';
+            } else {
+                const w = posWarranties.find(x => String(x.id) === String(warrantyId));
+                if (w) {
+                    item.warranty_id = Number(w.id);
+                    item.warranty_name = w.name;
+                    item.warranty_duration = Number(w.duration || 0);
+                    item.warranty_duration_type = w.duration_type || 'Months';
+                }
+            }
+            renderCart();
+        }
+        function setCartItemSerial(index, val) {
+            if (cart[index]) cart[index].serial_no = String(val || '').trim();
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => { loadPosPriceGroups(); loadPosWarranties(); });
+        } else {
+            loadPosPriceGroups();
+            loadPosWarranties();
+        }
 
         function addToCart(product) {
             try { bumpQuickPick(product.id); setTimeout(renderQuickPicks, 0); } catch (_) { }
@@ -3816,12 +3853,23 @@
                 const returnLabel = item.returnMode ? '<span style="background:#ff9800;color:white;font-size:9px;padding:2px 5px;border-radius:3px;">RETURN</span>' : '';
                 const returnCheckbox = item.returnMode ? `<input type="checkbox" class="return-checkbox" data-index="${index}" ${item.selectedForReturn ? 'checked' : ''} data-onchange="toggleItemReturn(${index}, this.checked)" title="Select for return">` : '';
 
+                const warrantyOptions = (!item.returnMode && posWarranties.length)
+                    ? `<div style="margin-top:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                        <select data-onchange="setCartItemWarranty(${index}, this.value)" title="Item Warranty" style="height:22px;padding:0 6px;border:1px solid ${item.warranty_name ? '#86efac' : '#e2e8f0'};border-radius:6px;background:${item.warranty_name ? '#f0fdf4' : '#f8fafc'};color:${item.warranty_name ? '#166534' : '#475569'};font-size:10.5px;font-weight:600;max-width:155px;cursor:pointer;">
+                            <option value="">No Warranty</option>
+                            ${posWarranties.map(w => `<option value="${Number(w.id)}"${String(item.warranty_id || '') === String(w.id) ? ' selected' : ''}>🛡 ${window.escapeHtml(w.name)} (${Number(w.duration || 0)} ${window.escapeHtml(w.duration_type || 'Months')})</option>`).join('')}
+                        </select>
+                        ${item.warranty_name ? `<input type="text" placeholder="Serial / IMEI (opt)" value="${window.escapeHtml(item.serial_no || '')}" data-onchange="setCartItemSerial(${index}, this.value)" style="height:22px;width:110px;padding:0 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:10.5px;">` : ''}
+                    </div>`
+                    : (item.warranty_name ? `<div style="margin-top:3px;font-size:10.5px;color:#166534;font-weight:600;">🛡 ${window.escapeHtml(item.warranty_name)}</div>` : '');
+
                 itemsHtml += `
             <div class="cart-item ${returnClass}">
                 ${item.returnMode ? `<div style="text-align: center;">${returnCheckbox}</div>` : ''}
                 <div class="cart-item-name" title="${window.escapeHtml(item.name)}">
                     ${window.escapeHtml(item.name)}
                     ${returnLabel}
+                    ${warrantyOptions}
                 </div>
                 <div class="cart-item-details">${window.escapeHtml(item.barcode)}</div>
                 <div class="cart-item-price">

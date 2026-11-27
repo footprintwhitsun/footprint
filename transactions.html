@@ -301,7 +301,12 @@
             const list = allTransactions.filter((t) => {
                 if (method && String(t.payment_method || '').toLowerCase() !== method) return false;
                 if (q) {
-                    const hay = `${t.receipt_number || ''} ${t.payment_method || ''} ${t.customer_name || ''}`.toLowerCase();
+                    let itemText = '';
+                    try {
+                        const arr = typeof t.items === 'string' ? JSON.parse(t.items) : (Array.isArray(t.items) ? t.items : []);
+                        itemText = arr.map(i => `${i.name || ''} ${i.warranty_name || ''} ${i.serial_no || ''}`).join(' ');
+                    } catch (_) { }
+                    const hay = `${t.receipt_number || ''} ${t.payment_method || ''} ${t.customer_name || ''} ${itemText}`.toLowerCase();
                     if (!hay.includes(q)) return false;
                 }
                 return true;
@@ -358,10 +363,31 @@
                 const pm = String(trx.payment_method || 'cash').toLowerCase();
                 const badgeCls = pm === 'cash' ? 'tx-badge-cash' : (pm === 'momo' ? 'tx-badge-momo' : (pm === 'card' ? 'tx-badge-card' : 'tx-badge-other'));
                 const ref = trx.receipt_number || trx.id;
+                let warrantyBadge = '';
+                try {
+                    const itemsArr = typeof trx.items === 'string' ? JSON.parse(trx.items) : (Array.isArray(trx.items) ? trx.items : []);
+                    const wItems = itemsArr.filter(it => it && (it.warranty_name || it.warranty_expires_at));
+                    if (wItems.length > 0) {
+                        const now = Date.now();
+                        const activeItem = wItems.find(it => !it.warranty_expires_at || new Date(it.warranty_expires_at).getTime() >= now);
+                        const first = activeItem || wItems[0];
+                        const expDate = first.warranty_expires_at ? new Date(first.warranty_expires_at) : null;
+                        const daysLeft = expDate ? Math.ceil((expDate.getTime() - now) / 86400000) : null;
+                        const isActive = !expDate || daysLeft >= 0;
+                        const label = isActive
+                            ? `🛡 ${first.warranty_name || 'Warranty'}${daysLeft !== null ? ` · ${daysLeft}d left` : ''}`
+                            : `🛡 Warranty Expired`;
+                        const tip = wItems.map(it => `${it.name || 'Item'}: ${it.warranty_name || 'Warranty'}${it.warranty_expires_at ? ' (exp ' + new Date(it.warranty_expires_at).toLocaleDateString() + ')' : ''}${it.serial_no ? ' · S/N ' + it.serial_no : ''}`).join(' | ');
+                        warrantyBadge = `<div style="margin-top:3px;"><span title="${esc(tip)}" style="display:inline-block;font-size:11px;font-weight:600;padding:2px 7px;border-radius:999px;background:${isActive ? '#dcfce7' : '#fee2e2'};color:${isActive ? '#166534' : '#991b1b'};">${esc(label)}</span></div>`;
+                    }
+                } catch (_) { }
                 return `
                     <tr>
                         <td style="white-space:nowrap;">${esc(dateStr)}</td>
-                        <td style="font-family:ui-monospace,monospace;font-weight:600;">${esc(ref)}</td>
+                        <td>
+                            <div style="font-family:ui-monospace,monospace;font-weight:600;">${esc(ref)}</div>
+                            ${warrantyBadge}
+                        </td>
                         <td><span class="tx-badge ${badgeCls}">${esc(pm)}</span></td>
                         <td class="num" style="font-weight:700;">${esc(money(trx.total_amount))}</td>
                         <td style="text-align:right;">
