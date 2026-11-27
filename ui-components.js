@@ -1160,11 +1160,18 @@
                 }).join('')}</tr>`).join('');
                 tbody.querySelectorAll('tr[data-row-idx]').forEach(tr => {
                     tr.addEventListener('click', (e) => {
-                        if (e.target.closest('button, a, input, select, label, details, summary, [data-onclick], [onclick]')) return;
+                        if (e.target.closest('button, a, input, select, textarea, label, details, summary, [role="menu"], [role="menuitem"], .dropdown, .dropdown-menu, [data-onclick], [onclick]')) return;
+                        const td = e.target.closest('td');
+                        if (td && /^(action|actions)$/i.test(String(td.getAttribute('data-label') || '').trim())) return;
                         const row = slice[Number(tr.dataset.rowIdx)];
                         if (!row) return;
                         if (typeof opts.onRowClick === 'function') {
                             opts.onRowClick(row);
+                            return;
+                        }
+                        const viewBtn = Array.from(tr.querySelectorAll('button')).find(b => /^(view|view details|view purchase|inspect)$/i.test((b.textContent || '').trim()) || /^view\b/i.test(String(b.getAttribute('title') || '').trim()));
+                        if (viewBtn) {
+                            viewBtn.click();
                             return;
                         }
                         const allMetaRows = columns
@@ -1498,12 +1505,24 @@
         if (!tbody.dataset.okwExpandBound) {
             tbody.dataset.okwExpandBound = '1';
             tbody.addEventListener('click', (e) => {
-                if (e.target.closest('button, a, input, select, textarea, label, details, summary, [data-onclick], [onclick], .okw-row-expand-detail')) return;
+                if (table.dataset.okwCustomRowClick === '1' || tbody.dataset.okwCustomRowClick === '1') return;
+                if (e.target.closest('button, a, input, select, textarea, label, details, summary, [role="menu"], [role="menuitem"], .dropdown, .dropdown-menu, [data-onclick], [onclick], .okw-row-expand-detail')) return;
                 const tr = e.target.closest('tr');
                 if (!tr || tr.parentNode !== tbody || tr.classList.contains('okw-row-expand-detail')) return;
                 const cells = Array.from(tr.querySelectorAll('td'));
                 if (!cells.length || (cells.length === 1 && Number(cells[0].getAttribute('colspan') || 1) > 1)) return;
+                const clickedTd = e.target.closest('td');
                 const headCells = Array.from(table.querySelectorAll('thead th'));
+                if (clickedTd) {
+                    const tdIdx = cells.indexOf(clickedTd);
+                    const hdrLbl = headCells[tdIdx] ? headCells[tdIdx].textContent.replace(/[▲▼]/g, '').trim() : '';
+                    if (/^(action|actions)$/i.test(hdrLbl) || /^(action|actions)$/i.test(String(clickedTd.getAttribute('data-label') || '').trim())) return;
+                }
+                const viewBtn = Array.from(tr.querySelectorAll('button')).find(b => /^(view|view details|view purchase|inspect)$/i.test((b.textContent || '').trim()) || /^view\b/i.test(String(b.getAttribute('title') || '').trim()));
+                if (viewBtn) {
+                    viewBtn.click();
+                    return;
+                }
                 const fields = headCells
                     .map((th, idx) => {
                         const lbl = th.textContent.replace(/[▲▼]/g, '').trim();

@@ -928,7 +928,7 @@
                             <th>Added By</th>
                         </tr>
                     </thead>
-                    <tbody id="poTable"><tr><td colspan="10" style="text-align:center; padding:24px; color:#64748b;">Loading...</td></tr></tbody>
+                    <tbody id="poTable" data-okw-custom-row-click="1"><tr><td colspan="10" style="text-align:center; padding:24px; color:#64748b;">Loading...</td></tr></tbody>
                     <tfoot id="poTableFoot" style="background:#f8fafc; font-weight:700; border-top:2px solid #e2e8f0;">
                         <tr>
                             <td colspan="7" style="text-align:right; padding:12px 14px; color:#0f172a;">Total:</td>
@@ -4517,17 +4517,9 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
                 const payCls = String(payStatus).toLowerCase() === 'paid' ? 'stock-ok' : 'stock-low';
 
                 return `
-                    <tr data-onclick="viewPO(${id})" style="cursor:pointer;">
+                    <tr data-po-id="${id}" style="cursor:pointer;">
                         <td data-label="Action" style="white-space:nowrap;">
-                            <details style="position:relative; display:inline-block;">
-                                <summary style="list-style:none; cursor:pointer; display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 11px; border-radius:7px; border:1px solid #cbd5e1; background:#ffffff; color:#0f172a; font-size:12px; font-weight:600; user-select:none;">Actions ▾</summary>
-                                <div style="position:absolute; left:0; top:calc(100% + 4px); min-width:155px; background:#ffffff; border:1px solid #cbd5e1; border-radius:9px; box-shadow:0 12px 28px rgba(15,23,42,0.16); z-index:80; padding:4px; display:flex; flex-direction:column; gap:2px;">
-                                    <button type="button" data-onclick="viewPO(${id})" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 10px; border-radius:6px; font-size:12.5px; font-weight:500; color:#0f172a; cursor:pointer;">View Purchase</button>
-                                    ${isPending ? `<button type="button" data-onclick="receiveGoods(${id})" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 10px; border-radius:6px; font-size:12.5px; font-weight:600; color:#15803d; cursor:pointer;">Receive Goods</button>` : ''}
-                                    <button type="button" data-onclick="viewPO(${id})" style="width:100%; text-align:left; background:transparent; border:none; padding:8px 10px; border-radius:6px; font-size:12.5px; font-weight:500; color:#334155; cursor:pointer;">Print / PDF</button>
-                                    <a href="/inventory?tab=purchase_returns" style="display:block; text-decoration:none; padding:8px 10px; border-radius:6px; font-size:12.5px; font-weight:500; color:#b45309;">Purchase Return</a>
-                                </div>
-                            </details>
+                            <button type="button" class="po-action-trigger" data-po-menu-id="${id}" data-po-pending="${isPending ? '1' : '0'}" style="display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 11px; border-radius:7px; border:1px solid #cbd5e1; background:#ffffff; color:#0f172a; font-size:12px; font-weight:600; cursor:pointer; user-select:none;">Actions ▾</button>
                         </td>
                         <td data-label="Date" style="white-space:nowrap;">${OkwUI.escapeHtml(dateStr)}</td>
                         <td data-label="Reference No" style="font-family:ui-monospace,monospace; font-weight:600;">${OkwUI.escapeHtml(refNo)}</td>
@@ -4541,7 +4533,95 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
                     </tr>
                 `;
             }).join('') : '<tr><td colspan="10" style="text-align:center; padding:28px; color:#64748b;">No data available in table</td></tr>';
+            bindPOActionMenuAndRowClicks();
             updatePagination('po', filteredPOs.length, poPage, poRows);
+        }
+
+        function closePOActionMenu() {
+            const m = document.getElementById('poFloatingActionMenu');
+            if (m) m.remove();
+        }
+
+        function openPOActionMenu(btn, id, isPending) {
+            const existing = document.getElementById('poFloatingActionMenu');
+            const sameBtn = existing && existing.dataset.forId === String(id);
+            closePOActionMenu();
+            if (sameBtn) return;
+
+            const menu = document.createElement('div');
+            menu.id = 'poFloatingActionMenu';
+            menu.dataset.forId = String(id);
+            menu.setAttribute('role', 'menu');
+            menu.style.cssText = 'position:fixed; min-width:170px; background:#ffffff; border:1px solid #cbd5e1; border-radius:10px; box-shadow:0 14px 32px rgba(15,23,42,0.18); z-index:9999; padding:5px; display:flex; flex-direction:column; gap:2px;';
+
+            const itemStyle = 'width:100%; text-align:left; background:transparent; border:none; padding:8px 11px; border-radius:6px; font-size:12.5px; font-weight:500; cursor:pointer; display:block; text-decoration:none; box-sizing:border-box;';
+            menu.innerHTML = `
+                <button type="button" role="menuitem" data-po-act="view" style="${itemStyle} color:#0f172a;">View Purchase</button>
+                ${isPending ? `<button type="button" role="menuitem" data-po-act="receive" style="${itemStyle} font-weight:600; color:#15803d;">Receive Goods</button>` : ''}
+                <button type="button" role="menuitem" data-po-act="print" style="${itemStyle} color:#334155;">Print / PDF</button>
+                <a href="/inventory?tab=purchase_returns" role="menuitem" style="${itemStyle} color:#b45309;">Purchase Return</a>
+            `;
+            document.body.appendChild(menu);
+
+            const rect = btn.getBoundingClientRect();
+            const mRect = menu.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            const top = spaceBelow < mRect.height + 12 ? Math.max(8, rect.top - mRect.height - 6) : (rect.bottom + 6);
+            const left = Math.min(Math.max(8, rect.left), window.innerWidth - mRect.width - 8);
+            menu.style.top = top + 'px';
+            menu.style.left = left + 'px';
+
+            menu.addEventListener('click', (ev) => {
+                const actBtn = ev.target.closest('[data-po-act]');
+                if (!actBtn) {
+                    if (ev.target.closest('a')) closePOActionMenu();
+                    return;
+                }
+                ev.stopPropagation();
+                const act = actBtn.getAttribute('data-po-act');
+                closePOActionMenu();
+                if (act === 'view' || act === 'print') viewPO(id);
+                else if (act === 'receive') receiveGoods(id);
+            });
+        }
+
+        function bindPOActionMenuAndRowClicks() {
+            const poTbody = document.getElementById('poTable');
+            if (poTbody && !poTbody.dataset.poEventsBound) {
+                poTbody.dataset.poEventsBound = '1';
+                poTbody.addEventListener('click', (e) => {
+                    const trigger = e.target.closest('.po-action-trigger');
+                    if (trigger) {
+                        e.stopPropagation();
+                        openPOActionMenu(trigger, Number(trigger.dataset.poMenuId), trigger.dataset.poPending === '1');
+                        return;
+                    }
+                    if (e.target.closest('button, a, input, select, label, [data-label="Action"]')) return;
+                    const tr = e.target.closest('tr[data-po-id]');
+                    if (tr) {
+                        closePOActionMenu();
+                        viewPO(Number(tr.dataset.poId));
+                    }
+                });
+            }
+            const recvTbody = document.getElementById('receivingList');
+            if (recvTbody && !recvTbody.dataset.poEventsBound) {
+                recvTbody.dataset.poEventsBound = '1';
+                recvTbody.dataset.okwCustomRowClick = '1';
+                recvTbody.addEventListener('click', (e) => {
+                    if (e.target.closest('button, a, input, select, label, [data-label="Actions"]')) return;
+                    const tr = e.target.closest('tr[data-po-id]');
+                    if (tr) viewPO(Number(tr.dataset.poId));
+                });
+            }
+            if (!window.__okwPoMenuGlobalBound) {
+                window.__okwPoMenuGlobalBound = true;
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('#poFloatingActionMenu, .po-action-trigger')) closePOActionMenu();
+                });
+                document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closePOActionMenu(); });
+                window.addEventListener('scroll', closePOActionMenu, true);
+            }
         }
 
         function renderReceivingTable() {
@@ -4575,19 +4655,20 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
                 const statusClass = isPending ? 'stock-low' : 'stock-ok';
 
                 return `
-                    <tr data-onclick="viewPO(${id})" style="cursor:pointer;">
+                    <tr data-po-id="${id}" style="cursor:pointer;">
                         <td data-label=""><input type="checkbox" class="receiving-check" value="${id}" ${!isPending ? 'disabled' : ''}></td>
                         <td data-label="PO #">#${id}</td>
                         <td data-label="Supplier">${OkwUI.escapeHtml(supplierName)}</td>
                         <td data-label="Total">${formatCurrency(total)}</td>
                         <td data-label="Status"><span class="stock-badge ${statusClass}">${status}</span></td>
                         <td data-label="Actions">
-                            <button data-onclick="viewPO(${id})" title="View Details" style="padding: 5px 15px; background: #f0f7ff; color: var(--primary-color); border: 1px solid #b3e5fc; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px; margin-right: 5px;">View</button>
-                            ${isPending ? `<button data-onclick="receiveGoods(${id})" style="padding: 5px 15px; background: var(--secondary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px;">Receive</button>` : ''}
+                            <button type="button" data-onclick="viewPO(${id})" title="View Details" style="padding: 5px 15px; background: #f0f7ff; color: var(--primary-color); border: 1px solid #b3e5fc; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px; margin-right: 5px;">View</button>
+                            ${isPending ? `<button type="button" data-onclick="receiveGoods(${id})" style="padding: 5px 15px; background: var(--secondary-color); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500; font-size: 13px;">Receive</button>` : ''}
                         </td>
                     </tr>
                 `;
             }).join('') : '<tr><td colspan="6" style="text-align:center; padding:20px; color:#999;">No orders found matching criteria.</td></tr>';
+            bindPOActionMenuAndRowClicks();
             updatePagination('recv', filteredReceiving.length, recvPage, recvRows);
         }
 
@@ -4614,9 +4695,11 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
 
         async function viewPO(id) {
             try {
-                const token = localStorage.getItem('authToken');
+                const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+                const headers = (token && token !== 'null' && token !== 'undefined') ? { 'Authorization': `Bearer ${token}` } : {};
                 const res = await fetch(`/api/purchase-orders/${id}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
+                    headers,
+                    credentials: 'include'
                 });
                 if (!res.ok) throw new Error("PO not found");
                 const po = await res.json();
