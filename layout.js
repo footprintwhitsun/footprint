@@ -1100,62 +1100,73 @@
                 if (currentQuery) return false;
                 return query ? m === defaultForPath : true;
             };
-            const groups = [];
-            const groupMap = new Map();
-            for (const m of allowed) {
-                if (!groupMap.has(m.group)) {
-                    const arr = [];
-                    groupMap.set(m.group, arr);
-                    groups.push([m.group, arr]);
-                }
-                groupMap.get(m.group).push(m);
-            }
-            const GROUP_ICONS = {
-                'User Management': 'users',
-                'Contacts': 'users',
-                'Products': 'package',
-                'CEO': 'shield',
-                'Company': 'layers',
-                'Sales': 'shoppingBag',
-                'Till': 'clock',
-                'Inventory': 'package',
-                'Accounts': 'dollarSign',
-                'Reports': 'barChart',
-                'Insights': 'trendingUp',
-                'Staff': 'users',
-                'Settings': 'settings',
-                'Profile': 'user'
-            };
-            nav.innerHTML = groups.map(([groupName, items]) => {
-                const distinctSubgroups = new Set(items.map(i => i.subgroup).filter(Boolean));
-                const showSubgroups = distinctSubgroups.size > 1;
-                let lastSub = null;
-                const links = items.map(m => {
+            const isCashierMenu = effectiveRole === 'cashier' || effectiveRole === 'teller';
+            if (isCashierMenu) {
+                const CASHIER_ORDER = ['/pos', '/open-shift', '/close-shift', '/transactions', '/customers'];
+                const byUrl = new Map(allowed.map(m => [m.url, m]));
+                const ordered = CASHIER_ORDER.map(u => byUrl.get(u)).filter(Boolean);
+                nav.innerHTML = ordered.map(m => {
                     const active = isItemActive(m) ? ' active' : '';
-                    let subHtml = '';
-                    if (showSubgroups && m.subgroup && m.subgroup !== lastSub) {
-                        lastSub = m.subgroup;
-                        subHtml = `<div class="nav-subgroup-label">${m.subgroup}</div>`;
-                    }
-                    return `${subHtml}<a href="${m.url}" class="nav-item${active}">${ICONS[m.icon] || ''}<span>${m.label}</span></a>`;
+                    return `<a href="${m.url}" class="nav-item${active}" title="${m.label}">${ICONS[m.icon] || ''}<span>${m.label}</span></a>`;
                 }).join('');
-                if (groupName === 'Core' || groupName === 'Account') return links;
-                const hasActive = items.some(isItemActive);
-                const groupIconSvg = ICONS[GROUP_ICONS[groupName] || (items[0] && items[0].icon) || 'folder'] || '';
-                const chevSvg = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
-                return `
-                    <div class="nav-group" data-group="${groupName}">
-                        <button type="button" class="nav-section nav-section-toggle${hasActive ? ' has-active' : ''}" title="${groupName}" aria-label="${groupName}" aria-expanded="${hasActive ? 'true' : 'false'}">
-                            ${groupIconSvg}
-                            <span class="nav-group-text">${groupName}</span>
-                            ${chevSvg}
-                        </button>
-                        <div class="nav-group-items" style="display:${hasActive ? 'flex' : 'none'};flex-direction:column;">
-                            ${links}
+            } else {
+                const groups = [];
+                const groupMap = new Map();
+                for (const m of allowed) {
+                    if (!groupMap.has(m.group)) {
+                        const arr = [];
+                        groupMap.set(m.group, arr);
+                        groups.push([m.group, arr]);
+                    }
+                    groupMap.get(m.group).push(m);
+                }
+                const GROUP_ICONS = {
+                    'User Management': 'users',
+                    'Contacts': 'users',
+                    'Products': 'package',
+                    'CEO': 'shield',
+                    'Company': 'layers',
+                    'Sales': 'shoppingBag',
+                    'Till': 'clock',
+                    'Inventory': 'package',
+                    'Accounts': 'dollarSign',
+                    'Reports': 'barChart',
+                    'Insights': 'trendingUp',
+                    'Staff': 'users',
+                    'Settings': 'settings',
+                    'Profile': 'user'
+                };
+                nav.innerHTML = groups.map(([groupName, items]) => {
+                    const distinctSubgroups = new Set(items.map(i => i.subgroup).filter(Boolean));
+                    const showSubgroups = distinctSubgroups.size > 1;
+                    let lastSub = null;
+                    const links = items.map(m => {
+                        const active = isItemActive(m) ? ' active' : '';
+                        let subHtml = '';
+                        if (showSubgroups && m.subgroup && m.subgroup !== lastSub) {
+                            lastSub = m.subgroup;
+                            subHtml = `<div class="nav-subgroup-label">${m.subgroup}</div>`;
+                        }
+                        return `${subHtml}<a href="${m.url}" class="nav-item${active}">${ICONS[m.icon] || ''}<span>${m.label}</span></a>`;
+                    }).join('');
+                    if (groupName === 'Core' || groupName === 'Account') return links;
+                    const hasActive = items.some(isItemActive);
+                    const groupIconSvg = ICONS[GROUP_ICONS[groupName] || (items[0] && items[0].icon) || 'folder'] || '';
+                    const chevSvg = '<svg class="nav-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>';
+                    return `
+                        <div class="nav-group" data-group="${groupName}">
+                            <button type="button" class="nav-section nav-section-toggle${hasActive ? ' has-active' : ''}" title="${groupName}" aria-label="${groupName}" aria-expanded="${hasActive ? 'true' : 'false'}">
+                                ${groupIconSvg}
+                                <span class="nav-group-text">${groupName}</span>
+                                ${chevSvg}
+                            </button>
+                            <div class="nav-group-items" style="display:${hasActive ? 'flex' : 'none'};flex-direction:column;">
+                                ${links}
+                            </div>
                         </div>
-                    </div>
-                `;
-            }).join('');
+                    `;
+                }).join('');
+            }
 
             const collapseAllGroups = () => {
                 nav.querySelectorAll('.nav-group').forEach(g => {
