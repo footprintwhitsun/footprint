@@ -3853,15 +3853,16 @@
                 const returnLabel = item.returnMode ? '<span style="background:#ff9800;color:white;font-size:9px;padding:2px 5px;border-radius:3px;">RETURN</span>' : '';
                 const returnCheckbox = item.returnMode ? `<input type="checkbox" class="return-checkbox" data-index="${index}" ${item.selectedForReturn ? 'checked' : ''} data-onchange="toggleItemReturn(${index}, this.checked)" title="Select for return">` : '';
 
-                const warrantyOptions = (!item.returnMode && posWarranties.length)
-                    ? `<div style="margin-top:4px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-                        <select data-onchange="setCartItemWarranty(${index}, this.value)" title="Item Warranty" style="height:22px;padding:0 6px;border:1px solid ${item.warranty_name ? '#86efac' : '#e2e8f0'};border-radius:6px;background:${item.warranty_name ? '#f0fdf4' : '#f8fafc'};color:${item.warranty_name ? '#166534' : '#475569'};font-size:10.5px;font-weight:600;max-width:165px;cursor:pointer;">
-                            <option value="">No Warranty</option>
-                            ${posWarranties.map(w => `<option value="${Number(w.id)}"${String(item.warranty_id || '') === String(w.id) ? ' selected' : ''}>${window.escapeHtml(w.name)} (${Number(w.duration || 0)} ${window.escapeHtml(w.duration_type || 'Months')})</option>`).join('')}
-                        </select>
-                        ${item.warranty_name ? `<input type="text" placeholder="Serial / IMEI (opt)" value="${window.escapeHtml(item.serial_no || '')}" data-onchange="setCartItemSerial(${index}, this.value)" style="height:22px;width:115px;padding:0 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:10.5px;">` : ''}
+                const hasWarranty = !item.returnMode && Boolean(item.warranty_name && Number(item.warranty_duration || 0) > 0);
+                const wDurLabel = hasWarranty ? ` (${Number(item.warranty_duration)} ${window.escapeHtml(item.warranty_duration_type || 'Months')})` : '';
+                const warrantyOptions = hasWarranty
+                    ? `<div style="margin-top:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                        <span style="display:inline-flex;align-items:center;padding:2px 7px;border-radius:999px;background:#f0fdf4;border:1px solid #bbf7d0;color:#166534;font-size:10.5px;font-weight:600;">Warranty: ${window.escapeHtml(item.warranty_name)}${wDurLabel}</span>
+                        ${item.enable_sr_no ? `<input type="text" placeholder="Serial / IMEI (opt)" value="${window.escapeHtml(item.serial_no || '')}" data-onchange="setCartItemSerial(${index}, this.value)" style="height:22px;width:120px;padding:0 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:10.5px;">` : ''}
                     </div>`
-                    : (item.warranty_name ? `<div style="margin-top:3px;font-size:10.5px;color:#166534;font-weight:600;">Warranty: ${window.escapeHtml(item.warranty_name)}</div>` : '');
+                    : (item.enable_sr_no && !item.returnMode
+                        ? `<div style="margin-top:4px;"><input type="text" placeholder="Serial / IMEI (opt)" value="${window.escapeHtml(item.serial_no || '')}" data-onchange="setCartItemSerial(${index}, this.value)" style="height:22px;width:120px;padding:0 6px;border:1px solid #cbd5e1;border-radius:6px;font-size:10.5px;"></div>`
+                        : '');
 
                 itemsHtml += `
             <div class="cart-item ${returnClass}">
