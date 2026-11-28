@@ -4749,6 +4749,53 @@
             const isAuthenticated = await checkSessionAndShift();
             if (!isAuthenticated) return;
 
+            // If redirected from List Drafts / List Quotations ("Transfer to POS Cart"), load items into today's cart
+            const urlParams = new URLSearchParams(window.location.search);
+            const loadDraftId = urlParams.get('loadDraft');
+            const loadQuoteId = urlParams.get('loadQuote');
+            if (loadDraftId || loadQuoteId) {
+                setTimeout(async () => {
+                    try {
+                        const tok = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+                        const hdr = (tok && tok !== 'null' && tok !== 'undefined') ? { 'Authorization': `Bearer ${tok}` } : {};
+                        const endpoint = loadDraftId ? '/api/pos/holds' : '/api/pos/quotations';
+                        const res = await fetch(endpoint, { headers: hdr, credentials: 'include' });
+                        if (!res.ok) return;
+                        const data = await res.json().catch(() => ({}));
+                        const list = loadDraftId ? (data.holds || []) : (data.quotations || []);
+                        const targetId = loadDraftId || loadQuoteId;
+                        const rec = list.find(x => String(x.id) === String(targetId));
+                        if (!rec) return;
+                        const recItems = Array.isArray(rec.items) ? rec.items : (typeof rec.items === 'string' ? JSON.parse(rec.items || '[]') : []);
+                        if (!recItems.length) return;
+                        cart = [];
+                        for (const it of recItems) {
+                            const live = (Array.isArray(products) ? products : []).find(p => String(p.barcode) === String(it.barcode));
+                            cart.push({
+                                barcode: it.barcode || (live && live.barcode) || '',
+                                name: (live && live.name) || it.name || it.barcode || 'Item',
+                                price: Number(it.price ?? (live && live.price) ?? 0),
+                                qty: Math.max(0.001, Number(it.qty || it.quantity || 1)),
+                                stock: live ? Number(live.stock || 0) : Number(it.stock || 999),
+                                unit: (live && live.selling_unit) || it.unit_name || it.unit || 'Pc(s)',
+                                warranty_id: live ? live.warranty_id : null,
+                                warranty_name: live ? live.warranty_name : null,
+                                warranty_duration: live ? live.warranty_duration : null,
+                                warranty_duration_type: live ? live.warranty_duration_type : null,
+                                enable_sr_no: live ? Boolean(live.enable_sr_no) : false
+                            });
+                        }
+                        if (typeof renderCart === 'function') renderCart();
+                        if (typeof showNotification === 'function') {
+                            showNotification(`${loadDraftId ? 'Draft' : 'Quotation'} #${targetId} transferred to POS cart — checkout will record today's sale date.`, 'success');
+                        }
+                        window.history.replaceState(null, '', '/pos');
+                    } catch (e) {
+                        console.error('Transfer to POS cart error:', e);
+                    }
+                }, 450);
+            }
+
             const user = window.currentUser;
             applyUserHeaderAndMenu(user);
 

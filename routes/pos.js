@@ -438,10 +438,17 @@ router.get('/api/pos/holds', authenticateToken, async (req, res) => {
         let branchFilter = '';
         if (req.query.store_location) {
             params.push(String(req.query.store_location));
-            branchFilter = ' AND store_location = $2';
+            branchFilter = ' AND h.store_location = $2';
         }
         const result = await pool.query(
-            `SELECT * FROM pos_holds WHERE tenant_id = $1${branchFilter} ORDER BY created_at DESC LIMIT 50`,
+            `SELECT h.*,
+                    COALESCE(c.phone, '') AS customer_phone,
+                    COALESCE(h.created_by_name, u.name, u.username, 'Staff') AS added_by_name
+             FROM pos_holds h
+             LEFT JOIN customers c ON h.customer_id = c.id
+             LEFT JOIN users u ON h.created_by = u.id
+             WHERE h.tenant_id = $1${branchFilter}
+             ORDER BY h.created_at DESC LIMIT 100`,
             params
         );
         res.json({ holds: result.rows });
@@ -570,7 +577,14 @@ router.get('/api/pos/quotations', authenticateToken, async (req, res) => {
     try {
         await ensurePosPhase2Schema();
         const result = await pool.query(
-            'SELECT * FROM pos_quotations WHERE tenant_id = $1 ORDER BY created_at DESC LIMIT 100',
+            `SELECT q.*,
+                    COALESCE(NULLIF(q.customer_phone, ''), c.phone, '') AS contact_number,
+                    COALESCE(u.name, u.username, 'Staff') AS added_by_name
+             FROM pos_quotations q
+             LEFT JOIN customers c ON q.customer_id = c.id
+             LEFT JOIN users u ON q.created_by = u.id
+             WHERE q.tenant_id = $1
+             ORDER BY q.created_at DESC LIMIT 100`,
             [req.user.tenant_id || 1]
         );
         res.json({ quotations: result.rows });
@@ -647,7 +661,7 @@ router.post('/api/pos/quotations', authenticateToken, requirePermission('quotati
         const {
             customer_id = null, customer_name = 'Walk-in', customer_phone = '',
             price_group = 'retail', items = [], discount_amount = 0,
-            valid_until, notes = '', store_location = ''
+            valid_until, notes = '', store_location = '', quote_number = ''
         } = req.body;
         if (!items.length) return res.status(400).json({ message: 'Quotation requires at least one item' });
 
@@ -666,13 +680,14 @@ router.post('/api/pos/quotations', authenticateToken, requirePermission('quotati
         }
         const safeDisc = Math.max(0, Math.min(subtotal, Number(discount_amount || 0)));
         const total = Number((subtotal - safeDisc).toFixed(2));
-        const quoteNumber = 'QT-' + Date.now() + '-' + crypto.randomInt(100, 999);
+        const quoteNumber = String(quote_number || '').trim() || ('QT-' + Date.now() + '-' + crypto.randomInt(100, 999));
         const expiry = valid_until || new Date(Date.now() + 7 * 86400000).toISOString().slice(0, 10);
+        const resolvedLoc = String(store_location || '').trim() || req.user.store_location || DEFAULT_BRANCH_NAME;
 
         const result = await pool.query(
             `INSERT INTO pos_quotations (tenant_id, quote_number, customer_id, customer_name, customer_phone, price_group, items, subtotal, discount_amount, total_amount, valid_until, notes, store_location, created_by)
              VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
-            [req.user.tenant_id || 1, quoteNumber, customer_id, customer_name, customer_phone, price_group, JSON.stringify(verifiedItems), subtotal, safeDisc, total, expiry, notes, store_location, req.user.id || null]
+            [req.user.tenant_id || 1, quoteNumber, customer_id, customer_name, customer_phone, price_group, JSON.stringify(verifiedItems), subtotal, safeDisc, total, expiry, notes, resolvedLoc, req.user.id || null]
         );
         await logActivity(req, 'QUOTATION_CREATED', {
             quote_number: quoteNumber,

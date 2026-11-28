@@ -350,15 +350,19 @@
         let shipDoc = null;
         let currentPayable = 0;
 
+        const isDraftOrQuote = mode === 'add_draft' || mode === 'add_quotation';
         const defaultStatus = mode === 'add_draft' ? 'Draft' : (mode === 'add_quotation' ? 'Quotation' : 'Final');
         const heading = mode === 'add_draft' ? (isEditDraft ? `Edit Draft #${existingDraft.id}` : 'Add Draft') : (mode === 'add_quotation' ? 'Add Quotation' : 'Add Sale');
+        const saveBtnText = mode === 'add_draft' ? (isEditDraft ? 'Update Draft' : 'Save Draft') : (mode === 'add_quotation' ? 'Save Quotation' : 'Save Sale');
+        const backHref = mode === 'add_draft' ? '/sell?tab=drafts' : (mode === 'add_quotation' ? '/sell?tab=quotations' : '/sell?tab=all');
+        const backLabel = mode === 'add_draft' ? 'List Drafts' : (mode === 'add_quotation' ? 'List Quotations' : 'All Sales');
 
         const panel = document.getElementById('sell-panel');
         panel.innerHTML = `
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
                 <h1 style="margin:0;font-size:22px;font-weight:700;color:var(--ink,#0f172a);">${heading}</h1>
                 <div style="display:flex;gap:8px;">
-                    <a href="/sell?tab=all" class="okw-btn okw-btn-outline" style="text-decoration:none;">All Sales</a>
+                    <a href="${backHref}" class="okw-btn okw-btn-outline" style="text-decoration:none;">${backLabel}</a>
                     <a href="/pos" class="okw-btn okw-btn-accent" style="text-decoration:none;">Open POS</a>
                 </div>
             </div>
@@ -398,7 +402,7 @@
                             <label for="asSaleDate">Sale Date <span class="as-req">*</span></label>
                             <input type="datetime-local" id="asSaleDate" class="as-input" value="${localNow()}" required>
                         </div>
-                        <div class="as-field">
+                        <div class="as-field" style="${isDraftOrQuote ? 'display:none;' : ''}">
                             <label for="asStatus">Status <span class="as-req">*</span></label>
                             <select id="asStatus" class="as-select" required>
                                 <option value="Final"${defaultStatus === 'Final' ? ' selected' : ''}>Final</option>
@@ -547,7 +551,7 @@
                 </section>
 
                 <!-- 4. ADD PAYMENT -->
-                <section class="as-card" id="asPaymentCard">
+                <section class="as-card" id="asPaymentCard" style="${isDraftOrQuote ? 'display:none;' : ''}">
                     <h2 class="as-title">
                         <span>4. Add Payment</span>
                         <span style="font-size:12.5px;font-weight:600;color:var(--ink-2,#334155);">Advance Balance: <strong id="asAdvanceBal">GH₵ 0.00</strong></span>
@@ -587,8 +591,8 @@
                 </section>
 
                 <div class="as-footer">
-                    <a href="/sell?tab=all" class="okw-btn okw-btn-outline" style="text-decoration:none;">Cancel</a>
-                    <button type="submit" id="asSaveBtn" class="okw-btn okw-btn-primary">Save Sale</button>
+                    <a href="${backHref}" class="okw-btn okw-btn-outline" style="text-decoration:none;">Cancel</a>
+                    <button type="submit" id="asSaveBtn" class="okw-btn okw-btn-primary">${saveBtnText}</button>
                 </div>
             </form>
         `;
@@ -790,23 +794,48 @@
                 let method = 'POST';
                 let body;
 
+                const customerPhone = custObj ? (custObj.phone || '') : '';
+                const invNoVal = document.getElementById('asInvNo').value.trim();
+                const userObj = (() => { try { return JSON.parse(localStorage.getItem('currentUser') || localStorage.getItem('user') || '{}'); } catch (_) { return {}; } })();
+                const currentLoc = userObj.store_location || 'Main Shop';
+                const extraMeta = {
+                    reference_no: invNoVal,
+                    customer_phone: customerPhone,
+                    sale_date: document.getElementById('asSaleDate').value || null,
+                    pay_term: document.getElementById('asPayTermNum').value ? `${document.getElementById('asPayTermNum').value} ${document.getElementById('asPayTermUnit').value || 'Days'}` : '',
+                    invoice_scheme: document.getElementById('asInvScheme').value,
+                    shipping_details: document.getElementById('asShipDetails').value.trim(),
+                    shipping_address: document.getElementById('asShipAddress').value.trim(),
+                    shipping_charges: Number(document.getElementById('asShipCharges').value || 0),
+                    shipping_status: document.getElementById('asShipStatus').value,
+                    delivered_to: document.getElementById('asDeliveredTo').value.trim(),
+                    delivery_person: document.getElementById('asDeliveryPerson').value.trim(),
+                    document_name: saleDoc ? saleDoc.name : '',
+                    shipping_document_name: shipDoc ? shipDoc.name : ''
+                };
+
                 if (status === 'Draft') {
                     url = isEditDraft ? `/api/pos/holds/${existingDraft.id}` : '/api/pos/holds';
                     method = isEditDraft ? 'PUT' : 'POST';
                     body = {
-                        label: `${customerName} (${validItems.length} items)`,
+                        label: invNoVal || `${customerName} (${validItems.length} items)`,
                         customer_id: cid,
                         customer_name: customerName,
+                        store_location: currentLoc,
                         items: validItems,
                         discount_amount: totalDiscount,
                         total_amount: currentPayable,
-                        notes: document.getElementById('asSellNote').value.trim()
+                        notes: document.getElementById('asSellNote').value.trim(),
+                        meta: extraMeta
                     };
                 } else if (status === 'Quotation') {
                     url = '/api/pos/quotations';
                     body = {
+                        quote_number: invNoVal,
                         customer_id: cid,
                         customer_name: customerName,
+                        customer_phone: customerPhone,
+                        store_location: currentLoc,
                         items: validItems,
                         discount_amount: totalDiscount,
                         notes: document.getElementById('asSellNote').value.trim()
@@ -864,13 +893,20 @@
         const res = await fetch('/api/pos/holds', { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
         const holds = (d.holds || []).map(h => {
-            const items = Array.isArray(h.items) ? h.items : (typeof h.items === 'string' ? JSON.parse(h.items || '[]') : []);
+            const items = Array.isArray(h.items) ? h.items : (typeof h.items === 'string' ? (() => { try { return JSON.parse(h.items || '[]'); } catch (_) { return []; } })() : []);
+            const meta = (h.meta && typeof h.meta === 'object') ? h.meta : (typeof h.meta === 'string' ? (() => { try { return JSON.parse(h.meta || '{}'); } catch (_) { return {}; } })() : {});
             const calcTotal = items.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 1), 0) - Number(h.discount_amount || 0);
+            const totalItems = items.reduce((s, it) => s + Number(it.qty || 1), 0);
             return {
                 ...h,
                 _items: items,
+                _meta: meta,
                 display_date: h.updated_at || h.created_at,
-                item_count: items.length,
+                reference_no: meta.reference_no || (`DRF-${h.id}`),
+                contact_number: h.customer_phone || meta.customer_phone || '—',
+                location: h.store_location || 'Main Shop',
+                total_items: Number(totalItems.toFixed(2)),
+                added_by: h.added_by_name || h.created_by_name || 'Staff',
                 net_total: Number(h.total_amount || calcTotal || 0)
             };
         });
@@ -879,13 +915,17 @@
             const subtotal = h._items.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 1), 0);
             OkwUI.openPrintableRecord({
                 title: 'Draft Sale',
-                refNumber: `DRF-${h.id}`,
+                refNumber: h.reference_no,
                 date: h.display_date ? new Date(h.display_date).toLocaleString() : '',
                 partyLabel: 'Customer',
-                partyName: h.customer_name || 'Walk-in',
-                branch: h.store_location || '',
+                partyName: h.customer_name || 'Walk-In Customer',
+                branch: h.location,
                 status: 'Draft',
-                items: h._items,
+                metaRows: [
+                    ['Contact Number', h.contact_number],
+                    ['Added By', h.added_by]
+                ],
+                items: h._items.map(it => ({ name: it.name || it.barcode, product_barcode: it.barcode || '', quantity: Number(it.qty || 1), unit_cost: Number(it.price || 0) })),
                 subtotal,
                 discount: Number(h.discount_amount || 0),
                 netTotal: h.net_total,
@@ -893,59 +933,88 @@
             });
         };
 
+        const openDraftActionMenu = (btn, h) => {
+            const existing = document.getElementById('sellFloatingActionMenu');
+            const same = existing && existing.dataset.forId === ('drf-' + h.id);
+            closeSaleActionMenu();
+            if (same) return;
+
+            const menu = document.createElement('div');
+            menu.id = 'sellFloatingActionMenu';
+            menu.dataset.forId = 'drf-' + h.id;
+            menu.setAttribute('role', 'menu');
+            menu.style.cssText = 'position:fixed;min-width:190px;background:#ffffff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 14px 32px rgba(15,23,42,0.18);z-index:9999;padding:5px;display:flex;flex-direction:column;gap:2px;';
+            const st = 'width:100%;text-align:left;background:transparent;border:none;padding:8px 11px;border-radius:6px;font-size:12.5px;font-weight:500;cursor:pointer;display:block;color:#0f172a;box-sizing:border-box;';
+            menu.innerHTML = `
+                <button type="button" role="menuitem" data-da="pos" style="${st}font-weight:600;color:#273990;">Transfer to POS Cart</button>
+                <button type="button" role="menuitem" data-da="view" style="${st}">View / Print</button>
+                <button type="button" role="menuitem" data-da="edit" style="${st}">Edit Draft</button>
+                <div style="border-top:1px solid #e2e8f0;margin:4px 0;"></div>
+                <button type="button" role="menuitem" data-da="del" style="${st}color:#b91c1c;font-weight:600;">Delete</button>
+            `;
+            document.body.appendChild(menu);
+            const rect = btn.getBoundingClientRect();
+            const mRect = menu.getBoundingClientRect();
+            const top = (window.innerHeight - rect.bottom) < mRect.height + 12 ? Math.max(8, rect.top - mRect.height - 6) : (rect.bottom + 6);
+            const left = Math.min(Math.max(8, rect.right - mRect.width), window.innerWidth - mRect.width - 8);
+            menu.style.top = top + 'px';
+            menu.style.left = left + 'px';
+
+            menu.addEventListener('click', async (ev) => {
+                const actBtn = ev.target.closest('[data-da]');
+                if (!actBtn) return;
+                ev.stopPropagation();
+                const act = actBtn.getAttribute('data-da');
+                closeSaleActionMenu();
+                if (act === 'pos') {
+                    window.location.href = `/pos?loadDraft=${encodeURIComponent(h.id)}`;
+                } else if (act === 'view') {
+                    openDraftPrint(h);
+                } else if (act === 'edit') {
+                    renderItemBuilder('add_draft', h);
+                } else if (act === 'del') {
+                    const ok = await OkwUI.confirm('Delete Draft', 'Are you sure you want to delete this draft?', { confirmText: 'Delete' });
+                    if (!ok) return;
+                    const dr = await fetch(`/api/pos/holds/${encodeURIComponent(h.id)}`, { method: 'DELETE', headers, credentials: 'include' });
+                    if (dr.ok) { OkwUI.toast('Draft deleted', 'success'); renderDrafts(); }
+                    else OkwUI.toast('Failed to delete draft', 'danger');
+                }
+            });
+        };
+
         document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
         OkwUI.dataTable('#sell-tbl', {
             columns: [
-                { key: 'display_date', label: 'Date', render: v => v ? new Date(v).toLocaleString() : '' },
-                { key: 'label', label: 'Draft / Label' },
-                { key: 'customer_name', label: 'Customer' },
-                { key: 'item_count', label: 'Items', numeric: true },
-                { key: 'net_total', label: 'Net Total', numeric: true, render: fmt },
+                { key: 'display_date', label: 'Date', render: v => v ? new Date(v).toLocaleString() : '—' },
+                { key: 'reference_no', label: 'Reference No' },
+                { key: 'customer_name', label: 'Customer name', render: v => OkwUI.escapeHtml(v || 'Walk-In Customer') },
+                { key: 'contact_number', label: 'Contact Number' },
+                { key: 'location', label: 'Location' },
+                { key: 'total_items', label: 'Total Items', numeric: true },
+                { key: 'added_by', label: 'Added By' },
                 {
                     key: 'id',
-                    label: 'Actions',
-                    render: (id) => `
-                        <div style="display:inline-flex;gap:6px;flex-wrap:wrap;">
-                            <button type="button" class="okw-btn okw-btn-outline" data-drf-edit="${id}" style="height:28px;padding:0 9px;font-size:12px;">Edit</button>
-                            <button type="button" class="okw-btn okw-btn-outline" data-drf-print="${id}" style="height:28px;padding:0 9px;font-size:12px;">Print</button>
-                            <button type="button" class="okw-btn okw-btn-primary" data-drf-pos="${id}" style="height:28px;padding:0 9px;font-size:12px;">POS</button>
-                            <button type="button" class="okw-btn okw-btn-danger" data-drf-del="${id}" style="height:28px;padding:0 9px;font-size:12px;">Delete</button>
-                        </div>`
+                    label: 'Action',
+                    render: (id) => `<button type="button" class="sell-action-trigger" data-drf-menu-id="${id}" style="display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border-radius:7px;border:1px solid #cbd5e1;background:#ffffff;color:#0f172a;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Actions ▾</button>`
                 }
             ],
             rows: holds,
+            emptyText: 'No data available in table',
             onRowClick: openDraftPrint,
             exportFilename: 'okwesiwa-drafts.xlsx',
-            printTitle: 'Draft Sales'
+            printTitle: 'List Drafts'
         });
 
-        const host = document.getElementById('sell-panel');
-        host.querySelectorAll('[data-drf-edit]').forEach(btn => {
-            btn.onclick = () => {
-                const h = holds.find(x => String(x.id) === String(btn.dataset.drfEdit));
-                if (h) renderItemBuilder('add_draft', h);
-            };
-        });
-        host.querySelectorAll('[data-drf-print]').forEach(btn => {
-            btn.onclick = () => {
-                const h = holds.find(x => String(x.id) === String(btn.dataset.drfPrint));
-                if (h) openDraftPrint(h);
-            };
-        });
-        host.querySelectorAll('[data-drf-pos]').forEach(btn => {
-            btn.onclick = () => {
-                window.location.href = `/pos?loadDraft=${encodeURIComponent(btn.dataset.drfPos)}`;
-            };
-        });
-        host.querySelectorAll('[data-drf-del]').forEach(btn => {
-            btn.onclick = async () => {
-                const ok = await OkwUI.confirm('Delete Draft', 'Are you sure you want to delete this draft?', { confirmText: 'Delete' });
-                if (!ok) return;
-                const dr = await fetch(`/api/pos/holds/${encodeURIComponent(btn.dataset.drfDel)}`, { method: 'DELETE', headers, credentials: 'include' });
-                if (dr.ok) { OkwUI.toast('Draft deleted', 'success'); renderDrafts(); }
-                else OkwUI.toast('Failed to delete draft', 'danger');
-            };
-        });
+        const host = document.getElementById('sell-tbl');
+        if (host) {
+            host.addEventListener('click', (e) => {
+                const trigger = e.target.closest('[data-drf-menu-id]');
+                if (!trigger) return;
+                e.stopPropagation();
+                const h = holds.find(x => String(x.id) === String(trigger.dataset.drfMenuId));
+                if (h) openDraftActionMenu(trigger, h);
+            });
+        }
     }
 
     async function renderQuotations() {
@@ -954,40 +1023,126 @@
         if (kpiHost) kpiHost.style.display = 'none';
         const res = await fetch('/api/pos/quotations', { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
-        const quotes = d.quotations || [];
+        const quotes = (d.quotations || []).map(q => {
+            const items = Array.isArray(q.items) ? q.items : (typeof q.items === 'string' ? (() => { try { return JSON.parse(q.items || '[]'); } catch (_) { return []; } })() : []);
+            const totalItems = items.reduce((s, it) => s + Number(it.qty || 1), 0);
+            return {
+                ...q,
+                _items: items,
+                date_str: q.created_at ? new Date(q.created_at).toLocaleString() : '—',
+                reference_no: q.quote_number || (`QT-${q.id}`),
+                contact_number: q.contact_number || q.customer_phone || '—',
+                location: q.store_location || 'Main Shop',
+                total_items: Number(totalItems.toFixed(2)),
+                added_by: q.added_by_name || 'Staff'
+            };
+        });
+
+        const openQuotePrint = (q) => {
+            const subtotal = q._items.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 1), 0);
+            OkwUI.openPrintableRecord({
+                title: 'Quotation',
+                refNumber: q.reference_no,
+                date: q.date_str,
+                partyLabel: 'Customer',
+                partyName: q.customer_name || 'Walk-In Customer',
+                branch: q.location,
+                status: q.status || 'Open',
+                metaRows: [
+                    ['Contact Number', q.contact_number],
+                    ['Valid Until', q.valid_until || '—'],
+                    ['Added By', q.added_by]
+                ],
+                items: q._items.map(it => ({ name: it.name || it.barcode, product_barcode: it.barcode || '', quantity: Number(it.qty || 1), unit_cost: Number(it.price || 0) })),
+                subtotal,
+                discount: Number(q.discount_amount || 0),
+                netTotal: Number(q.total_amount || subtotal),
+                notes: q.notes || ''
+            });
+        };
+
+        const openQuoteActionMenu = (btn, q) => {
+            const existing = document.getElementById('sellFloatingActionMenu');
+            const same = existing && existing.dataset.forId === ('qt-' + q.id);
+            closeSaleActionMenu();
+            if (same) return;
+
+            const isConverted = String(q.status || '').toLowerCase() === 'converted';
+            const menu = document.createElement('div');
+            menu.id = 'sellFloatingActionMenu';
+            menu.dataset.forId = 'qt-' + q.id;
+            menu.setAttribute('role', 'menu');
+            menu.style.cssText = 'position:fixed;min-width:190px;background:#ffffff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 14px 32px rgba(15,23,42,0.18);z-index:9999;padding:5px;display:flex;flex-direction:column;gap:2px;';
+            const st = 'width:100%;text-align:left;background:transparent;border:none;padding:8px 11px;border-radius:6px;font-size:12.5px;font-weight:500;cursor:pointer;display:block;color:#0f172a;box-sizing:border-box;';
+            menu.innerHTML = `
+                <button type="button" role="menuitem" data-qa="pos" style="${st}font-weight:600;color:#273990;">Transfer to POS Cart</button>
+                ${!isConverted ? `<button type="button" role="menuitem" data-qa="convert" style="${st}font-weight:600;color:#15803d;">Convert to Sale</button>` : ''}
+                <button type="button" role="menuitem" data-qa="view" style="${st}">View / Print</button>
+            `;
+            document.body.appendChild(menu);
+            const rect = btn.getBoundingClientRect();
+            const mRect = menu.getBoundingClientRect();
+            const top = (window.innerHeight - rect.bottom) < mRect.height + 12 ? Math.max(8, rect.top - mRect.height - 6) : (rect.bottom + 6);
+            const left = Math.min(Math.max(8, rect.right - mRect.width), window.innerWidth - mRect.width - 8);
+            menu.style.top = top + 'px';
+            menu.style.left = left + 'px';
+
+            menu.addEventListener('click', async (ev) => {
+                const actBtn = ev.target.closest('[data-qa]');
+                if (!actBtn) return;
+                ev.stopPropagation();
+                const act = actBtn.getAttribute('data-qa');
+                closeSaleActionMenu();
+                if (act === 'pos') {
+                    window.location.href = `/pos?loadQuote=${encodeURIComponent(q.id)}`;
+                } else if (act === 'view') {
+                    openQuotePrint(q);
+                } else if (act === 'convert') {
+                    const ok = await OkwUI.confirm('Convert Quotation', 'Convert this quotation into a completed sale?', { confirmText: 'Convert' });
+                    if (!ok) return;
+                    const cr = await fetch(`/api/pos/quotations/${encodeURIComponent(q.id)}/convert`, {
+                        method: 'POST', headers, credentials: 'include', body: JSON.stringify({ payment_method: 'cash' })
+                    });
+                    const cd = await cr.json().catch(() => ({}));
+                    if (cr.ok) { OkwUI.toast('Quotation converted to sale', 'success'); renderQuotations(); }
+                    else OkwUI.toast(cd.message || 'Conversion failed', 'danger');
+                }
+            });
+        };
+
         document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
         OkwUI.dataTable('#sell-tbl', {
             columns: [
-                { key: 'created_at', label: 'Date', render: v => v ? new Date(v).toLocaleDateString() : '' },
-                { key: 'quote_number', label: 'Quote #' },
-                { key: 'customer_name', label: 'Customer' },
-                { key: 'total_amount', label: 'Total', numeric: true, render: fmt },
-                { key: 'valid_until', label: 'Valid Until' },
-                { key: 'status', label: 'Status' },
+                { key: 'date_str', label: 'Date' },
+                { key: 'reference_no', label: 'Reference No' },
+                { key: 'customer_name', label: 'Customer name', render: v => OkwUI.escapeHtml(v || 'Walk-In Customer') },
+                { key: 'contact_number', label: 'Contact Number' },
+                { key: 'location', label: 'Location' },
+                { key: 'total_items', label: 'Total Items', numeric: true },
+                { key: 'added_by', label: 'Added By' },
                 {
                     key: 'id',
-                    label: 'Actions',
-                    render: (id, r) => String(r.status || '').toLowerCase() === 'converted'
-                        ? '<span style="font-size:12px;color:#15803d;font-weight:600;">Converted</span>'
-                        : `<button type="button" class="okw-btn okw-btn-primary" data-q-convert="${id}" style="height:28px;padding:0 10px;font-size:12px;">Convert to Sale</button>`
+                    label: 'Action',
+                    render: (id) => `<button type="button" class="sell-action-trigger" data-qt-menu-id="${id}" style="display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border-radius:7px;border:1px solid #cbd5e1;background:#ffffff;color:#0f172a;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Actions ▾</button>`
                 }
             ],
             rows: quotes,
+            emptyText: 'No data available in table',
+            onRowClick: openQuotePrint,
             exportFilename: 'okwesiwa-quotations.xlsx',
-            printTitle: 'Quotations'
+            printTitle: 'List Quotations'
         });
-        document.getElementById('sell-panel').querySelectorAll('[data-q-convert]').forEach(btn => {
-            btn.onclick = async () => {
-                const ok = await OkwUI.confirm('Convert Quotation', 'Convert this quotation into a completed sale?', { confirmText: 'Convert' });
-                if (!ok) return;
-                const cr = await fetch(`/api/pos/quotations/${encodeURIComponent(btn.dataset.qConvert)}/convert`, {
-                    method: 'POST', headers, credentials: 'include', body: JSON.stringify({ payment_method: 'cash' })
-                });
-                const cd = await cr.json().catch(() => ({}));
-                if (cr.ok) { OkwUI.toast('Quotation converted to sale', 'success'); renderQuotations(); }
-                else OkwUI.toast(cd.message || 'Conversion failed', 'danger');
-            };
-        });
+
+        const host = document.getElementById('sell-tbl');
+        if (host) {
+            host.addEventListener('click', (e) => {
+                const trigger = e.target.closest('[data-qt-menu-id]');
+                if (!trigger) return;
+                e.stopPropagation();
+                const q = quotes.find(x => String(x.id) === String(trigger.dataset.qtMenuId));
+                if (q) openQuoteActionMenu(trigger, q);
+            });
+        }
     }
 
     async function renderShipments() {
