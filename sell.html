@@ -269,7 +269,11 @@
                 OkwUI.kpiCard({ label: 'Sell Return Due', value: fmt(retAmt), tone: retAmt > 0 ? 'warning' : 'info' })
             ].join('');
         }
-        document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
+        document.getElementById('sell-panel').innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <h2 style="margin:0;font-size:18px;">${OkwUI.escapeHtml(title)}</h2>
+            </div>
+            <div id="sell-tbl"></div>`;
         OkwUI.dataTable('#sell-tbl', {
             columns: [
                 {
@@ -848,6 +852,7 @@
                         discount_amount: totalDiscount,
                         payments: paidAmt > 0 ? [{ method: payMethod, amount: paidAmt, reference: payNote }] : [],
                         delivery: {
+                            sale_source: 'add_sale',
                             enabled: Boolean(document.getElementById('asShipAddress').value.trim() || document.getElementById('asShipStatus').value || document.getElementById('asShipDetails').value.trim()),
                             site_address: document.getElementById('asShipAddress').value.trim() || document.getElementById('asShipDetails').value.trim(),
                             driver: document.getElementById('asDeliveryPerson').value.trim(),
@@ -985,7 +990,11 @@
             });
         };
 
-        document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
+        document.getElementById('sell-panel').innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <h2 style="margin:0;font-size:18px;">List Drafts</h2>
+            </div>
+            <div id="sell-tbl"></div>`;
         OkwUI.dataTable('#sell-tbl', {
             columns: [
                 { key: 'display_date', label: 'Date', render: v => v ? new Date(v).toLocaleString() : '—' },
@@ -1113,7 +1122,11 @@
             });
         };
 
-        document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
+        document.getElementById('sell-panel').innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                <h2 style="margin:0;font-size:18px;">List Quotations</h2>
+            </div>
+            <div id="sell-tbl"></div>`;
         OkwUI.dataTable('#sell-tbl', {
             columns: [
                 { key: 'date_str', label: 'Date' },
@@ -1634,7 +1647,7 @@
                             items: g.rows.map(row => ({ barcode: String(row.barcode), qty: Number(row.qty) })),
                             customer_name: g.customer || 'Walk-in',
                             payments,
-                            delivery: g.key ? { invoice_no: g.key } : null
+                            delivery: { sale_source: 'import', ...(g.key ? { invoice_no: g.key } : {}) }
                         })
                     });
                     const out = await r.json().catch(() => ({}));
@@ -1671,12 +1684,21 @@
         };
     }
 
+    function isPosTillSale(t) {
+        if (t.is_return) return false;
+        const dInfo = (t.delivery_info && typeof t.delivery_info === 'object')
+            ? t.delivery_info
+            : (typeof t.delivery_info === 'string' ? (() => { try { return JSON.parse(t.delivery_info || '{}'); } catch (_) { return {}; } })() : {});
+        const src = String(dInfo.sale_source || '').toLowerCase();
+        return !['add_sale', 'import', 'quotation'].includes(src);
+    }
+
     function render() {
         const actionBar = document.querySelector('.okw-action-bar');
         if (actionBar) actionBar.style.display = ['add', 'add_draft', 'add_quotation'].includes(activeView) ? 'none' : '';
         if (activeView === 'all') return renderSalesTable(() => true, 'All Sales', 'okwesiwa-all-sales.xlsx');
-        if (activeView === 'list_pos') return renderSalesTable(t => !t.is_return, 'POS Sales List', 'okwesiwa-pos-sales.xlsx');
-        if (activeView === 'returns') return renderSalesTable(t => Boolean(t.is_return), 'Sell Returns', 'okwesiwa-sell-returns.xlsx');
+        if (activeView === 'list_pos') return renderSalesTable(isPosTillSale, 'List POS (Counter Till Sales)', 'okwesiwa-pos-sales.xlsx');
+        if (activeView === 'returns') return renderSalesTable(t => Boolean(t.is_return), 'List Sell Return', 'okwesiwa-sell-returns.xlsx');
         if (['add', 'add_draft', 'add_quotation'].includes(activeView)) return renderItemBuilder(activeView);
         if (activeView === 'drafts') return renderDrafts();
         if (activeView === 'quotations') return renderQuotations();
