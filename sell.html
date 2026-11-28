@@ -67,7 +67,7 @@
             <div class="okw-action-bar">
                 <div id="sell-filter-host"></div>
                 <button type="button" class="okw-btn okw-btn-primary" id="sell-quick-add" style="display:none;">+ Add</button>
-                <a href="/pos" class="okw-btn okw-btn-accent">Open POS Till</a>
+                <a href="/pos" id="sell-open-pos-btn" class="okw-btn okw-btn-accent">Open POS Till</a>
             </div>
             <div id="sell-panel">Loading...</div>
         </div>
@@ -1696,6 +1696,8 @@
     function render() {
         const actionBar = document.querySelector('.okw-action-bar');
         if (actionBar) actionBar.style.display = ['add', 'add_draft', 'add_quotation'].includes(activeView) ? 'none' : '';
+        const openPosBtn = document.getElementById('sell-open-pos-btn');
+        if (openPosBtn) openPosBtn.style.display = ['quotations', 'returns'].includes(activeView) ? 'none' : '';
         if (activeView === 'all') return renderSalesTable(() => true, 'All Sales', 'okwesiwa-all-sales.xlsx');
         if (activeView === 'list_pos') return renderSalesTable(isPosTillSale, 'List POS (Counter Till Sales)', 'okwesiwa-pos-sales.xlsx');
         if (activeView === 'returns') return renderSalesTable(t => Boolean(t.is_return), 'List Sell Return', 'okwesiwa-sell-returns.xlsx');
