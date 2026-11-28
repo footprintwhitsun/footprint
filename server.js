@@ -5816,11 +5816,12 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, requireRole(MANA
         // FOR UPDATE + a status gate stops a double-click or concurrent receive from
         // crediting the same stock twice.
         const poRes = await client.query(`
-            SELECT po.*, s.name as supplier_name 
+            SELECT po.*, s.name as supplier_name, b.name as branch_name
             FROM purchase_orders po
             LEFT JOIN suppliers s ON po.supplier_id = s.id AND COALESCE(s.tenant_id, 1) = $2
+            LEFT JOIN branches b ON po.branch_id = b.id
             WHERE po.id = $1 AND COALESCE(po.tenant_id, 1) = $2
-            FOR UPDATE
+            FOR UPDATE OF po
         `, [id, tenantId]);
 
         if (poRes.rows.length === 0) {
@@ -5840,42 +5841,48 @@ app.post('/api/purchase-orders/:id/receive', authenticateToken, requireRole(MANA
         const dateStr = today.toISOString().slice(2, 10).replace(/-/g, ''); // YYMMDD
         const supplierCode = (po.supplier_name || 'SUP').substring(0, 3).toUpperCase().replace(/\s/g, '');
 
-        // Update stock and create batches
-        const branchId = req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
+        // Update stock and create batches for the PO's target Business Location
+        const branchId = po.branch_id || req.user.store_id || (await mainBranchId(pool, req.user.tenant_id || 1));
+        const branchName = po.branch_name || req.user.store_location || DEFAULT_BRANCH_NAME;
         for (const item of itemsRes.rows) {
             // Fetch product details for conversion
             const prodRes = await client.query('SELECT name, conversion_rate, track_expiry FROM products WHERE barcode = $1 AND COALESCE(tenant_id, 1) = $2', [item.product_barcode, tenantId]);
             const product = prodRes.rows[0] || { name: 'ITEM', conversion_rate: 1 };
 
-            // Determine quantity to receive (use user input if available, else PO quantity)
-            let qtyToReceive = item.quantity;
+            // Determine quantity to receive (respect explicit 0 input!)
+            let qtyToReceive = toQty(item.quantity);
             let finalBatchNum = null;
             let finalExpiry = null;
 
             if (receivedItems && Array.isArray(receivedItems)) {
                 const provided = receivedItems.find(ri => ri.product_barcode === item.product_barcode);
                 if (provided) {
-                    if (provided.quantity_received) qtyToReceive = toQty(provided.quantity_received);
+                    if (provided.quantity_received !== undefined && provided.quantity_received !== null && String(provided.quantity_received).trim() !== '') {
+                        qtyToReceive = Math.max(0, toQty(provided.quantity_received));
+                    }
                     if (provided.batch_number) finalBatchNum = provided.batch_number;
                     if (provided.expiry_date) finalExpiry = new Date(provided.expiry_date);
                 }
             }
 
-            // Use the Qty from Goods Receiving directly for Total Stock
             const totalUnits = qtyToReceive;
+            if (totalUnits <= 0) continue;
 
-            // 1. Update Product Stock with Total Units (Update both total stock and stock_levels for User's Branch)
-            const branchName = req.user.store_location || DEFAULT_BRANCH_NAME;
+            // 1. Update Product Stock, Cost & Selling Price for the PO's target branch
+            const itemCost = Math.max(0, Number(item.unit_cost || 0));
+            const itemSell = Math.max(0, Number(item.selling_price || 0));
             await client.query(`
                 UPDATE products 
                 SET stock = COALESCE(stock, 0) + $1,
+                    cost_price = CASE WHEN $5 > 0 THEN $5 ELSE cost_price END,
+                    price = CASE WHEN $6 > 0 THEN $6 ELSE price END,
                     stock_levels = jsonb_set(
                         COALESCE(stock_levels, '{}'::jsonb), 
                         ARRAY[$3::text], 
                         to_jsonb(COALESCE((stock_levels->>$3)::numeric, 0) + $1)
                     )
                 WHERE barcode = $2 AND COALESCE(tenant_id, 1) = $4
-            `, [totalUnits, item.product_barcode, branchName, tenantId]);
+            `, [totalUnits, item.product_barcode, branchName, tenantId, itemCost, itemSell]);
 
             // Auto-generate if missing
             const itemCode = product.name.substring(0, 3).toUpperCase().replace(/\s/g, '');

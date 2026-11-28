@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const { pool } = require('../db/pool');
+const { pool, adminPool } = require('../db/pool');
 const { authenticateToken, requirePermission, requireRole, PAGE_ROLES, MANAGER_ROLES } = require('../middleware/auth');
 const { logActivity } = require('../services/audit');
 const { DEFAULT_BRANCH_NAME } = require('../services/branches');
@@ -456,8 +456,11 @@ router.post('/api/pos/holds', authenticateToken, async (req, res) => {
         const { label, customer_id = null, customer_name = 'Walk-in', price_group = 'retail', items = [], discount_amount = 0, notes = '', store_location = '', meta = {} } = req.body;
         if (!Array.isArray(items) || !items.length) return res.status(400).json({ message: 'Cannot hold an empty cart' });
         const holdLabel = (label && label.trim()) ? label.trim() : `${customer_name} (${items.length} items)`;
-        await pool.query('ALTER TABLE pos_holds ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
-        await pool.query('ALTER TABLE pos_holds ADD COLUMN IF NOT EXISTS total_amount NUMERIC(12,2) DEFAULT 0');
+        try {
+            const ddl = adminPool || pool;
+            await ddl.query('ALTER TABLE pos_holds ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+            await ddl.query('ALTER TABLE pos_holds ADD COLUMN IF NOT EXISTS total_amount NUMERIC(12,2) DEFAULT 0');
+        } catch (_) {}
         const draftTotal = Number(Math.max(0, items.reduce((s, it) => s + Number(it.price || 0) * Number(it.qty || 1), 0) - Math.max(0, Number(discount_amount || 0))).toFixed(2));
         const result = await pool.query(
             `INSERT INTO pos_holds (tenant_id, label, customer_id, customer_name, price_group, items, discount_amount, total_amount, notes, store_location, created_by, created_by_name, meta, updated_at)
@@ -485,8 +488,11 @@ router.post('/api/pos/holds', authenticateToken, async (req, res) => {
 router.put('/api/pos/holds/:id', authenticateToken, async (req, res) => {
     try {
         await ensurePosPhase2Schema();
-        await pool.query('ALTER TABLE pos_holds ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
-        await pool.query('ALTER TABLE pos_holds ADD COLUMN IF NOT EXISTS total_amount NUMERIC(12,2) DEFAULT 0');
+        try {
+            const ddl = adminPool || pool;
+            await ddl.query('ALTER TABLE pos_holds ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP');
+            await ddl.query('ALTER TABLE pos_holds ADD COLUMN IF NOT EXISTS total_amount NUMERIC(12,2) DEFAULT 0');
+        } catch (_) {}
         const tenantId = req.user.tenant_id || 1;
         const prevRes = await pool.query('SELECT * FROM pos_holds WHERE id = $1 AND tenant_id = $2', [req.params.id, tenantId]);
         if (!prevRes.rows.length) return res.status(404).json({ message: 'Draft not found' });

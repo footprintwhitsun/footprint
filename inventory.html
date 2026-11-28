@@ -5019,14 +5019,14 @@ document.getElementById('btnCloseSupStmt').addEventListener('click', function(){
                 } catch (e) { console.error("File processing error", e); }
             }
 
-            const token = localStorage.getItem('authToken');
+            const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+            const headers = { 'Content-Type': 'application/json' };
+            if (token && token !== 'null' && token !== 'undefined') headers['Authorization'] = `Bearer ${token}`;
             try {
                 const res = await fetch(`/api/purchase-orders/${currentReceivingPO.id}/receive`, {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers,
+                    credentials: 'include',
                     body: JSON.stringify(payload)
                 });
 
