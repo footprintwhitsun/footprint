@@ -848,6 +848,9 @@
                         discount_amount: totalDiscount,
                         payments: paidAmt > 0 ? [{ method: payMethod, amount: paidAmt, reference: payNote }] : [],
                         delivery: {
+                            enabled: Boolean(document.getElementById('asShipAddress').value.trim() || document.getElementById('asShipStatus').value || document.getElementById('asShipDetails').value.trim()),
+                            site_address: document.getElementById('asShipAddress').value.trim() || document.getElementById('asShipDetails').value.trim(),
+                            driver: document.getElementById('asDeliveryPerson').value.trim(),
                             sale_date: document.getElementById('asSaleDate').value || null,
                             pay_term: document.getElementById('asPayTermNum').value ? `${document.getElementById('asPayTermNum').value} ${document.getElementById('asPayTermUnit').value || 'Days'}` : '',
                             invoice_scheme: document.getElementById('asInvScheme').value,
@@ -1151,42 +1154,206 @@
         if (kpiHost) kpiHost.style.display = 'none';
         const res = await fetch('/api/deliveries', { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
-        document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
+        const deliveries = d.deliveries || [];
+
+        const panel = document.getElementById('sell-panel');
+        panel.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                <div>
+                    <h2 style="margin:0;font-size:18px;">Shipments</h2>
+                    <p style="margin:3px 0 0;font-size:12.5px;color:var(--color-text-muted,#64748b);">Sales with shipping details appear here automatically, or record a new shipment below.</p>
+                </div>
+                <button type="button" id="btnAddShipment" class="okw-btn okw-btn-primary">+ Add Shipment</button>
+            </div>
+            <div id="sell-tbl"></div>
+        `;
+
+        const openShipActionMenu = (btn, row) => {
+            const existing = document.getElementById('sellFloatingActionMenu');
+            const same = existing && existing.dataset.forId === ('shp-' + row.id);
+            closeSaleActionMenu();
+            if (same) return;
+
+            const menu = document.createElement('div');
+            menu.id = 'sellFloatingActionMenu';
+            menu.dataset.forId = 'shp-' + row.id;
+            menu.setAttribute('role', 'menu');
+            menu.style.cssText = 'position:fixed;min-width:175px;background:#ffffff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 14px 32px rgba(15,23,42,0.18);z-index:9999;padding:5px;display:flex;flex-direction:column;gap:2px;';
+            const st = 'width:100%;text-align:left;background:transparent;border:none;padding:8px 11px;border-radius:6px;font-size:12.5px;font-weight:500;cursor:pointer;display:block;color:#0f172a;box-sizing:border-box;';
+            menu.innerHTML = `
+                <button type="button" role="menuitem" data-sh-st="Packed" style="${st}">Mark Packed</button>
+                <button type="button" role="menuitem" data-sh-st="Shipped" style="${st}color:#273990;font-weight:600;">Mark Shipped</button>
+                <button type="button" role="menuitem" data-sh-st="Delivered" style="${st}color:#15803d;font-weight:600;">Mark Delivered</button>
+                <button type="button" role="menuitem" data-sh-st="Cancelled" style="${st}color:#b91c1c;">Mark Cancelled</button>
+            `;
+            document.body.appendChild(menu);
+            const rect = btn.getBoundingClientRect();
+            const mRect = menu.getBoundingClientRect();
+            const top = (window.innerHeight - rect.bottom) < mRect.height + 12 ? Math.max(8, rect.top - mRect.height - 6) : (rect.bottom + 6);
+            const left = Math.min(Math.max(8, rect.right - mRect.width), window.innerWidth - mRect.width - 8);
+            menu.style.top = top + 'px';
+            menu.style.left = left + 'px';
+
+            menu.addEventListener('click', async (ev) => {
+                const actBtn = ev.target.closest('[data-sh-st]');
+                if (!actBtn) return;
+                ev.stopPropagation();
+                const nextStatus = actBtn.getAttribute('data-sh-st');
+                closeSaleActionMenu();
+                const ur = await fetch(`/api/deliveries/${encodeURIComponent(row.id)}/status`, {
+                    method: 'PATCH', headers, credentials: 'include', body: JSON.stringify({ status: nextStatus })
+                });
+                if (ur.ok) { OkwUI.toast(`Shipment marked ${nextStatus}`, 'success'); renderShipments(); }
+                else OkwUI.toast('Failed to update shipment status', 'danger');
+            });
+        };
+
         OkwUI.dataTable('#sell-tbl', {
             columns: [
-                { key: 'created_at', label: 'Date', render: v => v ? new Date(v).toLocaleDateString() : '' },
+                { key: 'created_at', label: 'Date', render: v => v ? new Date(v).toLocaleDateString() : '—' },
                 { key: 'delivery_number', label: 'Waybill #' },
+                { key: 'receipt_number', label: 'Invoice #' },
                 { key: 'customer_name', label: 'Customer' },
-                { key: 'site_address', label: 'Site Address' },
-                { key: 'driver_name', label: 'Driver' },
-                { key: 'status', label: 'Status' }
+                { key: 'site_address', label: 'Shipping Address' },
+                { key: 'driver_name', label: 'Delivery Person' },
+                { key: 'delivery_fee', label: 'Shipping Charges', numeric: true, render: fmt },
+                { key: 'status', label: 'Status', render: v => OkwUI.badge(v || 'Ordered', v === 'Delivered' ? 'success' : (v === 'Cancelled' ? 'danger' : 'info')) },
+                {
+                    key: 'id',
+                    label: 'Action',
+                    render: (id) => `<button type="button" class="sell-action-trigger" data-shp-menu-id="${id}" style="display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 10px;border-radius:7px;border:1px solid #cbd5e1;background:#ffffff;color:#0f172a;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;">Actions ▾</button>`
+                }
             ],
-            rows: d.deliveries || [],
+            rows: deliveries,
+            emptyText: 'No data available in table',
             exportFilename: 'okwesiwa-shipments.xlsx',
             printTitle: 'Shipments'
         });
+
+        const host = document.getElementById('sell-tbl');
+        if (host) {
+            host.addEventListener('click', (e) => {
+                const trigger = e.target.closest('[data-shp-menu-id]');
+                if (!trigger) return;
+                e.stopPropagation();
+                const row = deliveries.find(x => String(x.id) === String(trigger.dataset.shpMenuId));
+                if (row) openShipActionMenu(trigger, row);
+            });
+        }
+
+        document.getElementById('btnAddShipment').onclick = () => {
+            const backdrop = document.createElement('div');
+            backdrop.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,0.55);z-index:9998;display:flex;align-items:center;justify-content:center;padding:16px;';
+            backdrop.innerHTML = `
+                <div style="background:var(--sheet,#fff);border-radius:14px;max-width:520px;width:100%;padding:22px;box-shadow:0 20px 50px rgba(15,23,42,0.25);">
+                    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+                        <h3 style="margin:0;font-size:17px;">Record Shipment</h3>
+                        <button type="button" data-close style="border:none;background:none;font-size:20px;cursor:pointer;color:#64748b;">&times;</button>
+                    </div>
+                    <form id="addShipmentForm" style="display:flex;flex-direction:column;gap:12px;">
+                        <div class="as-grid-2">
+                            <div class="as-field"><label>Customer Name</label><input id="shCust" class="as-input" placeholder="Walk-In Customer"></div>
+                            <div class="as-field"><label>Invoice / Receipt #</label><input id="shInv" class="as-input" placeholder="Optional"></div>
+                        </div>
+                        <div class="as-field"><label>Shipping Address <span class="as-req">*</span></label><input id="shAddr" class="as-input" required placeholder="Delivery destination"></div>
+                        <div class="as-grid-3">
+                            <div class="as-field"><label>Delivery Person</label><input id="shDriver" class="as-input" placeholder="Driver / courier"></div>
+                            <div class="as-field"><label>Shipping Charges</label><input id="shFee" type="number" step="0.01" min="0" value="0" class="as-input"></div>
+                            <div class="as-field"><label>Status</label><select id="shStatus" class="as-select"><option value="Ordered">Ordered</option><option value="Packed">Packed</option><option value="Shipped">Shipped</option><option value="Delivered">Delivered</option></select></div>
+                        </div>
+                        <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:8px;">
+                            <button type="button" data-close class="okw-btn okw-btn-outline">Cancel</button>
+                            <button type="submit" class="okw-btn okw-btn-primary">Save Shipment</button>
+                        </div>
+                    </form>
+                </div>`;
+            document.body.appendChild(backdrop);
+            backdrop.querySelectorAll('[data-close]').forEach(b => b.onclick = () => backdrop.remove());
+            backdrop.onclick = (ev) => { if (ev.target === backdrop) backdrop.remove(); };
+            backdrop.querySelector('#addShipmentForm').onsubmit = async (ev) => {
+                ev.preventDefault();
+                const addr = backdrop.querySelector('#shAddr').value.trim();
+                if (!addr) return OkwUI.toast('Shipping address is required', 'warning');
+                const sr = await fetch('/api/deliveries', {
+                    method: 'POST', headers, credentials: 'include',
+                    body: JSON.stringify({
+                        customer_name: backdrop.querySelector('#shCust').value.trim() || 'Walk-In Customer',
+                        receipt_number: backdrop.querySelector('#shInv').value.trim(),
+                        site_address: addr,
+                        driver_name: backdrop.querySelector('#shDriver').value.trim(),
+                        delivery_fee: Number(backdrop.querySelector('#shFee').value || 0),
+                        status: backdrop.querySelector('#shStatus').value
+                    })
+                });
+                if (sr.ok) { backdrop.remove(); OkwUI.toast('Shipment recorded', 'success'); renderShipments(); }
+                else { const e = await sr.json().catch(() => ({})); OkwUI.toast(e.message || 'Failed to save shipment', 'danger'); }
+            };
+        };
     }
 
     async function renderDiscounts() {
         syncQuickAddButton();
         dateHost.style.display = 'none';
         if (kpiHost) kpiHost.style.display = 'none';
-        const res = await fetch('/api/pos/discounts-history', { headers, credentials: 'include' });
-        const d = await res.json().catch(() => ({}));
-        document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
-        OkwUI.dataTable('#sell-tbl', {
-            columns: [
-                { key: 'created_at', label: 'Date', render: v => v ? new Date(v).toLocaleString() : '' },
-                { key: 'receipt_number', label: 'Receipt #' },
-                { key: 'customer_name', label: 'Customer' },
-                { key: 'discount_amount', label: 'Discount', numeric: true, render: fmt },
-                { key: 'total_amount', label: 'Total', numeric: true, render: fmt },
-                { key: 'seller_name', label: 'Staff' }
-            ],
-            rows: d.discounts || [],
-            exportFilename: 'okwesiwa-discounts.xlsx',
-            printTitle: 'Discounts'
-        });
+        const [histRes, promoRes] = await Promise.all([
+            fetch('/api/pos/discounts-history', { headers, credentials: 'include' }).then(r => r.ok ? r.json() : {}).catch(() => ({})),
+            fetch('/api/promotions', { headers, credentials: 'include' }).then(r => r.ok ? r.json() : []).catch(() => [])
+        ]);
+        const discounts = histRes.discounts || [];
+        const promos = Array.isArray(promoRes) ? promoRes : (promoRes.promotions || []);
+
+        const panel = document.getElementById('sell-panel');
+        panel.innerHTML = `
+            <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+                <div style="display:flex;gap:8px;flex-wrap:wrap;">
+                    <button type="button" id="discTabRules" class="okw-btn okw-btn-primary">Active Discount / Promo Rules (${promos.length})</button>
+                    <button type="button" id="discTabHist" class="okw-btn okw-btn-outline">Applied Discounts History (${discounts.length})</button>
+                </div>
+                <a href="/promotions" class="okw-btn okw-btn-primary" style="text-decoration:none;">+ Add Discount / Promotion</a>
+            </div>
+            <div id="sell-tbl"></div>
+        `;
+
+        const showRules = () => {
+            document.getElementById('discTabRules').className = 'okw-btn okw-btn-primary';
+            document.getElementById('discTabHist').className = 'okw-btn okw-btn-outline';
+            OkwUI.dataTable('#sell-tbl', {
+                columns: [
+                    { key: 'code', label: 'Promo / Discount Code' },
+                    { key: 'name', label: 'Name / Description', render: (v, r) => OkwUI.escapeHtml(v || r.description || '—') },
+                    { key: 'discount_type', label: 'Type', render: (v, r) => OkwUI.escapeHtml(v || (r.discount_percent ? 'Percentage' : 'Fixed')) },
+                    { key: 'discount_value', label: 'Value', numeric: true, render: (v, r) => r.discount_percent != null ? `${Number(r.discount_percent)}%` : fmt(v ?? r.value ?? 0) },
+                    { key: 'status', label: 'Status', render: (v, r) => OkwUI.badge(v || (r.is_active === false ? 'Inactive' : 'Active'), (v === 'Inactive' || r.is_active === false) ? 'neutral' : 'success') }
+                ],
+                rows: promos,
+                emptyText: 'No discount or promotion rules yet. Click "+ Add Discount / Promotion" to create one.',
+                exportFilename: 'okwesiwa-discount-rules.xlsx',
+                printTitle: 'Active Discount & Promotion Rules'
+            });
+        };
+
+        const showHistory = () => {
+            document.getElementById('discTabRules').className = 'okw-btn okw-btn-outline';
+            document.getElementById('discTabHist').className = 'okw-btn okw-btn-primary';
+            OkwUI.dataTable('#sell-tbl', {
+                columns: [
+                    { key: 'created_at', label: 'Date', render: v => v ? new Date(v).toLocaleString() : '' },
+                    { key: 'receipt_number', label: 'Receipt #' },
+                    { key: 'customer_name', label: 'Customer' },
+                    { key: 'discount_amount', label: 'Discount', numeric: true, render: fmt },
+                    { key: 'total_amount', label: 'Total', numeric: true, render: fmt },
+                    { key: 'seller_name', label: 'Staff' }
+                ],
+                rows: discounts,
+                emptyText: 'No discounts applied on sales yet.',
+                exportFilename: 'okwesiwa-discounts-history.xlsx',
+                printTitle: 'Applied Discounts History'
+            });
+        };
+
+        document.getElementById('discTabRules').onclick = showRules;
+        document.getElementById('discTabHist').onclick = showHistory;
+        showRules();
     }
 
     function renderImport() {

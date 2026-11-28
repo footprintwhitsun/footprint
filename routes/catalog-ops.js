@@ -647,19 +647,53 @@ router.post('/api/customer-sites', authenticateToken, requireRole(MANAGER_ROLES)
     res.status(201).json({ success: true, site: r.rows[0] });
 });
 
-// 5. Deliveries (Loading -> On the way -> Delivered)
+// 5. Deliveries / Shipments
 router.get('/api/deliveries', authenticateToken, async (req, res) => {
     await ensurePhase4Schema();
     const tenantId = req.user.tenant_id || 1;
-    const deliveries = await safeQuery('SELECT * FROM delivery_notes WHERE COALESCE(tenant_id, 1) = $1 ORDER BY created_at DESC LIMIT 100', [tenantId]);
+    const deliveries = await safeQuery('SELECT * FROM delivery_notes WHERE COALESCE(tenant_id, 1) = $1 ORDER BY created_at DESC LIMIT 150', [tenantId]);
     res.json({ deliveries });
+});
+
+router.post('/api/deliveries', authenticateToken, requirePermission('deliveries', 'create'), async (req, res) => {
+    try {
+        await ensurePhase4Schema();
+        const tenantId = req.user.tenant_id || 1;
+        const {
+            customer_name = 'Walk-In Customer',
+            receipt_number = '',
+            site_address = '',
+            driver_name = '',
+            truck_number = '',
+            delivery_fee = 0,
+            status = 'Ordered',
+            receiver_name = ''
+        } = req.body;
+        if (!String(site_address || '').trim()) {
+            return res.status(400).json({ message: 'Shipping address is required' });
+        }
+        const allowed = ['Ordered', 'Packed', 'Loading', 'On the way', 'Shipped', 'Delivered', 'Cancelled'];
+        const safeStatus = allowed.includes(status) ? status : 'Ordered';
+        const dnNum = 'SHP-' + Date.now().toString().slice(-6) + '-' + Math.floor(100 + Math.random() * 900);
+        const storeLoc = req.user.store_location || 'Main Shop';
+        const r = await pool.query(
+            `INSERT INTO delivery_notes (tenant_id, delivery_number, receipt_number, customer_name, site_address, truck_number, driver_name, delivery_fee, status, receiver_name, store_location)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+            [tenantId, dnNum, String(receipt_number || '').trim(), String(customer_name || 'Walk-In Customer').trim(), String(site_address).trim(), String(truck_number || '').trim(), String(driver_name || '').trim(), Math.max(0, Number(delivery_fee || 0)), safeStatus, String(receiver_name || '').trim(), storeLoc]
+        );
+        await logActivity(req, 'SHIPMENT_CREATED', { delivery_id: r.rows[0].id, delivery_number: dnNum, customer_name, site_address, status: safeStatus });
+        res.status(201).json({ success: true, delivery: r.rows[0] });
+    } catch (err) {
+        console.error('POST /api/deliveries error:', err);
+        res.status(500).json({ message: 'Failed to record shipment' });
+    }
 });
 
 router.patch('/api/deliveries/:id/status', authenticateToken, requirePermission('deliveries', 'edit'), async (req, res) => {
     await ensurePhase4Schema();
     const tenantId = req.user.tenant_id || 1;
     const { status, receiver_name = '', signature_data = '' } = req.body;
-    const allowed = ['Loading', 'On the way', 'Delivered'];
+    const allowed = ['Ordered', 'Packed', 'Loading', 'On the way', 'Shipped', 'Delivered', 'Cancelled'];
     if (!allowed.includes(status)) return res.status(400).json({ message: 'Invalid delivery status' });
     const r = await pool.query(
         `UPDATE delivery_notes

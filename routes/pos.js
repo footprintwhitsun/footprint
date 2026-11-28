@@ -1075,12 +1075,17 @@ router.post('/api/pos/checkout', authenticateToken, requirePermission('sales', '
         }
 
         let deliveryNote = null;
-        if (delivery && delivery.enabled && delivery.site_address) {
+        const shipAddr = delivery ? String(delivery.site_address || delivery.shipping_address || delivery.shipping_details || '').trim() : '';
+        const shouldCreateDelivery = Boolean(delivery && (delivery.enabled || shipAddr || delivery.shipping_status));
+        if (shouldCreateDelivery && shipAddr) {
             const dnNum = 'DN-' + Date.now() + '-' + crypto.randomInt(100, 999);
+            const shipDriver = String(delivery.driver || delivery.delivery_person || '').trim();
+            const shipStatus = String(delivery.shipping_status || 'Loading').trim() || 'Loading';
+            const shipFee = Math.max(0, Number(delivery.shipping_charges ?? deliveryFee ?? 0));
             const dnRes = await client.query(
                 `INSERT INTO delivery_notes (tenant_id, delivery_number, transaction_id, receipt_number, customer_id, customer_name, site_address, truck_number, driver_name, delivery_fee, status, store_location)
-                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,'Loading',$11) RETURNING *`,
-                [tenantId, dnNum, trxRes.rows[0].id, receiptNumber, parsedCustId, customerName, delivery.site_address, delivery.truck || '', delivery.driver || '', deliveryFee, storeLoc || '']
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING *`,
+                [tenantId, dnNum, trxRes.rows[0].id, receiptNumber, parsedCustId, customerName, shipAddr, delivery.truck || '', shipDriver, shipFee, shipStatus, storeLoc || '']
             );
             deliveryNote = dnRes.rows[0];
         }
