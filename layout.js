@@ -91,7 +91,6 @@
         { label: 'Discounts', url: '/sell?tab=discounts', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'percent' },
         { label: 'Add Promotions & Discount', url: '/promotions', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'tag' },
         { label: 'Import Sales', url: '/sell?tab=import', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'upload' },
-        { label: 'Lay-away', url: '/extras?tab=layaway', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'layers' },
 
         { label: 'Pending Approvals', url: '/ceo-portal?tab=approvals-pending', roles: ['ceo', 'admin'], group: 'CEO', icon: 'clock' },
         { label: 'Approval History', url: '/ceo-portal?tab=approvals-history', roles: ['ceo', 'admin'], group: 'CEO', icon: 'fileCheck' },
@@ -131,7 +130,6 @@
         { label: 'List Expenses', url: '/expenses?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'Expenses & Cash', icon: 'dollarSign' },
         { label: 'Add Expense', url: '/expenses?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'Expenses & Cash', icon: 'receipt' },
         { label: 'Expense Categories', url: '/expenses?tab=categories', roles: ['admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'Expenses & Cash', icon: 'folder' },
-        { label: 'Account & Cash', url: '/extras?tab=accounts', roles: ['admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'Expenses & Cash', icon: 'creditCard' },
         { label: 'Chart of Accounts', url: '/money?tab=coa', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'General Ledger', icon: 'fileCheck' },
         { label: 'Journal Entries', url: '/money?tab=journal', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'General Ledger', icon: 'receipt' },
         { label: 'Trial Balance & Balance Sheet', url: '/money?tab=trial-balance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'General Ledger', icon: 'barChart' },
@@ -172,6 +170,9 @@
         { label: 'Price Change History', url: '/reports?tab=detailed&report=price_history', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'tag' },
         { label: 'Warranty Report', url: '/reports?tab=detailed&report=warranty_report', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'shield' },
         { label: 'Deleted Transactions', url: '/reports?tab=detailed&report=deleted_transactions', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Payments & Audit', icon: 'fileCheck' },
+        { label: 'Reserved Orders (Part-Pay)', url: '/extras?tab=layaway', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Operations & Cash', icon: 'layers' },
+        { label: 'Staff Attendance', url: '/extras?tab=attendance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Operations & Cash', icon: 'clock' },
+        { label: 'Account & Cash Report', url: '/extras?tab=accounts', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Reports', subgroup: 'Operations & Cash', icon: 'creditCard' },
 
         // Quick Reports (Items, Brands & Customers)
         { label: 'Items Sold Today', url: '/reports?tab=drilldown&view=items_today', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Insights', icon: 'shoppingBag' },
@@ -183,7 +184,6 @@
 
         // Staff & Payroll (Team)
         { label: 'Onboard New Staff', url: '/pos-register?tab=register', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'user' },
-        { label: 'Attendance', url: '/extras?tab=attendance', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'clock' },
         { label: 'Payroll & Salaries', url: '/team?tab=payroll', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Staff', icon: 'dollarSign' },
 
         // Store Settings (Business Settings, Locations & Tax, Messages, Security)

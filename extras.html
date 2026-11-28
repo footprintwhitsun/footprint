@@ -37,10 +37,10 @@
 
     <main class="main-content">
         <div class="page-wrap">
-            <h1 style="margin:0 0 6px;font-size:24px;">Reserved Orders (Part-Pay), Attendance &amp; Accounts</h1>
-            <p style="margin:0 0 18px;color:var(--color-text-muted);font-size:14px;">Manage reserved part-pay orders, staff clock-in/out, cash &amp; bank accounts, and read-only CEO questions.</p>
+            <h1 id="ex-page-title" style="margin:0 0 6px;font-size:24px;">Reserved Orders (Part-Pay)</h1>
+            <p id="ex-page-sub" style="margin:0 0 18px;color:var(--color-text-muted);font-size:14px;">Track reserved part-pay orders, deposits, and remaining balances.</p>
 
-            <div class="tabs-row" id="ex-tabs">
+            <div class="tabs-row" id="ex-tabs" style="display:none;">
                 <button type="button" class="okw-btn okw-btn-primary" data-et="layaway">Reserved Orders (Part-Pay)</button>
                 <button type="button" class="okw-btn okw-btn-outline" data-et="attendance">Staff Attendance</button>
                 <button type="button" class="okw-btn okw-btn-outline" data-et="accounts">Account &amp; Cash Report</button>
@@ -298,6 +298,16 @@
     }
 
     function switchTab(t) {
+        const meta = {
+            layaway: ['Reserved Orders (Part-Pay)', 'Track reserved part-pay orders, deposits, and remaining balances.'],
+            attendance: ['Staff Attendance', 'Monitor staff clock-in/out records, late arrivals, and shift attendance.'],
+            accounts: ['Account & Cash Report', 'Review cash drawers, bank accounts, mobile money balances, and cash movements.']
+        }[t] || ['Reserved Orders (Part-Pay)', ''];
+        const titleEl = document.getElementById('ex-page-title');
+        const subEl = document.getElementById('ex-page-sub');
+        if (titleEl) titleEl.textContent = meta[0];
+        if (subEl) subEl.textContent = meta[1];
+        document.title = `${meta[0]} - OKWESIWA CO LTD`;
         document.getElementById('ex-tabs').querySelectorAll('[data-et]').forEach(b => b.className = b.dataset.et === t ? 'okw-btn okw-btn-primary' : 'okw-btn okw-btn-outline');
         if (t === 'attendance') renderAttendance();
         else if (t === 'accounts') renderAccounts();
