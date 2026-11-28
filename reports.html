@@ -594,7 +594,7 @@
 
                     if (reportType === "shifts") {
                         if (!cacheShifts) {
-                            const res = await fetch("/api/shifts", { headers });
+                            const res = await fetch("/api/shifts/history", { headers, credentials: "include" });
                             cacheShifts = res.ok ? await res.json() : [];
                         }
                         const filtered = (Array.isArray(cacheShifts) ? cacheShifts : []).filter(s => {

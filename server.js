@@ -2910,6 +2910,7 @@ app.post('/api/shifts/close', authenticateToken, async (req, res) => {
 // Get shift history for reports
 app.get('/api/shifts/history', authenticateToken, async (req, res) => {
     try {
+        const tenantId = req.user.tenant_id || 1;
         const isRestricted = !['super_admin', 'admin', 'ceo'].includes((req.user.role || '').toLowerCase());
         const userBranch = req.user.store_location || DEFAULT_BRANCH_NAME;
 
@@ -2919,15 +2920,17 @@ app.get('/api/shifts/history', authenticateToken, async (req, res) => {
             FROM shifts s
             LEFT JOIN users u ON s.user_id = u.id
             LEFT JOIN transactions t ON t.user_id = s.user_id 
+                AND COALESCE(t.tenant_id, 1) = $1
                 AND t.created_at >= s.start_time 
                 AND (s.end_time IS NULL OR t.created_at <= s.end_time)
                 AND t.status = 'completed'
+            WHERE COALESCE(s.tenant_id, 1) = $1
         `;
-        let params = [];
+        let params = [tenantId];
 
         // Filter by branch for non-admin/CEO users
         if (isRestricted) {
-            query += ` WHERE u.store_location = $1`;
+            query += ` AND u.store_location = $2`;
             params.push(userBranch);
         }
 
