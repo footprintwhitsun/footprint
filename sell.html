@@ -1322,7 +1322,7 @@
                     <button type="button" id="discTabRules" class="okw-btn okw-btn-primary">Active Discount / Promo Rules (${promos.length})</button>
                     <button type="button" id="discTabHist" class="okw-btn okw-btn-outline">Applied Discounts History (${discounts.length})</button>
                 </div>
-                <a href="/promotions" class="okw-btn okw-btn-primary" style="text-decoration:none;">+ Add Discount / Promotion</a>
+                <a href="/promotions" class="okw-btn okw-btn-primary" style="text-decoration:none;">+ Add Promotions &amp; Discount</a>
             </div>
             <div id="sell-tbl"></div>
         `;
@@ -1332,16 +1332,30 @@
             document.getElementById('discTabHist').className = 'okw-btn okw-btn-outline';
             OkwUI.dataTable('#sell-tbl', {
                 columns: [
-                    { key: 'code', label: 'Promo / Discount Code' },
-                    { key: 'name', label: 'Name / Description', render: (v, r) => OkwUI.escapeHtml(v || r.description || '—') },
-                    { key: 'discount_type', label: 'Type', render: (v, r) => OkwUI.escapeHtml(v || (r.discount_percent ? 'Percentage' : 'Fixed')) },
-                    { key: 'discount_value', label: 'Value', numeric: true, render: (v, r) => r.discount_percent != null ? `${Number(r.discount_percent)}%` : fmt(v ?? r.value ?? 0) },
-                    { key: 'status', label: 'Status', render: (v, r) => OkwUI.badge(v || (r.is_active === false ? 'Inactive' : 'Active'), (v === 'Inactive' || r.is_active === false) ? 'neutral' : 'success') }
+                    { key: 'code', label: 'Code' },
+                    { key: 'discount_percentage', label: 'Discount', numeric: true, render: (v, r) => `${Number(v ?? r.discount_percent ?? r.discount_value ?? 0).toFixed(2)}%` },
+                    { key: 'total_discounted', label: 'Total Discounted', numeric: true, render: fmt },
+                    { key: 'created_at', label: 'Created At', render: v => v ? new Date(v).toLocaleDateString() : '—' },
+                    {
+                        key: 'code',
+                        label: 'Action',
+                        render: (code) => `<button type="button" class="okw-btn okw-btn-outline" data-del-promo="${OkwUI.escapeHtml(code)}" style="height:26px;padding:0 10px;font-size:12px;color:#b91c1c;border-color:#fecaca;">Delete</button>`
+                    }
                 ],
                 rows: promos,
-                emptyText: 'No discount or promotion rules yet. Click "+ Add Discount / Promotion" to create one.',
+                emptyText: 'No discount or promotion rules yet. Click "+ Add Promotions & Discount" to create one.',
                 exportFilename: 'okwesiwa-discount-rules.xlsx',
                 printTitle: 'Active Discount & Promotion Rules'
+            });
+            document.getElementById('sell-tbl').querySelectorAll('[data-del-promo]').forEach(btn => {
+                btn.onclick = async () => {
+                    const code = btn.getAttribute('data-del-promo');
+                    const ok = await OkwUI.confirm('Delete Promotion', `Delete promo code "${code}"?`, { confirmText: 'Delete' });
+                    if (!ok) return;
+                    const dr = await fetch(`/api/promotions/${encodeURIComponent(code)}`, { method: 'DELETE', headers, credentials: 'include' });
+                    if (dr.ok) { OkwUI.toast('Promotion deleted', 'success'); renderDiscounts(); }
+                    else OkwUI.toast('Failed to delete promotion', 'danger');
+                };
             });
         };
 
@@ -1697,7 +1711,7 @@
         const actionBar = document.querySelector('.okw-action-bar');
         if (actionBar) actionBar.style.display = ['add', 'add_draft', 'add_quotation'].includes(activeView) ? 'none' : '';
         const openPosBtn = document.getElementById('sell-open-pos-btn');
-        if (openPosBtn) openPosBtn.style.display = ['quotations', 'returns'].includes(activeView) ? 'none' : '';
+        if (openPosBtn) openPosBtn.style.display = ['quotations', 'returns', 'shipments'].includes(activeView) ? 'none' : '';
         if (activeView === 'all') return renderSalesTable(() => true, 'All Sales', 'okwesiwa-all-sales.xlsx');
         if (activeView === 'list_pos') return renderSalesTable(isPosTillSale, 'List POS (Counter Till Sales)', 'okwesiwa-pos-sales.xlsx');
         if (activeView === 'returns') return renderSalesTable(t => Boolean(t.is_return), 'List Sell Return', 'okwesiwa-sell-returns.xlsx');

@@ -89,7 +89,7 @@
         { label: 'List Sell Return', url: '/sell?tab=returns', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'truck' },
         { label: 'Shipments', url: '/sell?tab=shipments', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'truck' },
         { label: 'Discounts', url: '/sell?tab=discounts', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'percent' },
-        { label: 'Promotions', url: '/promotions', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'tag' },
+        { label: 'Add Promotions & Discount', url: '/promotions', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'tag' },
         { label: 'Import Sales', url: '/sell?tab=import', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'upload' },
         { label: 'Lay-away', url: '/extras?tab=layaway', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'layers' },
 

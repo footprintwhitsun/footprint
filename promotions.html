@@ -190,51 +190,24 @@
     </div>
 
     <div class="main-content">
-        <div class="page-header">
-            <h2>Manage Promotions</h2>
+        <div class="page-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
+            <div>
+                <h2 style="margin:0;">Add Promotions &amp; Discount</h2>
+                <p style="margin:4px 0 0;font-size:13px;color:#64748b;">Create a new promo code or discount percentage. All saved promotions and discounts are listed under Sell &rarr; Discounts.</p>
+            </div>
+            <a href="/sell?tab=discounts" class="okw-btn okw-btn-outline" style="text-decoration:none;">View All Discounts</a>
         </div>
 
         <div class="add-form">
             <div class="form-group">
-                <label>Promo Code</label>
+                <label for="newCode">Promo / Discount Code</label>
                 <input type="text" id="newCode" placeholder="e.g. SAVE20" style="text-transform: uppercase;">
             </div>
             <div class="form-group">
-                <label>Discount Percentage (%)</label>
-                <input type="number" id="newDiscount" placeholder="e.g. 20" min="1" max="100">
+                <label for="newDiscount">Discount Percentage (%)</label>
+                <input type="number" id="newDiscount" placeholder="e.g. 20" min="1" max="100" step="0.01">
             </div>
-            <button class="btn-add" data-onclick="addPromotion()">Add Promo</button>
-        </div>
-
-        <div class="card">
-            <div style="margin-bottom: 20px;">
-                <input type="text" id="promoSearch" placeholder="Search promotions..." data-onkeyup="filterPromotions()" style="width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
-            </div>
-            <table class="promo-table">
-                <thead>
-                    <tr>
-                        <th>Code</th>
-                        <th>Discount</th>
-                        <th>Total Discounted</th>
-                        <th>Created At</th>
-                        <th>Action</th>
-                    </tr>
-                </thead>
-                <tbody id="promoTable">
-                    <tr><td colspan="4" style="text-align:center; padding:20px;">Loading...</td></tr>
-                </tbody>
-            </table>
-            <div class="pagination-controls" style="display: flex; justify-content: flex-end; padding-top: 15px; gap: 10px; align-items: center; border-top: 1px solid #eee; margin-top: 15px;">
-                <span style="font-size: 13px; color: #666;">Rows per page:</span>
-                <select id="promoRowsPerPage" data-onchange="changePromoRows()" style="padding: 5px 10px; border: 1px solid #ddd; border-radius: 6px; outline: none;">
-                    <option value="10">10</option>
-                    <option value="25">25</option>
-                    <option value="100">100</option>
-                </select>
-                <span id="promoPageInfo" style="font-size: 13px; color: #666;">Page 1 of 1</span>
-                <button data-onclick="changePromoPage(-1)" id="btnPromoPrev" aria-label="Previous page" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-left"></i></button>
-                <button data-onclick="changePromoPage(1)" id="btnPromoNext" aria-label="Next page" disabled style="padding: 5px 10px; border: 1px solid #ddd; background: white; border-radius: 4px; cursor: pointer;"><i class="fas fa-chevron-right"></i></button>
-            </div>
+            <button type="button" class="btn-add" data-onclick="addPromotion()">Add Promotion &amp; Discount</button>
         </div>
     </div>
 
@@ -302,106 +275,43 @@
                 const _roleLabel = user.role === 'manager' ? 'Store Manager' : (user.role === 'admin' ? 'Administrator' : (user.role || 'Staff'));
                 const _branchLabel = user.store_location ? ` · ${user.store_location}` : '';
                 document.getElementById('userRole').textContent = _roleLabel + _branchLabel;
-                
-                loadPromotions();
             } catch (error) {
                 window.location.href = '/login';
             }
-        }
-
-        async function loadPromotions() {
-            try {
-                const token = localStorage.getItem('authToken');
-                const res = await fetch('/api/promotions', {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                allPromotions = await res.json();
-                filteredPromotions = [...allPromotions];
-                renderPromoTable();
-            } catch (err) {
-                console.error(err);
-                document.getElementById('promoTable').innerHTML = '<tr><td colspan="5" style="text-align:center; color:red;">Error loading data</td></tr>';
-            }
-        }
-
-        function renderPromoTable() {
-            const tbody = document.getElementById('promoTable');
-            const start = (promoPage - 1) * promoRows;
-            const end = start + promoRows;
-            const pageData = filteredPromotions.slice(start, end);
-
-            if (pageData.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#888;">No active promotions</td></tr>';
-            } else {
-                tbody.innerHTML = pageData.map(p => `
-                        <tr>
-                            <td data-label="Code" style="font-weight:bold; color:var(--primary-color);">${p.code}</td>
-                            <td data-label="Discount">${p.discount_percentage}%</td>
-                            <td data-label="Total Discounted">${formatCurrency(p.total_discounted || 0)}</td>
-                            <td data-label="Created At">${new Date(p.created_at).toLocaleDateString()}</td>
-                            <td data-label="Action">
-                                <button class="btn-delete" data-onclick="deletePromotion('${p.code}')" title="Delete">
-                                    <i class="fas fa-trash"></i>
-                                </button>
-                            </td>
-                        </tr>`).join('');
-            }
-            updatePromoPagination();
-        }
-
-        function filterPromotions() {
-            const query = document.getElementById('promoSearch').value.toLowerCase();
-            filteredPromotions = allPromotions.filter(p => p.code.toLowerCase().includes(query));
-            promoPage = 1;
-            renderPromoTable();
-        }
-
-        function changePromoPage(delta) {
-            promoPage += delta;
-            renderPromoTable();
-        }
-
-        function changePromoRows() {
-            promoRows = parseInt(document.getElementById('promoRowsPerPage').value);
-            promoPage = 1;
-            renderPromoTable();
-        }
-
-        function updatePromoPagination() {
-            const totalItems = filteredPromotions.length;
-            const totalPages = Math.ceil(totalItems / promoRows) || 1;
-            
-            document.getElementById('promoPageInfo').textContent = `Page ${promoPage} of ${totalPages}`;
-            document.getElementById('btnPromoPrev').disabled = promoPage === 1;
-            document.getElementById('btnPromoNext').disabled = promoPage === totalPages;
         }
 
         async function addPromotion() {
             const code = document.getElementById('newCode').value.trim().toUpperCase();
             const discount = document.getElementById('newDiscount').value;
 
-            if (!code || !discount) return alert("Please fill all fields");
+            if (!code || !discount) {
+                showNotification('Please enter a promo code and discount percentage', 'error');
+                return;
+            }
 
             try {
-                const token = localStorage.getItem('authToken');
+                const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+                const headers = { 'Content-Type': 'application/json' };
+                if (token && token !== 'null' && token !== 'undefined') headers['Authorization'] = `Bearer ${token}`;
                 const res = await fetch('/api/promotions', {
                     method: 'POST',
-                    headers: { 
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
+                    headers,
+                    credentials: 'include',
                     body: JSON.stringify({ code, discount })
                 });
 
                 if (res.ok) {
                     document.getElementById('newCode').value = '';
                     document.getElementById('newDiscount').value = '';
-                    loadPromotions();
+                    showNotification(`Promotion ${code} (${discount}%) added successfully`, 'success');
                 } else {
-                    const errorData = await res.json();
-                    alert(errorData.message || "Error adding promotion (Code might already exist)");
+                    const errorData = await res.json().catch(() => ({}));
+                    showNotification(errorData.message || 'Error adding promotion (Code might already exist)', 'error');
                 }
-            } catch (err) { console.error(err); }
+            } catch (err) {
+                console.error(err);
+                showNotification('Server error adding promotion', 'error');
+            }
         }
 
         async function deletePromotion(code) {
