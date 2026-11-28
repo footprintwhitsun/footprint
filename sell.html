@@ -17,6 +17,40 @@
         body.sidebar-collapsed .main-content { margin-left: var(--sidebar-collapsed-width); }
         .page-wrap { flex: 1; padding: 24px; max-width: 1360px; width: 100%; margin: 0 auto; box-sizing: border-box; }
         @media (max-width: 900px) { .main-content { margin-left: 0; } }
+
+        /* Clean Add Sale Form */
+        .as-form, .as-form *, .as-form *::before, .as-form *::after { box-sizing: border-box; }
+        .as-form { display: flex; flex-direction: column; gap: 18px; max-width: 1200px; }
+        .as-card { background: var(--sheet, #ffffff); border: 1px solid var(--edge, #e2e8f0); border-radius: 14px; padding: 20px 22px; }
+        .as-title { font-size: 14px; font-weight: 700; color: var(--ink, #0f172a); margin: 0 0 14px 0; padding-bottom: 10px; border-bottom: 1px solid var(--edge, #e2e8f0); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .as-grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+        .as-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+        .as-grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+        .as-field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+        .as-field label { font-size: 12.5px; font-weight: 600; color: var(--ink-2, #334155); }
+        .as-req { color: #dc2626; }
+        .as-input, .as-select, .as-textarea { width: 100%; min-width: 0; height: 38px; padding: 0 12px; border: 1px solid var(--edge-strong, #cbd5e1); border-radius: 8px; background: var(--sheet, #ffffff); color: var(--ink, #0f172a); font-family: inherit; font-size: 13.5px; outline: none; }
+        .as-textarea { height: auto; min-height: 70px; padding: 10px 12px; resize: vertical; }
+        .as-input:focus, .as-select:focus, .as-textarea:focus { border-color: var(--brand, #273990); box-shadow: 0 0 0 3px rgba(39,57,144,0.12); }
+        .as-readonly { min-height: 38px; padding: 8px 12px; border: 1px dashed var(--edge-strong, #cbd5e1); border-radius: 8px; background: var(--frame, #f8fafc); color: var(--ink-2, #334155); font-size: 13px; line-height: 1.4; }
+        .as-help { font-size: 11.5px; color: var(--muted, #64748b); line-height: 1.4; }
+        .as-pill { display: inline-flex; align-items: center; justify-content: space-between; width: 100%; height: 38px; padding: 0 12px; border-radius: 8px; background: var(--frame, #f8fafc); border: 1px solid var(--edge, #e2e8f0); font-size: 13px; font-weight: 600; color: var(--ink-2, #334155); font-variant-numeric: tabular-nums; }
+        .as-search-wrap { position: relative; margin-bottom: 14px; }
+        .as-search-results { position: absolute; top: calc(100% + 4px); left: 0; right: 0; max-height: 260px; overflow-y: auto; background: var(--sheet, #ffffff); border: 1px solid var(--edge-strong, #cbd5e1); border-radius: 10px; box-shadow: 0 12px 28px rgba(15,23,42,0.14); z-index: 60; display: none; }
+        .as-search-item { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--edge, #f1f5f9); cursor: pointer; font-size: 13px; }
+        .as-search-item:hover { background: var(--frame-hover, #f8fafc); }
+        .as-table { width: 100%; border-collapse: collapse; min-width: 680px; }
+        .as-table th { text-align: left; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; color: var(--muted, #64748b); padding: 10px 10px; border-bottom: 1px solid var(--edge, #e2e8f0); background: var(--frame, #f8fafc); }
+        .as-table td { padding: 9px 10px; border-bottom: 1px solid var(--edge, #f1f5f9); font-size: 13px; vertical-align: middle; }
+        .as-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .as-cell-in { width: 100%; min-width: 72px; height: 32px; padding: 0 8px; border: 1px solid var(--edge-strong, #cbd5e1); border-radius: 6px; background: var(--sheet, #ffffff); color: var(--ink, #0f172a); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+        .as-strip { display: flex; justify-content: flex-end; gap: 28px; flex-wrap: wrap; padding: 12px 14px; margin-top: 12px; background: var(--frame, #f8fafc); border: 1px solid var(--edge, #e2e8f0); border-radius: 10px; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+        .as-payable { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; margin-top: 16px; border-radius: 12px; background: var(--frame, #f8fafc); border: 1px solid var(--edge-strong, #cbd5e1); }
+        .as-payable .val { font-size: 20px; font-weight: 800; color: var(--brand, #273990); font-variant-numeric: tabular-nums; }
+        .as-pay-foot { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 12px 16px; margin-top: 14px; border-radius: 10px; background: var(--frame, #f8fafc); border: 1px solid var(--edge, #e2e8f0); font-size: 13.5px; font-weight: 700; font-variant-numeric: tabular-nums; }
+        .as-footer { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+        @media (max-width: 1040px) { .as-grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+        @media (max-width: 760px) { .as-grid-4, .as-grid-3, .as-grid-2 { grid-template-columns: 1fr; } }
     </style>
     <link rel="stylesheet" href="/portal-skin.css">
 </head>
@@ -142,120 +176,543 @@
     }
 
     function renderItemBuilder(mode, existingDraft = null) {
+        const actionBar = document.querySelector('.okw-action-bar');
+        if (actionBar) actionBar.style.display = 'none';
         dateHost.style.display = 'none';
         if (kpiHost) kpiHost.style.display = 'none';
+
+        const ALLOWED_DOC_EXT = /\.(pdf|csv|zip|doc|docx|jpeg|jpg|png)$/i;
+        const MAX_DOC_BYTES = 5 * 1024 * 1024;
+        const localNow = () => {
+            const d = new Date();
+            const pad = (n) => String(n).padStart(2, '0');
+            return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        };
+
         const isEditDraft = !!(existingDraft && existingDraft.id);
         const existingItems = existingDraft
             ? (Array.isArray(existingDraft.items) ? existingDraft.items : (typeof existingDraft.items === 'string' ? JSON.parse(existingDraft.items || '[]') : []))
             : [];
-        const staged = existingItems.map(it => ({
+        let staged = existingItems.map(it => ({
             barcode: it.barcode || '',
             name: it.name || it.barcode || 'Item',
+            unit: it.unit || 'Pc(s)',
+            stock: Number(it.stock || 0),
             qty: Number(it.qty || 1),
-            price: Number(it.price || 0)
+            price: Number(it.price || 0),
+            discount: Number(it.discount || 0)
         }));
-        const titles = { add: 'Add Sale', add_draft: isEditDraft ? `Edit Draft #${existingDraft.id}` : 'Add Draft', add_quotation: 'Add Quotation' };
-        const btnLabel = { add: 'Complete Sale', add_draft: isEditDraft ? 'Update Draft' : 'Save Draft', add_quotation: 'Save Quotation' }[mode];
+        let customersList = [];
+        let productsList = [];
+        let saleDoc = null;
+        let shipDoc = null;
+        let currentPayable = 0;
+
+        const defaultStatus = mode === 'add_draft' ? 'Draft' : (mode === 'add_quotation' ? 'Quotation' : 'Final');
+        const heading = mode === 'add_draft' ? (isEditDraft ? `Edit Draft #${existingDraft.id}` : 'Add Draft') : (mode === 'add_quotation' ? 'Add Quotation' : 'Add Sale');
+
         const panel = document.getElementById('sell-panel');
         panel.innerHTML = `
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                <h2 style="margin:0;font-size:18px;">${titles[mode]}</h2>
-                ${isEditDraft ? `<button type="button" class="okw-btn okw-btn-outline" id="sb-cancel-edit">Back to Drafts</button>` : ''}
-            </div>
-            <div class="okw-filter-bar" style="margin-bottom:14px;">
-                <input type="text" id="sb-cust" class="okw-input" placeholder="Customer name (Walk-in)" value="${OkwUI.escapeHtml(existingDraft?.customer_name || '')}">
-                <input type="text" id="sb-q" class="okw-input" placeholder="Scan barcode or item name...">
-                <input type="number" step="any" id="sb-qty" class="okw-input" placeholder="Qty" value="1">
-                ${mode === 'add' ? `<select id="sb-method" class="okw-select"><option value="cash">Cash</option><option value="momo">MoMo</option><option value="card">Card</option><option value="credit">Credit</option></select>` : ''}
-                <button type="button" class="okw-btn okw-btn-outline" id="sb-add">Add Item</button>
-                <button type="button" class="okw-btn okw-btn-accent" id="sb-submit">${btnLabel}</button>
-            </div>
-            <div id="sb-tbl"></div>
-            <div id="sb-totals" style="display:flex;justify-content:space-between;align-items:center;padding:14px 16px;margin-top:14px;background:var(--color-surface,#fff);border:1px solid var(--color-border,#e2e8f0);border-radius:10px;">
-                <div style="font-size:13px;color:var(--color-text-muted);">Total Items: <strong id="sb-count">0</strong></div>
-                <div style="text-align:right;">
-                    <div style="font-size:11.5px;text-transform:uppercase;color:var(--color-text-muted);font-weight:600;">Net Total Amount</div>
-                    <div style="font-size:20px;font-weight:800;color:var(--color-primary,#273990);" id="sb-net">GH₵ 0.00</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+                <h1 style="margin:0;font-size:22px;font-weight:700;color:var(--ink,#0f172a);">${heading}</h1>
+                <div style="display:flex;gap:8px;">
+                    <a href="/sell?tab=all" class="okw-btn okw-btn-outline" style="text-decoration:none;">All Sales</a>
+                    <a href="/pos" class="okw-btn okw-btn-accent" style="text-decoration:none;">Open POS</a>
                 </div>
             </div>
-        `;
-        if (isEditDraft) {
-            document.getElementById('sb-cancel-edit').onclick = () => { activeView = 'drafts'; render(); };
-        }
-        const draw = () => {
-            const totalUnits = staged.reduce((s, r) => s + Number(r.qty || 0), 0);
-            const net = staged.reduce((s, r) => s + Number(r.qty || 0) * Number(r.price || 0), 0);
-            document.getElementById('sb-count').textContent = `${staged.length} (${totalUnits} units)`;
-            document.getElementById('sb-net').textContent = fmt(net);
-            OkwUI.dataTable('#sb-tbl', {
-                columns: [
-                    { key: 'name', label: 'Product' },
-                    { key: 'barcode', label: 'Barcode' },
-                    { key: 'qty', label: 'Qty', numeric: true },
-                    { key: 'price', label: 'Unit Price', numeric: true, render: fmt },
-                    { key: 'line_total', label: 'Line Total', numeric: true, render: (v, r) => fmt(Number(r.qty || 0) * Number(r.price || 0)) },
-                    {
-                        key: '_idx',
-                        label: 'Action',
-                        render: (v, r) => `<button type="button" class="okw-btn okw-btn-danger" data-sb-rm="${r._idx}" style="height:28px;padding:0 10px;font-size:12px;">Remove</button>`
-                    }
-                ],
-                rows: staged.map((it, idx) => ({ ...it, _idx: idx })),
-                printableRow: false,
-                exportFilename: `okwesiwa-${mode}-draft.xlsx`
-            });
-            panel.querySelectorAll('[data-sb-rm]').forEach(btn => {
-                btn.onclick = () => { staged.splice(Number(btn.dataset.sbRm), 1); draw(); };
-            });
-        };
-        draw();
 
-        OkwUI.productTypeahead('#sb-q', (prod) => {
-            const qty = Number(document.getElementById('sb-qty').value || 1);
-            staged.push({ barcode: prod.barcode, name: prod.name, qty: qty > 0 ? qty : 1, price: Number(prod.price || 0) });
-            document.getElementById('sb-q').value = '';
-            draw();
+            <form id="addSaleForm" class="as-form" novalidate>
+                <!-- 1. SALE DETAILS -->
+                <section class="as-card">
+                    <h2 class="as-title">1. Sale Details</h2>
+                    <div class="as-grid-4">
+                        <div class="as-field">
+                            <label for="asCustomer">Customer <span class="as-req">*</span></label>
+                            <select id="asCustomer" class="as-select" required>
+                                <option value="">Walk-In Customer</option>
+                            </select>
+                        </div>
+                        <div class="as-field">
+                            <label>Billing Address</label>
+                            <div id="asBillAddr" class="as-readonly">Walk-In Customer</div>
+                        </div>
+                        <div class="as-field">
+                            <label>Shipping Address</label>
+                            <div id="asShipAddrPreview" class="as-readonly">Walk-In Customer</div>
+                        </div>
+                        <div class="as-field">
+                            <label for="asPayTermNum">Pay term</label>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                                <input type="number" id="asPayTermNum" class="as-input" min="0" step="1" placeholder="e.g. 30">
+                                <select id="asPayTermUnit" class="as-select">
+                                    <option value="">Select</option>
+                                    <option value="Days">Days</option>
+                                    <option value="Months">Months</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="as-field">
+                            <label for="asSaleDate">Sale Date <span class="as-req">*</span></label>
+                            <input type="datetime-local" id="asSaleDate" class="as-input" value="${localNow()}" required>
+                        </div>
+                        <div class="as-field">
+                            <label for="asStatus">Status <span class="as-req">*</span></label>
+                            <select id="asStatus" class="as-select" required>
+                                <option value="Final"${defaultStatus === 'Final' ? ' selected' : ''}>Final</option>
+                                <option value="Draft"${defaultStatus === 'Draft' ? ' selected' : ''}>Draft</option>
+                                <option value="Quotation"${defaultStatus === 'Quotation' ? ' selected' : ''}>Quotation</option>
+                            </select>
+                        </div>
+                        <div class="as-field">
+                            <label for="asInvScheme">Invoice scheme</label>
+                            <select id="asInvScheme" class="as-select">
+                                <option value="Default">Default</option>
+                                <option value="Custom">Custom</option>
+                            </select>
+                        </div>
+                        <div class="as-field">
+                            <label for="asInvNo">Invoice No.</label>
+                            <input type="text" id="asInvNo" class="as-input" placeholder="Keep blank to auto generate">
+                        </div>
+
+                        <div class="as-field" style="grid-column:span 2;">
+                            <label for="asDoc">Attach Document</label>
+                            <input type="file" id="asDoc" class="as-input" style="padding:6px 10px;height:auto;" accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png">
+                            <span class="as-help">Max File size: 5MB · Allowed File: .pdf, .csv, .zip, .doc, .docx, .jpeg, .jpg, .png</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- 2. PRODUCTS -->
+                <section class="as-card">
+                    <h2 class="as-title">
+                        <span>2. Products</span>
+                        <button type="button" id="asDeleteAll" class="okw-btn okw-btn-outline" style="height:30px;padding:0 11px;font-size:12px;color:#b91c1c;border-color:#fecaca;" disabled>Delete All</button>
+                    </h2>
+                    <div class="as-search-wrap">
+                        <input type="search" id="asProductSearch" class="as-input" placeholder="Search product by name, SKU, or barcode..." autocomplete="off">
+                        <div id="asSearchResults" class="as-search-results"></div>
+                    </div>
+                    <div style="overflow-x:auto;border:1px solid var(--edge,#e2e8f0);border-radius:10px;">
+                        <table class="as-table" data-no-table-tools="1">
+                            <thead>
+                                <tr>
+                                    <th style="width:40px;">#</th>
+                                    <th>Product</th>
+                                    <th class="num" style="width:110px;">Quantity</th>
+                                    <th class="num" style="width:130px;">Unit Price</th>
+                                    <th class="num" style="width:120px;">Discount</th>
+                                    <th class="num" style="width:130px;">Subtotal</th>
+                                    <th style="width:48px;text-align:center;"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="asItemsBody">
+                                <tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted,#64748b);">No products added yet. Search above to add items.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="as-strip">
+                        <div>Items: <strong id="asSumItems">0.00</strong></div>
+                        <div>Total: <strong id="asSumTotal">GH₵ 0.00</strong></div>
+                    </div>
+                </section>
+
+                <!-- 3. DISCOUNT, TAX, NOTES & SHIPPING -->
+                <section class="as-card">
+                    <h2 class="as-title">3. Discount, Tax &amp; Shipping</h2>
+                    <div class="as-grid-3">
+                        <div class="as-field">
+                            <label for="asDiscType">Discount Type <span class="as-req">*</span></label>
+                            <select id="asDiscType" class="as-select">
+                                <option value="none">None</option>
+                                <option value="fixed">Fixed</option>
+                                <option value="percentage">Percentage (%)</option>
+                            </select>
+                        </div>
+                        <div class="as-field">
+                            <label for="asDiscAmt">Discount Amount <span class="as-req">*</span></label>
+                            <input type="number" id="asDiscAmt" class="as-input" step="0.01" min="0" value="0">
+                        </div>
+                        <div class="as-field">
+                            <label>Discount Amount: (-)</label>
+                            <div class="as-pill"><span>Discount: (-)</span><span id="asDiscCalc">GH₵ 0.00</span></div>
+                        </div>
+
+                        <div class="as-field">
+                            <label for="asOrderTax">Order Tax <span class="as-req">*</span></label>
+                            <select id="asOrderTax" class="as-select">
+                                <option value="" data-rate="0">None (0%)</option>
+                            </select>
+                        </div>
+                        <div class="as-field">
+                            <label>Order Tax: (+)</label>
+                            <div class="as-pill"><span>Order Tax: (+)</span><span id="asTaxCalc">GH₵ 0.00</span></div>
+                        </div>
+                        <div class="as-field">
+                            <label for="asShipCharges">Shipping Charges</label>
+                            <input type="number" id="asShipCharges" class="as-input" step="0.01" min="0" value="0">
+                        </div>
+                    </div>
+
+                    <div class="as-grid-2" style="margin-top:16px;">
+                        <div class="as-field">
+                            <label for="asSellNote">Sell note</label>
+                            <textarea id="asSellNote" class="as-textarea" placeholder="Optional sale note..."></textarea>
+                        </div>
+                        <div class="as-field">
+                            <label for="asShipDetails">Shipping Details</label>
+                            <textarea id="asShipDetails" class="as-textarea" placeholder="Carrier, waybill, or instructions..."></textarea>
+                        </div>
+                    </div>
+
+                    <div class="as-grid-4" style="margin-top:16px;">
+                        <div class="as-field">
+                            <label for="asShipAddress">Shipping Address</label>
+                            <input type="text" id="asShipAddress" class="as-input" placeholder="Delivery address">
+                        </div>
+                        <div class="as-field">
+                            <label for="asShipStatus">Shipping Status</label>
+                            <select id="asShipStatus" class="as-select">
+                                <option value="">Select</option>
+                                <option value="Ordered">Ordered</option>
+                                <option value="Packed">Packed</option>
+                                <option value="Shipped">Shipped</option>
+                                <option value="Delivered">Delivered</option>
+                                <option value="Cancelled">Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="as-field">
+                            <label for="asDeliveredTo">Delivered To</label>
+                            <input type="text" id="asDeliveredTo" class="as-input" placeholder="Recipient name">
+                        </div>
+                        <div class="as-field">
+                            <label for="asDeliveryPerson">Delivery Person</label>
+                            <input type="text" id="asDeliveryPerson" class="as-input" placeholder="Driver / courier">
+                        </div>
+                    </div>
+
+                    <div class="as-field" style="margin-top:16px;max-width:520px;">
+                        <label for="asShipDoc">Shipping Documents</label>
+                        <input type="file" id="asShipDoc" class="as-input" style="padding:6px 10px;height:auto;" accept=".pdf,.csv,.zip,.doc,.docx,.jpeg,.jpg,.png">
+                        <span class="as-help">Max File size: 5MB · Allowed File: .pdf, .csv, .zip, .doc, .docx, .jpeg, .jpg, .png</span>
+                    </div>
+
+                    <div class="as-payable">
+                        <span style="font-size:14px;font-weight:700;color:var(--ink,#0f172a);">Total Payable</span>
+                        <span class="val" id="asTotalPayable">GH₵ 0.00</span>
+                    </div>
+                </section>
+
+                <!-- 4. ADD PAYMENT -->
+                <section class="as-card" id="asPaymentCard">
+                    <h2 class="as-title">
+                        <span>4. Add Payment</span>
+                        <span style="font-size:12.5px;font-weight:600;color:var(--ink-2,#334155);">Advance Balance: <strong id="asAdvanceBal">GH₵ 0.00</strong></span>
+                    </h2>
+                    <div class="as-grid-3">
+                        <div class="as-field">
+                            <label for="asPayAmt">Amount <span class="as-req">*</span></label>
+                            <div style="display:flex;gap:8px;">
+                                <input type="number" id="asPayAmt" class="as-input" step="0.01" min="0" value="0">
+                                <button type="button" id="asPayFull" class="okw-btn okw-btn-outline" style="height:38px;white-space:nowrap;padding:0 12px;">Pay Full</button>
+                            </div>
+                        </div>
+                        <div class="as-field">
+                            <label for="asPaidOn">Paid on <span class="as-req">*</span></label>
+                            <input type="datetime-local" id="asPaidOn" class="as-input" value="${localNow()}">
+                        </div>
+                        <div class="as-field">
+                            <label for="asPayMethod">Payment Method <span class="as-req">*</span></label>
+                            <select id="asPayMethod" class="as-select">
+                                <option value="cash">Cash</option>
+                                <option value="momo">Mobile Money (MoMo)</option>
+                                <option value="card">Card</option>
+                                <option value="bank">Bank Transfer</option>
+                                <option value="cheque">Cheque</option>
+                                <option value="credit">Credit</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="as-field" style="margin-top:16px;">
+                        <label for="asPayNote">Payment note</label>
+                        <textarea id="asPayNote" class="as-textarea" placeholder="Payment reference or remarks..."></textarea>
+                    </div>
+                    <div class="as-pay-foot">
+                        <span>Change Return: <strong id="asChangeReturn" style="color:#15803d;">GH₵ 0.00</strong></span>
+                        <span>Balance: <strong id="asBalanceDue" style="color:#b91c1c;">GH₵ 0.00</strong></span>
+                    </div>
+                </section>
+
+                <div class="as-footer">
+                    <a href="/sell?tab=all" class="okw-btn okw-btn-outline" style="text-decoration:none;">Cancel</a>
+                    <button type="submit" id="asSaveBtn" class="okw-btn okw-btn-primary">Save Sale</button>
+                </div>
+            </form>
+        `;
+
+        const validateFile = (input, onOk) => {
+            const f = input.files && input.files[0];
+            if (!f) { onOk(null); return; }
+            if (!ALLOWED_DOC_EXT.test(f.name)) {
+                OkwUI.toast('Unsupported file type. Allowed: .pdf, .csv, .zip, .doc, .docx, .jpeg, .jpg, .png', 'warning');
+                input.value = '';
+                onOk(null);
+                return;
+            }
+            if (f.size > MAX_DOC_BYTES) {
+                OkwUI.toast('File exceeds the 5MB maximum size', 'warning');
+                input.value = '';
+                onOk(null);
+                return;
+            }
+            const r = new FileReader();
+            r.onload = () => onOk({ name: f.name, mime: f.type || '', data: String(r.result || '') });
+            r.readAsDataURL(f);
+        };
+        document.getElementById('asDoc').addEventListener('change', (e) => validateFile(e.target, (d) => { saleDoc = d; }));
+        document.getElementById('asShipDoc').addEventListener('change', (e) => validateFile(e.target, (d) => { shipDoc = d; }));
+
+        function recalc() {
+            const totalQty = staged.reduce((s, it) => s + Math.max(0, Number(it.qty || 0)), 0);
+            const itemsTotal = staged.reduce((s, it) => s + Math.max(0, Number(it.qty || 0) * Number(it.price || 0) - Number(it.discount || 0)), 0);
+
+            const dType = document.getElementById('asDiscType').value;
+            const dIn = Math.max(0, Number(document.getElementById('asDiscAmt').value || 0));
+            const discVal = dType === 'percentage' ? itemsTotal * (Math.min(100, dIn) / 100) : (dType === 'fixed' ? Math.min(itemsTotal, dIn) : 0);
+
+            const afterDisc = Math.max(0, itemsTotal - discVal);
+            const taxSel = document.getElementById('asOrderTax');
+            const taxRate = taxSel.options[taxSel.selectedIndex] ? Number(taxSel.options[taxSel.selectedIndex].getAttribute('data-rate') || 0) : 0;
+            const taxVal = afterDisc * (taxRate / 100);
+            const ship = Math.max(0, Number(document.getElementById('asShipCharges').value || 0));
+            currentPayable = Number(Math.max(0, afterDisc + taxVal + ship).toFixed(2));
+
+            const paid = Math.max(0, Number(document.getElementById('asPayAmt').value || 0));
+            const change = Math.max(0, paid - currentPayable);
+            const balance = Math.max(0, currentPayable - paid);
+
+            document.getElementById('asSumItems').textContent = totalQty.toFixed(2);
+            document.getElementById('asSumTotal').textContent = fmt(itemsTotal);
+            document.getElementById('asDiscCalc').textContent = fmt(discVal);
+            document.getElementById('asTaxCalc').textContent = fmt(taxVal);
+            document.getElementById('asTotalPayable').textContent = fmt(currentPayable);
+            document.getElementById('asChangeReturn').textContent = fmt(change);
+            document.getElementById('asBalanceDue').textContent = fmt(balance);
+        }
+
+        function drawRows() {
+            const tbody = document.getElementById('asItemsBody');
+            const delAll = document.getElementById('asDeleteAll');
+            if (delAll) delAll.disabled = !staged.length;
+            if (!staged.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;color:var(--muted,#64748b);">No products added yet. Search above to add items.</td></tr>';
+                recalc();
+                return;
+            }
+            tbody.innerHTML = staged.map((it, idx) => {
+                const sub = Math.max(0, Number(it.qty || 0) * Number(it.price || 0) - Number(it.discount || 0));
+                return `
+                    <tr>
+                        <td>${idx + 1}</td>
+                        <td>
+                            <strong>${OkwUI.escapeHtml(it.name)}</strong>
+                            <div style="font-size:11px;color:var(--muted,#64748b);font-family:ui-monospace,monospace;">${OkwUI.escapeHtml(it.barcode)}</div>
+                            <div style="font-size:11.5px;color:${Number(it.stock || 0) <= 0 ? '#b91c1c' : '#475569'};">Current stock: <strong>${Number(it.stock || 0)} ${OkwUI.escapeHtml(it.unit || 'Pc(s)')}</strong></div>
+                        </td>
+                        <td class="num"><input type="number" class="as-cell-in" step="any" min="0.001" value="${it.qty}" data-as-f="qty" data-as-i="${idx}"></td>
+                        <td class="num"><input type="number" class="as-cell-in" step="0.01" min="0" value="${Number(it.price).toFixed(2)}" data-as-f="price" data-as-i="${idx}"></td>
+                        <td class="num"><input type="number" class="as-cell-in" step="0.01" min="0" value="${Number(it.discount || 0).toFixed(2)}" data-as-f="discount" data-as-i="${idx}"></td>
+                        <td class="num" style="font-weight:700;" data-as-sub="${idx}">${fmt(sub)}</td>
+                        <td style="text-align:center;"><button type="button" class="okw-btn okw-btn-outline" style="height:28px;padding:0 8px;color:#b91c1c;border-color:#fecaca;" data-as-del="${idx}">&times;</button></td>
+                    </tr>`;
+            }).join('');
+            recalc();
+        }
+        drawRows();
+
+        const itemsBody = document.getElementById('asItemsBody');
+        itemsBody.addEventListener('input', (e) => {
+            const f = e.target.getAttribute('data-as-f');
+            const idx = e.target.getAttribute('data-as-i');
+            if (!f || idx === null) return;
+            const i = Number(idx);
+            staged[i][f] = Math.max(0, Number(e.target.value || 0));
+            const sub = Math.max(0, staged[i].qty * staged[i].price - (staged[i].discount || 0));
+            const cell = itemsBody.querySelector(`[data-as-sub="${i}"]`);
+            if (cell) cell.textContent = fmt(sub);
+            recalc();
+        });
+        itemsBody.addEventListener('click', (e) => {
+            const del = e.target.closest('[data-as-del]');
+            if (!del) return;
+            staged.splice(Number(del.getAttribute('data-as-del')), 1);
+            drawRows();
+        });
+        document.getElementById('asDeleteAll').addEventListener('click', () => {
+            staged = [];
+            drawRows();
         });
 
-        document.getElementById('sb-add').onclick = async () => {
-            const q = document.getElementById('sb-q').value.trim();
-            const qty = Number(document.getElementById('sb-qty').value || 1);
-            if (!q || qty <= 0) return OkwUI.toast('Enter product and positive qty', 'warning');
-            const sr = await fetch(`/api/pos/search?q=${encodeURIComponent(q)}&limit=1`, { headers, credentials: 'include' });
-            const sd = await sr.json().catch(() => ({}));
-            const prod = (sd.products || [])[0];
-            if (!prod) return OkwUI.toast('Product not found', 'danger');
-            staged.push({ barcode: prod.barcode, name: prod.name, qty, price: Number(prod.price || 0) });
-            document.getElementById('sb-q').value = '';
-            draw();
-        };
+        // Product search dropdown
+        const sIn = document.getElementById('asProductSearch');
+        const sBox = document.getElementById('asSearchResults');
+        sIn.addEventListener('input', () => {
+            const q = sIn.value.trim().toLowerCase();
+            if (!q) { sBox.style.display = 'none'; return; }
+            const hits = productsList.filter(p => `${p.name || ''} ${p.barcode || ''} ${p.brand || ''}`.toLowerCase().includes(q)).slice(0, 12);
+            sBox.innerHTML = hits.length ? hits.map(p => `
+                <div class="as-search-item" data-pick-bc="${OkwUI.escapeHtml(p.barcode)}">
+                    <div><strong>${OkwUI.escapeHtml(p.name)}</strong><div style="font-size:11.5px;color:#64748b;">${OkwUI.escapeHtml(p.barcode)}</div></div>
+                    <div style="text-align:right;font-size:12.5px;"><div style="font-weight:700;color:#273990;">${fmt(p.price || 0)}</div><div style="font-size:11px;color:${Number(p.stock || 0) <= 0 ? '#b91c1c' : '#64748b'};">Stock: ${Number(p.stock || 0)}</div></div>
+                </div>`).join('') : '<div style="padding:12px;color:#64748b;font-size:13px;">No matching products</div>';
+            sBox.style.display = 'block';
+        });
+        sBox.addEventListener('click', (e) => {
+            const row = e.target.closest('[data-pick-bc]');
+            if (!row) return;
+            const prod = productsList.find(p => String(p.barcode) === String(row.getAttribute('data-pick-bc')));
+            if (prod) {
+                const ex = staged.find(it => it.barcode === prod.barcode);
+                if (ex) ex.qty = Number((ex.qty + 1).toFixed(3));
+                else staged.push({ barcode: prod.barcode, name: prod.name, unit: prod.selling_unit || 'Pc(s)', stock: Number(prod.stock || 0), qty: 1, price: Number(prod.price || 0), discount: 0 });
+                drawRows();
+            }
+            sIn.value = '';
+            sBox.style.display = 'none';
+            sIn.focus();
+        });
+        document.addEventListener('click', (e) => { if (!e.target.closest('.as-search-wrap')) sBox.style.display = 'none'; });
 
-        document.getElementById('sb-submit').onclick = async () => {
-            if (!staged.length) return OkwUI.toast('Add at least one item', 'warning');
-            const customerName = document.getElementById('sb-cust').value.trim() || 'Walk-in';
-            const total = staged.reduce((s, it) => s + Number(it.qty) * Number(it.price), 0);
-            let url = '/api/pos/checkout';
-            let method = 'POST';
-            let body = { items: staged, customer_name: customerName, payment_method: document.getElementById('sb-method')?.value || 'cash', payment_splits: [{ method: document.getElementById('sb-method')?.value || 'cash', amount: total }] };
-            if (mode === 'add_draft') {
-                url = isEditDraft ? `/api/pos/holds/${existingDraft.id}` : '/api/pos/holds';
-                method = isEditDraft ? 'PUT' : 'POST';
-                body = { label: `${customerName} (${staged.length} items)`, customer_name: customerName, items: staged, total_amount: total };
-            } else if (mode === 'add_quotation') {
-                url = '/api/pos/quotations';
-                body = { customer_name: customerName, items: staged };
+        document.getElementById('asCustomer').addEventListener('change', () => {
+            const cid = Number(document.getElementById('asCustomer').value || 0);
+            const c = customersList.find(x => Number(x.id) === cid);
+            const label = c ? [c.name, c.address, c.phone].filter(Boolean).join(', ') : 'Walk-In Customer';
+            document.getElementById('asBillAddr').textContent = label;
+            document.getElementById('asShipAddrPreview').textContent = label;
+            document.getElementById('asShipAddress').value = c && c.address ? c.address : '';
+            document.getElementById('asAdvanceBal').textContent = fmt(c ? Number(c.store_credit || 0) : 0);
+        });
+        document.getElementById('asPayFull').addEventListener('click', () => {
+            document.getElementById('asPayAmt').value = currentPayable.toFixed(2);
+            recalc();
+        });
+        ['asDiscType', 'asDiscAmt', 'asOrderTax', 'asShipCharges', 'asPayAmt'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) { el.addEventListener('input', recalc); el.addEventListener('change', recalc); }
+        });
+
+        // Load customers, taxes, and products
+        Promise.all([
+            fetch('/api/customers', { headers, credentials: 'include' }).then(r => r.ok ? r.json() : []).catch(() => []),
+            fetch('/api/taxes/active', { headers, credentials: 'include' }).then(r => r.ok ? r.json() : []).catch(() => []),
+            fetch('/api/products?limit=all', { headers, credentials: 'include' }).then(r => r.ok ? r.json() : []).catch(() => [])
+        ]).then(([cData, tData, pData]) => {
+            customersList = Array.isArray(cData) ? cData : (cData.customers || []);
+            const cSel = document.getElementById('asCustomer');
+            if (cSel) {
+                cSel.innerHTML = '<option value="">Walk-In Customer</option>' + customersList.map(c => `<option value="${Number(c.id)}">${OkwUI.escapeHtml(c.name)}${c.phone ? ' (' + OkwUI.escapeHtml(c.phone) + ')' : ''}</option>`).join('');
             }
-            const r = await fetch(url, { method, headers, credentials: 'include', body: JSON.stringify(body) });
-            const d = await r.json().catch(() => ({}));
-            if (r.ok) {
-                OkwUI.toast(isEditDraft ? 'Draft updated' : `${titles[mode]} saved`, 'success');
-                activeView = mode === 'add_draft' ? 'drafts' : (mode === 'add_quotation' ? 'quotations' : 'all');
+            const tSel = document.getElementById('asOrderTax');
+            if (tSel && Array.isArray(tData)) {
+                tSel.innerHTML = '<option value="" data-rate="0">None (0%)</option>' + tData.map(t => `<option value="${OkwUI.escapeHtml(t.id)}" data-rate="${Number(t.rate || 0)}">${OkwUI.escapeHtml(t.name)} (${Number(t.rate || 0)}%)</option>`).join('');
+            }
+            productsList = Array.isArray(pData) ? pData : (pData.products || pData.data || []);
+        });
+
+        document.getElementById('addSaleForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const validItems = staged.filter(it => Number(it.qty) > 0);
+            if (!validItems.length) return OkwUI.toast('Add at least one product', 'warning');
+
+            const status = document.getElementById('asStatus').value || 'Final';
+            const cid = document.getElementById('asCustomer').value ? Number(document.getElementById('asCustomer').value) : null;
+            const custObj = cid ? customersList.find(c => Number(c.id) === cid) : null;
+            const customerName = custObj ? custObj.name : 'Walk-In Customer';
+
+            const lineDisc = validItems.reduce((s, it) => s + Number(it.discount || 0), 0);
+            const itemsTotal = validItems.reduce((s, it) => s + Math.max(0, it.qty * it.price - (it.discount || 0)), 0);
+            const dType = document.getElementById('asDiscType').value;
+            const dIn = Math.max(0, Number(document.getElementById('asDiscAmt').value || 0));
+            const orderDisc = dType === 'percentage' ? itemsTotal * (Math.min(100, dIn) / 100) : (dType === 'fixed' ? Math.min(itemsTotal, dIn) : 0);
+            const totalDiscount = Number((lineDisc + orderDisc).toFixed(2));
+
+            const paidAmt = Math.max(0, Number(document.getElementById('asPayAmt').value || 0));
+            const payMethod = document.getElementById('asPayMethod').value || 'cash';
+            const payNote = document.getElementById('asPayNote').value.trim();
+
+            const saveBtn = document.getElementById('asSaveBtn');
+            saveBtn.disabled = true;
+            try {
+                let url = '/api/pos/checkout';
+                let method = 'POST';
+                let body;
+
+                if (status === 'Draft') {
+                    url = isEditDraft ? `/api/pos/holds/${existingDraft.id}` : '/api/pos/holds';
+                    method = isEditDraft ? 'PUT' : 'POST';
+                    body = {
+                        label: `${customerName} (${validItems.length} items)`,
+                        customer_id: cid,
+                        customer_name: customerName,
+                        items: validItems,
+                        discount_amount: totalDiscount,
+                        total_amount: currentPayable,
+                        notes: document.getElementById('asSellNote').value.trim()
+                    };
+                } else if (status === 'Quotation') {
+                    url = '/api/pos/quotations';
+                    body = {
+                        customer_id: cid,
+                        customer_name: customerName,
+                        items: validItems,
+                        discount_amount: totalDiscount,
+                        notes: document.getElementById('asSellNote').value.trim()
+                    };
+                } else {
+                    body = {
+                        customer_id: cid,
+                        customer_name: customerName,
+                        items: validItems.map(it => ({ barcode: it.barcode, name: it.name, qty: Number(it.qty), price: Number(it.price) })),
+                        discount_amount: totalDiscount,
+                        payments: paidAmt > 0 ? [{ method: payMethod, amount: paidAmt, reference: payNote }] : [],
+                        delivery: {
+                            sale_date: document.getElementById('asSaleDate').value || null,
+                            pay_term: document.getElementById('asPayTermNum').value ? `${document.getElementById('asPayTermNum').value} ${document.getElementById('asPayTermUnit').value || 'Days'}` : '',
+                            invoice_scheme: document.getElementById('asInvScheme').value,
+                            invoice_no: document.getElementById('asInvNo').value.trim(),
+                            sell_note: document.getElementById('asSellNote').value.trim(),
+                            shipping_details: document.getElementById('asShipDetails').value.trim(),
+                            shipping_address: document.getElementById('asShipAddress').value.trim(),
+                            shipping_charges: Number(document.getElementById('asShipCharges').value || 0),
+                            shipping_status: document.getElementById('asShipStatus').value,
+                            delivered_to: document.getElementById('asDeliveredTo').value.trim(),
+                            delivery_person: document.getElementById('asDeliveryPerson').value.trim(),
+                            paid_on: paidAmt > 0 ? (document.getElementById('asPaidOn').value || null) : null,
+                            payment_note: payNote,
+                            document_name: saleDoc ? saleDoc.name : '',
+                            shipping_document_name: shipDoc ? shipDoc.name : ''
+                        }
+                    };
+                }
+
+                const r = await fetch(url, { method, headers, credentials: 'include', body: JSON.stringify(body) });
+                const d = await r.json().catch(() => ({}));
+                if (!r.ok) {
+                    OkwUI.toast(d.message || 'Failed to save sale', 'danger');
+                    return;
+                }
+                OkwUI.toast(status === 'Draft' ? 'Draft saved' : (status === 'Quotation' ? 'Quotation saved' : 'Sale completed'), 'success');
+                activeView = status === 'Draft' ? 'drafts' : (status === 'Quotation' ? 'quotations' : 'all');
                 window.history.replaceState(null, '', '/sell?tab=' + activeView);
+                if (actionBar) actionBar.style.display = '';
                 render();
-            } else {
-                OkwUI.toast(d.message || 'Action failed', 'danger');
+            } catch (_) {
+                OkwUI.toast('Network error saving sale', 'danger');
+            } finally {
+                saveBtn.disabled = false;
             }
-        };
+        });
     }
 
     async function renderDrafts() {
@@ -581,6 +1038,8 @@
     }
 
     function render() {
+        const actionBar = document.querySelector('.okw-action-bar');
+        if (actionBar) actionBar.style.display = ['add', 'add_draft', 'add_quotation'].includes(activeView) ? 'none' : '';
         if (activeView === 'all') return renderSalesTable(() => true, 'All Sales', 'okwesiwa-all-sales.xlsx');
         if (activeView === 'list_pos') return renderSalesTable(t => !t.is_return, 'POS Sales List', 'okwesiwa-pos-sales.xlsx');
         if (activeView === 'returns') return renderSalesTable(t => Boolean(t.is_return), 'Sell Returns', 'okwesiwa-sell-returns.xlsx');
