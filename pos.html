@@ -4626,21 +4626,18 @@
 
         async function checkSessionAndShift() {
             try {
-                const token = localStorage.getItem('authToken');
-                if (!token) {
-                    window.location.href = '/login';
-                    return false;
-                }
+                const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
+                const authHdr = (token && token !== 'null' && token !== 'undefined') ? { 'Authorization': `Bearer ${token}` } : {};
 
                 // Run session, active shift, and active taxes requests in parallel for fast POS startup
                 const [sessionRes, shiftRes, taxesRes] = await Promise.all([
-                    fetch('/api/session', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/shifts/active', { headers: { 'Authorization': `Bearer ${token}` } }),
-                    fetch('/api/taxes/active', { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => null)
+                    fetch('/api/session', { headers: authHdr, credentials: 'include' }),
+                    fetch('/api/shifts/active', { headers: authHdr, credentials: 'include' }),
+                    fetch('/api/taxes/active', { headers: authHdr, credentials: 'include' }).catch(() => null)
                 ]);
 
                 if (!sessionRes.ok) {
-                    window.location.href = '/';
+                    window.location.href = '/login';
                     return false;
                 }
 
@@ -4663,7 +4660,15 @@
                 }
 
                 const shiftData = await shiftRes.json();
-                if (!shiftData.active) {
+                // Require an explicitly registered Cash in hand shift (do not allow bypass without Cash in hand)
+                const hasRegisteredCash = Boolean(
+                    shiftData.active &&
+                    !shiftData.managerBypass &&
+                    shiftData.shift &&
+                    shiftData.shift.start_cash !== null &&
+                    shiftData.shift.start_cash !== undefined
+                );
+                if (!hasRegisteredCash) {
                     window.location.href = '/open-shift';
                     return false;
                 }

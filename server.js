@@ -2795,8 +2795,8 @@ app.post('/api/shifts/open', authenticateToken, async (req, res) => {
 
     const { startCash, notes } = req.body;
     const openingCash = parseFloat(startCash);
-    if (startCash !== undefined && startCash !== '' && !Number.isFinite(openingCash)) {
-        return res.status(400).json({ message: 'startCash must be a number' });
+    if (startCash === undefined || startCash === null || String(startCash).trim() === '' || !Number.isFinite(openingCash) || openingCash < 0) {
+        return res.status(400).json({ message: 'Cash in hand is required and must be 0 or greater' });
     }
 
     try {
@@ -4750,10 +4750,13 @@ app.get(['/transactions/all', '/api/transactions'], authenticateToken, async (re
         const storeLocation = isGlobalTrx ? null : req.user.store_location;
         let query = `SELECT t.*,
              CASE WHEN u.id IS NOT NULL THEN COALESCE(u.name, u.username, 'Staff') || ' (@' || COALESCE(u.username, SPLIT_PART(u.email, '@', 1)) || ' · ' || UPPER(COALESCE(u.role, 'staff')) || ')' ELSE NULL END as cashier_name,
-             u.username as cashier_username, u.role as cashier_role
+             COALESCE(u.name, u.username, 'Staff') as added_by_name,
+             u.username as cashier_username, u.role as cashier_role,
+             COALESCE(c.phone, '') as customer_phone
              FROM transactions t 
              LEFT JOIN users u ON t.user_id = u.id
-             WHERE t.status = 'completed' AND COALESCE(t.tenant_id, 1) = $1`;
+             LEFT JOIN customers c ON t.customer_id = c.id
+             WHERE t.status IN ('completed', 'part-paid') AND COALESCE(t.tenant_id, 1) = $1`;
 
         const params = [tenantId];
         if (storeLocation) {

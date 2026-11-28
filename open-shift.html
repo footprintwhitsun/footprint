@@ -263,7 +263,14 @@
                 const shiftRes = await fetch('/api/shifts/active', { headers: authHeaders(), credentials: 'include' });
                 if (shiftRes.ok) {
                     const sd = await shiftRes.json();
-                    if (sd.active && sd.shift) {
+                    const hasRegisteredCash = Boolean(
+                        sd.active &&
+                        !sd.managerBypass &&
+                        sd.shift &&
+                        sd.shift.start_cash !== null &&
+                        sd.shift.start_cash !== undefined
+                    );
+                    if (hasRegisteredCash) {
                         const rawStart = sd.shift.start_time || sd.shift.opened_at;
                         const since = rawStart && !isNaN(new Date(rawStart)) ? `Started at ${new Date(rawStart).toLocaleString()}.` : 'You already have an active register shift.';
                         document.getElementById('osActiveSince').textContent = since;
