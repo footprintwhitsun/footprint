@@ -77,6 +77,22 @@
         { label: 'Add Purchase', url: '/add-purchase', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Purchases', icon: 'shoppingBag' },
         { label: 'List Purchase Return', url: '/inventory?tab=purchase_returns', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Purchases', icon: 'receipt' },
 
+        // Sell (immediately under Purchases — deduplicated)
+        { label: 'All Sales', url: '/sell?tab=all', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'receipt' },
+        { label: 'Add Sale', url: '/sell?tab=add', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'shoppingCart' },
+        { label: 'List POS', url: '/sell?tab=list_pos', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'shoppingBag' },
+        { label: 'POS', url: '/pos', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Sell', icon: 'shoppingBag' },
+        { label: 'Add Draft', url: '/sell?tab=add_draft', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'fileCheck' },
+        { label: 'List Drafts', url: '/sell?tab=drafts', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'fileCheck' },
+        { label: 'Add Quotation', url: '/sell?tab=add_quotation', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'fileCheck' },
+        { label: 'List Quotations', url: '/sell?tab=quotations', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'fileCheck' },
+        { label: 'List Sell Return', url: '/sell?tab=returns', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'truck' },
+        { label: 'Shipments', url: '/sell?tab=shipments', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'truck' },
+        { label: 'Discounts', url: '/sell?tab=discounts', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'percent' },
+        { label: 'Promotions', url: '/promotions', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'tag' },
+        { label: 'Import Sales', url: '/sell?tab=import', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'upload' },
+        { label: 'Lay-away', url: '/extras?tab=layaway', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sell', icon: 'layers' },
+
         { label: 'Pending Approvals', url: '/ceo-portal?tab=approvals-pending', roles: ['ceo', 'admin'], group: 'CEO', icon: 'clock' },
         { label: 'Approval History', url: '/ceo-portal?tab=approvals-history', roles: ['ceo', 'admin'], group: 'CEO', icon: 'fileCheck' },
         { label: 'Branches', url: '/ceo-portal?tab=branches', roles: ['ceo', 'admin'], group: 'CEO', icon: 'mapPin' },
@@ -91,29 +107,13 @@
         { label: 'Company Profile', url: '/company-portal?tab=company-profile', roles: ['company', 'business_client'], group: 'Company', icon: 'users' },
         { label: 'Company Settings', url: '/company-portal?tab=settings', roles: ['company', 'business_client'], group: 'Company', icon: 'settings' },
 
-        // Sales
-        { label: 'POS', url: '/pos', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Sales', subgroup: 'Sales', icon: 'shoppingBag' },
-        { label: 'All Sales', url: '/sell?tab=all', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Sales', icon: 'receipt' },
-        { label: 'Add Sale', url: '/sell?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Sales', icon: 'shoppingCart' },
-        { label: 'POS Sales', url: '/sell?tab=list_pos', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Sales', icon: 'shoppingBag' },
-        { label: 'Sale Returns', url: '/sell?tab=returns', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Sales', icon: 'truck' },
-        { label: 'Shipments', url: '/sell?tab=shipments', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Sales', icon: 'truck' },
-        { label: 'Lay-away', url: '/extras?tab=layaway', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Sales', icon: 'layers' },
-        { label: 'Add Draft', url: '/sell?tab=add_draft', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Drafts & Quotes', icon: 'fileCheck' },
-        { label: 'Drafts', url: '/sell?tab=drafts', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Drafts & Quotes', icon: 'fileCheck' },
-        { label: 'Add Quotation', url: '/sell?tab=add_quotation', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Drafts & Quotes', icon: 'fileCheck' },
-        { label: 'Quotations', url: '/sell?tab=quotations', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Drafts & Quotes', icon: 'fileCheck' },
-        { label: 'Discounts', url: '/sell?tab=discounts', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Pricing & Import', icon: 'percent' },
-        { label: 'Promotions', url: '/promotions', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Pricing & Import', icon: 'tag' },
-        { label: 'Import Sales', url: '/sell?tab=import', roles: ['admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Pricing & Import', icon: 'upload' },
-
         // Cash Register (Till)
         { label: 'Open Shift', url: '/open-shift', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'clock' },
         { label: 'Close Shift', url: '/close-shift', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'logOut' },
         { label: 'Daily Close', url: '/daily-close', roles: ['admin', 'manager', 'store_manager'], group: 'Till', icon: 'fileCheck' },
         { label: 'Transactions', url: '/transactions', roles: ['admin', 'manager', 'store_manager', 'cashier', 'teller'], group: 'Till', icon: 'receipt' },
 
-        // Inventory (Receiving & Movement; Purchases moved to Purchases group above)
+        // Inventory (Receiving & Movement; Purchases & Sell Returns moved to their own groups)
         { label: 'Goods Receiving', url: '/inventory?tab=receiving', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Purchasing', icon: 'clipboardCheck' },
         { label: 'Distribution', url: '/inventory?tab=distribution', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'truck' },
         { label: 'Stock Adjustments', url: '/stock-adjustments?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'layers' },
@@ -121,12 +121,11 @@
         { label: 'Bulk Adjustment', url: '/stock-adjustments?tab=bulk', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'layers' },
         { label: 'Stock Transfers', url: '/stock-transfers?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'truck' },
         { label: 'Add Stock Transfer', url: '/stock-transfers?tab=add', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'truck' },
-        { label: 'Returned Sales', url: '/inventory?tab=returns', roles: ['admin', 'manager', 'store_manager'], group: 'Inventory', subgroup: 'Movement', icon: 'receipt' },
         { label: 'Deliveries & Counts', url: '/operations', roles: ['admin', 'manager', 'store_manager', 'storekeeper', 'driver'], group: 'Inventory', subgroup: 'Movement', icon: 'clipboardCheck' },
 
-        // Credit (moved under Sales so Contacts holds strictly Suppliers, Customers, Customer Groups)
-        { label: 'Credit Clients', url: '/credit-customers?tab=clients', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Credit', icon: 'creditCard' },
-        { label: 'Manager Authorization', url: '/credit-customers?tab=auth', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Sales', subgroup: 'Credit', icon: 'lock' },
+        // Credit
+        { label: 'Credit Clients', url: '/credit-customers?tab=clients', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Credit', icon: 'creditCard' },
+        { label: 'Manager Authorization', url: '/credit-customers?tab=auth', roles: ['ceo', 'admin', 'manager', 'store_manager'], group: 'Credit', icon: 'lock' },
 
         // Expenses & Accounts (Money)
         { label: 'List Expenses', url: '/expenses?tab=list', roles: ['admin', 'manager', 'store_manager'], group: 'Accounts', subgroup: 'Expenses & Cash', icon: 'dollarSign' },
@@ -937,7 +936,7 @@
             steps: [
                 { title: 'Welcome to Your Store Manager Portal', body: 'Run your branch’s daily sales, inventory, pricing, expenses, staff, and reports from one organized workspace.', selector: '.sidebar' },
                 { title: 'Instant Search (Sidebar & Ctrl+K)', body: 'Use "Find page..." in the sidebar or press Ctrl+K from any screen to jump straight to Z Report, Suppliers, Drafts, or Stock Report.', selector: '#okw-cmd-trigger' },
-                { title: 'Sales, POS, Drafts & Quotations', body: 'Open Sales for POS checkout, All Sales, Sale Returns, Lay-aways, Quotations, Drafts, Discounts, and Promotions.', selector: '.nav-group[data-group="Sales"]' },
+                { title: 'Sell, POS, Drafts & Quotations', body: 'Open Sell for All Sales, POS checkout, Drafts, Quotations, Sell Returns, Shipments, Discounts, Promotions, Import Sales, and Lay-away.', selector: '.nav-group[data-group="Sell"]' },
                 { title: 'Products, Pricing & Opening Stock', body: 'Add products, adjust prices, configure Selling Price Groups, print barcode labels, and bulk-import products or branch opening stock.', selector: '.nav-group[data-group="Products"]' },
                 { title: 'Inventory, Purchasing & Transfers', body: 'Manage Purchase Orders, Goods Receiving, Stock Adjustments, and inter-branch Stock Transfers under Inventory.', selector: '.nav-group[data-group="Inventory"]' },
                 { title: 'Reports, Filters & Quick Tools (+)', body: 'Every report includes KPIs, Search, Filters ▾, and Export ▾ (CSV, Excel, Print, PDF). Click "+" anytime for Calendar, To-Do tasks, or to replay this tour.', selector: '.nav-group[data-group="Reports"]' }
@@ -1200,9 +1199,10 @@
                     'Contacts': 'users',
                     'Products': 'package',
                     'Purchases': 'shoppingCart',
+                    'Sell': 'shoppingBag',
                     'CEO': 'shield',
                     'Company': 'layers',
-                    'Sales': 'shoppingBag',
+                    'Credit': 'creditCard',
                     'Till': 'clock',
                     'Inventory': 'package',
                     'Accounts': 'dollarSign',

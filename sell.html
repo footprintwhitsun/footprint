@@ -44,7 +44,8 @@
 <script>
 (function () {
     const token = localStorage.getItem('authToken') || localStorage.getItem('token') || sessionStorage.getItem('token');
-    const headers = { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` };
+    const headers = { 'Content-Type': 'application/json' };
+    if (token && token !== 'null' && token !== 'undefined') headers.Authorization = `Bearer ${token}`;
     const fmt = (n) => 'GH₵ ' + Number(n || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const urlTab = new URLSearchParams(window.location.search).get('tab');
@@ -351,8 +352,10 @@
     async function renderQuotations() {
         syncQuickAddButton();
         dateHost.style.display = 'none';
+        if (kpiHost) kpiHost.style.display = 'none';
         const res = await fetch('/api/pos/quotations', { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
+        const quotes = d.quotations || [];
         document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
         OkwUI.dataTable('#sell-tbl', {
             columns: [
@@ -361,16 +364,37 @@
                 { key: 'customer_name', label: 'Customer' },
                 { key: 'total_amount', label: 'Total', numeric: true, render: fmt },
                 { key: 'valid_until', label: 'Valid Until' },
-                { key: 'status', label: 'Status' }
+                { key: 'status', label: 'Status' },
+                {
+                    key: 'id',
+                    label: 'Actions',
+                    render: (id, r) => String(r.status || '').toLowerCase() === 'converted'
+                        ? '<span style="font-size:12px;color:#15803d;font-weight:600;">Converted</span>'
+                        : `<button type="button" class="okw-btn okw-btn-primary" data-q-convert="${id}" style="height:28px;padding:0 10px;font-size:12px;">Convert to Sale</button>`
+                }
             ],
-            rows: d.quotations || [],
+            rows: quotes,
             exportFilename: 'okwesiwa-quotations.xlsx',
             printTitle: 'Quotations'
+        });
+        document.getElementById('sell-panel').querySelectorAll('[data-q-convert]').forEach(btn => {
+            btn.onclick = async () => {
+                const ok = await OkwUI.confirm('Convert Quotation', 'Convert this quotation into a completed sale?', { confirmText: 'Convert' });
+                if (!ok) return;
+                const cr = await fetch(`/api/pos/quotations/${encodeURIComponent(btn.dataset.qConvert)}/convert`, {
+                    method: 'POST', headers, credentials: 'include', body: JSON.stringify({ payment_method: 'cash' })
+                });
+                const cd = await cr.json().catch(() => ({}));
+                if (cr.ok) { OkwUI.toast('Quotation converted to sale', 'success'); renderQuotations(); }
+                else OkwUI.toast(cd.message || 'Conversion failed', 'danger');
+            };
         });
     }
 
     async function renderShipments() {
+        syncQuickAddButton();
         dateHost.style.display = 'none';
+        if (kpiHost) kpiHost.style.display = 'none';
         const res = await fetch('/api/deliveries', { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
         document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
@@ -390,7 +414,9 @@
     }
 
     async function renderDiscounts() {
+        syncQuickAddButton();
         dateHost.style.display = 'none';
+        if (kpiHost) kpiHost.style.display = 'none';
         const res = await fetch('/api/pos/discounts-history', { headers, credentials: 'include' });
         const d = await res.json().catch(() => ({}));
         document.getElementById('sell-panel').innerHTML = `<div id="sell-tbl"></div>`;
@@ -410,7 +436,9 @@
     }
 
     function renderImport() {
+        syncQuickAddButton();
         dateHost.style.display = 'none';
+        if (kpiHost) kpiHost.style.display = 'none';
         const panel = document.getElementById('sell-panel');
         const batch = [];
         panel.innerHTML = `
