@@ -1361,58 +1361,153 @@
         dateHost.style.display = 'none';
         if (kpiHost) kpiHost.style.display = 'none';
         const panel = document.getElementById('sell-panel');
-        const batch = [];
+        let batch = [];
+        let catalogMap = new Map();
+
         panel.innerHTML = `
             <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:10px;margin-bottom:12px;">
                 <div>
                     <h2 style="margin:0;font-size:18px;">Sales Import &amp; Batch Entry</h2>
-                    <p style="margin:4px 0 0;color:var(--color-text-muted);font-size:13px;">Add multiple past or external sales directly below, or optionally import from an Excel/CSV file.</p>
+                    <p style="margin:4px 0 0;color:var(--color-text-muted);font-size:13px;">Add multiple sales below or upload an Excel/CSV file. Rows sharing the same <strong>Invoice Group</strong> combine into one receipt.</p>
                 </div>
                 <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
                     <input type="file" id="imp-sales-file" accept=".xlsx,.xls,.csv" style="display:none;">
-                    <button type="button" class="okw-btn okw-btn-outline" id="imp-pick-file">Import from Excel/CSV</button>
+                    <button type="button" class="okw-btn okw-btn-outline" id="imp-pick-file">Import Excel / CSV</button>
                     <button type="button" class="okw-btn okw-btn-outline" id="imp-sample">Download Sample (.xlsx)</button>
+                    <button type="button" class="okw-btn okw-btn-outline" id="imp-clear" style="color:#b91c1c;border-color:#fecaca;" disabled>Clear All</button>
                 </div>
             </div>
             <div class="okw-filter-bar" style="margin-bottom:14px;">
+                <input type="text" id="imp-group" class="okw-input" placeholder="Invoice Group (optional)" style="max-width:170px;">
                 <input type="text" id="imp-cust" class="okw-input" placeholder="Customer (Walk-in)">
                 <input type="text" id="imp-q" class="okw-input" placeholder="Scan barcode or item name...">
-                <input type="number" step="any" id="imp-qty" class="okw-input" placeholder="Qty" value="1">
+                <input type="number" step="any" id="imp-qty" class="okw-input" placeholder="Qty" value="1" style="max-width:95px;">
                 <select id="imp-method" class="okw-select"><option value="cash">Cash</option><option value="momo">MoMo</option><option value="card">Card</option><option value="credit">Credit</option></select>
                 <button type="button" class="okw-btn okw-btn-outline" id="imp-add-row">Add Row</button>
-                <button type="button" class="okw-btn okw-btn-accent" id="imp-run">Save All Sales</button>
+                <button type="button" class="okw-btn okw-btn-primary" id="imp-run">Save All Sales</button>
             </div>
+            <div id="imp-summary" style="display:none;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;padding:10px 14px;margin-bottom:12px;background:var(--frame,#f8fafc);border:1px solid var(--edge,#e2e8f0);border-radius:10px;font-size:13px;"></div>
             <div id="imp-preview"></div>
         `;
-        const drawBatch = () => OkwUI.dataTable('#imp-preview', {
-            columns: [
-                { key: 'name', label: 'Product' },
-                { key: 'barcode', label: 'Barcode' },
-                { key: 'qty', label: 'Qty', numeric: true },
-                { key: 'customer', label: 'Customer' },
-                { key: 'method', label: 'Payment Method' },
-                { key: 'total', label: 'Total', numeric: true, render: fmt }
-            ],
-            rows: batch,
-            exportFilename: 'okwesiwa-sales-import-batch.xlsx',
-            printTitle: 'Sales Import Batch'
-        });
+
+        const validateRow = (r) => {
+            if (r._saved) return;
+            const prod = catalogMap.get(String(r.barcode || '').trim().toLowerCase());
+            if (!prod) {
+                r.status = 'Not found in catalog';
+                r._tone = 'danger';
+                r._valid = false;
+                return;
+            }
+            r.name = prod.name;
+            r.barcode = prod.barcode;
+            r.unitPrice = Number(prod.price || 0);
+            r.total = Number((Number(r.qty || 0) * r.unitPrice).toFixed(2));
+            const avail = Number(prod.stock || 0);
+            if (avail <= 0 || Number(r.qty) > avail) {
+                r.status = `Insufficient stock (avail: ${avail})`;
+                r._tone = 'danger';
+                r._valid = false;
+            } else {
+                r.status = 'Ready';
+                r._tone = 'success';
+                r._valid = true;
+            }
+        };
+
+        const drawBatch = () => {
+            const clearBtn = document.getElementById('imp-clear');
+            if (clearBtn) clearBtn.disabled = !batch.length;
+            const sumEl = document.getElementById('imp-summary');
+            if (sumEl) {
+                if (!batch.length) {
+                    sumEl.style.display = 'none';
+                } else {
+                    const readyCnt = batch.filter(r => r._valid && !r._saved).length;
+                    const errCnt = batch.filter(r => !r._valid && !r._saved).length;
+                    const totalVal = batch.reduce((s, r) => s + Number(r.total || 0), 0);
+                    sumEl.style.display = 'flex';
+                    sumEl.innerHTML = `
+                        <div style="display:flex;gap:16px;flex-wrap:wrap;">
+                            <span>Rows: <strong>${batch.length}</strong></span>
+                            <span style="color:#15803d;">Ready: <strong>${readyCnt}</strong></span>
+                            ${errCnt > 0 ? `<span style="color:#b91c1c;">Issues: <strong>${errCnt}</strong></span>` : ''}
+                        </div>
+                        <div>Batch Total: <strong style="color:var(--brand,#273990);">${fmt(totalVal)}</strong></div>
+                    `;
+                }
+            }
+
+            OkwUI.dataTable('#imp-preview', {
+                columns: [
+                    { key: 'group', label: 'Invoice Group', render: v => OkwUI.escapeHtml(v || '—') },
+                    { key: 'name', label: 'Product' },
+                    { key: 'barcode', label: 'Barcode' },
+                    { key: 'qty', label: 'Qty', numeric: true },
+                    { key: 'customer', label: 'Customer' },
+                    { key: 'method', label: 'Payment Method' },
+                    { key: 'total', label: 'Total', numeric: true, render: fmt },
+                    { key: 'status', label: 'Status', render: (v, r) => OkwUI.badge(v || 'Ready', r._tone || 'info') },
+                    {
+                        key: '_idx',
+                        label: 'Action',
+                        render: (_v, r) => `<button type="button" class="okw-btn okw-btn-outline" data-imp-rm="${r._idx}" style="height:26px;padding:0 9px;font-size:12px;color:#b91c1c;border-color:#fecaca;">Remove</button>`
+                    }
+                ],
+                rows: batch.map((r, idx) => ({ ...r, _idx: idx })),
+                emptyText: 'No sales queued yet. Add a row above or import an Excel / CSV file.',
+                exportFilename: 'okwesiwa-sales-import-batch.xlsx',
+                printTitle: 'Sales Import Batch'
+            });
+
+            document.getElementById('imp-preview').querySelectorAll('[data-imp-rm]').forEach(btn => {
+                btn.onclick = () => {
+                    batch.splice(Number(btn.dataset.impRm), 1);
+                    drawBatch();
+                };
+            });
+        };
+
+        // Preload catalog for instant validation & pricing preview
+        fetch('/api/products?limit=all', { headers, credentials: 'include' })
+            .then(r => r.ok ? r.json() : [])
+            .then(data => {
+                const prods = Array.isArray(data) ? data : (data.products || data.data || []);
+                catalogMap = new Map(prods.map(p => [String(p.barcode || '').trim().toLowerCase(), p]));
+                if (batch.length) { batch.forEach(validateRow); drawBatch(); }
+            })
+            .catch(() => {});
+
         drawBatch();
 
-        OkwUI.productTypeahead('#imp-q', (prod) => {
-            const qty = Math.max(0.01, Number(document.getElementById('imp-qty').value || 1));
+        const queueProduct = (prod, qty) => {
+            const group = document.getElementById('imp-group').value.trim();
             const customer = document.getElementById('imp-cust').value.trim() || 'Walk-in';
             const method = document.getElementById('imp-method').value || 'cash';
-            batch.push({
+            if (prod && prod.barcode) catalogMap.set(String(prod.barcode).trim().toLowerCase(), prod);
+            const row = {
+                group,
                 name: prod.name,
                 barcode: prod.barcode,
                 qty,
                 customer,
                 method,
-                total: Number((qty * Number(prod.price || 0)).toFixed(2))
-            });
+                unitPrice: Number(prod.price || 0),
+                total: Number((qty * Number(prod.price || 0)).toFixed(2)),
+                status: 'Ready',
+                _tone: 'success',
+                _valid: true,
+                _saved: false
+            };
+            validateRow(row);
+            batch.push(row);
             document.getElementById('imp-q').value = '';
             drawBatch();
+        };
+
+        OkwUI.productTypeahead('#imp-q', (prod) => {
+            const qty = Math.max(0.001, Number(document.getElementById('imp-qty').value || 1));
+            queueProduct(prod, qty);
         });
 
         document.getElementById('imp-add-row').onclick = async () => {
@@ -1423,76 +1518,151 @@
             const sd = await sr.json().catch(() => ({}));
             const prod = (sd.products || [])[0];
             if (!prod) return OkwUI.toast('Product not found', 'danger');
-            const customer = document.getElementById('imp-cust').value.trim() || 'Walk-in';
-            const method = document.getElementById('imp-method').value || 'cash';
-            batch.push({
-                name: prod.name,
-                barcode: prod.barcode,
-                qty,
-                customer,
-                method,
-                total: Number((qty * Number(prod.price || 0)).toFixed(2))
-            });
-            document.getElementById('imp-q').value = '';
+            queueProduct(prod, qty);
+        };
+
+        document.getElementById('imp-clear').onclick = () => {
+            batch = [];
             drawBatch();
         };
 
-        document.getElementById('imp-sample').onclick = () => {
-            const sample = [{ Barcode: 'TOOL-001', Qty: 2, 'Customer Name': 'Walk-in', 'Payment Method': 'cash' }];
+        document.getElementById('imp-sample').onclick = async () => {
+            if (typeof window.__libsReady === 'function') await window.__libsReady();
+            const sample = [
+                { 'Invoice Group': 'INV-001', Barcode: 'TOOL-001', Qty: 2, 'Customer Name': 'Walk-in', 'Payment Method': 'cash' },
+                { 'Invoice Group': 'INV-001', Barcode: 'TOOL-002', Qty: 1, 'Customer Name': 'Walk-in', 'Payment Method': 'cash' },
+                { 'Invoice Group': 'INV-002', Barcode: 'TOOL-003', Qty: 3, 'Customer Name': 'Ama Mensah', 'Payment Method': 'momo' }
+            ];
             if (window.XLSX) {
                 const ws = window.XLSX.utils.json_to_sheet(sample);
                 const wb = window.XLSX.utils.book_new();
                 window.XLSX.utils.book_append_sheet(wb, ws, 'Sales_Sample');
                 window.XLSX.writeFile(wb, 'okwesiwa-sales-import-sample.xlsx');
+            } else {
+                const csv = 'Invoice Group,Barcode,Qty,Customer Name,Payment Method\nINV-001,TOOL-001,2,Walk-in,cash\n';
+                const blob = new Blob([csv], { type: 'text/csv' });
+                const a = document.createElement('a');
+                a.href = URL.createObjectURL(blob);
+                a.download = 'okwesiwa-sales-import-sample.csv';
+                a.click();
             }
         };
+
         document.getElementById('imp-pick-file').onclick = () => document.getElementById('imp-sales-file').click();
         document.getElementById('imp-sales-file').onchange = async (e) => {
             const file = e.target.files[0];
-            if (!file || !window.XLSX) return;
-            const buf = await file.arrayBuffer();
-            const wb = window.XLSX.read(buf);
-            const parsed = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-            for (const row of parsed) {
-                const barcode = String(row.Barcode || row.barcode || '').trim();
-                const qty = Number(row.Qty || row.qty || 1);
-                if (!barcode || qty <= 0) continue;
-                batch.push({
-                    name: row['Product Name'] || barcode,
-                    barcode,
-                    qty,
-                    customer: row['Customer Name'] || 'Walk-in',
-                    method: String(row['Payment Method'] || 'cash').toLowerCase(),
-                    total: Number(row.Total || 0)
-                });
+            if (!file) return;
+            if (typeof window.__libsReady === 'function') await window.__libsReady();
+            if (!window.XLSX) {
+                OkwUI.toast('Spreadsheet library is still loading. Please try again.', 'warning');
+                return;
             }
-            drawBatch();
+            try {
+                const buf = await file.arrayBuffer();
+                const wb = window.XLSX.read(buf);
+                const parsed = window.XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                let added = 0;
+                for (const row of parsed) {
+                    const barcode = String(row.Barcode || row.barcode || row.SKU || row.sku || '').trim();
+                    const qty = Number(row.Qty || row.qty || row.Quantity || row.quantity || 1);
+                    if (!barcode || qty <= 0) continue;
+                    const item = {
+                        group: String(row['Invoice Group'] || row['Invoice No'] || row.Group || row.group || '').trim(),
+                        name: row['Product Name'] || barcode,
+                        barcode,
+                        qty,
+                        customer: String(row['Customer Name'] || row.Customer || 'Walk-in').trim() || 'Walk-in',
+                        method: String(row['Payment Method'] || row.Method || 'cash').trim().toLowerCase(),
+                        unitPrice: 0,
+                        total: Number(row.Total || 0),
+                        status: 'Ready',
+                        _tone: 'success',
+                        _valid: true,
+                        _saved: false
+                    };
+                    validateRow(item);
+                    batch.push(item);
+                    added++;
+                }
+                e.target.value = '';
+                drawBatch();
+                OkwUI.toast(`Loaded ${added} row(s) from ${file.name}`, added ? 'success' : 'warning');
+            } catch (err) {
+                OkwUI.toast('Could not parse file. Check format and try again.', 'danger');
+            }
         };
+
         const impRunBtn = document.getElementById('imp-run');
         impRunBtn.onclick = async () => {
             if (impRunBtn.disabled) return;
-            if (!batch.length) return OkwUI.toast('Add at least one sale row first', 'warning');
+            const pending = batch.filter(r => !r._saved);
+            if (!pending.length) return OkwUI.toast('Add at least one unsaved sale row first', 'warning');
+
+            // Group rows that share an Invoice Group into a single multi-item receipt
+            const groups = [];
+            const groupIdxMap = new Map();
+            for (const row of pending) {
+                if (row.group) {
+                    const key = row.group.toLowerCase();
+                    if (!groupIdxMap.has(key)) {
+                        groupIdxMap.set(key, groups.length);
+                        groups.push({ key: row.group, customer: row.customer, method: row.method, rows: [] });
+                    }
+                    groups[groupIdxMap.get(key)].rows.push(row);
+                } else {
+                    groups.push({ key: null, customer: row.customer, method: row.method, rows: [row] });
+                }
+            }
+
             impRunBtn.disabled = true;
             const origText = impRunBtn.textContent;
             impRunBtn.textContent = 'Importing...';
-            let okCount = 0;
+            let okGroups = 0;
+            let failGroups = 0;
             try {
-                for (const row of batch) {
+                for (const g of groups) {
+                    const groupTotal = Number(g.rows.reduce((s, r) => s + Number(r.total || 0), 0).toFixed(2));
+                    const payMethod = String(g.method || 'cash').toLowerCase();
+                    const payments = (payMethod !== 'credit' && groupTotal > 0)
+                        ? [{ method: payMethod, amount: groupTotal, reference: g.key ? `Import ${g.key}` : 'Batch Import' }]
+                        : [];
                     const r = await fetch('/api/pos/checkout', {
-                        method: 'POST', headers, credentials: 'include',
+                        method: 'POST',
+                        headers,
+                        credentials: 'include',
                         body: JSON.stringify({
-                            items: [{ barcode: String(row.barcode), qty: Number(row.qty) }],
-                            customer_name: row.customer || 'Walk-in',
-                            payment_method: String(row.method || 'cash').toLowerCase()
+                            items: g.rows.map(row => ({ barcode: String(row.barcode), qty: Number(row.qty) })),
+                            customer_name: g.customer || 'Walk-in',
+                            payments,
+                            delivery: g.key ? { invoice_no: g.key } : null
                         })
                     });
-                    if (r.ok) okCount++;
+                    const out = await r.json().catch(() => ({}));
+                    if (r.ok) {
+                        okGroups++;
+                        g.rows.forEach(row => {
+                            row._saved = true;
+                            row._valid = true;
+                            row._tone = 'success';
+                            row.status = out.receipt_number ? `Saved (${out.receipt_number})` : 'Saved';
+                        });
+                    } else {
+                        failGroups++;
+                        g.rows.forEach(row => {
+                            row._valid = false;
+                            row._tone = 'danger';
+                            row.status = 'Failed: ' + (out.message || `HTTP ${r.status}`);
+                        });
+                    }
                 }
-                OkwUI.toast(`Saved ${okCount} of ${batch.length} sale(s)`, 'success');
-                if (okCount > 0) {
+                drawBatch();
+                if (failGroups === 0) {
+                    OkwUI.toast(`Saved all ${okGroups} sale(s) successfully`, 'success');
                     activeView = 'all';
                     window.history.replaceState(null, '', '/sell?tab=all');
                     render();
+                } else {
+                    OkwUI.toast(`Saved ${okGroups} sale(s), ${failGroups} failed — check Status column for details`, 'warning');
                 }
             } finally {
                 impRunBtn.disabled = false;
