@@ -1779,11 +1779,30 @@
                 display: initial;
             }
         }
+        /* Hide POS UI until active shift + Cash in hand are verified so POS never flashes before /open-shift */
+        body.pos-verifying > *:not(#posGateSplash) {
+            display: none !important;
+        }
+        #posGateSplash {
+            position: fixed;
+            inset: 0;
+            z-index: 99999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
+            background: var(--frame, #f8fafc);
+            color: var(--ink-2, #334155);
+            font-size: 14px;
+            font-weight: 600;
+        }
     </style>
     <script src="/okw-events.js"></script>
 </head>
 
-<body>
+<body class="pos-verifying">
+    <div id="posGateSplash">Verifying cash register...</div>
 
     <div id="notification" class="notification"></div>
 
@@ -4655,7 +4674,7 @@
                 window.dispatchEvent(new CustomEvent('okw:user-ready', { detail: user }));
 
                 if (!shiftRes.ok) {
-                    window.location.href = '/open-shift';
+                    window.location.replace('/open-shift');
                     return false;
                 }
 
@@ -4669,9 +4688,13 @@
                     shiftData.shift.start_cash !== undefined
                 );
                 if (!hasRegisteredCash) {
-                    window.location.href = '/open-shift';
+                    window.location.replace('/open-shift');
                     return false;
                 }
+
+                document.body.classList.remove('pos-verifying');
+                const splash = document.getElementById('posGateSplash');
+                if (splash) splash.remove();
 
                 if (taxesRes && taxesRes.ok) {
                     try { activeTaxes = await taxesRes.json(); } catch (_) { activeTaxes = []; }

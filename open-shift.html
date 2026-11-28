@@ -162,7 +162,7 @@
                 <p class="okw-page-subtitle">Count your starting cash drawer float and open your register to begin sales.</p>
             </div>
             <div class="okw-page-header-actions">
-                <a href="/pos" class="okw-btn okw-btn-outline" style="text-decoration:none;"><i class="fas fa-cash-register"></i> Open POS</a>
+                <a id="osHeaderPosBtn" href="/pos" class="okw-btn okw-btn-outline" style="text-decoration:none;display:none;"><i class="fas fa-cash-register"></i> Open POS</a>
             </div>
         </div>
 
@@ -195,7 +195,7 @@
             <section class="os-card">
                 <form id="openShiftForm" novalidate>
                     <div class="os-field">
-                        <label for="startCash">Opening Cash Amount</label>
+                        <label for="startCash">Cash in hand <span style="color:#dc2626;">*</span></label>
                         <input type="number" id="startCash" class="os-cash-input" step="0.01" min="0" placeholder="0.00" required>
                         <div class="os-presets">
                             <button type="button" class="os-chip" data-preset="0">0.00</button>
@@ -276,6 +276,8 @@
                         document.getElementById('osActiveSince').textContent = since;
                         document.getElementById('osMain').style.display = 'none';
                         document.getElementById('osAlreadyOpen').style.display = 'block';
+                        const hdrPos = document.getElementById('osHeaderPosBtn');
+                        if (hdrPos) hdrPos.style.display = '';
                         return;
                     }
                 }
